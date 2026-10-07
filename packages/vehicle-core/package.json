@@ -1,0 +1,30 @@
+{
+  "name": "@ardudeck/vehicle-core",
+  "version": "0.1.0",
+  "description": "Vehicle-level logic shared by the ArduDeck app and ArduDeck OS: flight modes, vehicle types, MAVFTP, param.pck, UBX, RTCM. Dependency-free.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./gnss": {
+      "types": "./dist/gnss/index.d.ts",
+      "import": "./dist/gnss/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "license": "MIT"
+}

@@ -13,7 +13,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import layouts from './ap-motor-layouts.json';
-import { resolveCopterFrame, sitlFrameForMotorCount, FRAME_CLASS, FRAME_TYPE } from './sitl-frame-geometry';
+import { resolveCopterFrame, sitlFrameForMotorCount, FRAME_CLASS, FRAME_TYPE } from '@ardudeck/sitl';
 
 /** SIM_Frame.cpp motor tables: [angle_deg, spin] in MOT_1..MOT_N order. */
 const SIM_FRAME_MOTORS: Record<string, Array<[number, 'CW' | 'CCW']>> = {

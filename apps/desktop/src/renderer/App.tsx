@@ -8,6 +8,8 @@ import {
 } from './utils/connection-reset';
 import { AppShell } from './components/layout/AppShell';
 import { ConnectionPanel } from './components/connection/ConnectionPanel';
+import { OsLinkPanel } from './components/connection/OsLinkPanel';
+import { useOsIntegrationStore } from './stores/os-integration-store';
 import { TelemetryDashboard } from './components/telemetry/TelemetryDashboard';
 import { NavigationRail } from './components/navigation/NavigationRail';
 import { ParametersView } from './components/parameters/ParametersView';
@@ -422,6 +424,8 @@ function App() {
   const { clearModeMappings: resetFlightControl, stopOverride } = useFlightControlStore();
   const { vehicles, activeVehicleId, updateVehicle, experienceLevel, experienceLevelVersion, setExperienceLevel } = useSettingsStore();
   const sidebarCollapsedByContext = useSettingsStore((s) => s.sidebarCollapsedByContext);
+  // On ArduDeck OS the system owns the vehicle link; the sidebar shows it instead of a connect form.
+  const osManaged = useOsIntegrationStore((s) => s.info.available);
   const setSidebarCollapsedForContext = useSettingsStore((s) => s.setSidebarCollapsedForContext);
   // Per-context collapse: shared "connected" state while connected, otherwise
   // per-screen while offline. Default: collapsed when connected (connect panel
@@ -1254,7 +1258,7 @@ function App() {
             <CollapsedSidebar onExpand={() => setSidebarCollapsed(false)} />
           ) : (
             <div className="relative h-full">
-              <ConnectionPanel />
+              {osManaged ? <OsLinkPanel /> : <ConnectionPanel />}
               <button
                 onClick={() => setSidebarCollapsed(true)}
                 className="absolute top-3 right-3 p-1.5 rounded-md hover:bg-surface-raised text-content-secondary hover:text-content transition-colors"

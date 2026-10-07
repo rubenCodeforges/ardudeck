@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { paramModelFor, simModelFor } from './ardupilot-sitl-process';
-import { resolveCopterFrame } from '../../shared/sitl-frame-geometry';
+import { resolveCopterFrame } from '@ardudeck/sitl';
 import type { ArduPilotSitlConfig } from '../../shared/ipc-channels';
 
 /**

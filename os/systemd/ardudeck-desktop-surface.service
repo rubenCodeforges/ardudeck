@@ -1,0 +1,16 @@
+[Unit]
+Description=ArduDeck OS desktop surface (map, synthetic vision, instruments on the desktop)
+PartOf=graphical-session.target
+After=graphical-session.target ardudeck-os-linkd.service
+Wants=ardudeck-os-linkd.service
+
+[Service]
+# Development layout: the feat/ardudeck-os build run from the monorepo.
+# The distro image installs the packaged app and points this at /usr.
+WorkingDirectory=%h/work/ardudeck/apps/desktop
+ExecStart=%h/work/ardudeck/node_modules/.bin/electron %h/work/ardudeck/apps/desktop --no-sandbox --desktop-surface
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

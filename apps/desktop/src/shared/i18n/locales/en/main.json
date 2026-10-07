@@ -622,6 +622,10 @@
     "receiverNotPublished": "The wfb-ng receiver for {{platform}} has not been published yet (release {{tag}} has no {{asset}}), so dongle mode cannot start. Until then, set the feed to Network mode and run the receiver on another machine that forwards video here.",
     "udpPortHeld": "UDP port {{port}} is still held by another program or the previous video process. Try again in a moment."
   },
+  "ardudeckOs": {
+    "transportName": "ArduDeck OS link",
+    "connectBlocked": "On ArduDeck OS the vehicle link is managed by the system. Change it in Vehicle Link."
+  },
   "productionBay": {
     "bay": {
       "noHeartbeat": "The board does not answer. Check the USB cable, or flash firmware if the board is new.",

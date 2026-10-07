@@ -35,6 +35,8 @@
     "@ardudeck/companion-types": "workspace:*",
     "@ardudeck/dataflash-parser": "workspace:^",
     "@ardudeck/mavlink-ts": "workspace:*",
+    "@ardudeck/sitl": "workspace:*",
+    "@ardudeck/vehicle-core": "workspace:*",
     "@ardudeck/module-sdk": "workspace:*",
     "@ardudeck/msp-ts": "workspace:*",
     "@ardudeck/sim-engine": "workspace:*",

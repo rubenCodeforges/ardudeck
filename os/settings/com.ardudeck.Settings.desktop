@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=ArduDeck Settings
+GenericName=Ground Control Station Settings
+Comment=Vehicle link and desktops of ArduDeck OS
+Exec=gjs -m /usr/share/ardudeck-os/settings/com.ardudeck.Settings.js %U
+Icon=ardudeck
+Terminal=false
+Type=Application
+Categories=Settings;HardwareSettings;
+Keywords=mavlink;telemetry;radio;drone;vehicle;desktop;workspace;
+StartupNotify=true

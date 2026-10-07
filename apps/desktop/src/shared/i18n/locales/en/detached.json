@@ -8,5 +8,9 @@
     "pinned": "Pinned on top, click to unpin",
     "toggleOnTop": "Toggle always on top",
     "unknownComponent": "Unknown component"
+  },
+  "surface": {
+    "linkServiceOff": "ArduDeck OS link service is not running",
+    "searching": "Looking for the vehicle…"
   }
 }

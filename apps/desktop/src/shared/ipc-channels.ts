@@ -801,6 +801,10 @@ export const IPC_CHANNELS = {
 
   // App / Updates
   APP_GET_VERSION: 'app:get-version',
+  OS_GET_INTEGRATION: 'os:get-integration',
+  OS_GET_LINKS: 'os:get-links',
+  OS_SET_ACTIVE_LINK: 'os:set-active-link',
+  OS_OPEN_LINK_SETTINGS: 'os:open-link-settings',
   APP_GET_GRAPHICS_INFO: 'app:get-graphics-info',
   APP_SET_GRAPHICS_MODE: 'app:set-graphics-mode',
   APP_CHECK_UPDATE: 'app:check-update',

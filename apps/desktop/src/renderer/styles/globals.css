@@ -1207,3 +1207,11 @@ select,
 .leaflet-container.map-picking .leaflet-marker-shadow {
   pointer-events: none;
 }
+
+/* ArduDeck OS desktop surface power policy (SurfaceRoot useCalm): stop
+   infinite animations so the compositor can idle. Colours stay; motion stops. */
+html.surface-calm *,
+html.surface-calm *::before,
+html.surface-calm *::after {
+  animation-play-state: paused !important;
+}

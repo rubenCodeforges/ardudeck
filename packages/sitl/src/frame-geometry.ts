@@ -21,7 +21,7 @@
  * Plus. On an octa that is a 22.5 degree offset on all eight motors, which is
  * unflyable (observed: 42 deg peak attitude error, motors at the rails, crash).
  *
- * Every pair below is machine-verified against shared/ap-motor-layouts.json (a
+ * Every pair below is machine-verified against apps/desktop/src/shared/ap-motor-layouts.json (a
  * dump of ArduPilot's own AP_Motors library test) by the accompanying test, which
  * re-derives the mapping from the SIM_Frame.cpp motor angles. If ArduPilot ever
  * changes a layout, that test fails rather than the vehicle falling out of the sky.

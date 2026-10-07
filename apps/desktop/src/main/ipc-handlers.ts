@@ -180,6 +180,11 @@ import { nextTxSeq } from './tx-sequence.js';
 import { GpsPassthrough } from './gps/gps-passthrough.js';
 import { telemetryKeyFor } from './telemetry-routing.js';
 import { MavlinkFtpClient, parseParamPack, PARAM_PCK_PATH, parseFtpPayload } from './mavlink-ftp/index.js';
+import { VEHICLE_NAMES, isVehicleHeartbeat } from '@ardudeck/vehicle-core';
+import {
+  probeArduDeckOs, isOsLinkEndpoint, fetchOsParams, isOsManaged, getOsLinks, setOsActiveLink, openOsLinkSettings,
+  startOsSimSwarm, stopOsSimSwarm, getOsSimStatus,
+} from './ardudeck-os.js';
 import { ingestNamedValueFloat, getScriptHealth, resetHeartbeat, subscribeHealth } from './script-installer/heartbeat-tracker.js';
 import * as scriptRegistry from './script-installer/registry-store.js';
 import { getScriptBundle } from './script-installer/bundle.js';
@@ -2175,6 +2180,8 @@ let connectionState: ConnectionState = {
 
 // Detected MAVLink version from flight controller (1 or 2)
 let detectedMavlinkVersion: 1 | 2 = 1; // Default to v1 for compatibility
+// True while connected through the ArduDeck OS link service (see ardudeck-os.ts).
+let connectedViaOs = false;
 
 // Parameter download state
 let expectedParamCount = 0;
@@ -2657,93 +2664,6 @@ const AUTOPILOT_NAMES: Record<number, string> = {
   12: 'PX4',
 };
 
-// Vehicle type names (from MAV_TYPE enum)
-const VEHICLE_NAMES: Record<number, string> = {
-  0: 'Generic',
-  1: 'Fixed Wing',
-  2: 'Quadrotor',
-  3: 'Coaxial',
-  4: 'Helicopter',
-  5: 'Antenna Tracker',
-  6: 'GCS',
-  7: 'Airship',
-  8: 'Free Balloon',
-  9: 'Rocket',
-  10: 'Ground Rover',
-  11: 'Surface Boat',
-  12: 'Submarine',
-  13: 'Hexarotor',
-  14: 'Octorotor',
-  15: 'Tricopter',
-  16: 'Flapping Wing',
-  17: 'Kite',
-  18: 'Onboard Companion',
-  19: 'VTOL Tailsitter Duo',
-  20: 'VTOL Tailsitter Quad',
-  21: 'VTOL Tiltrotor',
-  22: 'VTOL Fixed-rotor',
-  23: 'VTOL Tailsitter',
-  24: 'VTOL Tiltwing',
-  25: 'VTOL Reserved5',
-  26: 'Gimbal',
-  27: 'ADSB',
-  28: 'Parafoil',
-  29: 'Dodecarotor',
-  30: 'Camera',
-  31: 'Charging Station',
-  32: 'FLARM',
-  33: 'Servo',
-  34: 'ODID',
-  35: 'Decarotor',
-  36: 'Battery',
-  37: 'Parachute',
-  38: 'Log',
-  39: 'OSD',
-  40: 'IMU',
-  41: 'GPS',
-  42: 'Winch',
-};
-
-// Non-vehicle MAV_TYPE values that should be ignored for heartbeat/telemetry
-// These are peripheral components (companion computers, cameras, gimbals, etc.)
-// that send their own heartbeats but don't represent the actual vehicle
-const NON_VEHICLE_TYPES = new Set([
-  5,  // Antenna Tracker
-  6,  // GCS
-  18, // Onboard Companion
-  26, // Gimbal
-  27, // ADSB
-  30, // Camera
-  31, // Charging Station
-  32, // FLARM
-  33, // Servo
-  34, // ODID
-  36, // Battery
-  37, // Parachute
-  38, // Log
-  39, // OSD
-  40, // IMU
-  41, // GPS
-  42, // Winch
-]);
-
-// A heartbeat only identifies a controllable vehicle when its MAV_TYPE is one
-// we know, its autopilot field is a real flight stack (radios, gimbals and GCS
-// software mark themselves MAV_AUTOPILOT_INVALID), and it doesn't come from
-// the telemetry-radio component id that SiK/mLRS/ELRS radios use. Unknown
-// MAV_TYPEs are rejected because ghost heartbeats from stream misalignment
-// carry arbitrary type bytes (seen live: a phantom "type 193" vehicle from an
-// ELRS link that hijacked the primary connection and the fleet list).
-const MAV_AUTOPILOT_INVALID = 8;
-const MAV_COMP_ID_TELEMETRY_RADIO = 68;
-function isVehicleHeartbeat(vehicleType: number, autopilot: number, compid: number): boolean {
-  return (
-    !NON_VEHICLE_TYPES.has(vehicleType) &&
-    VEHICLE_NAMES[vehicleType] !== undefined &&
-    autopilot !== MAV_AUTOPILOT_INVALID &&
-    compid !== MAV_COMP_ID_TELEMETRY_RADIO
-  );
-}
 
 // Safely send IPC message to all live windows (main + every detached pop-out).
 // The `mainWindow` argument is kept for backwards compatibility with the
@@ -6448,6 +6368,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Connect to a device
   ipcMain.handle(IPC_CHANNELS.COMMS_CONNECT, async (_, options: ConnectOptions): Promise<boolean> => {
+    // On ArduDeck OS the system owns the vehicle link: the app may only attach
+    // to it. Opening the radio, a serial port or UDP 14550 directly would fight
+    // the link service for the same hardware and port.
+    if (isOsManaged() && !(options.type === 'udp' && options.udpMode === 'client' && isOsLinkEndpoint(options.udpRemoteHost, options.udpRemotePort))) {
+      sendLog(mainWindow, 'warn', t('main:ardudeckOs.connectBlocked'));
+      return false;
+    }
     // Claim this connect attempt. Any older attempt still in flight will see a
     // newer generation at its next checkpoint and abandon itself, so we never
     // end up with two sockets racing to the same target.
@@ -6467,6 +6394,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     // cycle, cable unplug) recovers on its own. Capturing the serial port's USB identity
     // lets reconnect find the device even if it re-enumerates to a different path.
     lastConnectOptions = { ...options };
+    connectedViaOs = false;
     suppressAutoReconnect = false;
     lastSerialUsbId = null;
     // The operator picked this port for the main connection: a production bay holding it lets go.
@@ -6550,7 +6478,10 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
               remoteHost: options.udpRemoteHost,
               remotePort: options.udpRemotePort,
             });
-            transportName = `UDP client ${options.udpRemoteHost}:${options.udpRemotePort} (local :${clientLocalPort})`;
+            connectedViaOs = isOsLinkEndpoint(options.udpRemoteHost, options.udpRemotePort);
+            transportName = connectedViaOs
+              ? t('main:ardudeckOs.transportName')
+              : `UDP client ${options.udpRemoteHost}:${options.udpRemotePort} (local :${clientLocalPort})`;
           } else {
             currentTransport = new UdpTransport({
               localPort: options.udpPort ?? 14550,
@@ -7874,6 +7805,34 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   }
 
   /**
+   * ArduDeck OS fast path: when connected through the OS link service, take
+   * the parameter set it already cached for this board instead of
+   * downloading it again. Same delivery as the FTP path (PARAM_BULK_LOAD).
+   */
+  async function requestParamsFromOsCache(): Promise<boolean> {
+    if (!connectedViaOs) return false;
+    const snap = await fetchOsParams(connectionState.boardUid ?? undefined);
+    if (!snap) return false;
+    receivedParams.clear();
+    expectedParamCount = snap.paramCount;
+    const bulkPayload: ParamValuePayload[] = snap.params.map((p) => {
+      const entry: ParamValuePayload = {
+        paramId: p.paramId,
+        paramValue: p.paramValue,
+        paramType: p.paramType,
+        paramCount: snap.paramCount,
+        paramIndex: p.paramIndex,
+        defaultValue: p.defaultValue,
+      };
+      receivedParams.set(p.paramId, entry);
+      return entry;
+    });
+    safeSend(mainWindow, IPC_CHANNELS.PARAM_BULK_LOAD, bulkPayload);
+    sendLog(mainWindow, 'info', `Loaded ${bulkPayload.length} parameters from ArduDeck OS cache`);
+    return true;
+  }
+
+  /**
    * Try downloading parameters via MAVLink FTP (fast path).
    * Downloads @PARAM/param.pck and parses the packed binary format.
    * Returns true if successful (params sent to renderer), false to trigger fallback.
@@ -7978,6 +7937,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     if (!focus) {
       return { success: false, error: t('main:ipc.notConnected') };
     }
+    if (focus.isPrimaryVehicle && await requestParamsFromOsCache()) return { success: true };
     if (focus.mavlinkVersion === 2 && focus.firmware !== 'px4') {
       try {
         if (await requestParamsViaFtp(focus)) return { success: true };
@@ -8009,6 +7969,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     paramRequestInFlight = true;
 
     try {
+      if (focus.isPrimaryVehicle && await requestParamsFromOsCache()) return { success: true };
+
       // Only attempt FTP on MAVLink v2 connections (FTP requires v2).
       // Skip it on PX4 outright: @PARAM/param.pck is an ArduPilot virtual
       // file, so on PX4 the fast path can only ever burn its open-timeout
@@ -12982,6 +12944,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // A swarm and the single SITL both want base port 5760, so they are mutually
   // exclusive: starting a swarm tears down any single instance + its RC sender.
   ipcMain.handle(IPC_CHANNELS.SWARM_SITL_START, async (_event, config: SwarmSitlConfig): Promise<{ success: boolean; error?: string; instances?: SwarmSitlStatus['instances'] }> => {
+    if (isOsManaged()) {
+      const result = await startOsSimSwarm(config);
+      if (result.status) safeSend(mainWindow, IPC_CHANNELS.SWARM_SITL_STATE, result.status);
+      return { success: result.success, error: result.error, instances: result.status?.instances };
+    }
     if (ardupilotSitlProcess.isRunning) {
       ardupilotRcSender.stop();
       await ardupilotSitlProcess.stopAndWait(5000);
@@ -12991,7 +12958,12 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     return swarmSitlProcess.start(config);
   });
 
-  ipcMain.handle(IPC_CHANNELS.SWARM_SITL_STOP, async (): Promise<{ success: boolean }> => {
+  ipcMain.handle(IPC_CHANNELS.SWARM_SITL_STOP, async (): Promise<{ success: boolean; error?: string }> => {
+    if (isOsManaged()) {
+      const result = await stopOsSimSwarm();
+      safeSend(mainWindow, IPC_CHANNELS.SWARM_SITL_STATE, await getOsSimStatus());
+      return result;
+    }
     try {
       swarmSitlProcess.stop();
       return { success: true };
@@ -13002,6 +12974,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   });
 
   ipcMain.handle(IPC_CHANNELS.SWARM_SITL_STATUS, async (): Promise<SwarmSitlStatus> => {
+    if (isOsManaged()) return getOsSimStatus();
     return swarmSitlProcess.getStatus();
   });
 
@@ -13586,6 +13559,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // App Version & Updates
   // ============================================================================
 
+  ipcMain.handle(IPC_CHANNELS.OS_GET_INTEGRATION, () => probeArduDeckOs());
+  ipcMain.handle(IPC_CHANNELS.OS_GET_LINKS, () => getOsLinks());
+  ipcMain.handle(IPC_CHANNELS.OS_SET_ACTIVE_LINK, (_e, id: string) => setOsActiveLink(String(id)));
+  ipcMain.handle(IPC_CHANNELS.OS_OPEN_LINK_SETTINGS, () => openOsLinkSettings());
+
   ipcMain.handle(IPC_CHANNELS.APP_GET_VERSION, (): string => {
     return app.getVersion();
   });
@@ -13676,7 +13654,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   });
 
   // Initialize auto-updater (handles auto-check on its own schedule)
-  initAutoUpdater(mainWindow);
+  // The desktop surface is a second instance of the same build; only the app updates.
+  if (process.env['ARDUDECK_DESKTOP_SURFACE'] !== '1') initAutoUpdater(mainWindow);
 
   // Companion computer (agent WebSocket)
   registerCompanionIpcHandlers(mainWindow);

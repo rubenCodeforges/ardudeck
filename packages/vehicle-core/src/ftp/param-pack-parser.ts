@@ -11,7 +11,13 @@
  * name. The `common_len` field tells how many leading bytes to reuse.
  */
 
-import { MavParamType } from '../../shared/parameter-types.js';
+// MAV_PARAM_TYPE values (MAVLink common.xml). Spelled out here rather than imported
+// so this module, which the desktop renderer reaches via telemetry-types, does not
+// pull the whole generated mavlink-ts registry into the UI bundle.
+const MAV_PARAM_TYPE_INT8 = 2;
+const MAV_PARAM_TYPE_INT16 = 4;
+const MAV_PARAM_TYPE_INT32 = 6;
+const MAV_PARAM_TYPE_REAL32 = 9;
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -33,7 +39,8 @@ const PACK_TYPE_FLOAT = 4;
 export interface PackedParam {
   name: string;
   value: number;
-  type: MavParamType;
+  /** MAV_PARAM_TYPE */
+  type: number;
   defaultValue?: number;
 }
 
@@ -75,13 +82,13 @@ function readValue(view: DataView, offset: number, ptype: number): number {
 }
 
 /** Map packed type to MAV_PARAM_TYPE (ArduPilot always uses REAL32 over MAVLink) */
-function packedTypeToMavType(ptype: number): MavParamType {
+function packedTypeToMavType(ptype: number): number {
   switch (ptype) {
-    case PACK_TYPE_INT8: return MavParamType.INT8;
-    case PACK_TYPE_INT16: return MavParamType.INT16;
-    case PACK_TYPE_INT32: return MavParamType.INT32;
-    case PACK_TYPE_FLOAT: return MavParamType.REAL32;
-    default: return MavParamType.REAL32;
+    case PACK_TYPE_INT8: return MAV_PARAM_TYPE_INT8;
+    case PACK_TYPE_INT16: return MAV_PARAM_TYPE_INT16;
+    case PACK_TYPE_INT32: return MAV_PARAM_TYPE_INT32;
+    case PACK_TYPE_FLOAT: return MAV_PARAM_TYPE_REAL32;
+    default: return MAV_PARAM_TYPE_REAL32;
   }
 }
 

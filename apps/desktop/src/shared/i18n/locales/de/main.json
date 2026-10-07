@@ -622,6 +622,10 @@
     "receiverNotPublished": "Der wfb-ng-Empfänger für {{platform}} wurde noch nicht veröffentlicht (Release {{tag}} enthält kein {{asset}}), daher kann der Dongle-Modus nicht starten. Stellen Sie den Feed bis dahin auf Netzwerkmodus und betreiben Sie den Empfänger auf einem anderen Rechner, der das Video hierher weiterleitet.",
     "udpPortHeld": "UDP-Port {{port}} ist noch von einem anderen Programm oder dem vorherigen Videoprozess belegt. Versuchen Sie es gleich noch einmal."
   },
+  "ardudeckOs": {
+    "transportName": "ArduDeck-OS-Verbindung",
+    "connectBlocked": "Unter ArduDeck OS verwaltet das System die Fahrzeugverbindung. Ändern Sie sie unter Fahrzeugverbindung."
+  },
   "productionBay": {
     "bay": {
       "noHeartbeat": "Das Board antwortet nicht. USB-Kabel prüfen oder Firmware flashen, wenn das Board neu ist.",

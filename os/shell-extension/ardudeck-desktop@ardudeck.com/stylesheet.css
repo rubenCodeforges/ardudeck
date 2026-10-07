@@ -1,0 +1,62 @@
+/* ArduDeck brand: navy #0a0a0f / #111827, teal #2dd4bf, cyan #22d3ee */
+.adk-card {
+  width: 340px;
+  padding: 18px 20px 14px;
+  border-radius: 14px;
+  background-color: rgba(17, 24, 39, 0.82);
+  border: 1px solid rgba(45, 212, 191, 0.22);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  font-family: "Inter Variable";
+  color: #e5e7eb;
+}
+
+.adk-card-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #2dd4bf;
+}
+
+.adk-status {
+  font-size: 22px;
+  font-weight: 700;
+  padding: 6px 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 8px;
+}
+
+.adk-rows { spacing: 2px; }
+.adk-row { padding: 5px 0; }
+
+.adk-label {
+  font-size: 13px;
+  color: #9ca3af;
+  min-width: 96px;
+}
+
+.adk-value {
+  font-family: "JetBrains Mono";
+  font-size: 13px;
+  color: #f3f4f6;
+}
+
+.adk-footer {
+  font-size: 11px;
+  color: #6b7280;
+  padding-top: 10px;
+}
+
+.adk-good  { color: #34d399; }
+.adk-warn  { color: #fbbf24; }
+.adk-bad   { color: #f87171; }
+.adk-dim   { color: #6b7280; }
+.adk-plain { color: #f3f4f6; }
+.adk-armed { color: #f87171; }
+
+.adk-messages { spacing: 3px; padding-top: 8px; }
+.adk-message {
+  font-family: "JetBrains Mono";
+  font-size: 11px;
+  color: #d1d5db;
+}
+.adk-cluster { spacing: 18px; }
