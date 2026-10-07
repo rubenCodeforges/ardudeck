@@ -14,6 +14,7 @@ import { ScriptHealthBadge } from '../script-installer/ScriptHealthBadge';
 import { QuickLaunchMenu } from './QuickLaunchMenu';
 import { betaLabel } from '../../utils/version-label';
 import iconImage from '../../assets/icon.png';
+import { isPrimaryLinkUp } from '../../lib/primary-link';
 
 interface AppShellProps {
   children: ReactNode;
@@ -33,7 +34,8 @@ export function AppShell({ children }: AppShellProps) {
   // isn't stuck on "Disconnected" while a live fleet is selected.
   const fleetCount = useActiveVehicleStore((s) => Object.keys(s.knownVehicles).length);
   const activeVehicleKey = useActiveVehicleStore((s) => s.activeVehicleKey);
-  const fleetConnected = !connectionState.isConnected && fleetCount > 0;
+  const primaryConnected = isPrimaryLinkUp(connectionState);
+  const fleetConnected = !primaryConnected && fleetCount > 0;
 
   useTheme();
 
@@ -102,7 +104,7 @@ export function AppShell({ children }: AppShellProps) {
           <ArmDisarmButton />
 
           {/* Connection status */}
-          {connectionState.isConnected ? (
+          {primaryConnected ? (
             <button
               onClick={disconnect}
               title={connectionState.isStale ? t('layout:appShell.staleDisconnect', { seconds: staleSeconds }) : t('layout:appShell.clickToDisconnect')}

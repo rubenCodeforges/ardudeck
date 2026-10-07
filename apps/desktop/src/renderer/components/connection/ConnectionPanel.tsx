@@ -21,6 +21,7 @@ import { RadioSetupWizard } from './RadioSetupWizard';
 import { RadioPreflightCard } from './RadioPreflightCard';
 import type { StreamDiagnosis } from '../../../shared/link-doctor-types';
 import { hardwareCatalogRegistry, matchUsbProduct } from '../../modules/module-extension-registries';
+import { isPrimaryLinkUp } from '../../lib/primary-link';
 
 const BAUD_RATES = [1500000, 921600, 460800, 230400, 115200, 57600, 38400, 19200, 9600];
 
@@ -39,6 +40,7 @@ export function ConnectionPanel() {
   const { t } = useTranslation();
   const usbCatalogs = hardwareCatalogRegistry.useEntries();
   const { connectionState, isConnecting, error, connect, disconnect, setError } = useConnectionStore();
+  const primaryLinkUp = isPrimaryLinkUp(connectionState);
   const { connectionMemory, updateConnectionMemory, removeRecentConnection } = useSettingsStore();
   const settingsInitialized = useSettingsStore((s) => s._isInitialized);
   const [connectionTab, setConnectionTab] = useState<'single' | 'multi'>('single');
@@ -203,7 +205,7 @@ export function ConnectionPanel() {
   const transport = connectionState.transport ?? '';
   const looksLocalSim =
     /(^|[^\d])(127\.0\.0\.1|localhost)/.test(transport) && /:(5760|5761|5762|14550|14551|5501)\b/.test(transport);
-  const connectedToSitl = connectionState.isConnected && (anySitlRunning || looksLocalSim);
+  const connectedToSitl = primaryLinkUp && (anySitlRunning || looksLocalSim);
 
   const stopRunningSitl = useCallback(() => {
     void runSitlAction('stop', async () => {
@@ -247,7 +249,7 @@ export function ConnectionPanel() {
     }, t('connection:connectionPanel.respawningAtHome'));
   }, [t, runSitlAction]);
 
-  const linkUp = connectionState.isConnected;
+  const linkUp = primaryLinkUp;
   const sitlActionRow = (
     <div className="flex items-center gap-1.5">
       <button
@@ -400,7 +402,7 @@ export function ConnectionPanel() {
 
       if (attempt < 8) {
         await new Promise(r => setTimeout(r, 1500));
-        if (useConnectionStore.getState().connectionState.isConnected) return;
+        if (isPrimaryLinkUp(useConnectionStore.getState().connectionState)) return;
       }
     }
 
@@ -409,7 +411,7 @@ export function ConnectionPanel() {
 
   // Respond to SITL starting - switch to TCP and auto-connect with retry
   useEffect(() => {
-    if (pendingSitlSwitch && !connectionState.isConnected) {
+    if (pendingSitlSwitch && !primaryLinkUp) {
       // Which SITL flavour started decides the transport: ArduPilot / iNav offer
       // MAVLink/MSP over TCP 5760, PX4 offers MAVLink over UDP 14550 (we listen,
       // PX4 SITL streams to that port). They are mutually exclusive.
@@ -436,7 +438,7 @@ export function ConnectionPanel() {
           await new Promise(r => setTimeout(r, retryDelayMs));
 
           // Check if we're already connected (user may have connected manually)
-          if (useConnectionStore.getState().connectionState.isConnected) {
+          if (isPrimaryLinkUp(useConnectionStore.getState().connectionState)) {
             console.log('[ConnectionPanel] Already connected, stopping auto-connect');
             return;
           }
@@ -471,14 +473,14 @@ export function ConnectionPanel() {
 
       autoConnectWithRetry();
     }
-  }, [t, pendingSitlSwitch, connectionState.isConnected, setPendingSitlSwitch, connect, updateConnectionMemory, setError]);
+  }, [t, pendingSitlSwitch, primaryLinkUp, setPendingSitlSwitch, connect, updateConnectionMemory, setError]);
 
   useEffect(() => {
     if (window.electronAPI) {
       refreshPorts();
 
       // Start port watching for new devices (only when not connected)
-      if (!connectionState.isConnected) {
+      if (!primaryLinkUp) {
         window.electronAPI.startPortWatch();
       }
 
@@ -514,18 +516,18 @@ export function ConnectionPanel() {
         window.electronAPI.stopPortWatch();
       };
     }
-  }, [setError, connectionMemory?.lastSerialPort, connectionState.isConnected]);
+  }, [setError, connectionMemory?.lastSerialPort, primaryLinkUp]);
 
   // Restart port watching when disconnected
   useEffect(() => {
-    if (!connectionState.isConnected && window.electronAPI) {
+    if (!primaryLinkUp && window.electronAPI) {
       // Small delay to ensure disconnect is complete
       const timer = setTimeout(() => {
         window.electronAPI.startPortWatch();
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [connectionState.isConnected]);
+  }, [primaryLinkUp]);
 
   const refreshPorts = async () => {
     setIsRefreshingPorts(true);
@@ -697,7 +699,7 @@ export function ConnectionPanel() {
 
         {connectionTab === 'single' && <>
         {/* SITL Quick Start - only show when not connected */}
-        {!connectionState.isConnected && !connectionState.isWaitingForHeartbeat && (
+        {!primaryLinkUp && !connectionState.isWaitingForHeartbeat && (
           <div className="space-y-0">
             <button
               onClick={anySitlRunning ? handleSitlConnect : handleSitlQuickStart}
@@ -839,7 +841,7 @@ export function ConnectionPanel() {
                   value={selectedPort}
                   onChange={(e) => setSelectedPort(e.target.value)}
                   className="select flex-1"
-                  disabled={connectionState.isConnected}
+                  disabled={primaryLinkUp}
                 >
                   {ports.length === 0 && <option value="">{t('connection:connectionPanel.noPorts')}</option>}
                   {ports.map((port) => {
@@ -854,7 +856,7 @@ export function ConnectionPanel() {
                 <button
                   type="button"
                   onClick={refreshPorts}
-                  disabled={connectionState.isConnected || isRefreshingPorts}
+                  disabled={primaryLinkUp || isRefreshingPorts}
                   title={t('connection:connectionPanel.rescanPorts')}
                   aria-label={t('connection:connectionPanel.rescanPorts')}
                   className="shrink-0 px-2.5 rounded-lg bg-surface-raised hover:bg-surface-raised text-content-secondary hover:text-content disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
@@ -877,7 +879,7 @@ export function ConnectionPanel() {
                 value={baudRate}
                 onChange={(e) => setBaudRate(Number(e.target.value))}
                 className="select"
-                disabled={connectionState.isConnected}
+                disabled={primaryLinkUp}
               >
                 {BAUD_RATES.map((rate) => (
                   <option key={rate} value={rate}>{rate}</option>
@@ -885,7 +887,7 @@ export function ConnectionPanel() {
               </select>
             </div>
 
-            {!connectionState.isConnected && (
+            {!primaryLinkUp && (
               <button
                 onClick={() => setShowRadioWizard(true)}
                 className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-surface-raised hover:bg-surface transition-colors text-left"
@@ -922,14 +924,14 @@ export function ConnectionPanel() {
                   onChange={(e) => setTcpHost(e.target.value)}
                   className="input pr-16"
                   placeholder="127.0.0.1"
-                  disabled={connectionState.isConnected}
+                  disabled={primaryLinkUp}
                 />
                 <RecentConnectionsButton
                   recents={tcpRecents}
                   currentLabel={tcpCurrentLabel}
                   onSelect={applyRecent}
                   onRemove={removeRecentConnection}
-                  disabled={connectionState.isConnected}
+                  disabled={primaryLinkUp}
                 />
               </div>
             </div>
@@ -942,7 +944,7 @@ export function ConnectionPanel() {
                 integer
                 onCommit={setTcpPort}
                 className="input"
-                disabled={connectionState.isConnected}
+                disabled={primaryLinkUp}
               />
             </div>
             <div>
@@ -952,7 +954,7 @@ export function ConnectionPanel() {
                   <button
                     key={proto}
                     onClick={() => setTcpProtocol(proto)}
-                    disabled={connectionState.isConnected}
+                    disabled={primaryLinkUp}
                     className={`flex-1 px-3 py-1.5 text-xs font-medium transition-colors ${
                       tcpProtocol === proto
                         ? 'bg-blue-600/30 text-blue-300'
@@ -975,7 +977,7 @@ export function ConnectionPanel() {
             <div className="flex rounded-lg overflow-hidden border border-subtle">
               <button
                 onClick={() => setUdpMode('listen')}
-                disabled={connectionState.isConnected}
+                disabled={primaryLinkUp}
                 className={`flex-1 px-3 py-1.5 text-xs font-medium transition-colors ${
                   udpMode === 'listen'
                     ? 'bg-blue-600/30 text-blue-300 border-r border-blue-500/30'
@@ -986,7 +988,7 @@ export function ConnectionPanel() {
               </button>
               <button
                 onClick={() => setUdpMode('client')}
-                disabled={connectionState.isConnected}
+                disabled={primaryLinkUp}
                 className={`flex-1 px-3 py-1.5 text-xs font-medium transition-colors ${
                   udpMode === 'client'
                     ? 'bg-blue-600/30 text-blue-300'
@@ -1009,14 +1011,14 @@ export function ConnectionPanel() {
                       integer
                       onCommit={setUdpPort}
                       className="input pr-16"
-                      disabled={connectionState.isConnected}
+                      disabled={primaryLinkUp}
                     />
                     <RecentConnectionsButton
                       recents={udpRecents}
                       currentLabel={udpCurrentLabel}
                       onSelect={applyRecent}
                       onRemove={removeRecentConnection}
-                      disabled={connectionState.isConnected}
+                      disabled={primaryLinkUp}
                     />
                   </div>
                 </div>
@@ -1035,14 +1037,14 @@ export function ConnectionPanel() {
                       onChange={(e) => setUdpRemoteHost(e.target.value)}
                       className="input pr-16"
                       placeholder="192.168.1.1"
-                      disabled={connectionState.isConnected}
+                      disabled={primaryLinkUp}
                     />
                     <RecentConnectionsButton
                       recents={udpRecents}
                       currentLabel={udpCurrentLabel}
                       onSelect={applyRecent}
                       onRemove={removeRecentConnection}
-                      disabled={connectionState.isConnected}
+                      disabled={primaryLinkUp}
                     />
                   </div>
                 </div>
@@ -1055,7 +1057,7 @@ export function ConnectionPanel() {
                     integer
                     onCommit={setUdpRemotePort}
                     className="input"
-                    disabled={connectionState.isConnected}
+                    disabled={primaryLinkUp}
                   />
                 </div>
                 <div>
@@ -1067,7 +1069,7 @@ export function ConnectionPanel() {
                     integer
                     onCommit={setUdpClientLocalPort}
                     className="input"
-                    disabled={connectionState.isConnected}
+                    disabled={primaryLinkUp}
                   />
                   <p className="mt-1 text-xs text-content-secondary">
                     {t('connection:connectionPanel.localPortHint')}
@@ -1086,7 +1088,7 @@ export function ConnectionPanel() {
                   <button
                     key={proto}
                     onClick={() => setUdpProtocol(proto)}
-                    disabled={connectionState.isConnected}
+                    disabled={primaryLinkUp}
                     className={`flex-1 px-3 py-1.5 text-xs font-medium transition-colors ${
                       udpProtocol === proto
                         ? 'bg-blue-600/30 text-blue-300'
@@ -1122,7 +1124,7 @@ export function ConnectionPanel() {
         )}
 
         {/* MAVLink Signing - show for TCP/UDP MAVLink connections */}
-        {!connectionState.isConnected && (
+        {!primaryLinkUp && (
           (connectionType === 'tcp' && tcpProtocol === 'mavlink') ||
           (connectionType === 'udp' && udpProtocol === 'mavlink')
         ) && (
@@ -1269,7 +1271,7 @@ export function ConnectionPanel() {
         )}
 
         {/* Connect/Disconnect button */}
-        {connectionState.isConnected || connectionState.isWaitingForHeartbeat ? (
+        {primaryLinkUp || connectionState.isWaitingForHeartbeat ? (
           <button onClick={disconnect} className="btn btn-danger w-full">
             {t('common:disconnect')}
           </button>
@@ -1295,7 +1297,7 @@ export function ConnectionPanel() {
 
         {/* Second screen: forward the raw MAVLink stream to the mobile app
             (or any GCS on the LAN) and inject its commands into this link. */}
-        {connectionState.isConnected && (
+        {primaryLinkUp && (
           <div className="rounded-xl border border-subtle overflow-hidden">
             <button
               onClick={() => setShowForward(!showForward)}
@@ -1373,7 +1375,7 @@ export function ConnectionPanel() {
 
         {/* Radio link preflight: vehicle-side checks when connected through a
             MAVLink radio (ELRS USB modem runs at 460800) */}
-        {connectionState.isConnected &&
+        {primaryLinkUp &&
           connectionState.protocol === 'mavlink' &&
           connectionState.connectionType === 'serial' &&
           (connectionState.transport?.includes('460800') ?? false) && (
@@ -1403,7 +1405,7 @@ export function ConnectionPanel() {
         )}
 
         {/* Connection info card */}
-        {connectionState.isConnected && (
+        {primaryLinkUp && (
           <div className="card border-emerald-500/30">
             <div className="card-header">
               <h3 className="text-sm font-medium text-content flex items-center gap-2">
@@ -1439,14 +1441,14 @@ export function ConnectionPanel() {
         )}
 
         {/* Messages panel - show when connected via MAVLink/ArduPilot */}
-        {connectionState.isConnected && connectionState.protocol === 'mavlink' && (
+        {primaryLinkUp && connectionState.protocol === 'mavlink' && (
           <div className="h-64">
             <MessagesPanel />
           </div>
         )}
 
         {/* Manual driver help toggle - only show for serial when not already showing due to error */}
-        {connectionType === 'serial' && !connectionState.isConnected && !error && (
+        {connectionType === 'serial' && !primaryLinkUp && !error && (
           <div className="pt-2 border-t border-subtle">
             <button
               onClick={() => setShowDriverHelp(!showDriverHelp)}

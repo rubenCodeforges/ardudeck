@@ -1361,6 +1361,13 @@ export interface ConnectionState {
   signingEnabled?: boolean;
   /** True when we detect the FC is sending signed packets back */
   fcSigning?: boolean;
+  /**
+   * The vehicle the vehicle fields describe. `viaFleet` means the operator focused a
+   * fleet vehicle other than the primary connection's own; `isConnected` is then true
+   * even with no primary link, because configuration works through the fleet link.
+   * `primaryLink` says whether a primary connection is open as well.
+   */
+  focus?: { vehicleKey: string; viaFleet: boolean; primaryLink: boolean };
   // Stats
   packetsReceived: number;
   packetsSent: number;

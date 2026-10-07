@@ -5,6 +5,7 @@ import { useMessagesStore } from '../../stores/messages-store';
 import { evaluateRadioPreflight, type PreflightCheck } from '../../utils/radio-preflight';
 import type { ElrsModuleInfo, ElrsProgressEvent } from '../../../shared/link-doctor-types';
 import { ELRS_USB_BAUD } from '../../../shared/link-doctor-types';
+import { isPrimaryLinkUp } from '../../lib/primary-link';
 
 type Step = 'scan' | 'noradio' | 'switch' | 'connect' | 'vehicle' | 'done';
 
@@ -41,6 +42,7 @@ interface Props {
 export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListen }: Props) {
   const { t } = useTranslation();
   const { connectionState, isConnecting, error: connectionError } = useConnectionStore();
+  const primaryLinkUp = isPrimaryLinkUp(connectionState);
   const messages = useMessagesStore((s) => s.messages);
 
   const [step, setStep] = useState<Step>('scan');
@@ -83,7 +85,7 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
   // Auto-advance: the connect step completes when the primary link comes up;
   // a vehicle restart completes when the link drops and comes back.
   useEffect(() => {
-    const connected = connectionState.isConnected ?? false;
+    const connected = primaryLinkUp;
     if (openRef.current && connected && !wasConnected.current) {
       if (step === 'connect') {
         setStep('vehicle');
@@ -95,7 +97,7 @@ export function RadioSetupWizard({ open, onClose, connectSerial, connectUdpListe
     }
     wasConnected.current = connected;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connectionState.isConnected, step, restarting]);
+  }, [primaryLinkUp, step, restarting]);
 
   const scanForRadio = async () => {
     setScanStatus(t('connection:radioSetup.lookingAtPorts'));
