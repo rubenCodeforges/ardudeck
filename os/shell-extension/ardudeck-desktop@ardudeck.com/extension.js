@@ -16,6 +16,7 @@ import {LocalApi} from './http.js';
 import {VehicleLinkIndicator} from './quick-settings.js';
 import {DesktopSurfaceManager} from './surface.js';
 import {DesktopMenu, sceneForWorkspace} from './desktop-menu.js';
+import {PowerButtonScreenOff} from './power-button.js';
 
 const STATION_URL = 'http://127.0.0.1:47800/state';
 const VEHICLE_URL = 'http://127.0.0.1:47801/v1/vehicle';
@@ -291,6 +292,7 @@ export default class ArduDeckDesktop extends Extension {
     // Everything else exists only in the unlocked user session.
     enable() {
         this._a11y = new Gio.Settings({schema_id: 'org.gnome.desktop.a11y.applications'});
+        this._powerButton = new PowerButtonScreenOff(this.getSettings());
         this._modeId = Main.sessionMode.connect('updated', () => this._syncMode());
         this._syncMode();
     }
@@ -402,6 +404,8 @@ export default class ArduDeckDesktop extends Extension {
     }
 
     disable() {
+        this._powerButton?.destroy();
+        this._powerButton = null;
         if (this._modeId) Main.sessionMode.disconnect(this._modeId);
         this._modeId = 0;
         this._disableDesktop();
