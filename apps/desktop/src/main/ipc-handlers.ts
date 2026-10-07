@@ -1597,12 +1597,33 @@ function focusedVehicle(): FocusedVehicle | null {
   return primaryVehicleFocus();
 }
 
+/** Armed state of vehicles on fleet links, from their heartbeats. */
+const fleetArmed = new WeakMap<Transport, Map<number, boolean>>();
+
+function recordFleetArmed(transport: Transport, sysid: number, baseMode: number, systemStatus: number): void {
+  let bySysid = fleetArmed.get(transport);
+  if (!bySysid) fleetArmed.set(transport, bySysid = new Map());
+  // Same rule as the primary link: ignore the armed flag during boot (UNINIT, BOOT, CALIBRATING).
+  bySysid.set(sysid, (baseMode & 0x80) !== 0 && systemStatus >= 3);
+}
+
+function isVehicleArmed(transport: Transport, sysid: number): boolean {
+  if (transport === currentTransport && sysid === connectionState.systemId) return lastReportedArmed === true;
+  return fleetArmed.get(transport)?.get(sysid) === true;
+}
+
 /**
- * Features not yet routed through the focused vehicle still talk to the primary
- * connection's vehicle, so they refuse while the operator has focused another one.
+ * Features that only work on the primary connection (signing, Lua scripts, GPS
+ * passthrough, legacy mission/fence/rally upload, bootloader) refuse while the
+ * operator has focused another vehicle, instead of acting on the primary one.
  */
 function isPrimaryVehicleFocused(): boolean {
   return focusedVehicle()?.isPrimaryVehicle ?? false;
+}
+
+/** Fleet links carry MAVLink only; the primary link may also be MSP or CRSF. */
+function isMavlinkFocus(focus: FocusedVehicle): boolean {
+  return !focus.isPrimaryVehicle || connectionState.protocol === 'mavlink';
 }
 
 function isFromFocusedVehicle(transport: Transport, sysid: number): boolean {
@@ -1999,6 +2020,7 @@ function createBackgroundDiscoveryHandler(
           if (packet.msgid === 0 && packet.payload.length >= 8) {
             const vehicleType = packet.payload[4]!;
             if (!isVehicleHeartbeat(vehicleType, packet.payload[5]!, packet.compid)) continue;
+            recordFleetArmed(entry.transport, packet.sysid, packet.payload[6]!, packet.payload[7]!);
             const result = connectionRegistry.recordHeartbeat(
               transportId, packet.sysid, packet.compid, vehicleType, packet.payload[5]!,
             );
@@ -2869,10 +2891,128 @@ function handleFtpPacket(payload: Uint8Array): void {
   ftpClient.handleResponse(ftpPayload);
 }
 
-/** Configuration replies from a focused vehicle that lives on a fleet link. */
+/**
+ * Configuration replies from a focused vehicle that lives on a fleet link. The
+ * fleet handler has already turned its STATUSTEXT and COMMAND_ACK into operator
+ * messages; only the configuration state machines are fed here.
+ */
 function routeFocusedFleetPacket(mainWindow: BrowserWindow, packet: MAVLinkPacket): void {
-  if (packet.msgid === MSG_PARAM_VALUE) handleParamValuePacket(mainWindow, packet);
-  else if (packet.msgid === MSG_FILE_TRANSFER_PROTOCOL) handleFtpPacket(packet.payload);
+  const { msgid, payload } = packet;
+  switch (msgid) {
+    case MSG_PARAM_VALUE:
+      handleParamValuePacket(mainWindow, packet);
+      break;
+    case MSG_FILE_TRANSFER_PROTOCOL:
+      handleFtpPacket(payload);
+      break;
+    case MSG_MAG_CAL_PROGRESS:
+      handleMagCalProgressPacket(mainWindow, payload);
+      break;
+    case MSG_MAG_CAL_REPORT:
+      handleMagCalReportPacket(payload);
+      break;
+    case 76:
+      handleVehicleCommandLong(mainWindow, payload);
+      break;
+    case MSG_COMMAND_ACK:
+      if (payload.length >= 3) forwardCalibrationAck(mainWindow, readUint16(payload, 0), payload[2] ?? 0);
+      break;
+    case MSG_LOG_ENTRY:
+    case MSG_LOG_DATA:
+    case MSG_STORAGE_INFORMATION:
+      logDownloadManager?.handleMessage(msgid, payload);
+      break;
+    case MSG_STATUSTEXT:
+      if (isMavlinkCalibrationActive() && payload.length >= 51) {
+        handleCalibrationStatusText(new TextDecoder().decode(payload.slice(1, 51)).replace(/\0.*$/, ''), payload[0]!);
+      }
+      break;
+  }
+}
+
+function handleMagCalProgressPacket(mainWindow: BrowserWindow, payload: Uint8Array): void {
+  // MAG_CAL_PROGRESS (191) wire order (floats first, then u8s):
+  //   direction_x(0) direction_y(4) direction_z(8) f32,
+  //   compass_id(12) cal_mask(13) cal_status(14) attempt(15) completion_pct(16) u8,
+  //   completion_mask[10](17).
+  // completion_pct (and low compass ids) are often 0 early on, so MAVLink v2
+  // truncates them; the OOB-safe reads below return 0, which is the real value.
+  const compassId = payload[12] ?? 0;
+  const calStatus = payload[14] ?? 0;
+  const completionPct = payload[16] ?? 0;
+  handleMagCalProgress(compassId, calStatus, completionPct);
+
+  // Coverage for the calibration sphere. completion_mask is a bitfield over
+  // ArduPilot's 80 geodesic sections, so it says WHICH directions the
+  // solver still has no samples for, which a percentage cannot. Zero-pad
+  // first: v2 truncation drops the trailing mask bytes early in a run, and
+  // those sections genuinely are uncovered.
+  if (mainWindow) {
+    const full = new Uint8Array(27);
+    full.set(payload.subarray(0, Math.min(payload.length, 27)));
+    const view = new DataView(full.buffer);
+    safeSend(mainWindow, IPC_CHANNELS.CALIBRATION_MAG_COVERAGE, {
+      compassId,
+      completionPct,
+      mask: Array.from(full.subarray(17, 27)),
+      direction: [
+        view.getFloat32(0, true),
+        view.getFloat32(4, true),
+        view.getFloat32(8, true),
+      ] as [number, number, number],
+    });
+  }
+}
+
+function handleMagCalReportPacket(payload: Uint8Array): void {
+  // MAG_CAL_REPORT (192) wire order (10 floats first, then u8s):
+  //   fitness(0) ofs_x(4) ofs_y(8) ofs_z(12) diag_x(16) diag_y(20) diag_z(24)
+  //   offdiag_x(28) offdiag_y(32) offdiag_z(36) f32,
+  //   compass_id(40) cal_mask(41) cal_status(42) autosaved(43) u8.
+  // cal_status is non-zero for SUCCESS(4)/FAILED(5+), so it is never truncated
+  // away; fitness sits at offset 0 and is always present.
+  const fitness = readFloat(payload, 0);
+  const compassId = payload[40] ?? 0;
+  const calMask = payload[41] ?? 0;
+  const calStatus = payload[42] ?? 0;
+  handleMagCalReport(compassId, calMask, calStatus, fitness);
+}
+
+function handleVehicleCommandLong(mainWindow: BrowserWindow, payload: Uint8Array): void {
+  // COMMAND_LONG (76) received FROM FC — ArduPilot sends ACCELCAL_VEHICLE_POS during 6-point calibration
+  // Wire layout: param1-7(float32)@0-24, command(U16)@28, targetSystem(U8)@30, targetComponent(U8)@31, confirmation(U8)@32
+  if (payload.length >= 30) {
+    const incomingCommand = readUint16(payload, 28);
+    const incomingParam1 = readFloat(payload, 0);
+    sendLog(mainWindow, 'info', `[CAL DIAG] Incoming COMMAND_LONG cmd=${incomingCommand} param1=${incomingParam1} calActive=${isMavlinkCalibrationActive()}`);
+    if (isMavlinkCalibrationActive()) {
+      handleIncomingCommandLong(incomingCommand, incomingParam1);
+    }
+  } else {
+    sendLog(mainWindow, 'warn', `[CAL DIAG] Incoming COMMAND_LONG too short: ${payload.length} bytes (need 30)`);
+  }
+}
+
+/**
+ * Forward calibration-related COMMAND_ACKs (241=PREFLIGHT_CALIBRATION,
+ * 42429=ACCELCAL_VEHICLE_POS, 42006=FIXED_MAG_CAL_YAW). FIXED_MAG_CAL_YAW runs
+ * outside the activeCalType state machine, so it is always forwarded for its
+ * dedicated pending-ACK resolver.
+ */
+const MAV_RESULT_LABELS = ['ACCEPTED', 'TEMPORARILY_REJECTED', 'DENIED', 'UNSUPPORTED', 'FAILED', 'IN_PROGRESS'];
+
+function forwardCalibrationAck(mainWindow: BrowserWindow, ackCommand: number, ackResult: number): void {
+  const resultName = MAV_RESULT_LABELS[ackResult] ?? `UNKNOWN(${ackResult})`;
+  if (ackCommand === 241 || ackCommand === 42429) {
+    const calActive = isMavlinkCalibrationActive();
+    sendLog(mainWindow, 'info', `[CAL DIAG] COMMAND_ACK cmd=${ackCommand} result=${resultName} calActive=${calActive}`);
+    if (calActive) {
+      handleCalibrationCommandAck(ackCommand, ackResult);
+    }
+  } else if (ackCommand === 42006) {
+    sendLog(mainWindow, 'info', `[CAL DIAG] COMMAND_ACK cmd=${ackCommand} (FIXED_MAG_CAL_YAW) result=${resultName}`);
+    handleCalibrationCommandAck(ackCommand, ackResult);
+  }
 }
 
 /** A PARAM_VALUE from the focused vehicle, whichever link it arrived on. */
@@ -3124,7 +3264,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       // Log armed-state transitions so any future bug reports come with the
       // exact heartbeat values that were observed. Diagnostic only — does not
       // affect behavior.
-      if (armed !== lastReportedArmed) {
+      if (packet.sysid === (connectionState.systemId ?? packet.sysid) && armed !== lastReportedArmed) {
         sendLog(
           mainWindow,
           'info',
@@ -3458,55 +3598,13 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       break;
     }
 
-    case MSG_MAG_CAL_PROGRESS: {
-      // MAG_CAL_PROGRESS (191) wire order (floats first, then u8s):
-      //   direction_x(0) direction_y(4) direction_z(8) f32,
-      //   compass_id(12) cal_mask(13) cal_status(14) attempt(15) completion_pct(16) u8,
-      //   completion_mask[10](17).
-      // completion_pct (and low compass ids) are often 0 early on, so MAVLink v2
-      // truncates them; the OOB-safe reads below return 0, which is the real value.
-      const compassId = payload[12] ?? 0;
-      const calStatus = payload[14] ?? 0;
-      const completionPct = payload[16] ?? 0;
-      handleMagCalProgress(compassId, calStatus, completionPct);
-
-      // Coverage for the calibration sphere. completion_mask is a bitfield over
-      // ArduPilot's 80 geodesic sections, so it says WHICH directions the
-      // solver still has no samples for, which a percentage cannot. Zero-pad
-      // first: v2 truncation drops the trailing mask bytes early in a run, and
-      // those sections genuinely are uncovered.
-      if (mainWindow) {
-        const full = new Uint8Array(27);
-        full.set(payload.subarray(0, Math.min(payload.length, 27)));
-        const view = new DataView(full.buffer);
-        safeSend(mainWindow, IPC_CHANNELS.CALIBRATION_MAG_COVERAGE, {
-          compassId,
-          completionPct,
-          mask: Array.from(full.subarray(17, 27)),
-          direction: [
-            view.getFloat32(0, true),
-            view.getFloat32(4, true),
-            view.getFloat32(8, true),
-          ] as [number, number, number],
-        });
-      }
+    case MSG_MAG_CAL_PROGRESS:
+      if (currentTransport && isFromFocusedVehicle(currentTransport, packet.sysid)) handleMagCalProgressPacket(mainWindow, payload);
       break;
-    }
 
-    case MSG_MAG_CAL_REPORT: {
-      // MAG_CAL_REPORT (192) wire order (10 floats first, then u8s):
-      //   fitness(0) ofs_x(4) ofs_y(8) ofs_z(12) diag_x(16) diag_y(20) diag_z(24)
-      //   offdiag_x(28) offdiag_y(32) offdiag_z(36) f32,
-      //   compass_id(40) cal_mask(41) cal_status(42) autosaved(43) u8.
-      // cal_status is non-zero for SUCCESS(4)/FAILED(5+), so it is never truncated
-      // away; fitness sits at offset 0 and is always present.
-      const fitness = readFloat(payload, 0);
-      const compassId = payload[40] ?? 0;
-      const calMask = payload[41] ?? 0;
-      const calStatus = payload[42] ?? 0;
-      handleMagCalReport(compassId, calMask, calStatus, fitness);
+    case MSG_MAG_CAL_REPORT:
+      if (currentTransport && isFromFocusedVehicle(currentTransport, packet.sysid)) handleMagCalReportPacket(payload);
       break;
-    }
 
     case MSG_SERVO_OUTPUT_RAW: {
       // MAVLink v2 truncates trailing zero bytes and ArduPilot always sends
@@ -3912,38 +4010,15 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         });
       }
 
-      // Forward calibration-related COMMAND_ACKs (241=PREFLIGHT_CALIBRATION,
-      // 42429=ACCELCAL_VEHICLE_POS, 42006=FIXED_MAG_CAL_YAW). FIXED_MAG_CAL_YAW
-      // runs outside the activeCalType state machine — always forward it so
-      // its dedicated pending-ACK resolver can fire.
-      if (ackCommand === 241 || ackCommand === 42429) {
-        const calActive = isMavlinkCalibrationActive();
-        sendLog(mainWindow, 'info', `[CAL DIAG] COMMAND_ACK cmd=${ackCommand} result=${resultName} calActive=${calActive}`);
-        if (calActive) {
-          handleCalibrationCommandAck(ackCommand, ackResult);
-        }
-      } else if (ackCommand === 42006) {
-        sendLog(mainWindow, 'info', `[CAL DIAG] COMMAND_ACK cmd=${ackCommand} (FIXED_MAG_CAL_YAW) result=${resultName}`);
-        handleCalibrationCommandAck(ackCommand, ackResult);
+      if (currentTransport && isFromFocusedVehicle(currentTransport, packet.sysid)) {
+        forwardCalibrationAck(mainWindow, ackCommand, ackResult);
       }
       break;
     }
 
-    case 76: {
-      // COMMAND_LONG (76) received FROM FC — ArduPilot sends ACCELCAL_VEHICLE_POS during 6-point calibration
-      // Wire layout: param1-7(float32)@0-24, command(U16)@28, targetSystem(U8)@30, targetComponent(U8)@31, confirmation(U8)@32
-      if (payload.length >= 30) {
-        const incomingCommand = readUint16(payload, 28);
-        const incomingParam1 = readFloat(payload, 0);
-        sendLog(mainWindow, 'info', `[CAL DIAG] Incoming COMMAND_LONG cmd=${incomingCommand} param1=${incomingParam1} calActive=${isMavlinkCalibrationActive()}`);
-        if (isMavlinkCalibrationActive()) {
-          handleIncomingCommandLong(incomingCommand, incomingParam1);
-        }
-      } else {
-        sendLog(mainWindow, 'warn', `[CAL DIAG] Incoming COMMAND_LONG too short: ${payload.length} bytes (need 30)`);
-      }
+    case 76:
+      if (currentTransport && isFromFocusedVehicle(currentTransport, packet.sysid)) handleVehicleCommandLong(mainWindow, payload);
       break;
-    }
 
     case MSG_PARAM_VALUE:
       if (currentTransport && isFromFocusedVehicle(currentTransport, packet.sysid)) handleParamValuePacket(mainWindow, packet);
@@ -4197,12 +4272,9 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
 
     case MSG_LOG_ENTRY:
     case MSG_LOG_DATA:
-    case MSG_STORAGE_INFORMATION: {
-      if (logDownloadManager) {
-        logDownloadManager.handleMessage(msgid, payload);
-      }
+    case MSG_STORAGE_INFORMATION:
+      if (currentTransport && isFromFocusedVehicle(currentTransport, packet.sysid)) logDownloadManager?.handleMessage(msgid, payload);
       break;
-    }
   }
 }
 
@@ -4574,12 +4646,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(
     IPC_CHANNELS.LED_CONTROL_SET,
     async (_e, rgb: { red: number; green: number; blue: number; rateHz?: number }) => {
-      if (!currentTransport?.isOpen || !connectionState.isConnected || !isPrimaryVehicleFocused()) {
+      const focus = focusedVehicle();
+      if (!focus) {
         return { success: false, error: t('main:ipc.notConnected') };
       }
       try {
         const payload = serializeLedControl({
-          targetSystem: connectionState.systemId || 1,
+          targetSystem: focus.sysid,
           targetComponent: 1,
           instance: 0,
           red: rgb.red,
@@ -4587,9 +4660,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           blue: rgb.blue,
           rateHz: rgb.rateHz ?? 0,
         });
-        const pkt = await sendMavlinkPacket(LED_CONTROL_ID, payload, LED_CONTROL_CRC_EXTRA);
-        await currentTransport.write(pkt);
-        connectionState.packetsSent++;
+        await sendToFocusedVehicle(focus, LED_CONTROL_ID, payload, LED_CONTROL_CRC_EXTRA);
         return { success: true };
       } catch (err) {
         return { success: false, error: err instanceof Error ? err.message : String(err) };
@@ -5036,7 +5107,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         case 'takeoff':
           return await sendCommandLongToVehicle(vehicleKey, 22, { param7: cmd.altitude });
         case 'setmode': {
-          const armedBit = lastReportedArmed ? 128 : 0;
+          const target = resolveVehicleTarget(vehicleKey);
+          const armedBit = target && isVehicleArmed(target.transport, target.sysid) ? 128 : 0;
           return await sendCommandLongToVehicle(vehicleKey, 176, { param1: 1 | armedBit, param2: cmd.customMode });
         }
         case 'mission-start': {
@@ -8190,8 +8262,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
    * now. Missing params are simply absent from the result.
    */
   const readParamsFromVehicle = async (paramIds: string[]): Promise<Record<string, number>> => {
-    if (!currentTransport?.isOpen || !connectionState.isConnected || !isPrimaryVehicleFocused()) return {};
-    const targetSystem = connectionState.systemId ?? 1;
+    const focus = focusedVehicle();
+    if (!focus) return {};
+    const targetSystem = focus.sysid;
     const PER_PARAM_TIMEOUT_MS = 1500;
 
     const readOne = (paramId: string): Promise<number | null> => new Promise((resolve) => {
@@ -8213,9 +8286,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
             paramId,
             paramIndex: -1,
           });
-          const packet = await sendMavlinkPacket(PARAM_REQUEST_READ_ID, reqPayload, PARAM_REQUEST_READ_CRC_EXTRA);
-          await currentTransport!.write(packet);
-          connectionState.packetsSent++;
+          await sendToFocusedVehicle(focus, PARAM_REQUEST_READ_ID, reqPayload, PARAM_REQUEST_READ_CRC_EXTRA);
         } catch {
           clearTimeout(timer);
           pendingParamReads.delete(paramId);
@@ -8252,7 +8323,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     error?: string;
   }> => {
     if (!boardUid) return { success: false, error: t('main:ipc.noBoardIdentity') };
-    if (!currentTransport?.isOpen || !connectionState.isConnected || !isPrimaryVehicleFocused()) {
+    const focus = focusedVehicle();
+    if (!focus) {
       return { success: false, error: t('main:ipc.notConnected') };
     }
     const records = await verifyCalibrationRecords(boardUid, readParamsFromVehicle, (record, verified) => {
@@ -8472,8 +8544,14 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // and just restart the child process; the new SITL boots from the just-saved
   // eeprom.bin so any prior PARAM_SET / PREFLIGHT_STORAGE work persists.
   ipcMain.handle(IPC_CHANNELS.MAVLINK_REBOOT, async (): Promise<boolean> => {
-    if (!currentTransport?.isOpen || !connectionState.isConnected || !isPrimaryVehicleFocused()) {
+    const focus = focusedVehicle();
+    if (!focus) {
       return false;
+    }
+
+    if (!focus.isPrimaryVehicle && focus.vehicle) {
+      // Its fleet link redials the vehicle by itself; the primary reconnect logic stays out of it.
+      return sendCommandLongToVehicle(focus.vehicle.key, 246, { param1: 1 });
     }
 
     const isArdupilotSitl = !!connectionState.isSitl && ardupilotSitlProcess.isRunning;
@@ -8501,7 +8579,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       }
 
       const payload = serializeCommandLong({
-        targetSystem: connectionState.systemId ?? 1,
+        targetSystem: focus.sysid,
         targetComponent: 1,
         command: 246, // MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN
         confirmation: 0,
@@ -8514,9 +8592,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         param7: 0,
       });
 
-      const packet = await sendMavlinkPacket(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
-      await currentTransport.write(packet);
-      connectionState.packetsSent++;
+      await sendToFocusedVehicle(focus, COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
 
       sendLog(mainWindow, 'info', 'Sent reboot command to flight controller');
 
@@ -8659,7 +8735,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     }
 
     try {
-      const armedBit = lastReportedArmed ? 128 : 0;
+      const armedBit = isVehicleArmed(target.transport, target.sysid) ? 128 : 0;
       const baseMode = 1 | armedBit; // MAV_MODE_FLAG_CUSTOM_MODE_ENABLED + armed bit
 
       // DO_SET_MODE param semantics differ by firmware. ArduPilot reads the
@@ -9521,8 +9597,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // transport, swap it into the global ftpClient slot so incoming
   // FILE_TRANSFER_PROTOCOL responses reach it, do the operation, restore.
 
-  function buildBrowserFtpClient(): MavlinkFtpClient {
-    const targetSys = connectionState.systemId ?? 1;
+  function buildBrowserFtpClient(focus: FocusedVehicle): MavlinkFtpClient {
+    const targetSys = focus.sysid;
     const targetComp = 1;
     return new MavlinkFtpClient({
       sendPacket: async (ftpPayload: Uint8Array) => {
@@ -9532,9 +9608,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           targetComponent: targetComp,
           payload: Array.from(ftpPayload),
         });
-        const packet = await sendMavlinkPacket(FILE_TRANSFER_PROTOCOL_ID, ftpMsg, FILE_TRANSFER_PROTOCOL_CRC_EXTRA);
-        await currentTransport!.write(packet);
-        connectionState.packetsSent++;
+        await sendToFocusedVehicle(focus, FILE_TRANSFER_PROTOCOL_ID, ftpMsg, FILE_TRANSFER_PROTOCOL_CRC_EXTRA);
       },
       log: (level, message) => sendLog(mainWindow, level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'debug', message),
     });
@@ -9563,13 +9637,14 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     entries?: Array<{ kind: 'dir' | 'file'; name: string; size?: number }>;
     error?: string;
   }> => {
-    if (!currentTransport?.isOpen || !connectionState.isConnected || !isPrimaryVehicleFocused()) {
+    const focus = focusedVehicle();
+    if (!focus) {
       return { success: false, error: t('main:ipc.notConnected') };
     }
-    if (connectionState.protocol !== 'mavlink') {
+    if (!isMavlinkFocus(focus)) {
       return { success: false, error: 'MAVLink-FTP requires a MAVLink connection' };
     }
-    const client = buildBrowserFtpClient();
+    const client = buildBrowserFtpClient(focus);
     const previous = ftpClient;
     ftpClient = client;
     try {
@@ -9605,10 +9680,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     bytes?: number;
     error?: string;
   }> => {
-    if (!currentTransport?.isOpen || !connectionState.isConnected || !isPrimaryVehicleFocused()) {
+    const focus = focusedVehicle();
+    if (!focus) {
       return { success: false, error: t('main:ipc.notConnected') };
     }
-    if (connectionState.protocol !== 'mavlink') {
+    if (!isMavlinkFocus(focus)) {
       return { success: false, error: 'MAVLink-FTP requires a MAVLink connection' };
     }
     // Ask user where to save the file before doing any FC work.
@@ -9620,7 +9696,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     if (dlg.canceled || !dlg.filePath) {
       return { success: false, error: 'Cancelled' };
     }
-    const client = buildBrowserFtpClient();
+    const client = buildBrowserFtpClient(focus);
     const previous = ftpClient;
     ftpClient = client;
     try {
@@ -9682,10 +9758,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   });
 
   ipcMain.handle(IPC_CHANNELS.CAN_BUS_STATS, async (_, iface: number) => {
-    if (!currentTransport?.isOpen || !connectionState.isConnected || connectionState.protocol !== 'mavlink') {
+    const focus = focusedVehicle();
+    if (!focus || (focus.isPrimaryVehicle && !isMavlinkFocus(focus))) {
       return { success: false as const, error: 'notConnected' };
     }
-    const client = buildBrowserFtpClient();
+    const client = buildBrowserFtpClient(focus);
     const previous = ftpClient;
     ftpClient = client;
     try {
@@ -9707,10 +9784,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     error?: string;
     cancelled?: boolean;
   }> => {
-    if (!currentTransport?.isOpen || !connectionState.isConnected || !isPrimaryVehicleFocused()) {
+    const focus = focusedVehicle();
+    if (!focus) {
       return { success: false, error: t('main:ipc.notConnected') };
     }
-    if (connectionState.protocol !== 'mavlink') {
+    if (!isMavlinkFocus(focus)) {
       return { success: false, error: 'MAVLink-FTP requires a MAVLink connection' };
     }
     const dlg = await dialog.showOpenDialog(mainWindow, {
@@ -9734,7 +9812,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       return { success: false, error: `Could not read ${sourcePath}: ${err instanceof Error ? err.message : String(err)}` };
     }
 
-    const client = buildBrowserFtpClient();
+    const client = buildBrowserFtpClient(focus);
     const previous = ftpClient;
     ftpClient = client;
     try {
@@ -9764,13 +9842,14 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     success: boolean;
     error?: string;
   }> => {
-    if (!currentTransport?.isOpen || !connectionState.isConnected || !isPrimaryVehicleFocused()) {
+    const focus = focusedVehicle();
+    if (!focus) {
       return { success: false, error: t('main:ipc.notConnected') };
     }
-    if (connectionState.protocol !== 'mavlink') {
+    if (!isMavlinkFocus(focus)) {
       return { success: false, error: 'MAVLink-FTP requires a MAVLink connection' };
     }
-    const client = buildBrowserFtpClient();
+    const client = buildBrowserFtpClient(focus);
     const previous = ftpClient;
     ftpClient = client;
     try {
@@ -9794,13 +9873,14 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     success: boolean;
     error?: string;
   }> => {
-    if (!currentTransport?.isOpen || !connectionState.isConnected || !isPrimaryVehicleFocused()) {
+    const focus = focusedVehicle();
+    if (!focus) {
       return { success: false, error: t('main:ipc.notConnected') };
     }
-    if (connectionState.protocol !== 'mavlink') {
+    if (!isMavlinkFocus(focus)) {
       return { success: false, error: 'MAVLink-FTP requires a MAVLink connection' };
     }
-    const client = buildBrowserFtpClient();
+    const client = buildBrowserFtpClient(focus);
     const previous = ftpClient;
     ftpClient = client;
     try {
@@ -9873,14 +9953,15 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Spins a single motor (or sequences through N motors) at the requested throttle.
   // ArduPilot refuses the command if the vehicle is armed.
   ipcMain.handle(IPC_CHANNELS.MOTOR_TEST_START, async (_, request: MotorTestStartRequest): Promise<MotorTestResponse> => {
-    if (!currentTransport?.isOpen || !connectionState.isConnected || !isPrimaryVehicleFocused()) {
+    const focus = focusedVehicle();
+    if (!focus) {
       return { success: false, error: t('main:ipc.notConnected') };
     }
-    if (connectionState.protocol !== 'mavlink') {
+    if (!isMavlinkFocus(focus)) {
       return { success: false, error: t('main:ipc.motorTestNeedsMavlink') };
     }
 
-    if (connectionState.firmware === 'px4') {
+    if (focus.firmware === 'px4') {
       try {
         px4MotorTestValue = Math.max(0, Math.min(1, request.throttle / 100));
         if (request.motorCount && request.motorCount > 1) {
@@ -9916,7 +9997,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const throttleType = request.throttleType === 'pwm' ? 1 : 0;
 
       const payload = serializeCommandLong({
-        targetSystem: connectionState.systemId ?? 1,
+        targetSystem: focus.sysid,
         targetComponent: 1,
         command: 209, // MAV_CMD_DO_MOTOR_TEST
         confirmation: 0,
@@ -9929,9 +10010,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         param7: 0,
       });
 
-      const packet = await sendMavlinkPacket(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
-      await currentTransport.write(packet);
-      connectionState.packetsSent++;
+      await sendToFocusedVehicle(focus, COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
 
       sendLog(mainWindow, 'info',
         `Motor test: motor ${request.motor}, ${request.throttle}${request.throttleType === 'pwm' ? ' PWM' : '%'}, ${request.duration}s${request.motorCount ? ` (seq ${request.motorCount})` : ''}`);
@@ -9948,15 +10027,16 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // tab's per-row test buttons. ArduPilot accepts this even when armed for
   // ground testing; user is responsible for safety (props off, etc.).
   ipcMain.handle(IPC_CHANNELS.SERVO_TEST_PULSE, async (_, request: { channel: number; pwm: number }) => {
-    if (!currentTransport?.isOpen || !connectionState.isConnected || !isPrimaryVehicleFocused()) {
+    const focus = focusedVehicle();
+    if (!focus) {
       return { success: false, error: t('main:ipc.notConnected') };
     }
-    if (connectionState.protocol !== 'mavlink') {
+    if (!isMavlinkFocus(focus)) {
       return { success: false, error: t('main:ipc.servoTestNeedsMavlink') };
     }
     try {
       const payload = serializeCommandLong({
-        targetSystem: connectionState.systemId ?? 1,
+        targetSystem: focus.sysid,
         targetComponent: 1,
         command: 183, // MAV_CMD_DO_SET_SERVO
         confirmation: 0,
@@ -9964,9 +10044,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         param2: request.pwm,
         param3: 0, param4: 0, param5: 0, param6: 0, param7: 0,
       });
-      const packet = await sendMavlinkPacket(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
-      await currentTransport.write(packet);
-      connectionState.packetsSent++;
+      await sendToFocusedVehicle(focus, COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
       sendLog(mainWindow, 'info', `Servo test: ch ${request.channel} -> ${request.pwm}us`);
       return { success: true };
     } catch (error) {
@@ -9984,10 +10062,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     if (isTrainerSessionActive()) {
       return { success: false, error: 'Trainer session active - the Trainer owns the sticks' };
     }
-    if (!currentTransport?.isOpen || !connectionState.isConnected || !isPrimaryVehicleFocused()) {
+    const focus = focusedVehicle();
+    if (!focus) {
       return { success: false, error: t('main:ipc.notConnected') };
     }
-    if (connectionState.protocol !== 'mavlink') {
+    if (!isMavlinkFocus(focus)) {
       return { success: false, error: 'RC override requires MAVLink connection' };
     }
     try {
@@ -10002,7 +10081,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         aux[request.modeChannel - 5] = request.modePwm;
       }
       const payload = serializeRcChannelsOverride({
-        targetSystem: connectionState.systemId ?? 1,
+        targetSystem: focus.sysid,
         targetComponent: 1,
         chan1Raw: request.roll,
         chan2Raw: request.pitch,
@@ -10013,9 +10092,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         chan13Raw: aux[8]!, chan14Raw: aux[9]!, chan15Raw: aux[10]!, chan16Raw: aux[11]!,
         chan17Raw: aux[12]!, chan18Raw: aux[13]!,
       });
-      const packet = await sendMavlinkPacket(RC_CHANNELS_OVERRIDE_ID, payload, RC_CHANNELS_OVERRIDE_CRC_EXTRA);
-      await currentTransport.write(packet);
-      connectionState.packetsSent++;
+      await sendToFocusedVehicle(focus, RC_CHANNELS_OVERRIDE_ID, payload, RC_CHANNELS_OVERRIDE_CRC_EXTRA);
       return { success: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : t('common:unknownError');
@@ -10026,16 +10103,17 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Release RC override by sending UINT16_MAX on every channel - ArduPilot's
   // documented signal that the GCS is no longer overriding RC.
   const sendOverrideReleaseFrame = async (): Promise<{ success: boolean; error?: string }> => {
-    if (!currentTransport?.isOpen || !connectionState.isConnected || !isPrimaryVehicleFocused()) {
+    const focus = focusedVehicle();
+    if (!focus) {
       return { success: false, error: t('main:ipc.notConnected') };
     }
-    if (connectionState.protocol !== 'mavlink') {
+    if (!isMavlinkFocus(focus)) {
       return { success: false, error: 'RC override requires MAVLink connection' };
     }
     try {
       const RELEASE = 65535; // UINT16_MAX = "ignore this channel"
       const payload = serializeRcChannelsOverride({
-        targetSystem: connectionState.systemId ?? 1,
+        targetSystem: focus.sysid,
         targetComponent: 1,
         chan1Raw: RELEASE, chan2Raw: RELEASE, chan3Raw: RELEASE, chan4Raw: RELEASE,
         chan5Raw: RELEASE, chan6Raw: RELEASE, chan7Raw: RELEASE, chan8Raw: RELEASE,
@@ -10043,9 +10121,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         chan13Raw: RELEASE, chan14Raw: RELEASE, chan15Raw: RELEASE, chan16Raw: RELEASE,
         chan17Raw: RELEASE, chan18Raw: RELEASE,
       });
-      const packet = await sendMavlinkPacket(RC_CHANNELS_OVERRIDE_ID, payload, RC_CHANNELS_OVERRIDE_CRC_EXTRA);
-      await currentTransport.write(packet);
-      connectionState.packetsSent++;
+      await sendToFocusedVehicle(focus, RC_CHANNELS_OVERRIDE_ID, payload, RC_CHANNELS_OVERRIDE_CRC_EXTRA);
       sendLog(mainWindow, 'info', 'RC override released');
       return { success: true };
     } catch (error) {
@@ -10076,10 +10152,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     if (isTrainerSessionActive()) {
       return { success: false, error: 'Trainer session active - the Trainer owns the sticks' };
     }
-    if (!currentTransport?.isOpen || !connectionState.isConnected || !isPrimaryVehicleFocused()) {
+    const focus = focusedVehicle();
+    if (!focus) {
       return { success: false, error: t('main:ipc.notConnected') };
     }
-    if (connectionState.protocol !== 'mavlink') {
+    if (!isMavlinkFocus(focus)) {
       return { success: false, error: 'RC override requires MAVLink connection' };
     }
     try {
@@ -10090,7 +10167,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         return Math.max(800, Math.min(2200, Math.round(v)));
       };
       const payload = serializeRcChannelsOverride({
-        targetSystem: connectionState.systemId ?? 1,
+        targetSystem: focus.sysid,
         targetComponent: 1,
         chan1Raw: ch(0), chan2Raw: ch(1), chan3Raw: ch(2), chan4Raw: ch(3),
         chan5Raw: ch(4), chan6Raw: ch(5), chan7Raw: ch(6), chan8Raw: ch(7),
@@ -10098,9 +10175,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         chan13Raw: ch(12), chan14Raw: ch(13), chan15Raw: ch(14), chan16Raw: ch(15),
         chan17Raw: ch(16), chan18Raw: ch(17),
       });
-      const packet = await sendMavlinkPacket(RC_CHANNELS_OVERRIDE_ID, payload, RC_CHANNELS_OVERRIDE_CRC_EXTRA);
-      await currentTransport.write(packet);
-      connectionState.packetsSent++;
+      await sendToFocusedVehicle(focus, RC_CHANNELS_OVERRIDE_ID, payload, RC_CHANNELS_OVERRIDE_CRC_EXTRA);
       armJoystickWatchdog();
       return { success: true };
     } catch (error) {
@@ -10118,15 +10193,16 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // on DO_SET_SERVO as "stop overriding this channel" and returns it to the
   // autopilot's normal control.
   ipcMain.handle(IPC_CHANNELS.SERVO_TEST_RELEASE, async (_, request: { channel: number }) => {
-    if (!currentTransport?.isOpen || !connectionState.isConnected || !isPrimaryVehicleFocused()) {
+    const focus = focusedVehicle();
+    if (!focus) {
       return { success: false, error: t('main:ipc.notConnected') };
     }
-    if (connectionState.protocol !== 'mavlink') {
+    if (!isMavlinkFocus(focus)) {
       return { success: false, error: t('main:ipc.servoTestNeedsMavlink') };
     }
     try {
       const payload = serializeCommandLong({
-        targetSystem: connectionState.systemId ?? 1,
+        targetSystem: focus.sysid,
         targetComponent: 1,
         command: 183,
         confirmation: 0,
@@ -10134,9 +10210,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         param2: 0,
         param3: 0, param4: 0, param5: 0, param6: 0, param7: 0,
       });
-      const packet = await sendMavlinkPacket(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
-      await currentTransport.write(packet);
-      connectionState.packetsSent++;
+      await sendToFocusedVehicle(focus, COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
       sendLog(mainWindow, 'info', `Servo test release: ch ${request.channel}`);
       return { success: true };
     } catch (error) {
@@ -10150,11 +10224,12 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // ArduPilot's motor test auto-stops on its duration timer, but this gives
   // a user-triggered immediate stop.
   ipcMain.handle(IPC_CHANNELS.MOTOR_TEST_STOP, async (_, motorCount: number): Promise<MotorTestResponse> => {
-    if (!currentTransport?.isOpen || !connectionState.isConnected || !isPrimaryVehicleFocused()) {
+    const focus = focusedVehicle();
+    if (!focus) {
       return { success: false, error: t('main:ipc.notConnected') };
     }
 
-    if (connectionState.firmware === 'px4') {
+    if (focus.firmware === 'px4') {
       try {
         clearPx4MotorTestTimers();
         // timeout <= 0 = ACTION_RELEASE_CONTROL: hands the output back to the
@@ -10174,7 +10249,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     try {
       for (let motor = 1; motor <= motorCount; motor++) {
         const payload = serializeCommandLong({
-          targetSystem: connectionState.systemId ?? 1,
+          targetSystem: focus.sysid,
           targetComponent: 1,
           command: 209, // MAV_CMD_DO_MOTOR_TEST
           confirmation: 0,
@@ -10186,9 +10261,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           param6: 0,
           param7: 0,
         });
-        const packet = await sendMavlinkPacket(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
-        await currentTransport.write(packet);
-        connectionState.packetsSent++;
+        await sendToFocusedVehicle(focus, COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
       }
       sendLog(mainWindow, 'info', `Motor test STOP sent to ${motorCount} motors`);
       return { success: true };
@@ -12758,37 +12831,35 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Register Calibration handlers with MAVLink deps for ArduPilot calibration support
   const mavlinkCalibrationDeps: MavlinkCalibrationDeps = {
     sendCommandLong: async (command, params) => {
-      if (!currentTransport?.isOpen || !connectionState.isConnected || !isPrimaryVehicleFocused()) return false;
+      const focus = focusedVehicle();
+      if (!focus) return false;
       try {
         const payload = serializeCommandLong({
-          targetSystem: connectionState.systemId ?? 1,
+          targetSystem: focus.sysid,
           targetComponent: 1,
           command,
           confirmation: 0,
           ...params,
         });
-        const packet = await sendMavlinkPacket(COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
-        await currentTransport.write(packet);
-        connectionState.packetsSent++;
+        await sendToFocusedVehicle(focus, COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
         return true;
       } catch {
         return false;
       }
     },
     sendCommandAck: async (command, result) => {
-      if (!currentTransport?.isOpen || !connectionState.isConnected || !isPrimaryVehicleFocused()) return false;
+      const focus = focusedVehicle();
+      if (!focus) return false;
       try {
         const payload = serializeCommandAck({
           command,
           result,
           progress: 0,
           resultParam2: 0,
-          targetSystem: connectionState.systemId ?? 1,
+          targetSystem: focus.sysid,
           targetComponent: 1,
         });
-        const packet = await sendMavlinkPacket(COMMAND_ACK_ID, payload, COMMAND_ACK_CRC_EXTRA);
-        await currentTransport.write(packet);
-        connectionState.packetsSent++;
+        await sendToFocusedVehicle(focus, COMMAND_ACK_ID, payload, COMMAND_ACK_CRC_EXTRA);
         return true;
       } catch {
         return false;
@@ -13784,29 +13855,39 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // === Log Download & Diagnostics ===
 
+  /** The focused vehicle's log manager; a focus change to another vehicle builds a new one. */
+  let logManagerVehicle: string | null = null;
+  const logManagerFor = (focus: FocusedVehicle): LogDownloadManager => {
+    const vehicle = focusIdentity(focus);
+    if (!logDownloadManager || logManagerVehicle !== vehicle) {
+      logDownloadManager = new LogDownloadManager(
+        (msgid, payload, crcExtra) => sendMavlinkPacket(msgid, payload, crcExtra, { link: focus.transport }),
+        (data) => focus.transport.write(data),
+        (level, msg) => mainWindow && sendLog(mainWindow, level as ConsoleLogEntry['level'], msg),
+        focus.sysid,
+        1,
+      );
+      logManagerVehicle = vehicle;
+    }
+    return logDownloadManager;
+  };
+
   ipcMain.handle(IPC_CHANNELS.LOG_LIST_REQUEST, async (): Promise<LogListEntry[]> => {
-    if (!currentTransport) return [];
-
-    const targetSys = connectionState.systemId ?? 1;
-    logDownloadManager = new LogDownloadManager(
-      sendMavlinkPacket,
-      (data) => currentTransport!.write(data),
-      (level, msg) => mainWindow && sendLog(mainWindow, level as ConsoleLogEntry['level'], msg),
-      targetSys,
-      1,
-    );
-
-    return logDownloadManager.requestLogList();
+    const focus = focusedVehicle();
+    if (!focus) return [];
+    logDownloadManager = null;
+    return logManagerFor(focus).requestLogList();
   });
 
   ipcMain.handle(IPC_CHANNELS.LOG_DOWNLOAD, async (_, logId: number, logSize: number, timeUtc?: number): Promise<string | null> => {
-    if (!currentTransport || !logDownloadManager || !mainWindow) return null;
+    const focus = focusedVehicle();
+    if (!focus || !logDownloadManager || !mainWindow) return null;
 
     // PX4 logs are ULog (.ulg), ArduPilot logs are DataFlash (.bin). ArduDeck
     // itself sniffs the format from the magic bytes either way, but the
     // extension has to be right for the file to be usable elsewhere: Flight
     // Review and PlotJuggler reject a ULog named .bin.
-    const isUlog = connectionState.firmware === 'px4';
+    const isUlog = focus.firmware === 'px4';
     const logExt = isUlog ? 'ulg' : 'bin';
     const result = await dialog.showSaveDialog(mainWindow, {
       title: t('main:ipc.saveFlightLogTitle'),
@@ -13859,46 +13940,22 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   });
 
   ipcMain.handle(IPC_CHANNELS.LOG_ERASE_ALL, async (): Promise<boolean> => {
-    if (!currentTransport) return false;
-    if (!logDownloadManager) {
-      logDownloadManager = new LogDownloadManager(
-        sendMavlinkPacket,
-        (data) => currentTransport!.write(data),
-        (level, msg) => mainWindow && sendLog(mainWindow, level as ConsoleLogEntry['level'], msg),
-        connectionState.systemId ?? 1,
-        1,
-      );
-    }
-    await logDownloadManager.eraseAllLogs();
+    const focus = focusedVehicle();
+    if (!focus) return false;
+    await logManagerFor(focus).eraseAllLogs();
     return true;
   });
 
   ipcMain.handle(IPC_CHANNELS.LOG_STORAGE_INFO, async (): Promise<{ totalBytes: number; usedBytes: number; availableBytes: number } | null> => {
-    if (!currentTransport) return null;
-    if (!logDownloadManager) {
-      logDownloadManager = new LogDownloadManager(
-        sendMavlinkPacket,
-        (data) => currentTransport!.write(data),
-        (level, msg) => mainWindow && sendLog(mainWindow, level as ConsoleLogEntry['level'], msg),
-        connectionState.systemId ?? 1,
-        1,
-      );
-    }
-    return logDownloadManager.requestStorageInfo();
+    const focus = focusedVehicle();
+    if (!focus) return null;
+    return logManagerFor(focus).requestStorageInfo();
   });
 
   ipcMain.handle(IPC_CHANNELS.LOG_FORMAT_SD, async (): Promise<boolean> => {
-    if (!currentTransport) return false;
-    if (!logDownloadManager) {
-      logDownloadManager = new LogDownloadManager(
-        sendMavlinkPacket,
-        (data) => currentTransport!.write(data),
-        (level, msg) => mainWindow && sendLog(mainWindow, level as ConsoleLogEntry['level'], msg),
-        connectionState.systemId ?? 1,
-        1,
-      );
-    }
-    await logDownloadManager.formatStorage();
+    const focus = focusedVehicle();
+    if (!focus) return false;
+    await logManagerFor(focus).formatStorage();
     return true;
   });
 
