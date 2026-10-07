@@ -11,6 +11,7 @@
   "references": [
     { "path": "../../packages/mavlink-ts" },
     { "path": "../../packages/comms" },
+    { "path": "../../packages/sitl" },
     { "path": "../../packages/vehicle-core" }
   ]
 }

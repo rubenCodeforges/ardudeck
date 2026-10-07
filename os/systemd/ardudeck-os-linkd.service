@@ -1,10 +1,12 @@
 [Unit]
-Description=ArduDeck OS link service (vehicle link, MAVLink routing, parameter cache)
+Description=ArduDeck OS link service (orchestrator, MAVLink routing, parameter cache, simulator)
 After=network-online.target
 
 [Service]
-# Development layout: Node in ~/.local/opt/node, service built in the monorepo.
-# The distro image installs both under /usr and swaps these paths.
+# Development layout: Node in ~/.local/opt/node, service built in the monorepo,
+# the orchestrator in ~/.local/opt/ardudeck-orchestrator, ArduCopter SITL in
+# ~/.local/opt/sitl. The distro image installs all of them under /usr and sets
+# ARDUDECK_ORCHESTRATOR_BIN and ARDUDECK_SITL_BIN.
 ExecStart=%h/.local/opt/node/bin/node %h/work/ardudeck/apps/os-linkd/dist/main.js
 Restart=always
 RestartSec=3

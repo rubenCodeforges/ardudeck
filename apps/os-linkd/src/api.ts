@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { readFileSync } from 'node:fs';
 import type { LinkService } from './link-service.js';
+import { parseSimSwarmRequest, type SimSwarm } from './sim-swarm.js';
 import type { LogFn } from './param-fetcher.js';
 import { detectDevices } from './connections.js';
 
@@ -79,16 +80,25 @@ function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
  *   POST   /v1/links/active      {id} switch to a saved connection
  *   POST   /v1/links/enabled     {enabled} master switch for the vehicle link
  *   DELETE /v1/links/:id         remove a saved connection
+ *   GET    /v1/sim               simulated swarm: available, running, instances
+ *   POST   /v1/sim/swarm         {count, formation?, spacingM?} start a simulated copter swarm
+ *   DELETE /v1/sim/swarm         stop it
  *
  * Writes require the `X-ArduDeck: 1` header and a JSON body. A custom header
  * forces a CORS preflight that this server never approves, so a web page
  * open in a browser on the tablet cannot change links.
  */
-export function createApi(link: LinkService, serviceVersion: string, os: OsInfo = readOsRelease(), log?: LogFn): Server {
+export interface ApiOptions {
+  os?: OsInfo;
+  log?: LogFn;
+  sim?: SimSwarm;
+}
+
+export function createApi(link: LinkService, serviceVersion: string, { os = readOsRelease(), log, sim }: ApiOptions = {}): Server {
   return createServer((req: IncomingMessage, res: ServerResponse) => {
     const path = (req.url ?? '/').split('?')[0]!.replace(/\/+$/, '');
     if (req.method === 'POST' || req.method === 'DELETE') {
-      void handleWrite(link, req, res, path, log);
+      void handleWrite(link, sim, req, res, path, log);
       return;
     }
     if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
@@ -129,15 +139,22 @@ export function createApi(link: LinkService, serviceVersion: string, os: OsInfo 
         return;
       case '/v1/gnss':
         return json(res, 200, { operator: link.gnss.operatorFix(), devices: link.gnss.list() });
+      case '/v1/sim':
+        return json(res, 200, sim?.status ?? { available: false, running: false, instances: [] });
       default:
         return json(res, 404, { error: 'not found' });
     }
   });
 }
 
-async function handleWrite(link: LinkService, req: IncomingMessage, res: ServerResponse, path: string, log?: LogFn): Promise<void> {
+async function handleWrite(link: LinkService, sim: SimSwarm | undefined, req: IncomingMessage, res: ServerResponse, path: string, log?: LogFn): Promise<void> {
   if (req.headers['x-ardudeck'] !== '1') return json(res, 403, { error: 'missing X-ArduDeck header' });
   try {
+    if (path === '/v1/sim/swarm') {
+      if (!sim) return json(res, 404, { error: 'simulator not available' });
+      if (req.method === 'DELETE') return json(res, 200, await sim.stop());
+      return json(res, 200, await sim.start(parseSimSwarmRequest(await readJson(req))));
+    }
     if (req.method === 'DELETE') {
       const m = /^\/v1\/links\/([\w.-]+)$/.exec(path);
       if (!m) return json(res, 404, { error: 'not found' });

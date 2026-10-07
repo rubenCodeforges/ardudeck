@@ -18,6 +18,7 @@
   "dependencies": {
     "@ardudeck/comms": "workspace:*",
     "@ardudeck/mavlink-ts": "workspace:*",
+    "@ardudeck/sitl": "workspace:*",
     "@ardudeck/vehicle-core": "workspace:*"
   },
   "devDependencies": {

@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { UdpTransport, TcpTransport, SerialTransport, listSerialPorts, type Transport } from '@ardudeck/comms';
+import { listSerialPorts } from '@ardudeck/comms';
 
 /** One way of reaching a vehicle. Exactly one is active at a time. */
 export type Connection =
@@ -74,29 +74,6 @@ export async function detectDevices(): Promise<DetectedDevice[]> {
       .filter((d): d is DetectedDevice => d !== null);
   } catch {
     return [];
-  }
-}
-
-export function createTransport(c: Connection): Transport {
-  switch (c.type) {
-    case 'udp-listen':
-      return new UdpTransport({ localPort: c.port });
-    case 'udp-peer':
-      // Explicit remote: writable at once, so our heartbeat announces us to the peer.
-      return new UdpTransport({ localPort: c.localPort ?? 0, remoteHost: c.host, remotePort: c.port });
-    case 'tcp':
-      return new TcpTransport({ host: c.host, port: c.port });
-    case 'serial':
-      return new SerialTransport(c.path, { baudRate: c.baudRate });
-  }
-}
-
-export function describe(c: Connection): string {
-  switch (c.type) {
-    case 'udp-listen': return `UDP listen :${c.port}`;
-    case 'udp-peer': return `UDP ${c.host}:${c.port}`;
-    case 'tcp': return `TCP ${c.host}:${c.port}`;
-    case 'serial': return `${c.path} @ ${c.baudRate}`;
   }
 }
 

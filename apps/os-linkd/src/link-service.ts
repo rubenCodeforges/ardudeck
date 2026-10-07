@@ -11,7 +11,10 @@ import { VehicleTracker, type VehicleState } from './vehicle-state.js';
 import { ParamCache } from './param-cache.js';
 import { ParamFetcher, type LogFn } from './param-fetcher.js';
 import { GnssDetector } from './gnss/detector.js';
-import { createTransport, describe, LinkSettingsStore, parseConnection, type Connection, type LinkSettings } from './connections.js';
+import { LinkSettingsStore, parseConnection, type Connection, type LinkSettings } from './connections.js';
+import { EngineProcess } from './engine/engine-process.js';
+import { EngineTransport } from './engine/engine-transport.js';
+import { engineLinkFor } from './engine/engine-links.js';
 
 const MAV_CMD_REQUEST_MESSAGE = 512;
 const MAV_CMD_SET_MESSAGE_INTERVAL = 511;
@@ -21,8 +24,8 @@ const MAV_STATE_ACTIVE = 4;
 
 /**
  * Telemetry the OS needs for its widgets, at rates a narrow ELRS link can carry.
- * ArduPilot only streams what a GCS asked for, so with no client attached the
- * service asks itself. Once a GCS attaches it owns stream rates and we stay quiet.
+ * ArduPilot only streams what a GCS asked for, so on a direct link the service
+ * asks itself. The orchestrator sets stream rates on its own links.
  */
 const WANTED_STREAMS: ReadonlyArray<[msgid: number, hz: number]> = [
   [SYS_STATUS_ID, 1],
@@ -60,8 +63,9 @@ interface Session {
 }
 
 /**
- * The ArduDeck OS link: owns the vehicle transport, fans raw MAVLink out to
- * local GCS clients, tracks the vehicle and keeps its parameters cached.
+ * The ArduDeck OS link: runs the orchestrator with the OS's links, fans the
+ * fleet's MAVLink out to local GCS clients, tracks the vehicle and keeps its
+ * parameters cached.
  * Background parameter downloads only run while the vehicle is disarmed and
  * no GCS client is attached, so they never compete with a pilot.
  */
@@ -72,6 +76,10 @@ export class LinkService {
   readonly fetcher: ParamFetcher;
   readonly gnss: GnssDetector;
 
+  readonly engine: EngineProcess;
+  private readonly engineTransport: EngineTransport;
+  /** Links added at runtime by their owner (the simulator), on top of the active connection. */
+  private readonly extraLinks = new Map<string, string[]>();
   private transport: VehicleTransport | null = null;
   private readonly injectedTransport: VehicleTransport | null;
   private readonly settingsStore: LinkSettingsStore;
@@ -93,6 +101,8 @@ export class LinkService {
     this.cache = new ParamCache(`${config.stateDir}/params`);
     this.fetcher = new ParamFetcher(this.cache, (id, p, crc) => this.send(id, p, crc), config.compid, log);
     this.injectedTransport = transport ?? null;
+    this.engine = new EngineProcess(config.engineBinary, config.engineBind, log);
+    this.engineTransport = new EngineTransport(`ws://${config.engineBind}`, 'ArduDeck OS');
     this.settingsStore = new LinkSettingsStore(config.settingsFile, config.vehiclePort);
     this.settingsState = this.settingsStore.load();
     // The serial port of the active vehicle link is never probed by the GNSS detector.
@@ -177,6 +187,20 @@ export class LinkService {
     await this.commit();
   }
 
+  /** Replace the runtime links one owner contributes; restarts the engine. */
+  async setExtraLinks(owner: string, links: string[]): Promise<void> {
+    this.assertSafeToDropLink();
+    if (links.length > 0) this.extraLinks.set(owner, links);
+    else this.extraLinks.delete(owner);
+    await this.applyLink();
+  }
+
+  private engineLinks(): string[] {
+    const conn = this.activeConnection;
+    const primary = this.settingsState.enabled && conn ? [engineLinkFor(conn)] : [];
+    return [...primary, ...[...this.extraLinks.values()].flat()];
+  }
+
   private async commit(): Promise<void> {
     this.settingsStore.save(this.settingsState);
     await this.applyLink();
@@ -191,12 +215,13 @@ export class LinkService {
         await this.openTransport(this.injectedTransport, 'injected transport');
         return;
       }
-      const conn = this.activeConnection;
-      if (!this.settingsState.enabled || !conn) {
+      const links = this.engineLinks();
+      await this.engine.apply(links);
+      if (links.length === 0) {
         this.log('info', 'vehicle link disabled');
         return;
       }
-      await this.openTransport(createTransport(conn) as VehicleTransport, `${conn.name} (${describe(conn)})`);
+      await this.openTransport(this.engineTransport, 'orchestrator');
     };
     const prev = this.applying ?? Promise.resolve();
     this.applying = prev.then(run, run).finally(() => { this.applying = null; });
@@ -241,6 +266,7 @@ export class LinkService {
     await this.gnss.stop();
     await this.router.stop();
     await this.transport?.close();
+    await this.engine.stop();
   }
 
   get vehicle(): VehicleState | null {
@@ -256,6 +282,8 @@ export class LinkService {
       clientHost: this.config.clientBind,
       clientPort: this.config.clientPort,
       canWrite: writable(this.transport),
+      engine: this.engine.status,
+      roster: this.engineTransport.roster,
       clients: this.router.list().map(({ host, port }) => ({ host, port })),
       ...this.stats,
     };
@@ -322,7 +350,7 @@ export class LinkService {
       }), COMMAND_LONG_CRC_EXTRA).catch(() => {});
     }
 
-    this.requestMissingStreams(v, s, now);
+    if (this.transport !== this.engineTransport) this.requestMissingStreams(v, s, now);
 
     if (v.armed && this.fetcher.busy) {
       this.log('info', 'params: vehicle armed, pausing download');

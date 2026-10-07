@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { loadConfig } from './config.js';
 import { LinkService } from './link-service.js';
 import { createApi } from './api.js';
+import { SimSwarm } from './sim-swarm.js';
 import type { LogFn } from './param-fetcher.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string };
@@ -19,12 +20,14 @@ async function main(): Promise<void> {
   const link = new LinkService(config, log);
   await link.start();
 
-  const api = createApi(link, pkg.version, undefined, log);
+  const sim = new SimSwarm(link, config.sitlBinary, `${config.stateDir}/sim`, log);
+  const api = createApi(link, pkg.version, { log, sim });
   await new Promise<void>((resolve) => api.listen(config.apiPort, '127.0.0.1', resolve));
   log('info', `api http://127.0.0.1:${config.apiPort}/v1/info`);
 
   const shutdown = async () => {
     api.close();
+    sim.dispose();
     await link.stop();
     process.exit(0);
   };

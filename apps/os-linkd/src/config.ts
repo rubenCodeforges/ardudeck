@@ -17,6 +17,12 @@ export interface LinkdConfig {
   /** MAVLink identity used for the service's own requests (params, AUTOPILOT_VERSION). */
   sysid: number;
   compid: number;
+  /** The orchestrator binary that terminates every vehicle link. */
+  engineBinary: string;
+  /** Loopback address the orchestrator serves its fleet WebSocket on; the app connects here too. */
+  engineBind: string;
+  /** ArduCopter SITL used for the OS's simulated swarm. */
+  sitlBinary: string;
 }
 
 function envInt(name: string, fallback: number): number {
@@ -41,5 +47,8 @@ export function loadConfig(): LinkdConfig {
     // is gone. compid 191 keeps our FTP/param replies apart from the app (190).
     sysid: envInt('ARDUDECK_LINKD_SYSID', 254),
     compid: envInt('ARDUDECK_LINKD_COMPID', 191),
+    engineBinary: process.env.ARDUDECK_ORCHESTRATOR_BIN || join(homedir(), '.local', 'opt', 'ardudeck-orchestrator', 'ardudeck-orchestrator'),
+    engineBind: process.env.ARDUDECK_ENGINE_BIND || '127.0.0.1:8790',
+    sitlBinary: process.env.ARDUDECK_SITL_BIN || join(homedir(), '.local', 'opt', 'sitl', 'arducopter'),
   };
 }

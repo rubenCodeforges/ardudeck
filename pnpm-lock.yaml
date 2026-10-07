@@ -246,6 +246,9 @@ importers:
       '@ardudeck/mavlink-ts':
         specifier: workspace:*
         version: link:../../packages/mavlink-ts
+      '@ardudeck/sitl':
+        specifier: workspace:*
+        version: link:../../packages/sitl
       '@ardudeck/vehicle-core':
         specifier: workspace:*
         version: link:../../packages/vehicle-core
