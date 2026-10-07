@@ -1,6 +1,7 @@
-// The power button turns the display off and on, like a phone or tablet,
-// instead of suspending: a ground station keeps its vehicle link and
-// telemetry running with the screen dark.
+// The power button locks the screen and turns the display off, like a phone
+// or tablet, instead of suspending: a ground station keeps its vehicle link
+// and telemetry running with the screen dark. GNOME's media-keys service must
+// not hold the key itself (its power-static binding is cleared on ArduDeck OS).
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
@@ -34,6 +35,7 @@ export class PowerButtonScreenOff {
 
     _turnOff() {
         this._off = true;
+        if (Main.screenShield && !Main.sessionMode.isLocked) Main.screenShield.lock(false);
         setDisplayPower(DISPLAY_OFF);
         this._delay = GLib.timeout_add(GLib.PRIORITY_DEFAULT, WAKE_WATCH_DELAY_MS, () => {
             this._delay = 0;

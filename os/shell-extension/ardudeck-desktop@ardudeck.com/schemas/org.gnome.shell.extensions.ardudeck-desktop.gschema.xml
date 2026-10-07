@@ -16,8 +16,8 @@
     </key>
     <key name="power-button-screen-off" type="as">
       <default>['XF86PowerOff']</default>
-      <summary>Key that turns the display off and on</summary>
-      <description>The power button blanks the screen instead of suspending, so the vehicle link and telemetry keep running. GNOME's own power-button action must be 'nothing'.</description>
+      <summary>Key that locks the screen and turns the display off and on</summary>
+      <description>The power button locks and blanks the screen instead of suspending, so the vehicle link and telemetry keep running. GNOME's power-button action must be 'nothing' and media-keys power-static empty.</description>
     </key>
     <key name="show-instruments" type="b">
       <default>true</default>

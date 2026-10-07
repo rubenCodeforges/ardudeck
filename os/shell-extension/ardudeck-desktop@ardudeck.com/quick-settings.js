@@ -4,7 +4,6 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
-import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
@@ -14,6 +13,7 @@ const API = 'http://127.0.0.1:47801/v1';
 const REFRESH_MS = 2000;
 const APP_ID = 'ardudeck.desktop';
 const SETTINGS_APP_ID = 'com.ardudeck.Settings.desktop';
+const MAX_CONNECTIONS_SHOWN = 3;
 
 function vehicleLine(v) {
     const kind = {ardupilot: 'ArduPilot', px4: 'PX4'}[v.firmware] ?? 'Vehicle';
@@ -35,26 +35,15 @@ class VehicleLinkToggle extends QuickMenuToggle {
         this._enabledItem.connect('toggled', (_i, on) => void this._setEnabled(on));
         this.menu.addMenuItem(this._enabledItem);
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        // Saved and detected connections scroll inside the menu so a swarm of
-        // simulators cannot push the menu off the screen.
-        const list = new PopupMenu.PopupMenuSection();
+        // Short by design: a touch menu that needs scrolling is a menu that cannot be used.
+        // The full list of connections lives in ArduDeck Settings.
         this._savedSection = new PopupMenu.PopupMenuSection();
         this._detectedSection = new PopupMenu.PopupMenuSection();
-        list.addMenuItem(this._savedSection);
-        list.addMenuItem(this._detectedSection);
-        const scroll = new St.ScrollView({
-            style: 'max-height: 320px;',
-            hscrollbar_policy: St.PolicyType.NEVER,
-            vscrollbar_policy: St.PolicyType.AUTOMATIC,
-            overlay_scrollbars: true,
-        });
-        scroll.set_child(list.actor);
-        const scrollHolder = new PopupMenu.PopupMenuSection();
-        scrollHolder.actor.add_child(scroll);
-        this.menu.addMenuItem(scrollHolder);
+        this.menu.addMenuItem(this._savedSection);
+        this.menu.addMenuItem(this._detectedSection);
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addAction('Open ArduDeck', () => this._launch(APP_ID));
-        this.menu.addAction('Link Settings', () => this._launch(SETTINGS_APP_ID));
+        this.menu.addAction('All Connections…', () => this._launch(SETTINGS_APP_ID));
 
         this.connect('clicked', () => this.menu.open());
         this.menu.connect('open-state-changed', (_m, open) => {
@@ -104,7 +93,11 @@ class VehicleLinkToggle extends QuickMenuToggle {
         this.menu.setHeader(this._icon, 'Vehicle Link', header);
 
         this._savedSection.removeAll();
-        for (const c of links.connections) {
+        const inUseIds = new Set([links.activeId, ...(links.joinedIds ?? [])]);
+        const shown = links.connections.filter(c => inUseIds.has(c.id))
+            .concat(links.connections.filter(c => !inUseIds.has(c.id)))
+            .slice(0, Math.max(MAX_CONNECTIONS_SHOWN, inUseIds.size));
+        for (const c of shown) {
             const item = new PopupMenu.PopupMenuItem(c.name);
             const inUse = c.id === links.activeId || (links.joinedIds ?? []).includes(c.id);
             item.setOrnament(inUse ? PopupMenu.Ornament.CHECK : PopupMenu.Ornament.NONE);
@@ -122,11 +115,11 @@ class VehicleLinkToggle extends QuickMenuToggle {
         if (fresh.length || simulators.length)
             this._detectedSection.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('Detected'));
         if (simulators.length > 1) {
-            const all = new PopupMenu.PopupMenuItem(`Connect all ${simulators.length} as a swarm`);
+            const all = new PopupMenu.PopupMenuItem(`Connect ${simulators.length} simulators as a swarm`);
             all.connect('activate', () => void this._joinAll(simulators));
             this._detectedSection.addMenuItem(all);
         }
-        for (const v of simulators) {
+        for (const v of simulators.length > 1 ? [] : simulators) {
             const item = new PopupMenu.PopupMenuItem(`${v.label} (TCP ${v.connection.port})`);
             item.connect('activate', () => {
                 void this._api.write('POST', `${API}/links`, {connection: v.connection, activate: true})
