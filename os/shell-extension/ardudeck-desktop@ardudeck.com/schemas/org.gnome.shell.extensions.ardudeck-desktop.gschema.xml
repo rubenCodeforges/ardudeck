@@ -1,21 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="org.gnome.shell.extensions.ardudeck-desktop" path="/org/gnome/shell/extensions/ardudeck-desktop/">
-    <key name="show-surface" type="b">
-      <default>true</default>
-      <summary>Live map and synthetic vision as the desktop</summary>
+    <key name="workspace-desktops" type="a{ss}">
+      <default>{'0': 'map-svt'}</default>
+      <summary>What each workspace's desktop shows</summary>
+      <description>Workspace index (0-based, as text) to scene: map-svt (live map with synthetic vision), map, svt (synthetic vision), instruments (native gauges and cards), wallpaper (nothing). Workspaces not listed show the wallpaper.</description>
     </key>
     <key name="show-station" type="b">
       <default>true</default>
-      <summary>Ground station card on the desktop</summary>
+      <summary>Ground station card in the Instruments desktop</summary>
     </key>
     <key name="show-vehicle" type="b">
       <default>true</default>
-      <summary>Vehicle card on the desktop</summary>
+      <summary>Vehicle card in the Instruments desktop</summary>
     </key>
     <key name="show-instruments" type="b">
       <default>true</default>
-      <summary>Instrument cluster on the desktop</summary>
+      <summary>Instrument cluster in the Instruments desktop</summary>
     </key>
   </schema>
 </schemalist>

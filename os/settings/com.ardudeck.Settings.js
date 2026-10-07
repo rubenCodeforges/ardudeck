@@ -1,14 +1,25 @@
 #!/usr/bin/env -S gjs -m
-// ArduDeck Link Settings: manage how ArduDeck OS reaches the vehicle.
-// A libadwaita front end for ardudeck-os-linkd's /v1/links API.
+// ArduDeck Settings: the system settings of ArduDeck OS, laid out like GNOME
+// Settings. Pages: Vehicle Link (front end for ardudeck-os-linkd's /v1/links)
+// and Desktops (what each workspace's desktop shows, stored in GSettings and
+// applied live by the shell extension and the desktop surface).
 import Adw from 'gi://Adw?version=1';
+import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import Soup from 'gi://Soup?version=3.0';
 import {exit} from 'system';
 
 const API = 'http://127.0.0.1:47801/v1';
-const APP_ID = 'com.ardudeck.LinkSettings';
+const APP_ID = 'com.ardudeck.Settings';
+const DESKTOP_SCHEMA = 'org.gnome.shell.extensions.ardudeck-desktop';
+const SCENES = [
+    {id: 'map-svt', label: 'Live Map and Synthetic Vision'},
+    {id: 'map', label: 'Live Map'},
+    {id: 'svt', label: 'Synthetic Vision'},
+    {id: 'instruments', label: 'Instruments'},
+    {id: 'wallpaper', label: 'Wallpaper'},
+];
 const BAUD_RATES = ['9600', '19200', '38400', '57600', '115200', '230400', '460800', '921600', '1500000'];
 const TYPES = [
     {id: 'udp-listen', label: 'Wi-Fi telemetry (listen on a UDP port)'},
@@ -48,10 +59,11 @@ function describe(c) {
     }
 }
 
-class LinkSettingsWindow {
-    constructor(app) {
-        this.win = new Adw.ApplicationWindow({application: app, title: 'Vehicle Link', default_width: 560, default_height: 680});
-        this.toasts = new Adw.ToastOverlay();
+/** Vehicle Link page: the system link's state, connections and detected devices. */
+class LinkPage {
+    constructor(win, toasts) {
+        this.win = win;
+        this.toasts = toasts;
         const view = new Adw.ToolbarView();
         const header = new Adw.HeaderBar();
         const add = new Gtk.Button({icon_name: 'list-add-symbolic', tooltip_text: 'Add connection'});
@@ -73,8 +85,7 @@ class LinkSettingsWindow {
         this.connGroup = null;
         this.detectGroup = null;
         view.set_content(this.page);
-        this.toasts.set_child(view);
-        this.win.set_content(this.toasts);
+        this.widget = view;
         this.timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
             void this.refresh(false);
             return GLib.SOURCE_CONTINUE;
@@ -229,16 +240,133 @@ class LinkSettingsWindow {
     }
 }
 
-const app = new Adw.Application({application_id: APP_ID});
+
+/** Desktops page: what each workspace's desktop shows. */
+class DesktopsPage {
+    constructor() {
+        this.settings = new Gio.Settings({schema_id: DESKTOP_SCHEMA});
+        this.mutter = new Gio.Settings({schema_id: 'org.gnome.mutter'});
+        this.wm = new Gio.Settings({schema_id: 'org.gnome.desktop.wm.preferences'});
+        const view = new Adw.ToolbarView();
+        view.add_top_bar(new Adw.HeaderBar());
+        this.page = new Adw.PreferencesPage();
+        view.set_content(this.page);
+        this.widget = view;
+        this.group = new Adw.PreferencesGroup({
+            title: 'Desktops',
+            description: 'Each workspace can show its own desktop. You can also right-click the desktop and choose under "This Desktop".',
+        });
+        this.page.add(this.group);
+        this.rows = [];
+        this.render();
+        for (const [obj, key] of [[this.settings, 'changed::workspace-desktops'], [this.mutter, 'changed::dynamic-workspaces'], [this.wm, 'changed::num-workspaces']])
+            obj.connect(key, () => this.render());
+
+        const inst = new Adw.PreferencesGroup({title: 'Instruments desktop', description: 'What the native instruments desktop shows. It draws without starting the app, so it is the lightest live desktop.'});
+        for (const [key, title] of [['show-station', 'Ground station'], ['show-vehicle', 'Vehicle'], ['show-instruments', 'Gauges']]) {
+            const row = new Adw.SwitchRow({title});
+            this.settings.bind(key, row, 'active', Gio.SettingsBindFlags.DEFAULT);
+            inst.add(row);
+        }
+        this.page.add(inst);
+
+        const ws = new Adw.PreferencesGroup({title: 'Workspaces'});
+        const link = new Adw.ActionRow({title: 'Workspace settings', subtitle: 'Number of workspaces and how they behave', activatable: true});
+        link.add_suffix(new Gtk.Image({icon_name: 'adw-external-link-symbolic'}));
+        link.connect('activated', () => GLib.spawn_command_line_async('gnome-control-center multitasking'));
+        ws.add(link);
+        this.page.add(ws);
+    }
+
+    /** Workspaces to offer: the fixed count, or with dynamic workspaces at least four. */
+    workspaceCount() {
+        const map = this.settings.get_value('workspace-desktops').deep_unpack();
+        const configured = Math.max(-1, ...Object.keys(map).map(Number)) + 1;
+        if (!this.mutter.get_boolean('dynamic-workspaces')) return Math.max(1, this.wm.get_int('num-workspaces'));
+        return Math.max(4, configured);
+    }
+
+    render() {
+        const map = this.settings.get_value('workspace-desktops').deep_unpack();
+        for (const row of this.rows) this.group.remove(row);
+        this.rows = [];
+        const labels = Gtk.StringList.new(SCENES.map(sc => sc.label));
+        for (let i = 0; i < this.workspaceCount(); i++) {
+            const current = map[String(i)] ?? 'wallpaper';
+            const row = new Adw.ComboRow({title: `Desktop ${i + 1}`, model: labels, selected: Math.max(0, SCENES.findIndex(sc => sc.id === current))});
+            row.connect('notify::selected', () => {
+                const next = this.settings.get_value('workspace-desktops').deep_unpack();
+                const scene = SCENES[row.selected].id;
+                if ((next[String(i)] ?? 'wallpaper') === scene) return;
+                if (scene === 'wallpaper') delete next[String(i)];
+                else next[String(i)] = scene;
+                this.settings.set_value('workspace-desktops', new GLib.Variant('a{ss}', next));
+            });
+            this.group.add(row);
+            this.rows.push(row);
+        }
+    }
+}
+
+/** ArduDeck Settings window: a GNOME Settings style sidebar with pages. */
+class SettingsWindow {
+    constructor(app, pageId) {
+        this.win = new Adw.ApplicationWindow({application: app, title: 'ArduDeck Settings', default_width: 900, default_height: 680});
+        this.toasts = new Adw.ToastOverlay();
+        this.link = new LinkPage(this.win, this.toasts);
+        this.desktops = new DesktopsPage();
+        const pages = [
+            {id: 'link', title: 'Vehicle Link', icon: 'network-wireless-symbolic', widget: this.link.widget},
+            {id: 'desktops', title: 'Desktops', icon: 'preferences-desktop-wallpaper-symbolic', widget: this.desktops.widget},
+        ];
+
+        const split = new Adw.NavigationSplitView({min_sidebar_width: 220});
+        const list = new Gtk.ListBox({css_classes: ['navigation-sidebar']});
+        for (const p of pages) {
+            const box = new Gtk.Box({spacing: 12, margin_top: 6, margin_bottom: 6, margin_start: 6});
+            box.append(new Gtk.Image({icon_name: p.icon}));
+            box.append(new Gtk.Label({label: p.title, xalign: 0}));
+            list.append(box);
+        }
+        const sidebarView = new Adw.ToolbarView();
+        sidebarView.add_top_bar(new Adw.HeaderBar({title_widget: new Adw.WindowTitle({title: 'ArduDeck Settings'})}));
+        sidebarView.set_content(list);
+        split.set_sidebar(new Adw.NavigationPage({title: 'ArduDeck Settings', child: sidebarView}));
+
+        // One NavigationPage per page, created once: a widget can only have one parent.
+        const navPages = pages.map(p => new Adw.NavigationPage({title: p.title, child: p.widget, tag: p.id}));
+        const show = (i) => {
+            if (split.get_content() !== navPages[i]) split.set_content(navPages[i]);
+            split.show_content = true;
+        };
+        list.connect('row-selected', (_l, row) => row && show(row.get_index()));
+        const start = Math.max(0, pages.findIndex(p => p.id === pageId));
+        list.select_row(list.get_row_at_index(start));
+
+        this.toasts.set_child(split);
+        this.win.set_content(this.toasts);
+    }
+}
+
+const app = new Adw.Application({application_id: APP_ID, flags: Gio.ApplicationFlags.HANDLES_COMMAND_LINE});
+let requestedPage = 'link';
+app.connect('command-line', (_a, cmd) => {
+    for (const arg of cmd.get_arguments()) {
+        const m = /^--page=(\w+)$/.exec(arg);
+        if (m) requestedPage = m[1];
+    }
+    app.activate();
+    return 0;
+});
 app.connect('activate', () => {
     const existing = app.get_active_window();
     if (existing) {
         existing.present();
         return;
     }
-    const w = new LinkSettingsWindow(app);
+    const w = new SettingsWindow(app, requestedPage);
     w.win.present();
-    void w.refresh(true);
+    void w.link.refresh(true);
     // Development aid: ARDUDECK_SCREENSHOT=/path.png renders the window offscreen
     // after it settles and quits. Works with the session locked or headless.
     const shot = GLib.getenv('ARDUDECK_SCREENSHOT');

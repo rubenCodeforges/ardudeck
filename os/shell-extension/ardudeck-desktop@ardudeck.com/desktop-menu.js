@@ -1,41 +1,54 @@
 // ArduDeck section in GNOME's own desktop right-click / long-press menu (the
-// one with "Change Background…"): switches for each desktop widget and
-// shortcuts to Vehicle Link settings and the app.
+// one with "Change Background…"): choose what this workspace's desktop shows,
+// and shortcuts to ArduDeck Settings and the app.
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {LayoutManager} from 'resource:///org/gnome/shell/ui/layout.js';
 import {InjectionManager} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-const SURFACE_UNIT = 'ardudeck-desktop-surface.service';
-const WIDGETS = [
-    ['show-surface', 'Live Map and Synthetic Vision'],
-    ['show-station', 'Ground Station'],
-    ['show-vehicle', 'Vehicle'],
-    ['show-instruments', 'Instruments'],
+export const SCENES = [
+    ['map-svt', 'Live Map and Synthetic Vision'],
+    ['map', 'Live Map'],
+    ['svt', 'Synthetic Vision'],
+    ['instruments', 'Instruments'],
+    ['wallpaper', 'Wallpaper'],
 ];
 
-function launch(id) {
-    const app = Gio.DesktopAppInfo.new(id);
-    if (app) app.launch([], null);
-    else Main.notify('ArduDeck', `${id} is not installed`);
+/** Scene for a workspace index; workspaces not configured show the wallpaper. */
+export function sceneForWorkspace(settings, index) {
+    const map = settings.get_value('workspace-desktops').deep_unpack();
+    return map[String(index)] ?? 'wallpaper';
 }
 
-/** Start/stop the surface's systemd user unit and keep it enabled to match. */
-export function applySurfaceSetting(enabled) {
-    const verb = enabled ? ['enable', '--now'] : ['disable', '--now'];
-    try {
-        Gio.Subprocess.new(['systemctl', '--user', ...verb, SURFACE_UNIT], Gio.SubprocessFlags.STDERR_SILENCE);
-    } catch (e) {
-        logError(e, 'ArduDeck: could not switch the desktop surface');
+export function setSceneForWorkspace(settings, index, scene) {
+    const map = settings.get_value('workspace-desktops').deep_unpack();
+    if (scene === 'wallpaper') delete map[String(index)];
+    else map[String(index)] = scene;
+    settings.set_value('workspace-desktops', new GLib.Variant('a{ss}', map));
+}
+
+function launch(id, args = []) {
+    const app = Gio.DesktopAppInfo.new(id);
+    if (!app) {
+        Main.notify('ArduDeck', `${id} is not installed`);
+        return;
+    }
+    if (args.length) {
+        // Open a specific page: the settings app takes it as a command-line argument.
+        const exec = app.get_commandline().replace(/%[uUfF]/g, '').trim();
+        GLib.spawn_command_line_async(`${exec} ${args.map(a => GLib.shell_quote(a)).join(' ')}`);
+    } else {
+        app.launch([], null);
     }
 }
 
 export class DesktopMenu {
     constructor(settings) {
         this._settings = settings;
-        this._sections = new Map(); // BackgroundMenu -> section
+        this._sections = new Map(); // BackgroundMenu -> {section, items}
         this._injections = new InjectionManager();
 
         // Backgrounds (and their menus) are rebuilt on monitor and wallpaper
@@ -52,18 +65,29 @@ export class DesktopMenu {
     _decorate(menu) {
         if (!menu || this._sections.has(menu)) return;
         const section = new PopupMenu.PopupMenuSection();
-        section.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('ArduDeck'));
-        for (const [key, label] of WIDGETS) {
-            const item = new PopupMenu.PopupSwitchMenuItem(label, this._settings.get_boolean(key));
-            item.connect('toggled', (_i, state) => this._settings.set_boolean(key, state));
-            const id = this._settings.connect(`changed::${key}`, () => item.setToggleState(this._settings.get_boolean(key)));
-            item.connect('destroy', () => this._settings.disconnect(id));
+        const ws = () => global.workspace_manager.get_active_workspace_index();
+        const header = new PopupMenu.PopupSeparatorMenuItem('This Desktop');
+        section.addMenuItem(header);
+        const items = SCENES.map(([scene, label]) => {
+            const item = new PopupMenu.PopupMenuItem(label);
+            item.connect('activate', () => setSceneForWorkspace(this._settings, ws(), scene));
             section.addMenuItem(item);
-        }
+            return [scene, item];
+        });
         section.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        section.addAction('Vehicle Link Settings', () => launch('com.ardudeck.LinkSettings.desktop'));
+        section.addAction('Desktop Settings', () => launch('com.ardudeck.Settings.desktop', ['--page=desktops']));
+        section.addAction('Vehicle Link Settings', () => launch('com.ardudeck.Settings.desktop', ['--page=link']));
         section.addAction('Open ArduDeck', () => launch('ardudeck.desktop'));
         menu.addMenuItem(section, 0);
+
+        // Mark the current choice each time the menu opens (workspace may differ).
+        menu.connect('open-state-changed', (_m, open) => {
+            if (!open) return;
+            const current = sceneForWorkspace(this._settings, ws());
+            header.label.text = `Desktop ${ws() + 1}`;
+            for (const [scene, item] of items)
+                item.setOrnament(scene === current ? PopupMenu.Ornament.CHECK : PopupMenu.Ornament.NONE);
+        });
         this._sections.set(menu, section);
         menu.connect('destroy', () => this._sections.delete(menu));
     }

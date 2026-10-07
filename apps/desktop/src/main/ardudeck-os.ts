@@ -125,7 +125,7 @@ export async function setOsActiveLink(id: string): Promise<{ success: boolean; e
 
 /** Open the system's Vehicle Link settings window. */
 export function openOsLinkSettings(): void {
-  const child = spawn('gtk-launch', ['com.ardudeck.LinkSettings'], { detached: true, stdio: 'ignore' });
+  const child = spawn('gtk-launch', ['com.ardudeck.Settings'], { detached: true, stdio: 'ignore' });
   child.on('error', () => { /* not installed: nothing to open */ });
   child.unref();
 }

@@ -3,6 +3,7 @@
  * Handles window management and native integrations
  */
 
+import { DesktopSurfaces, SURFACE_TITLE_PREFIX, type SurfaceWindow } from './desktop-surface.js';
 import { app, BrowserWindow, dialog, shell } from 'electron';
 import { existsSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
@@ -14,7 +15,7 @@ import { registerTileCacheScheme, setupTileCacheProtocol, setupTileCacheHandlers
 import { registerModuleSchemePrivileges, setupModuleProtocol } from './modules/module-protocol.js';
 import { registerMediaSchemePrivileges, setupMediaProtocol } from './media/media-library.js';
 import { setupDeepLinks, handleStartupArgs, flushPendingDeepLink, deliverDeepLinkUrl } from './modules/deep-link.js';
-import { initWindowManager, restoreDetachedWindows, setupWindowManagerIpc, getMainFullScreen, setMainFullScreen } from './window-manager.js';
+import { initWindowManager, restoreDetachedWindows, setupWindowManagerIpc, getMainFullScreen, setMainFullScreen, registerSecondaryWindow } from './window-manager.js';
 import { createSplashWindow, splashSetStatus, closeSplash } from './splash-window.js';
 import { initMainI18n, setupI18nIpc } from './i18n-main.js';
 import { Worker } from 'node:worker_threads';
@@ -74,7 +75,6 @@ if (isDesktopSurface) {
   process.env['ARDUDECK_DESKTOP_SURFACE'] = '1';
   app.setPath('userData', join(app.getPath('appData'), 'ardudeck-desktop-surface'));
 }
-const SURFACE_TITLE = 'ArduDeck Desktop Surface'; // i18n-exempt: window identity the shell extension matches on
 
 // Single-instance lock so ardudeck:// deep links route to the running app
 // instead of spawning a second one.
@@ -186,6 +186,37 @@ function maybeShowKeychainNotice(): void {
   });
 }
 
+/**
+ * One desktop for one workspace: borderless, no taskbar entry, rendering
+ * SurfaceRoot with the chosen scene. Joins the IPC broadcast set so telemetry
+ * reaches it like any pop-out. The shell extension pins it by its title.
+ */
+function createSurfaceWindow(workspace: number, scene: string): SurfaceWindow {
+  const win = new BrowserWindow({
+    width: 1280,
+    height: 800,
+    show: false,
+    frame: false,
+    skipTaskbar: true,
+    backgroundColor: '#0a0a0f',
+    title: `${SURFACE_TITLE_PREFIX} ${workspace}`,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.mjs'),
+      sandbox: false,
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  win.on('page-title-updated', (e) => e.preventDefault());
+  win.once('ready-to-show', () => win.showInactive());
+  registerSecondaryWindow(win);
+  const search = new URLSearchParams({ surface: '1', scene, workspace: String(workspace) }).toString();
+  const rendererUrl = isDev ? process.env['ELECTRON_RENDERER_URL'] : undefined;
+  if (rendererUrl) void win.loadURL(`${rendererUrl}?${search}`).catch(() => {});
+  else void win.loadFile(join(__dirname, '../renderer/index.html'), { search }).catch(() => {});
+  return { scene, close: () => { if (!win.isDestroyed()) win.destroy(); } };
+}
+
 function createWindow(splash?: BrowserWindow | null): BrowserWindow {
   // Get the icon path based on platform
   // In dev: __dirname is out/main/, resources is at ../../resources/
@@ -206,7 +237,9 @@ function createWindow(splash?: BrowserWindow | null): BrowserWindow {
     minWidth: 800,
     minHeight: 600,
     show: false,
-    ...(isDesktopSurface ? { frame: false, skipTaskbar: true, title: SURFACE_TITLE, minWidth: 320, minHeight: 240 } : {}),
+    // Surface mode: this is only an invisible IPC host; the visible desktops
+    // are per-workspace windows from desktop-surface.ts.
+    ...(isDesktopSurface ? { frame: false, skipTaskbar: true, width: 1, height: 1, minWidth: 1, minHeight: 1, title: `${SURFACE_TITLE_PREFIX} host` } : {}),
     // Match the app's dark canvas (--bg-base). Without this the window defaults
     // to white, so any moment it's shown before the renderer's first paint (e.g.
     // the handoff fallback below on a slow load) flashes a blank WHITE screen.
@@ -234,7 +267,7 @@ function createWindow(splash?: BrowserWindow | null): BrowserWindow {
   // first paint is never force-shown as an unpainted window. Even if it does
   // fire, the dark backgroundColor above means the fallback isn't a white flash.
   const handoffTimeout = setTimeout(() => {
-    if (!mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+    if (!isDesktopSurface && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
       console.warn('[Main] ready-to-show never fired after 20s; forcing window handoff');
       closeSplash(splash ?? null);
       mainWindow.show();
@@ -246,14 +279,13 @@ function createWindow(splash?: BrowserWindow | null): BrowserWindow {
     clearTimeout(handoffTimeout);
     splashSetStatus(splash ?? null, t('main:mainIndex.splashReady'));
     closeSplash(splash ?? null);
-    mainWindow.show();
+    if (!isDesktopSurface) mainWindow.show();
   });
 
   // True fullscreen: on a field tablet the desktop's top bar and the title bar
   // are wasted rows over the map. F11 toggles, and the choice is remembered.
   if (getMainFullScreen() && !isDesktopSurface) mainWindow.setFullScreen(true);
   // The shell extension finds the surface by its title; keep the page from renaming it.
-  if (isDesktopSurface) mainWindow.on('page-title-updated', (e) => e.preventDefault());
 
   mainWindow.webContents.on('before-input-event', (_event, input) => {
     if (input.type !== 'keyDown' || input.key !== 'F11' || mainWindow.isDestroyed()) return;
@@ -293,7 +325,11 @@ function createWindow(splash?: BrowserWindow | null): BrowserWindow {
   let loadAttempts = 0;
   function loadRenderer(): void {
     loadAttempts++;
-    const search = isDesktopSurface ? 'surface=1' : '';
+    if (isDesktopSurface) {
+      mainWindow.loadURL('about:blank').catch(() => { /* nothing to render in the host */ });
+      return;
+    }
+    const search = '';
     if (rendererUrl) {
       mainWindow.loadURL(search ? `${rendererUrl}?${search}` : rendererUrl).catch(() => { /* handled by did-fail-load */ });
     } else {
@@ -393,6 +429,10 @@ app.whenReady().then(() => {
       deliverDeepLinkUrl(process.env['ARDUDECK_DEEPLINK']);
     }
   });
+
+  if (isDesktopSurface) {
+    void new DesktopSurfaces((workspace, scene) => createSurfaceWindow(workspace, scene)).start();
+  }
 
   // Dev-only: start test driver MCP server
   if (isDev && !isDesktopSurface) {

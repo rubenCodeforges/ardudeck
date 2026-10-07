@@ -15,7 +15,7 @@ import {drawRoundGauge, drawAttitude, headingRose, vsiArc, COLORS} from './gauge
 import {LocalApi} from './http.js';
 import {VehicleLinkIndicator} from './quick-settings.js';
 import {DesktopSurfaceManager} from './surface.js';
-import {DesktopMenu, applySurfaceSetting} from './desktop-menu.js';
+import {DesktopMenu, sceneForWorkspace} from './desktop-menu.js';
 
 const STATION_URL = 'http://127.0.0.1:47800/state';
 const VEHICLE_URL = 'http://127.0.0.1:47801/v1/vehicle';
@@ -325,12 +325,10 @@ export default class ArduDeckDesktop extends Extension {
         // Per-widget switches, shown in the desktop's right-click menu.
         this._settings = this.getSettings();
         this._settingsIds = [
-            this._settings.connect('changed', (_s, key) => {
-                if (key === 'show-surface') applySurfaceSetting(this._settings.get_boolean(key));
-                this._applyVisibility();
-            }),
+            this._settings.connect('changed', () => this._applyVisibility()),
         ];
         this._desktopMenu = new DesktopMenu(this._settings);
+        this._wsChangedId = global.workspace_manager.connect('active-workspace-changed', () => this._applyVisibility());
         this._applyVisibility();
 
         this._monitorsId = Main.layoutManager.connect('monitors-changed', () => this._place());
@@ -410,15 +408,20 @@ export default class ArduDeckDesktop extends Extension {
         this._a11y = null;
     }
 
+    // The native gauges and cards are the "Instruments" desktop: shown only on
+    // workspaces set to it (map and synthetic vision desktops are app windows).
     _applyVisibility() {
         if (!this._root || !this._settings) return;
-        this._root.visible = !this._surface?.active;
+        const active = global.workspace_manager.get_active_workspace_index();
+        this._root.visible = sceneForWorkspace(this._settings, active) === 'instruments';
         this._station.actor.visible = this._settings.get_boolean('show-station');
         this._vehicle.actor.visible = this._settings.get_boolean('show-vehicle');
         this._cluster.actor.visible = this._settings.get_boolean('show-instruments');
     }
 
     _disableDesktop() {
+        if (this._wsChangedId) global.workspace_manager.disconnect(this._wsChangedId);
+        this._wsChangedId = 0;
         this._desktopMenu?.destroy();
         this._desktopMenu = null;
         for (const id of this._settingsIds ?? []) this._settings.disconnect(id);

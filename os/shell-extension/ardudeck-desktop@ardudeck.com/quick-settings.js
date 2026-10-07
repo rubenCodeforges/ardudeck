@@ -12,7 +12,7 @@ import {QuickMenuToggle, SystemIndicator} from 'resource:///org/gnome/shell/ui/q
 const API = 'http://127.0.0.1:47801/v1';
 const REFRESH_MS = 2000;
 const APP_ID = 'ardudeck.desktop';
-const SETTINGS_APP_ID = 'com.ardudeck.LinkSettings.desktop';
+const SETTINGS_APP_ID = 'com.ardudeck.Settings.desktop';
 
 function vehicleLine(v) {
     const kind = {ardupilot: 'ArduPilot', px4: 'PX4'}[v.firmware] ?? 'Vehicle';
