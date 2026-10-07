@@ -70,7 +70,7 @@ export function DraggableFleetActions(): JSX.Element | null {
       style={{ left: x ?? -9999, top: y ?? -9999 }}
     >
       <div
-        className="flex items-center gap-1.5 px-2 py-1 bg-surface-solid border-b border-subtle cursor-move shrink-0"
+        className="flex items-center gap-1.5 px-2 py-1 bg-surface-solid border-b border-subtle cursor-move shrink-0 touch-none"
         onPointerDown={onHandlePointerDown}
         data-tip={t('fleet:draggableFleetActions.dragTip')}
       >

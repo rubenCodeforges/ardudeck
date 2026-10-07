@@ -75,6 +75,7 @@ export function OsdElementOverlay({
         ${isDragging ? 'opacity-70 z-50' : 'z-10'}
       `}
       style={{
+        touchAction: 'none',
         transform: `translate(${tx}px, ${ty}px)`,
         width,
         height,

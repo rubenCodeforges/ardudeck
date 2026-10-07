@@ -1000,7 +1000,7 @@ function HudPreview({
               }}
               style={{
                 position: 'absolute', left: t.x, top: t.y, width: t.w, height: t.h,
-                border: `1px dashed ${C.accent}`, cursor: 'move', zIndex: 5,
+                border: `1px dashed ${C.accent}`, cursor: 'move', zIndex: 5, touchAction: 'none',
               }}
             >
               <button
@@ -1033,7 +1033,7 @@ function HudPreview({
                 }}
                 style={{
                   position: 'absolute', right: -1, bottom: -1, width: 12, height: 12,
-                  background: C.accent, cursor: 'nwse-resize', zIndex: 6,
+                  background: C.accent, cursor: 'nwse-resize', zIndex: 6, touchAction: 'none',
                 }}
               />
             </div>

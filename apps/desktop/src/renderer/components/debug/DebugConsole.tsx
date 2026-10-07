@@ -180,7 +180,7 @@ export function DebugConsole() {
         <div
           onPointerDown={startResize}
           className={
-            'absolute z-10 ' +
+            'absolute z-10 touch-none ' +
             (side
               ? `top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500/40 ${dock === 'left' ? 'right-0' : 'left-0'}`
               : 'left-0 right-0 top-0 h-1.5 cursor-row-resize hover:bg-blue-500/40')

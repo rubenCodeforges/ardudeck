@@ -202,7 +202,7 @@ export const FighterHud = memo(function FighterHud({ v: raw, config, profile = '
   const Movable = ({ id, width, height, anchorRight, children }: { id: string; width: number; height: number; anchorRight?: boolean; children: React.ReactNode }) => {
     const p = pos(id);
     return (
-      <g transform={`translate(${p.x} ${p.y})`} style={{ pointerEvents: editable ? 'auto' : 'none', cursor: editable ? 'move' : 'default' }} onPointerDown={startDrag(id)}>
+      <g transform={`translate(${p.x} ${p.y})`} style={{ pointerEvents: editable ? 'auto' : 'none', cursor: editable ? 'move' : 'default', touchAction: 'none' }} onPointerDown={startDrag(id)}>
         {editable && (
           <rect x={anchorRight ? -width : 0} y={-height + 18} width={width} height={height} rx={6} fill="rgba(255,255,255,0.04)" stroke={C} strokeOpacity={0.4} strokeDasharray="5 4" strokeWidth={1.5} />
         )}

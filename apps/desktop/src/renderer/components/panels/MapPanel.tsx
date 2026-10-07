@@ -1161,7 +1161,7 @@ function SplitDivider({
     <div
       onPointerDown={handlePointerDown}
       // Under the docked instruments (z-1000), which overhang the map pane.
-      className={`group relative z-[900] w-1.5 h-full shrink-0 cursor-col-resize flex items-stretch justify-center ${
+      className={`group relative z-[900] w-1.5 h-full shrink-0 touch-none cursor-col-resize flex items-stretch justify-center ${
         dragging ? 'bg-blue-500' : 'bg-subtle hover:bg-blue-500/60'
       } transition-colors`}
       data-tip={t('panels:mapPanel.dividerTip')}
@@ -1204,7 +1204,7 @@ function CompassOverlay({ heading }: { heading: number }) {
       ref={dragOverlay.ref}
       style={dragOverlay.style}
       onPointerDown={dragOverlay.onPointerDown}
-      className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000]"
+      className="touch-none absolute top-2 left-1/2 -translate-x-1/2 z-[1000]"
     >
       <div className="relative w-16 h-16">
         {/* Compass ring */}

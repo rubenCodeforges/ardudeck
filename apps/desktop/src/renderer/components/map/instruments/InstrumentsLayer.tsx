@@ -317,7 +317,7 @@ function InstrumentSlot({ instrument }: { instrument: MapInstrumentDef }): JSX.E
       onPointerDown={onPointerDownWithDock}
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
-      className={instrument.defaultClassName + ' group transition-opacity duration-150'}
+      className={instrument.defaultClassName + ' group touch-none transition-opacity duration-150'}
     >
       {/* zoom is non-standard in TS's CSSProperties but supported by Chromium */}
       <div style={{ zoom: scale } as CSSProperties}>
@@ -366,7 +366,7 @@ function InstrumentSlot({ instrument }: { instrument: MapInstrumentDef }): JSX.E
         onPointerDown={onGripPointerDown}
         className={
           `absolute ${roundInstrument ? 'bottom-[11px] right-[11px]' : 'bottom-0.5 right-0.5'} w-2.5 h-2.5 rounded-br border-b-2 border-r-2 ` +
-          'cursor-nwse-resize transition-opacity ' +
+          'touch-none cursor-nwse-resize transition-opacity ' +
           (liveScale !== null ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')
         }
         style={{ borderColor: 'var(--gauge-text-dim)' }}

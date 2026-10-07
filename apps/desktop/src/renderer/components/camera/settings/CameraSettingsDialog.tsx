@@ -215,7 +215,7 @@ function Header({ onDragStart, snapshot, onReread, busy, confirmClose, dirtyCoun
   return (
     <div
       onPointerDown={onDragStart}
-      className="flex shrink-0 cursor-grab select-none items-center gap-2.5 border-b border-subtle px-3 py-2.5 active:cursor-grabbing"
+      className="flex shrink-0 touch-none cursor-grab select-none items-center gap-2.5 border-b border-subtle px-3 py-2.5 active:cursor-grabbing"
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/15">
         <Aperture className="h-4 w-4 text-sky-400" />

@@ -510,7 +510,7 @@ function TreeResizeHandle({ onDrag }: { onDrag: (dx: number) => void }): JSX.Ele
   return (
     <div
       onPointerDown={down}
-      className="w-1.5 shrink-0 cursor-col-resize border-r border-subtle bg-transparent transition-colors hover:bg-blue-500/40 active:bg-blue-500/60"
+      className="w-1.5 shrink-0 touch-none cursor-col-resize border-r border-subtle bg-transparent transition-colors hover:bg-blue-500/40 active:bg-blue-500/60"
       title={t('inspector:mavlinkInspector.resizeTitle')}
     />
   );

@@ -202,6 +202,7 @@ export default function ServoTuningCard({
             marginLeft: -6,
             backgroundColor: '#52525b',
             border: '2px solid #71717a',
+            touchAction: 'none',
           }}
           onPointerDown={handlePointerDown('min')}
         />
@@ -216,6 +217,7 @@ export default function ServoTuningCard({
             marginLeft: -6,
             backgroundColor: '#22c55e',
             border: '2px solid #4ade80',
+            touchAction: 'none',
           }}
           onPointerDown={handlePointerDown('center')}
         />
@@ -230,6 +232,7 @@ export default function ServoTuningCard({
             marginLeft: -6,
             backgroundColor: '#52525b',
             border: '2px solid #71717a',
+            touchAction: 'none',
           }}
           onPointerDown={handlePointerDown('max')}
         />

@@ -1209,9 +1209,10 @@ select,
 }
 
 /* ArduDeck OS desktop surface power policy (SurfaceRoot useCalm): stop
-   infinite animations so the compositor can idle. Colours stay; motion stops. */
+   infinite animations so the compositor can idle. Removed rather than paused:
+   a paused entrance animation freezes on its first frame (dock-pop at 45% opacity). */
 html.surface-calm *,
 html.surface-calm *::before,
 html.surface-calm *::after {
-  animation-play-state: paused !important;
+  animation: none !important;
 }

@@ -675,7 +675,7 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
       onPointerDown={onWrapperPointerDown}
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => { setHovered(false); setHoveredMember(null); }}
-      className="absolute left-3 top-16 z-[1000] group transition-opacity duration-150 dock-pop"
+      className="absolute left-3 top-16 z-[1000] group touch-none transition-opacity duration-150 dock-pop"
     >
       {cluster ? (
         <div className="relative select-none" style={clusterSize ? { width: clusterSize.w, height: clusterSize.h } : undefined}>
@@ -786,7 +786,7 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
         <div
           onPointerDown={onGripPointerDown}
           className={
-            'absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-br border-b-2 border-r-2 cursor-nwse-resize transition-opacity ' +
+            'absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-br border-b-2 border-r-2 touch-none cursor-nwse-resize transition-opacity ' +
             (liveScale !== null ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')
           }
           style={{ borderColor: 'var(--gauge-text-dim)' }}
@@ -949,7 +949,7 @@ function MemberCell({
         onPointerDown={onPillPointerDown}
         data-tip={t('map:dockedGroup.undockTip', { label })}
         className={
-          'absolute top-0.5 right-0.5 p-1 rounded-full bg-surface shadow-lg text-content-secondary ' +
+          'absolute top-0.5 right-0.5 p-1 rounded-full touch-none bg-surface shadow-lg text-content-secondary ' +
           'hover:text-content hover:bg-surface-raised cursor-grab transition-opacity ' +
           (showPill || ghost ? 'opacity-100' : 'opacity-0 pointer-events-none')
         }

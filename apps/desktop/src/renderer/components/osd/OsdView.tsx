@@ -79,7 +79,7 @@ function ResizeHandle({ onDrag }: { onDrag: (dx: number) => void }) {
   return (
     <div
       onPointerDown={down}
-      className="w-1.5 shrink-0 cursor-col-resize bg-transparent hover:bg-blue-500/40 active:bg-blue-500/60 transition-colors"
+      className="w-1.5 shrink-0 touch-none cursor-col-resize bg-transparent hover:bg-blue-500/40 active:bg-blue-500/60 transition-colors"
       title={t('osd:osdView.dragToResize')}
     />
   );

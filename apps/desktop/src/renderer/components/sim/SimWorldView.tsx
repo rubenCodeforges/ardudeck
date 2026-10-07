@@ -882,7 +882,7 @@ export default function SimWorldView() {
     <div ref={containerRef} className="relative h-full w-full bg-surface-base overflow-hidden">
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 h-full w-full"
+        className="absolute inset-0 h-full w-full touch-none"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -1411,7 +1411,7 @@ function DraggableFlightControlPanel() {
       style={{ left: x ?? -9999, top: y ?? -9999 }}
     >
       <div
-        className="flex items-center gap-1.5 px-2 py-1 bg-surface-solid border-b border-subtle cursor-move shrink-0"
+        className="flex items-center gap-1.5 px-2 py-1 bg-surface-solid border-b border-subtle cursor-move shrink-0 touch-none"
         onPointerDown={onHandlePointerDown}
         data-tip={t('sim:worldView.dragTip')}
       >

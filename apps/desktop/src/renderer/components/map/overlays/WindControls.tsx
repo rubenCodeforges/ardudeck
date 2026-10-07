@@ -77,7 +77,7 @@ export function WindControls({ raised = false, dragKey = 'wind-bar' }: { raised?
       ref={dragOverlay.ref}
       style={dragOverlay.style}
       onPointerDown={dragOverlay.onPointerDown}
-      className={`absolute ${raised ? 'bottom-44' : 'bottom-12'} left-1/2 -translate-x-1/2 z-[1000] max-w-[92%] flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-solid border border-subtle shadow-xl select-none`}
+      className={`touch-none absolute ${raised ? 'bottom-44' : 'bottom-12'} left-1/2 -translate-x-1/2 z-[1000] max-w-[92%] flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-solid border border-subtle shadow-xl select-none`}
     >
       {/* Altitude pills */}
       <div className="flex items-center gap-0.5 shrink-0">

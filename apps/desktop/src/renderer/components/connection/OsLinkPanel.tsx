@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Cable, Check, Radio, Settings2, Usb, Wifi } from 'lucide-react';
 import { useOsIntegrationStore } from '../../stores/os-integration-store';
 import { useConnectionStore } from '../../stores/connection-store';
-import type { OsConnection } from '../../../shared/ardudeck-os-types';
+import type { OsConnection, OsDiscoveredVehicle } from '../../../shared/ardudeck-os-types';
 
 function ConnectionIcon({ type }: { type: OsConnection['type'] }): JSX.Element {
   const cls = 'w-4 h-4 shrink-0';
@@ -33,6 +33,7 @@ export function OsLinkPanel(): JSX.Element {
   const { t } = useTranslation();
   const links = useOsIntegrationStore((s) => s.links);
   const setActiveLink = useOsIntegrationStore((s) => s.setActiveLink);
+  const connectDiscovered = useOsIntegrationStore((s) => s.connectDiscovered);
   const openLinkSettings = useOsIntegrationStore((s) => s.openLinkSettings);
   const connectionState = useConnectionStore((s) => s.connectionState);
   const [pending, setPending] = useState<string | null>(null);
@@ -61,6 +62,15 @@ export function OsLinkPanel(): JSX.Element {
   };
 
   const newDevices = (links?.detected ?? []).filter((d) => d.verified && !links?.connections.some((c) => c.path === d.path));
+  const discovered = links?.discovered ?? [];
+
+  const connect = async (vehicle: OsDiscoveredVehicle) => {
+    setPending(vehicle.id);
+    setError(null);
+    const result = await connectDiscovered(vehicle);
+    if (!result.success) setError(result.error ?? t('connection:osLink.switchFailed'));
+    setPending(null);
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -108,6 +118,29 @@ export function OsLinkPanel(): JSX.Element {
               );
             })}
             {error && <div className="text-xs text-red-400">{error}</div>}
+          </div>
+        )}
+
+        {discovered.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-wider text-content-tertiary">{t('connection:osLink.detected')}</div>
+            {discovered.map((v) => (
+              <div key={v.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-subtle">
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm text-content truncate">{v.label}</span>
+                  <span className="block text-xs text-content-tertiary font-mono truncate">
+                    {t('connection:osLink.discoveredDetail', { sysid: v.sysid, host: v.connection.host, port: v.connection.port })}
+                  </span>
+                </span>
+                <button
+                  onClick={() => void connect(v)}
+                  disabled={pending !== null}
+                  className="px-3 py-1.5 rounded-md text-xs font-medium bg-teal-600 hover:bg-teal-500 text-white disabled:opacity-50"
+                >
+                  {pending === v.id ? t('connection:osLink.switching') : t('connection:osLink.connectTo')}
+                </button>
+              </div>
+            ))}
           </div>
         )}
 
