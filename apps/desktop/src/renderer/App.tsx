@@ -81,6 +81,7 @@ import { ActivityIndicator } from './components/ui/ActivityIndicator';
 import type { ElectronAPI } from '../main/preload';
 import type { LegacyStreamConsentRequest } from '../shared/ipc-channels';
 import logoImage from './assets/logo.png';
+import { isPrimaryLinkUp } from './lib/primary-link';
 
 // Welcome-screen quick-link cards. Every entry works WITHOUT a connected
 // vehicle - the welcome screen only shows while disconnected. Add a card by
@@ -326,7 +327,7 @@ function CollapsedSidebar({ onExpand }: { onExpand: () => void }) {
       <div className="flex-1" />
 
       {/* Disconnect button */}
-      {connectionState.isConnected && (
+      {isPrimaryLinkUp(connectionState) && (
         <button
           onClick={handleDisconnect}
           className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors"
@@ -647,6 +648,20 @@ function App() {
       return () => clearTimeout(timer);
     }
   }, [connectionState.isConnected, connectionState.protocol, connectionState.mavType, fetchParameters, fetchMetadata, fetchMission]);
+
+  // Focusing another vehicle (fleet list, map, rail) swaps whose parameters the
+  // configuration views show: drop the previous vehicle's set and load the new one.
+  const focusedVehicleKey = connectionState.focus?.vehicleKey ?? null;
+  const previousFocusRef = useRef<string | null>(null);
+  useEffect(() => {
+    const previous = previousFocusRef.current;
+    if (focusedVehicleKey) previousFocusRef.current = focusedVehicleKey;
+    if (!previous || !focusedVehicleKey || previous === focusedVehicleKey) return;
+    useParameterStore.getState().reset();
+    fetchParameters();
+    if (connectionState.mavType !== undefined) fetchMetadata(connectionState.mavType);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusedVehicleKey]);
 
   // Signing-aware retry: when signing state changes mid-connection (e.g. key auto-matched
   // or mismatch resolved), re-fetch params if they haven't loaded yet.

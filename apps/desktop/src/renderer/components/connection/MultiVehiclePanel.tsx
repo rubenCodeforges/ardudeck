@@ -49,8 +49,9 @@ function DiscoveredVehicles({ bearerBySysid }: { bearerBySysid: Map<number, stri
           <button
             key={v.key}
             onClick={() => selectActiveVehicle(v.key, v.transportId)}
-            className={`w-full flex items-center gap-2 px-3 py-2 border-b border-subtle last:border-0 text-left transition-colors ${
-              v.isActive ? 'bg-cyan-500/5' : 'hover:bg-surface-raised'
+            aria-pressed={v.isActive}
+            className={`w-full flex items-center gap-2 pr-3 py-2 border-b border-l-2 border-b-subtle last:border-b-0 text-left transition-colors ${
+              v.isActive ? 'pl-2.5 border-l-cyan-400 bg-cyan-500/10' : 'pl-2.5 border-l-transparent hover:bg-surface-raised'
             }`}
           >
             <span
