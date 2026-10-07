@@ -2,6 +2,8 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { readFileSync } from 'node:fs';
 import type { LinkService } from './link-service.js';
 import { parseSimSwarmRequest, type SimSwarm } from './sim-swarm.js';
+import { assessHealth } from './health.js';
+import type { VehicleState } from './vehicle-state.js';
 import type { LogFn } from './param-fetcher.js';
 import { detectDevices } from './connections.js';
 
@@ -72,7 +74,9 @@ function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
  * here; they use the MAVLink client port.
  *
  *   GET    /v1/info              service, OS and link details
- *   GET    /v1/vehicle           live vehicle state, or null
+ *   GET    /v1/vehicle           the focused vehicle's state and health, or null
+ *   GET    /v1/fleet             every vehicle on the link: summary, health, which one is focused
+ *   POST   /v1/fleet/focus       {sysid} focus a vehicle for the desktop, quick settings and the app
  *   GET    /v1/vehicle/params    cached parameter snapshot for the live vehicle
  *   GET    /v1/links             saved connections, active one, detected USB devices, discovered simulators
  *   GET    /v1/gnss              GNSS receivers on this machine (model, RTK capability, fix) and the operator position
@@ -118,7 +122,12 @@ export function createApi(link: LinkService, serviceVersion: string, { os = read
           params: { status: link.fetcher.status, ...link.fetcher.progress, error: link.fetcher.lastError },
         });
       case '/v1/vehicle':
-        return json(res, 200, v);
+        return json(res, 200, v ? { ...v, health: assessHealth(v) } : null);
+      case '/v1/fleet':
+        return json(res, 200, {
+          focusSysid: link.focusedSysid,
+          vehicles: link.fleet.vehicles.map((f) => fleetSummary(f, link)),
+        });
       case '/v1/vehicle/params': {
         if (!v) return json(res, 404, { error: 'no vehicle' });
         const snap = link.cache.get(v.uid);
@@ -151,6 +160,23 @@ export function createApi(link: LinkService, serviceVersion: string, { os = read
   });
 }
 
+function fleetSummary(v: VehicleState, link: LinkService) {
+  const roster = link.linkInfo.roster.find((r) => r.virtualSysid === v.sysid);
+  return {
+    sysid: v.sysid,
+    connected: v.connected,
+    firmware: v.firmware,
+    mavType: v.mavType,
+    mode: v.mode,
+    armed: v.armed,
+    battery: v.battery,
+    gps: v.gps,
+    position: v.position,
+    bearer: roster?.bearer ?? null,
+    health: assessHealth(v),
+  };
+}
+
 async function handleWrite(link: LinkService, sim: SimSwarm | undefined, req: IncomingMessage, res: ServerResponse, path: string, log?: LogFn): Promise<void> {
   if (req.headers['x-ardudeck'] !== '1') return json(res, 403, { error: 'missing X-ArduDeck header' });
   try {
@@ -177,6 +203,10 @@ async function handleWrite(link: LinkService, sim: SimSwarm | undefined, req: In
         await link.setActive(String(body.id ?? ''));
         log?.('info', `links: active ${String(body.id)}`);
         return json(res, 200, link.settings);
+      case '/v1/fleet/focus':
+        link.setFocus(Number(body.sysid));
+        log?.('info', `fleet: focus sysid ${String(body.sysid)}`);
+        return json(res, 200, { focusSysid: link.focusedSysid });
       case '/v1/links/join':
         await link.join(String(body.id ?? ''));
         log?.('info', `links: joined ${String(body.id)}`);

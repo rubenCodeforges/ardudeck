@@ -8,6 +8,7 @@ import {
   ATTITUDE_ID, deserializeAttitude,
   STATUSTEXT_ID, deserializeStatustext,
   AUTOPILOT_VERSION_ID, deserializeAutopilotVersion,
+  EKF_STATUS_REPORT_ID, deserializeEkfStatusReport,
 } from '@ardudeck/mavlink-ts';
 import { getFlightModeName, isVehicleHeartbeat } from '@ardudeck/vehicle-core';
 
@@ -45,6 +46,10 @@ export interface VehicleState {
   mode: string;
   systemStatus: number;
   battery: { voltage: number | null; current: number | null; remaining: number | null };
+  /** SYS_STATUS sensor bitmaps (present, enabled, healthy), null until the first SYS_STATUS. */
+  sensors: { present: number; enabled: number; health: number } | null;
+  /** EKF_STATUS_REPORT flags (ArduPilot), null when the autopilot does not send them. */
+  ekfFlags: number | null;
   gps: { fixType: number; satellites: number | null; hdop: number | null };
   position: { lat: number; lon: number; altMsl: number; altRel: number; heading: number | null } | null;
   attitude: { roll: number; pitch: number; yaw: number } | null;
@@ -85,6 +90,8 @@ function blankVehicle(sysid: number, compid: number): VehicleState {
     mode: '',
     systemStatus: 0,
     battery: { voltage: null, current: null, remaining: null },
+    sensors: null,
+    ekfFlags: null,
     gps: { fixType: 0, satellites: null, hdop: null },
     position: null,
     attitude: null,
@@ -115,8 +122,16 @@ export class VehicleTracker {
           current: m.currentBattery === -1 ? null : m.currentBattery / 100,
           remaining: m.batteryRemaining === -1 ? null : m.batteryRemaining,
         };
+        v.sensors = {
+          present: m.onboardControlSensorsPresent,
+          enabled: m.onboardControlSensorsEnabled,
+          health: m.onboardControlSensorsHealth,
+        };
         break;
       }
+      case EKF_STATUS_REPORT_ID:
+        v.ekfFlags = deserializeEkfStatusReport(packet.payload).flags;
+        break;
       case GPS_RAW_INT_ID: {
         const m = deserializeGpsRawInt(packet.payload);
         v.gps = {
@@ -216,5 +231,46 @@ export class VehicleTracker {
 
   get current(): VehicleState | null {
     return this.vehicle;
+  }
+}
+
+/** A vehicle forgotten this long after its last heartbeat drops off the fleet. */
+const FORGET_AFTER_MS = 120_000;
+
+/** One tracker per system id: every vehicle the orchestrator delivers. */
+export class FleetTracker {
+  private readonly trackers = new Map<number, VehicleTracker>();
+
+  handle(packet: MAVLinkPacket, now = Date.now()): void {
+    let tracker = this.trackers.get(packet.sysid);
+    if (!tracker) {
+      if (packet.msgid !== HEARTBEAT_ID) return;
+      tracker = new VehicleTracker();
+      this.trackers.set(packet.sysid, tracker);
+    }
+    tracker.handle(packet, now);
+  }
+
+  checkTimeouts(now = Date.now()): void {
+    for (const [sysid, tracker] of this.trackers) {
+      tracker.checkTimeout(now);
+      const v = tracker.current;
+      if (!v || (!v.connected && now - v.lastHeartbeat > FORGET_AFTER_MS)) this.trackers.delete(sysid);
+    }
+  }
+
+  get(sysid: number): VehicleState | null {
+    return this.trackers.get(sysid)?.current ?? null;
+  }
+
+  get vehicles(): VehicleState[] {
+    return [...this.trackers.values()]
+      .map((t) => t.current)
+      .filter((v): v is VehicleState => v !== null)
+      .sort((a, b) => a.sysid - b.sysid);
+  }
+
+  reset(): void {
+    this.trackers.clear();
   }
 }

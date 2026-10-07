@@ -7,7 +7,7 @@ import {
 } from '@ardudeck/mavlink-ts';
 import type { LinkdConfig } from './config.js';
 import { ClientRouter } from './client-router.js';
-import { VehicleTracker, type VehicleState } from './vehicle-state.js';
+import { FleetTracker, VehicleTracker, type VehicleState } from './vehicle-state.js';
 import { ParamCache } from './param-cache.js';
 import { ParamFetcher, type LogFn } from './param-fetcher.js';
 import { GnssDetector } from './gnss/detector.js';
@@ -73,6 +73,9 @@ interface Session {
 export class LinkService {
   readonly router: ClientRouter;
   readonly tracker = new VehicleTracker();
+  readonly fleet = new FleetTracker();
+  /** The vehicle the OS shows and acts on; null follows the first vehicle on the link. */
+  private focusSysid: number | null = null;
   readonly cache: ParamCache;
   readonly fetcher: ParamFetcher;
   readonly gnss: GnssDetector;
@@ -294,6 +297,7 @@ export class LinkService {
     this.fetcher.abort();
     this.session = null;
     this.tracker.reset();
+    this.fleet.reset();
     this.parser.reset();
     if (!t) return;
     t.removeAllListeners();
@@ -313,7 +317,16 @@ export class LinkService {
   }
 
   get vehicle(): VehicleState | null {
-    return this.tracker.current;
+    return (this.focusSysid !== null ? this.fleet.get(this.focusSysid) : null) ?? this.tracker.current;
+  }
+
+  get focusedSysid(): number | null {
+    return this.vehicle?.sysid ?? null;
+  }
+
+  setFocus(sysid: number): void {
+    if (!this.fleet.get(sysid)) throw new Error(`no vehicle with system id ${sysid}`);
+    this.focusSysid = sysid;
   }
 
   get linkInfo() {
@@ -353,6 +366,7 @@ export class LinkService {
     this.router.forward(data);
     this.parser.feed(data);
     for (let pkt = this.parser.parseNext(); pkt; pkt = this.parser.parseNext()) {
+      this.fleet.handle(pkt);
       const event = this.tracker.handle(pkt);
       if (pkt.sysid === this.tracker.current?.sysid) this.lastRx.set(pkt.msgid, Date.now());
       this.fetcher.handlePacket(pkt, this.tracker.current);
@@ -374,6 +388,7 @@ export class LinkService {
       void this.applyLink();
     }
     this.sendHeartbeat();
+    this.fleet.checkTimeouts(now);
     if (this.tracker.checkTimeout(now)) {
       this.log('info', 'vehicle link lost');
       this.fetcher.abort();

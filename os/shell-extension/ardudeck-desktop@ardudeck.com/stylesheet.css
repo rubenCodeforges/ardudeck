@@ -60,3 +60,11 @@
   color: #d1d5db;
 }
 .adk-cluster { spacing: 18px; }
+
+.adk-swarm-row { padding: 6px 4px; border-radius: 8px; }
+.adk-swarm-row:hover { background-color: rgba(255, 255, 255, 0.06); }
+.adk-swarm-focused { background-color: rgba(45, 212, 191, 0.14); }
+.adk-swarm-dot { font-size: 11px; padding-right: 8px; }
+.adk-swarm-id { font-family: "JetBrains Mono", monospace; font-weight: bold; color: #f3f4f6; min-width: 56px; }
+.adk-swarm-mode { font-size: 12px; padding-left: 6px; }
+.adk-swarm-bat { font-family: "JetBrains Mono", monospace; font-size: 12px; color: #9ca3af; padding-left: 10px; }

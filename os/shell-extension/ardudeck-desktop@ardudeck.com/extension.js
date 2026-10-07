@@ -17,9 +17,12 @@ import {VehicleLinkIndicator} from './quick-settings.js';
 import {DesktopSurfaceManager} from './surface.js';
 import {DesktopMenu, sceneForWorkspace} from './desktop-menu.js';
 import {PowerButtonScreenOff} from './power-button.js';
+import {SwarmCard} from './swarm-card.js';
 
 const STATION_URL = 'http://127.0.0.1:47800/state';
 const VEHICLE_URL = 'http://127.0.0.1:47801/v1/vehicle';
+const FLEET_URL = 'http://127.0.0.1:47801/v1/fleet';
+const FLEET_POLL_MS = 1000;
 const STATION_POLL_MS = 1000;
 const VEHICLE_POLL_MS = 250;
 const MARGIN = 48;
@@ -171,11 +174,19 @@ function renderVehicle(card, v, serviceUp) {
     card.setStatus(`${v.armed ? 'ARMED' : 'DISARMED'} · ${v.mode || '?'}`, v.armed ? 'armed' : 'good');
     const fw = v.firmware === 'ardupilot' ? 'ArduPilot' : v.firmware === 'px4' ? 'PX4' : 'MAVLink';
     const rows = [['Firmware', `${fw}${v.firmwareVersion ? ' ' + v.firmwareVersion : ''}`]];
+    if (v.health && v.health.level !== 'unknown') rows.push(healthRow(v.health));
     if (v.gps) rows.push(['GPS', v.gps.fixType >= 3 ? `${v.gps.satellites ?? '?'} sats${v.gps.fixType >= 5 ? '  RTK' : ''}` : 'No fix', v.gps.fixType >= 3 ? 'good' : 'warn']);
     if (v.position) rows.push(['Position', fmtCoord(v.position.lat, v.position.lon)]);
     card.setRows(rows);
-    card.setMessages((v.messages ?? []).slice(-MAX_MESSAGES).reverse());
+    const issues = (v.health?.issues ?? []).map(text => ({text, severity: v.health.level === 'bad' ? 3 : 4}));
+    card.setMessages([...issues, ...(v.messages ?? []).slice(-MAX_MESSAGES).reverse()].slice(0, MAX_MESSAGES + issues.length));
     card.footer.text = `System ${v.sysid} · MAVLink ${v.mavlinkVersion}`;
+}
+
+function healthRow(health) {
+    if (health.level === 'ok') return ['Health', 'OK', 'good'];
+    if (health.level === 'bad') return ['Health', 'Fault', 'bad'];
+    return ['Health', `${health.issues.length} warning${health.issues.length === 1 ? '' : 's'}`, 'warn'];
 }
 
 /** Bottom instrument cluster: BAT, SPD, attitude ball, ALT, HDG. */
@@ -314,9 +325,10 @@ export default class ArduDeckDesktop extends Extension {
         this._station = new Card('GROUND STATION');
         this._vehicle = new Card('VEHICLE');
         this._cluster = new Cluster();
+        this._swarm = new SwarmCard(this._api);
 
         this._root = new St.Widget({style_class: 'adk-root', reactive: false});
-        for (const a of [this._station.actor, this._vehicle.actor, this._cluster.actor])
+        for (const a of [this._station.actor, this._vehicle.actor, this._swarm.actor, this._cluster.actor])
             this._root.add_child(a);
         Main.layoutManager._backgroundGroup.add_child(this._root);
 
@@ -334,8 +346,9 @@ export default class ArduDeckDesktop extends Extension {
         this._applyVisibility();
 
         this._monitorsId = Main.layoutManager.connect('monitors-changed', () => this._place());
-        for (const a of [this._vehicle.actor, this._cluster.actor])
+        for (const a of [this._vehicle.actor, this._swarm.actor, this._cluster.actor])
             a.connect('notify::width', () => this._place());
+        this._vehicle.actor.connect('notify::height', () => this._place());
         this._place();
 
         renderStation(this._station, {});
@@ -343,6 +356,7 @@ export default class ArduDeckDesktop extends Extension {
         this._timers = [
             this._every(STATION_POLL_MS, () => this._pollStation()),
             this._every(VEHICLE_POLL_MS, () => this._pollVehicle()),
+            this._every(FLEET_POLL_MS, () => this._pollFleet()),
         ];
     }
 
@@ -360,6 +374,7 @@ export default class ArduDeckDesktop extends Extension {
         const top = m.y + Main.panel.height + MARGIN;
         this._station.actor.set_position(m.x + MARGIN, top);
         this._vehicle.actor.set_position(m.x + m.width - MARGIN - this._vehicle.actor.width, top);
+        this._swarm.actor.set_position(m.x + m.width - MARGIN - this._swarm.actor.width, top + this._vehicle.actor.height + MARGIN / 2);
         const c = this._cluster.actor;
         c.set_position(m.x + Math.round((m.width - c.width) / 2), m.y + m.height - MARGIN - ATTITUDE);
     }
@@ -389,6 +404,10 @@ export default class ArduDeckDesktop extends Extension {
                 this._station.setRows([]);
                 this._station.footer.text = 'ardudeck-stationd is not running';
             });
+    }
+
+    _pollFleet() {
+        this._get(FLEET_URL, '_fleetInflight', fleet => this._swarm.update(fleet), () => this._swarm.update(null));
     }
 
     _pollVehicle() {
@@ -443,7 +462,7 @@ export default class ArduDeckDesktop extends Extension {
         this._monitorsId = 0;
         this._root?.destroy();
         this._root = null;
-        this._station = this._vehicle = this._cluster = null;
+        this._station = this._vehicle = this._cluster = this._swarm = null;
         this._session?.abort();
         this._session = null;
     }
