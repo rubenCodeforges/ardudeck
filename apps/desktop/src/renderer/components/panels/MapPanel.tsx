@@ -387,8 +387,15 @@ function MapController({
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // Trailing debounce: a resize animation (sidebar collapse, split drag)
+    // fires the observer every frame, and one invalidateSize per frame made
+    // Leaflet relayout the whole map ~18 times per 300 ms transition. Relayout
+    // once, after the size has settled.
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const resizeObserver = new ResizeObserver(() => {
-      setTimeout(() => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
         // Safety check: ensure map is initialized and has valid container
         try {
           if (map && map.getContainer()) {
@@ -403,6 +410,7 @@ function MapController({
     resizeObserver.observe(containerRef.current);
 
     return () => {
+      if (timer) clearTimeout(timer);
       resizeObserver.disconnect();
     };
   }, [map, containerRef]);

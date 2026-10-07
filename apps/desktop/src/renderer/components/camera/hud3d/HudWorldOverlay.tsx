@@ -121,10 +121,20 @@ export function HudWorldOverlay({
       setSize({ w: Math.max(1, Math.round(r.width)), h: Math.max(1, Math.round(r.height)) });
     };
     measure();
-    const ro = new ResizeObserver(measure);
+    // Trailing debounce: a layout animation fires this every frame, and each
+    // size change reallocates the WebGL drawing buffer below.
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+    const ro = new ResizeObserver(() => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        resizeTimer = null;
+        measure();
+      }, 120);
+    });
     if (parent) ro.observe(parent);
 
     return () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
       ro.disconnect();
       sym.dispose();
       renderer.dispose();
@@ -137,6 +147,13 @@ export function HudWorldOverlay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Drawing-buffer size only when the size really changes: setSize assigns
+  // canvas.width/height, which reallocates the buffer even for the same value,
+  // and the draw effect below runs at telemetry rate.
+  useEffect(() => {
+    rendererRef.current?.setSize(size.w, size.h, false);
+  }, [size.w, size.h]);
+
   // ─── On-demand draw: one render per pose / mission / size change ───────────
   useEffect(() => {
     const renderer = rendererRef.current;
@@ -145,7 +162,6 @@ export function HudWorldOverlay({
     const sym = symRef.current;
     if (!renderer || !scene || !camera || !sym) return;
 
-    renderer.setSize(size.w, size.h, false);
     camera.aspect = size.w / Math.max(1, size.h);
     camera.fov = fov;
 

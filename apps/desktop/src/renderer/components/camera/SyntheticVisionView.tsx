@@ -396,13 +396,31 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
     sceneRef.current = scene;
     setSvtFov(scene.getFov());
 
+    let lastW = 0;
+    let lastH = 0;
     const sizeToContainer = () => {
       const r = container.getBoundingClientRect();
-      scene.resize(r.width, r.height);
+      const w = Math.round(r.width);
+      const h = Math.round(r.height);
+      if (w === lastW && h === lastH) return;
+      lastW = w;
+      lastH = h;
+      scene.resize(w, h);
       dirtyRef.current = true;
     };
     sizeToContainer();
-    const ro = new ResizeObserver(sizeToContainer);
+    // Resizing the WebGL drawing buffer reallocates it; doing that on every
+    // frame of a layout animation (sidebar collapse, split drag) cost ~400 ms
+    // per transition. While the size is changing the canvas just stretches
+    // via CSS; the buffer follows once the size has settled.
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+    const ro = new ResizeObserver(() => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        resizeTimer = null;
+        sizeToContainer();
+      }, 120);
+    });
     ro.observe(container);
 
     let raf = 0;
@@ -462,6 +480,7 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
 
     return () => {
       cancelAnimationFrame(raf);
+      if (resizeTimer) clearTimeout(resizeTimer);
       ro.disconnect();
       scene.dispose();
       sceneRef.current = null;
