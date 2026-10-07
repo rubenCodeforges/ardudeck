@@ -95,23 +95,30 @@ function useCalm(calm: boolean): void {
   }, [calm]);
 }
 
-export type SurfaceScene = 'map-svt' | 'map' | 'svt';
-
-function sceneFromUrl(): SurfaceScene {
-  const s = new URLSearchParams(window.location.search).get('scene');
-  return s === 'map' || s === 'svt' ? s : 'map-svt';
+/**
+ * The scene owns the split the way a workspace layout does, so MapPanel must not
+ * ask which cockpit to use. Not persisted: sibling workspace windows share localStorage.
+ */
+function applySceneSplit(target: 'camera' | null): void {
+  useMapSplitStore.setState({ target, layoutApplyPending: target !== null });
 }
+
+function applySceneFromUrl(): SurfaceScene {
+  const s = new URLSearchParams(window.location.search).get('scene');
+  const scene: SurfaceScene = s === 'map' || s === 'svt' ? s : 'map-svt';
+  if (scene === 'map') applySceneSplit(null);
+  if (scene === 'map-svt') applySceneSplit('camera');
+  return scene;
+}
+
+export type SurfaceScene = 'map-svt' | 'map' | 'svt';
 
 export function SurfaceRoot(): JSX.Element {
   const { t } = useTranslation();
-  const [scene] = useState(sceneFromUrl);
+  const [scene] = useState(applySceneFromUrl);
 
   useEffect(() => {
     initializeSettings();
-    // Each workspace window renders one scene (desktop-surface.ts). Apply it
-    // with setState so it isn't persisted: sibling windows share localStorage.
-    if (scene === 'map') useMapSplitStore.setState({ target: null });
-    if (scene === 'map-svt') useMapSplitStore.setState({ target: 'camera' });
     if (scene === 'map-svt' || scene === 'svt') useCameraStore.getState().setRenderMode('synthetic');
   }, [scene]);
 

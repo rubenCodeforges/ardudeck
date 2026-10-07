@@ -9,11 +9,20 @@
  * The shell extension finds each window by its title and pins it to its
  * workspace beneath every other window.
  */
-import { execFile, spawn, type ChildProcess } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { watch, type FSWatcher } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 export const SURFACE_TITLE_PREFIX = 'ArduDeck Desktop Surface'; // i18n-exempt: window identity the shell extension matches on
 const SCHEMA = 'org.gnome.shell.extensions.ardudeck-desktop';
 const KEY = 'workspace-desktops';
+/**
+ * GNOME stores GSettings in this dconf database. Watching the file instead of running
+ * `gsettings monitor` leaves no child process behind if the surface is killed.
+ */
+const DCONF_DIR = path.join(os.homedir(), '.config', 'dconf');
+const DCONF_DB = 'user';
 
 /** Scenes this app renders; 'instruments' and 'wallpaper' are drawn by the shell. */
 export const APP_SCENES = new Set(['map-svt', 'map', 'svt']);
@@ -42,23 +51,31 @@ function readSetting(): Promise<Map<number, string>> {
 
 export class DesktopSurfaces {
   private readonly windows = new Map<number, SurfaceWindow>();
-  private monitor: ChildProcess | null = null;
+  private watcher: FSWatcher | null = null;
+  private reconciling: Promise<void> = Promise.resolve();
 
   constructor(private readonly create: CreateSurfaceWindow) {}
 
   async start(): Promise<void> {
     await this.reconcile();
-    // `gsettings monitor` prints a line on every change of the key.
-    this.monitor = spawn('gsettings', ['monitor', SCHEMA, KEY], { stdio: ['ignore', 'pipe', 'ignore'] });
-    this.monitor.stdout?.on('data', () => void this.reconcile());
-    this.monitor.on('error', () => { /* no gsettings: keep the initial layout */ });
+    try {
+      this.watcher = watch(DCONF_DIR, (_event, file) => {
+        if (file === DCONF_DB) this.scheduleReconcile();
+      });
+    } catch {
+      // No dconf database yet: the initial layout stays until the next start.
+    }
   }
 
   stop(): void {
-    this.monitor?.kill();
-    this.monitor = null;
+    this.watcher?.close();
+    this.watcher = null;
     for (const w of this.windows.values()) w.close();
     this.windows.clear();
+  }
+
+  private scheduleReconcile(): void {
+    this.reconciling = this.reconciling.then(() => this.reconcile());
   }
 
   private async reconcile(): Promise<void> {
