@@ -15,10 +15,26 @@ import {
   tileYToLat,
 } from './svt-tile-queue';
 import { M_PER_DEG_LAT, metersPerDegLon, type ElevationGrid } from './svt-terrain';
+import { MAP_LAYERS } from '../../../../shared/map-layers';
 
-const IMAGERY_URL = 'tile-cache://googleSat/{z}/{x}/{y}.png';
-/** googleSat's highest native zoom; above it the server upsamples anyway. */
+/** The map's plain satellite layers, in the map's order, offered as the terrain texture. */
+export const SVT_IMAGERY_LAYERS = ['satellite', 'googleSat', 'bingSat'] as const;
+export type SvtImagery = (typeof SVT_IMAGERY_LAYERS)[number];
+export const DEFAULT_SVT_IMAGERY: SvtImagery = 'googleSat';
+
+/** A stored choice that is no longer offered falls back to the default. */
+export function validImagery(v: unknown): SvtImagery {
+  return SVT_IMAGERY_LAYERS.includes(v as SvtImagery) ? (v as SvtImagery) : DEFAULT_SVT_IMAGERY;
+}
+
+/** Ceiling for any source: past it the mosaics outgrow GPU memory for the same ground. */
 const MAX_IMAGERY_ZOOM = 19;
+
+/** Highest zoom this source serves real pixels at; above it the server only upsamples. */
+export function imageryMaxZoom(imagery: SvtImagery): number {
+  const layer: { maxZoom: number; maxNativeZoom?: number } = MAP_LAYERS[imagery];
+  return Math.min(MAX_IMAGERY_ZOOM, layer.maxNativeZoom ?? layer.maxZoom);
+}
 
 /**
  * Never reduced by the quality setting: the near field stays sharpest. The
@@ -79,22 +95,22 @@ function tileSpanM(z: number, lat: number): number {
 
 /** Widest inner ring that still lands on native-zoom imagery: a span two tiles
  * too wide drops the whole mosaic a zoom and halves near-field resolution. */
-export function nativeZoomSpanM(lat: number, tiles: number): number {
+export function nativeZoomSpanM(lat: number, tiles: number, maxZoom: number = MAX_IMAGERY_ZOOM): number {
   // One tile of slack: the box is not aligned to the tile grid.
-  return Math.max(200, (tiles - 1) * tileSpanM(MAX_IMAGERY_ZOOM, lat));
+  return Math.max(200, (tiles - 1) * tileSpanM(maxZoom, lat));
 }
 
 /** Kilometre-wide inner rings (chase, top-down) are deliberate: leave them. */
-function innerSpanM(requested: number, lat: number, tiles: number): number {
+function innerSpanM(requested: number, lat: number, tiles: number, maxZoom: number): number {
   if (requested > 2_000) return requested;
   // Clamped to the memory cap: trimming to native zoom must not let a caller
   // with a bigger tile budget build a mosaic past what the GPU can hold.
-  return Math.min(requested, nativeZoomSpanM(lat, Math.min(tiles, INNER_RING_TILES)));
+  return Math.min(requested, nativeZoomSpanM(lat, Math.min(tiles, INNER_RING_TILES), maxZoom));
 }
 
 /** Highest zoom whose tile count stays inside the budget for these bounds. */
-export function bestZoom(b: Bounds, maxTilesPerSide: number): number {
-  for (let z = MAX_IMAGERY_ZOOM; z >= 2; z--) {
+export function bestZoom(b: Bounds, maxTilesPerSide: number, maxZoom: number = MAX_IMAGERY_ZOOM): number {
+  for (let z = maxZoom; z >= 2; z--) {
     const tilesX = Math.floor(lonToTileX(b.east, z)) - Math.floor(lonToTileX(b.west, z)) + 1;
     const tilesY = Math.floor(latToTileY(b.south, z)) - Math.floor(latToTileY(b.north, z)) + 1;
     if (tilesX <= maxTilesPerSide && tilesY <= maxTilesPerSide) return z;
@@ -141,8 +157,8 @@ export function ringRect(grid: ElevationGrid, b: Bounds): Omit<DrapeRing, 'textu
  * Fetch and stitch imagery for one ring. Returns null when nothing loaded, so
  * the caller can fall back to the elevation ramp instead of a blank drape.
  */
-async function loadRing(b: Bounds, maxTilesPerSide: number): Promise<{ canvas: HTMLCanvasElement } & Bounds | null> {
-  const z = bestZoom(b, maxTilesPerSide);
+async function loadRing(b: Bounds, maxTilesPerSide: number, imagery: SvtImagery): Promise<{ canvas: HTMLCanvasElement } & Bounds | null> {
+  const z = bestZoom(b, maxTilesPerSide, imageryMaxZoom(imagery));
   const n = 2 ** z;
   const clamp = (v: number) => Math.max(0, Math.min(n - 1, v));
   const x0 = clamp(Math.floor(lonToTileX(b.west, z)));
@@ -163,7 +179,7 @@ async function loadRing(b: Bounds, maxTilesPerSide: number): Promise<{ canvas: H
     Array.from({ length: tilesX * tilesY }, (_unused, idx) => {
       const cx = idx % tilesX;
       const cy = Math.floor(idx / tilesX);
-      const url = IMAGERY_URL
+      const url = `tile-cache://${imagery}/{z}/{x}/{y}.png`
         .replace('{z}', String(z))
         .replace('{x}', String(x0 + cx))
         .replace('{y}', String(y0 + cy));
@@ -198,7 +214,9 @@ export async function loadDrapeRings(
   at?: { lat: number; lon: number },
   spans: number[] = RING_SPANS_M,
   innerTiles: number = INNER_RING_TILES,
+  imagery: SvtImagery = DEFAULT_SVT_IMAGERY,
 ): Promise<DrapeRing[]> {
+  const maxZoom = imageryMaxZoom(imagery);
   const dLat = grid.halfSizeM / M_PER_DEG_LAT;
   const dLon = grid.halfSizeM / grid.mPerDegLon;
   const patch: Bounds = {
@@ -211,8 +229,8 @@ export async function loadDrapeRings(
   const rings: DrapeRing[] = [];
   for (let i = 0; i < spans.length; i++) {
     const budget = i === 0 ? innerTiles : Math.min(outerTiles, MAX_OUTER_RING_TILES);
-    const span = i === 0 ? innerSpanM(spans[i]!, grid.centerLat, budget) : spans[i]!;
-    const mosaic = await loadRing(capSpan(patch, span, grid.centerLat, at), budget);
+    const span = i === 0 ? innerSpanM(spans[i]!, grid.centerLat, budget, maxZoom) : spans[i]!;
+    const mosaic = await loadRing(capSpan(patch, span, grid.centerLat, at), budget, imagery);
     if (!mosaic) continue;
     const texture = new THREE.CanvasTexture(mosaic.canvas);
     texture.colorSpace = THREE.SRGBColorSpace;

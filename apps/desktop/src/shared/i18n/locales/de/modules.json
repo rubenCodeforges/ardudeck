@@ -120,5 +120,27 @@
     "replacesFence_other": "Dies ersetzt den bereits vorhandenen Einschluss-Geofence ({{count}} Formen, {{points}} Punkte). Er gilt dann nicht mehr.",
     "returnPoint": "den Rückkehrpunkt",
     "writeToAircraft": "Auf Luftfahrzeug schreiben"
+  },
+  "production": {
+    "notConnected": "Zuerst ein Fahrzeug verbinden",
+    "paramsNotLoaded": "Warten, bis der Parameter-Download abgeschlossen ist",
+    "modelNotFound": "Modell {{model}} ist nicht im Vault",
+    "nameRequired": "Dem Modell einen Namen geben",
+    "declined": "Das Schreiben der Golden-Konfiguration wurde abgelehnt"
+  },
+  "productionWriteDialog": {
+    "kicker": "Produktionslinie",
+    "title": "Golden-Konfiguration {{model}} schreiben?",
+    "body_one": "{{count}} Parameter auf diesem Board weicht derzeit vom Golden ab.",
+    "body_other": "{{count}} Parameter auf diesem Board weichen derzeit vom Golden ab.",
+    "resetFirst": "Das Board wird zuerst auf Firmware-Standardwerte zurückgesetzt, dann wird das ganze Golden geschrieben und das Board neu gestartet, bis es übereinstimmt.",
+    "armBody": "Jedes an dieser Station vorbereitete Board erhält dieses Golden bis zum Neustart der App, auch Boards, die beim Anstecken automatisch vorbereitet werden.",
+    "param": "Parameter",
+    "now": "Board jetzt",
+    "golden": "Golden",
+    "calibrationKept": "Kalibrierung, Sensor-IDs und Laufzeitzähler werden nie geschrieben: sie gehören zu jedem einzelnen Board.",
+    "remember": "Dieses Golden ohne erneute Nachfrage auf jedes Board schreiben, bis die App neu startet",
+    "write": "Golden schreiben",
+    "arm": "Modell freigeben"
   }
 }

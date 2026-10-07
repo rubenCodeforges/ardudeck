@@ -140,6 +140,7 @@ export async function activateLicense(
   const modules = activateResult.modules;
   const activatableSlugs = new Set(activateResult.activatable ?? []);
   const newModules: InstalledModule[] = [];
+  const requiredSlugs = new Set<string>();
 
   for (let i = 0; i < modules.length; i++) {
     const slug = modules[i]!;
@@ -234,6 +235,8 @@ export async function activateLicense(
         );
       }
 
+      for (const dep of parsed.manifest.requires ?? []) requiredSlugs.add(dep);
+
       newModules.push({
         slug: parsed.manifest.slug,
         name: parsed.manifest.name,
@@ -265,6 +268,18 @@ export async function activateLicense(
   store.set('modules', [...filteredModules, ...newModules]);
   // Deduped: re-activation of an already-known key is the module UPDATE path.
   store.set('licenseKeys', Array.from(new Set([...currentKeys, key])));
+
+  // Pull in missing free dependencies (Production Line needs Fleet Vault).
+  const installedSlugs = new Set(store.get('modules').map((m) => m.slug));
+  for (const dep of requiredSlugs) {
+    if (installedSlugs.has(dep)) continue;
+    onProgress({ stage: 'activating', message: t('main:moduleManager.installingDependency', { slug: dep }) });
+    const depResult = await installFreeCargo(dep, () => undefined);
+    if (!depResult.success) {
+      onProgress({ stage: 'error', message: t('main:moduleManager.dependencyFailed', { slug: dep, msg: depResult.error ?? '' }) });
+      return { success: false, error: t('main:moduleManager.dependencyFailed', { slug: dep, msg: depResult.error ?? '' }) };
+    }
+  }
 
   onProgress({ stage: 'complete', message: t('main:moduleManager.activated', { count: newModules.length }), percent: 100 });
 

@@ -12,6 +12,7 @@ import { protocol, app, net } from 'electron';
 import { getDevModulePath } from './module-dev.js';
 import { pathToFileURL } from 'node:url';
 import { join, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
 
 export const MODULE_SCHEME = 'ardudeck-module';
 
@@ -50,6 +51,8 @@ export function setupModuleProtocol(): void {
         return new Response('Path traversal rejected', { status: 403 }); // i18n-exempt
       }
 
+      // Optional assets (a cargo's icon.png) may simply not exist: answer 404 instead of an error log.
+      if (!existsSync(target)) return new Response('Not found', { status: 404 }); // i18n-exempt
       return net.fetch(pathToFileURL(target).href);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

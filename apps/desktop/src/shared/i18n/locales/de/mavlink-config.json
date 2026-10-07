@@ -1615,7 +1615,8 @@
     "savedPartial_one": "{{saved}}/{{total}} Kanäle gespeichert, {{count}} Parameter abgelehnt.",
     "savedPartial_other": "{{saved}}/{{total}} Kanäle gespeichert, {{count}} Parameter abgelehnt.",
     "signalLost": "Signal verloren",
-    "trim": "Trim"
+    "trim": "Trim",
+    "inavReadOnly": "INAV stellt seine Einstellungen nicht über MAVLink bereit. Hier sehen Sie die Live-Kanäle in INAV-Reihenfolge. Um Empfänger, Ports oder Kanalzuordnung zu ändern, verbinden Sie per USB über MSP (INAV)."
   },
   "responsePlot": {
     "live": "LIVE",

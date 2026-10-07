@@ -223,3 +223,51 @@ export function verifyCalibrationPersisted(
 
   return { state: 'verified', summary: t('shared:calibrationQuality.persisted'), mismatched: [] };
 }
+
+// ── Outcome of one run ───────────────────────────────────────────────────────
+
+const VERDICT_RANK: Record<string, number> = { good: 0, unknown: 1, marginal: 2, bad: 3 };
+
+/** How good a finished calibration is, from what it wrote. The worst compass decides a compass run. */
+export function assessCalibrationOutcome(
+  calType: string,
+  written: Record<string, number>,
+  compassFitnesses: number[],
+): CalibrationAssessment {
+  if (calType === 'compass') {
+    if (compassFitnesses.length === 0) {
+      return { verdict: 'unknown', summary: t('shared:calibrationQuality.noCompassFitness') };
+    }
+    return compassFitnesses
+      .map((f) => assessCompassFitness(f))
+      .reduce((worst, next) => ((VERDICT_RANK[next.verdict] ?? 0) > (VERDICT_RANK[worst.verdict] ?? 0) ? next : worst));
+  }
+  if (calType === 'accel-6point') {
+    const num = (name: string): number | undefined => written[name];
+    const offsets = num('INS_ACCOFFS_X') !== undefined
+      ? { x: num('INS_ACCOFFS_X')!, y: num('INS_ACCOFFS_Y') ?? 0, z: num('INS_ACCOFFS_Z') ?? 0 }
+      : undefined;
+    const scales = num('INS_ACCSCAL_X') !== undefined
+      ? { x: num('INS_ACCSCAL_X')!, y: num('INS_ACCSCAL_Y') ?? 1, z: num('INS_ACCSCAL_Z') ?? 1 }
+      : undefined;
+    return assessAccelCalibration({ offsets, scales });
+  }
+  return { verdict: 'unknown', summary: t('shared:calibrationQuality.recorded') };
+}
+
+export function buildCalibrationRecord(
+  calType: string,
+  written: Record<string, number>,
+  compassFitnesses: number[],
+  completedAt = Date.now(),
+): CalibrationRecordIpc {
+  const a = assessCalibrationOutcome(calType, written, compassFitnesses);
+  return {
+    type: calType,
+    written,
+    verdict: a.verdict,
+    summary: a.advice ? `${a.summary} ${a.advice}` : a.summary,
+    completedAt,
+    persistence: null,
+  };
+}

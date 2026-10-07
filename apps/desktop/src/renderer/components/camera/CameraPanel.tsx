@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { SvtImageryPicker } from './svt/SvtImageryPicker';
 import { Camera, Circle, Film, Layers, RotateCw, SlidersHorizontal } from 'lucide-react';
 import { useActiveVehicleStore } from '../../stores/active-vehicle-store';
 import { useFleetVehicles, type FleetVehicle } from '../../hooks/useFleet';
@@ -61,19 +62,6 @@ function MenuItem({
       {children}
     </button>
   );
-}
-
-const SUBJECTS_AHEAD_M = 80;
-
-/** A ground point ahead of the aircraft, so the test subjects start in view. */
-function subjectsAhead(v: FleetVehicle): { lat: number; lon: number } | null {
-  if (!v.position) return null;
-  const [lat, lon] = v.position;
-  const h = (v.heading * Math.PI) / 180;
-  return {
-    lat: lat + (SUBJECTS_AHEAD_M * Math.cos(h)) / 111_320,
-    lon: lon + (SUBJECTS_AHEAD_M * Math.sin(h)) / (111_320 * Math.cos((lat * Math.PI) / 180)),
-  };
 }
 
 export function CameraPanel() {
@@ -307,19 +295,7 @@ export function CameraPanel() {
                       />
                       {t('camera:panel.satelliteImagery')}
                     </label>
-                    <label
-                      className={`flex items-center gap-2 rounded px-1.5 py-1 text-[11px] text-content ${targetVehicle?.position ? 'cursor-pointer hover:bg-surface-raised' : 'opacity-50'}`}
-                      data-tip={t('camera:panel.testSubjectsTip')}
-                    >
-                      <input
-                        type="checkbox"
-                        disabled={!targetVehicle?.position && !store.svtSubjects}
-                        checked={!!store.svtSubjects}
-                        onChange={(e) => store.setSvtSubjects(e.target.checked && targetVehicle ? subjectsAhead(targetVehicle) : null)}
-                        className="accent-blue-500"
-                      />
-                      {t('camera:panel.testSubjects')}
-                    </label>
+                    <SvtImageryPicker disabled={!store.svtSatellite} />
                     <div className="px-1.5 pb-1 text-[10px] uppercase tracking-wide text-content-tertiary">{t('camera:panel.terrainDetail')}</div>
                     <div className="flex overflow-hidden rounded-md border border-subtle">
                       {(['low', 'medium', 'high'] as const).map((q) => (

@@ -5,7 +5,7 @@
 --   examples/command_int.lua       - the canonical send pattern
 --
 -- Manifest (must stay in sync with src/main/script-installer/bundle.ts):
---   version: 1.0.0
+--   version: 1.2.0
 --   heartbeat: NAMED_VALUE_FLOAT('AD_HB', SCRIPT_VERSION) every 1 s
 --   command:   MAV_CMD_USER_1 (31010) via COMMAND_INT (msgid 75)
 --
@@ -61,7 +61,7 @@
 --   AD_ANG - current orbit angle in degrees (0 if no active command)
 --   AD_SUB - current active sub-command id (-1 = idle)
 
-local SCRIPT_VERSION = 1.0
+local SCRIPT_VERSION = 1.2
 local UPDATE_INTERVAL_MS = 100   -- 10 Hz
 
 local MSG_COMMAND_INT = 75
@@ -80,6 +80,9 @@ local SUB_CMD_STRAFE      = 6  -- dolly past clicked target at perp offset
 local SUB_CMD_LAND_AT     = 7  -- fly to clicked point at current alt, then LAND
 local SUB_CMD_STOP        = 255 -- deactivate any active command (frees the
                                  -- vehicle so the GCS can issue native ones)
+
+local APM_BUILD_ARDUCOPTER = 2  -- AP_Vehicle_Type.h
+local APM_BUILD_ARDUPLANE  = 3
 
 -- Flight mode numbers (ArduCopter)
 local COPTER_MODE_GUIDED = 4   -- ensure_guided() switches to this before any cmd
@@ -575,9 +578,13 @@ local steppers = {
   [SUB_CMD_LAND_AT]    = step_land_at,
 }
 
+-- plane_steppers is defined further down; looked up at call time
+local plane_steppers_ref = nil
+
 local function step_command(now_ms)
   if not cmd_state.active then return end
-  local stepper = steppers[cmd_state.sub_id]
+  local table_ = cmd_state.plane and plane_steppers_ref or steppers
+  local stepper = table_ and table_[cmd_state.sub_id]
   if stepper then stepper(now_ms) end
 end
 
@@ -752,6 +759,151 @@ local function start_land_at(c)
   gcs:send_text(6, string.format('ArduDeck LAND_AT: flying to point @ %.1fm then LAND', approach_alt))
 end
 
+
+-- ── ArduPlane (fixed wing and quadplane) ────────────────────────────
+-- A plane can't hover or chase a moving target point: it circles a guided loiter
+-- (DO_REPOSITION) and climbs with GUIDED_CHANGE_ALTITUDE, both run on board via gcs:run_command_int.
+local PLANE_MODE_GUIDED = 15  -- ArduPlane mode.h
+local PLANE_MODE_RTL    = 11
+local MAV_CMD_DO_REPOSITION          = 192
+local MAV_CMD_GUIDED_CHANGE_ALTITUDE = 43001
+local MAV_FRAME_GLOBAL_RELATIVE_ALT_INT = 6
+local MAV_RESULT_ACCEPTED = 0
+local PLANE_ALT_REACHED_M = 3
+
+local function plane_run(cmd_id, params, what)
+  local ok, res = pcall(gcs.run_command_int, gcs, cmd_id, params)
+  if not ok or res ~= MAV_RESULT_ACCEPTED then
+    stats.errors = stats.errors + 1
+    gcs:send_text(4, string.format('ArduDeck: %s refused (%s)', what, tostring(ok and res or 'error')))
+    return false
+  end
+  stats.set_target_ok = stats.set_target_ok + 1
+  return true
+end
+
+-- radius 0 keeps the vehicle's loiter radius; negative radius = CCW
+local function plane_loiter(lat_e7, lng_e7, alt_m, radius_signed)
+  local r = radius_signed or 0
+  return plane_run(MAV_CMD_DO_REPOSITION, {
+    p1 = -1, p2 = 1, p3 = math.abs(r), p4 = r < 0 and 1 or 0,
+    x = lat_e7, y = lng_e7, z = alt_m, frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT,
+  }, 'plane loiter')
+end
+
+-- rate 0 = the vehicle's maximum climb rate
+local function plane_change_alt(alt_m, rate_mps)
+  return plane_run(MAV_CMD_GUIDED_CHANGE_ALTITUDE, {
+    p3 = math.abs(rate_mps or 0), z = alt_m, frame = MAV_FRAME_GLOBAL_RELATIVE_ALT_INT,
+  }, 'plane altitude change')
+end
+
+-- The pilot switching modes ends the command; the script never fights a takeover
+local function plane_still_guided()
+  if vehicle:get_mode() == PLANE_MODE_GUIDED then return true end
+  cmd_state.active = false
+  gcs:send_text(6, 'ArduDeck: mode changed, releasing vehicle')
+  return false
+end
+
+local function plane_start_orbit(c)
+  local revolutions = math.max(0, math.floor((c.param3 or 0) + 0.5))
+  if not plane_loiter(c.x, c.y, c.z, c.param1) then return end
+  cmd_state.sub_id        = SUB_CMD_ORBIT
+  cmd_state.center        = build_center(c, c.z)
+  cmd_state.radius_m      = c.param1
+  cmd_state.angle_rad     = 0
+  cmd_state.last_bearing  = nil
+  cmd_state.max_angle_rad = revolutions * 2 * math.pi
+  -- Unlimited orbits need no stepping: the vehicle loiters on its own
+  cmd_state.active        = revolutions > 0
+  gcs:send_text(6, string.format('ArduDeck ORBIT (plane): r=%.0f alt=%.0f revs=%s',
+    math.abs(c.param1 or 0), c.z, revolutions == 0 and 'inf' or tostring(revolutions)))
+end
+
+local function plane_step_orbit(_now_ms)
+  if not plane_still_guided() then return end
+  local here = ahrs:get_location()
+  if here == nil or cmd_state.center == nil then return end
+  local r = math.abs(cmd_state.radius_m or 0)
+  local dist = cmd_state.center:get_distance(here) or 0
+  -- Count rotation only once established on the circle
+  if r > 0 and math.abs(dist - r) > math.max(15, r * 0.3) then
+    cmd_state.last_bearing = nil
+    return
+  end
+  local b = cmd_state.center:get_bearing(here)
+  if b == nil then return end
+  if cmd_state.last_bearing ~= nil then
+    local d = b - cmd_state.last_bearing
+    if d > math.pi then d = d - 2 * math.pi elseif d < -math.pi then d = d + 2 * math.pi end
+    cmd_state.angle_rad = cmd_state.angle_rad + math.abs(d)
+  end
+  cmd_state.last_bearing = b
+  if cmd_state.angle_rad >= cmd_state.max_angle_rad then
+    cmd_state.active = false
+    gcs:send_text(6, string.format('ArduDeck ORBIT: %d orbits done, still loitering',
+      math.floor(cmd_state.max_angle_rad / (2 * math.pi) + 0.5)))
+  end
+end
+
+local function plane_start_spiral(c)
+  local start_alt = current_relative_alt_m()
+  if not plane_loiter(c.x, c.y, start_alt, c.param1) then return end
+  if not plane_change_alt(c.z, c.param3) then return end
+  cmd_state.sub_id       = SUB_CMD_SPIRAL
+  cmd_state.target_alt_m = c.z
+  cmd_state.active       = true
+  gcs:send_text(6, string.format('ArduDeck SPIRAL (plane): r=%.0f alt %.0f->%.0f climb=%.1f',
+    math.abs(c.param1 or 0), start_alt, c.z, math.abs(c.param3 or 0)))
+end
+
+local function plane_step_spiral(_now_ms)
+  if not plane_still_guided() then return end
+  if math.abs(current_relative_alt_m() - cmd_state.target_alt_m) <= PLANE_ALT_REACHED_M then
+    cmd_state.active = false
+    gcs:send_text(6, string.format('ArduDeck SPIRAL: %.0fm reached, still loitering', cmd_state.target_alt_m))
+  end
+end
+
+local function plane_start_climb_rtl(c)
+  local here = ahrs:get_location()
+  if here == nil then
+    gcs:send_text(4, 'ArduDeck CLIMB_RTL: no position')
+    return
+  end
+  cmd_state.sub_id       = SUB_CMD_CLIMB_RTL
+  cmd_state.target_alt_m = c.z
+  cmd_state.active       = true
+  if current_relative_alt_m() >= c.z - PLANE_ALT_REACHED_M then
+    return  -- already high enough: the first step hands over to RTL
+  end
+  if not plane_loiter(here:lat(), here:lng(), current_relative_alt_m(), 0) then cmd_state.active = false return end
+  if not plane_change_alt(c.z, 0) then cmd_state.active = false return end
+  gcs:send_text(6, string.format('ArduDeck CLIMB_RTL (plane): climbing to %.0fm then RTL', c.z))
+end
+
+local function plane_step_climb_rtl(_now_ms)
+  local high_enough = current_relative_alt_m() >= cmd_state.target_alt_m - PLANE_ALT_REACHED_M
+  if not high_enough and not plane_still_guided() then return end
+  if not high_enough then return end
+  cmd_state.active = false
+  local ok = pcall(vehicle.set_mode, vehicle, PLANE_MODE_RTL)
+  gcs:send_text(ok and 6 or 4, ok and 'ArduDeck CLIMB_RTL: altitude reached, RTL' or 'ArduDeck CLIMB_RTL: RTL refused')
+end
+
+local plane_dispatch = {
+  [SUB_CMD_ORBIT]     = plane_start_orbit,
+  [SUB_CMD_SPIRAL]    = plane_start_spiral,
+  [SUB_CMD_CLIMB_RTL] = plane_start_climb_rtl,
+}
+
+plane_steppers_ref = {
+  [SUB_CMD_ORBIT]     = plane_step_orbit,
+  [SUB_CMD_SPIRAL]    = plane_step_spiral,
+  [SUB_CMD_CLIMB_RTL] = plane_step_climb_rtl,
+}
+
 -- Dispatch table: sub-command id → starter function.
 local dispatch = {
   [SUB_CMD_ORBIT]      = start_orbit,
@@ -780,6 +932,35 @@ local function handle_command_int(cmd, _chan)
     cmd_state.sub_id = -1
     return
   end
+
+  local fw = FWVersion:type()
+  if fw == APM_BUILD_ARDUPLANE then
+    local plane_starter = plane_dispatch[sub_id]
+    local looked_up, run_fn = pcall(function() return gcs.run_command_int end)
+    local has_run = looked_up and run_fn ~= nil
+    if plane_starter == nil or not has_run then
+      stats.errors = stats.errors + 1
+      gcs:send_text(4, plane_starter == nil
+        and 'ArduDeck: this command needs a multicopter; ignored'
+        or 'ArduDeck: plane commands need ArduPilot 4.5 or newer')
+      return
+    end
+    cmd_state.active = false
+    cmd_state.plane = true
+    local ok, err = pcall(plane_starter, cmd)
+    if not ok then
+      stats.errors = stats.errors + 1
+      gcs:send_text(4, 'ArduDeck: starter threw: ' .. tostring(err))
+    end
+    return
+  end
+  -- Copter mode numbers and hover moves: on anything but ArduCopter they mean other modes, so refuse
+  if fw ~= APM_BUILD_ARDUCOPTER then
+    stats.errors = stats.errors + 1
+    gcs:send_text(4, 'ArduDeck: map commands need ArduCopter or ArduPlane; ignored on this vehicle')
+    return
+  end
+  cmd_state.plane = false
 
   local starter = dispatch[sub_id]
   if starter == nil then

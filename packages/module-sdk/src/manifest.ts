@@ -1,5 +1,5 @@
 export type MountPointName = 'floatingOverlay' | 'cameraOverlay';
-export type ModulePermission = 'pty' | 'filesystem' | 'network' | 'vault' | 'dronecan' | 'vehicleControl';
+export type ModulePermission = 'pty' | 'filesystem' | 'network' | 'vault' | 'dronecan' | 'vehicleControl' | 'production';
 
 export interface ModuleManifest {
   manifestVersion: 1;
@@ -10,12 +10,14 @@ export interface ModuleManifest {
   mountPoints?: MountPointName[];
   permissions?: ModulePermission[];
   minArduDeckVersion?: string;
+  /** Slugs of other cargo this one needs; the host installs missing free ones alongside it. */
+  requires?: string[];
 }
 
 const SEMVER_RE = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
 const SLUG_RE = /^[a-z][a-z0-9]*(\.[a-z][a-z0-9-]*)+$/;
 const VALID_MOUNT_POINTS: MountPointName[] = ['floatingOverlay', 'cameraOverlay'];
-const VALID_PERMISSIONS: ModulePermission[] = ['pty', 'filesystem', 'network', 'vault', 'dronecan', 'vehicleControl'];
+const VALID_PERMISSIONS: ModulePermission[] = ['pty', 'filesystem', 'network', 'vault', 'dronecan', 'vehicleControl', 'production'];
 
 export type ParseResult =
   | { ok: true; manifest: ModuleManifest }
@@ -53,6 +55,14 @@ export function parseModuleManifest(raw: unknown): ParseResult {
       if (!VALID_PERMISSIONS.includes(p as ModulePermission)) {
         return { ok: false, error: `invalid permission: ${String(p)}` };
       }
+    }
+  }
+  const requires = m.requires as unknown;
+  if (requires !== undefined) {
+    if (!Array.isArray(requires)) return { ok: false, error: 'requires must be array' };
+    for (const r of requires) {
+      if (typeof r !== 'string' || !SLUG_RE.test(r)) return { ok: false, error: `invalid required slug: ${String(r)}` };
+      if (r === m.slug) return { ok: false, error: 'a module cannot require itself' };
     }
   }
   return { ok: true, manifest: m as unknown as ModuleManifest };

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { TelemetryState, AttitudeData, PositionData, GpsData, BatteryData, BatteryInstanceData, VfrHudData, WindData, FlightState, RcChannelsData, RadioStatusData, SensorHealth, NavControllerData, GuidedTargetData } from '../../shared/telemetry-types';
+import { ORIENTATION_DOWN, type DistanceSensorData, type EkfStatusData, type TelemetryState, type AttitudeData, type PositionData, type GpsData, type BatteryData, type BatteryInstanceData, type VfrHudData, type WindData, type FlightState, type RcChannelsData, type RadioStatusData, type SensorHealth, type NavControllerData, type GuidedTargetData } from '../../shared/telemetry-types';
 import type { VibrationData, EscTelemetryData, ServoOutputData } from '../../shared/motor-test-types';
 
 /** Batch telemetry update - all fields optional */
@@ -23,6 +23,9 @@ export interface TelemetryBatch {
   navController?: NavControllerData;
   guidedTarget?: GuidedTargetData;
   vtolState?: number;
+  /** DISTANCE_SENSOR readings this batch, keyed by orientation. */
+  distanceSensors?: Record<number, Omit<DistanceSensorData, 'receivedAt'>>;
+  ekf?: EkfStatusData;
   /** Source vehicle key, tagged by the main process for per-vehicle routing. */
   __vehicleKey?: string;
 }
@@ -69,6 +72,8 @@ const initialState: TelemetryState = {
   lastVibration: 0,
   lastEscTelemetry: 0,
   lastServoOutput: 0,
+  lastWind: 0,
+  lastEkf: 0,
 
   attitude: { roll: 0, pitch: 0, yaw: 0, rollSpeed: 0, pitchSpeed: 0, yawSpeed: 0 },
   position: { lat: 0, lon: 0, alt: 0, relativeAlt: 0, vx: 0, vy: 0, vz: 0 },
@@ -89,6 +94,10 @@ const initialState: TelemetryState = {
   navController: null,
   guidedTarget: null,
   vtolState: null,
+  rangefinder: null,
+  proximity: {},
+  ekf: null,
+  armedAt: null,
 };
 
 export const useTelemetryStore = create<TelemetryStore>((set, get) => ({
@@ -156,10 +165,28 @@ export const useTelemetryStore = create<TelemetryStore>((set, get) => ({
     }
     if (batch.wind) {
       updates.wind = batch.wind;
+      updates.lastWind = now;
     }
     if (batch.flight) {
       updates.flight = batch.flight;
       updates.lastHeartbeat = now;
+      const wasArmed = get().flight.armed;
+      if (batch.flight.armed && !wasArmed) updates.armedAt = now;
+      else if (!batch.flight.armed && wasArmed) updates.armedAt = null;
+      else if (batch.flight.armed && get().armedAt === null) updates.armedAt = now;
+    }
+    if (batch.distanceSensors) {
+      const proximity = { ...get().proximity };
+      for (const [k, d] of Object.entries(batch.distanceSensors)) {
+        const reading = { ...d, receivedAt: now };
+        if (Number(k) === ORIENTATION_DOWN) updates.rangefinder = reading;
+        else proximity[Number(k)] = reading;
+      }
+      updates.proximity = proximity;
+    }
+    if (batch.ekf) {
+      updates.ekf = batch.ekf;
+      updates.lastEkf = now;
     }
     if (batch.rcChannels) {
       updates.rcChannels = batch.rcChannels;

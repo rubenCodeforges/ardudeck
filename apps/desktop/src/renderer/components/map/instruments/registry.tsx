@@ -42,10 +42,14 @@ import { InstrumentShell } from './InstrumentShell';
 import { InstrumentStrip } from './InstrumentStrip';
 import { MessagesInstrument } from './MessagesInstrument';
 import { FlightControlInstrument } from './FlightControlInstrument';
+import { InFlightAdjustInstrument } from './InFlightAdjustInstrument';
+import { SticksInstrument } from './SticksInstrument';
+import { WindInstrument, WindNumeric, RangefinderInstrument, ProximityInstrument, EkfInstrument, EkfCompact, FlightTimerInstrument } from './SensorInstruments';
 import { CompactReadout, type ReadoutSource } from './CompactReadout';
 import { PANEL_WIDTH } from './stripMetrics';
 import { useLinkUp, useHeartbeatAgeMs, HEARTBEAT_STALE_MS } from './useLinkUp';
 import { useInDock } from './dock-context';
+import { NumericReadout } from './NumericReadout';
 import { LinkInstrument } from './LinkInstrument';
 import { useTelemetryFresh } from './useTelemetryFresh';
 import { RtkInstrument } from './RtkInstrument';
@@ -877,48 +881,6 @@ function HomeInstrument(): JSX.Element {
   );
 }
 
-/**
- * Shared card for the numeric display mode of the round gauges. Same
- * gauge-face palette as the analog instruments (white face + near-black
- * digits in light, dark face + white digits in dark), big tabular digits so
- * it stays readable at a glance in the field.
- */
-function NumericReadout({
-  label,
-  value,
-  unit,
-  sub,
-  valueClassName,
-  footer,
-}: {
-  label: string;
-  value: string;
-  unit?: string;
-  sub?: string;
-  valueClassName?: string;
-  footer?: React.ReactNode;
-}): JSX.Element {
-  const inDock = useInDock();
-  return (
-    <div
-      className={`px-3 pt-1.5 pb-2 min-w-[100px] select-none ${inDock ? '' : 'rounded-lg shadow-xl'}`}
-      style={{
-        ...(inDock ? {} : { background: GAUGE_COLORS.face, border: `1.5px solid ${GAUGE_COLORS.bezelEdge}` }),
-        color: GAUGE_COLORS.text,
-      }}
-    >
-      <div className="text-[9px] font-semibold tracking-[0.14em] leading-none text-[var(--gauge-text-dim)]">{label}</div>
-      <div className="mt-1.5 flex items-baseline gap-1 whitespace-nowrap">
-        <span className={`text-[22px] font-bold leading-none tabular-nums ${valueClassName ?? 'text-[var(--gauge-text)]'}`}>
-          {value}
-        </span>
-        {unit && <span className="text-[10px] font-medium text-[var(--gauge-text-dim)]">{unit}</span>}
-      </div>
-      <div className="mt-1 text-[9px] leading-none text-[var(--gauge-text-dim)] whitespace-nowrap min-h-[9px]">{sub ?? ''}</div>
-      {footer}
-    </div>
-  );
-}
 
 function BatteryNumeric(): JSX.Element {
   const { t } = useTranslation();
@@ -1337,9 +1299,26 @@ export const MAP_INSTRUMENTS: MapInstrumentDef[] = [
   { id: 'mission', labelKey: 'map:instrumentRegistry.mission', defaultClassName: 'absolute left-[124px] top-[192px] z-[1000]', defaultVisible: false, Component: MissionInstrument },
   { id: 'annunciator', labelKey: 'map:instrumentRegistry.annunciator', defaultClassName: 'absolute left-[124px] top-[268px] z-[1000]', defaultVisible: false, Component: AnnunciatorInstrument },
   { id: 'rtk', labelKey: 'map:instrumentRegistry.rtk', defaultClassName: 'absolute left-[124px] top-[600px] z-[1000]', defaultVisible: false, Component: RtkInstrument },
-  { id: 'messages', labelKey: 'map:instrumentRegistry.messages', defaultClassName: 'absolute right-3 top-28 z-[1000]', defaultVisible: false, Component: MessagesInstrument },
+  { id: 'messages', labelKey: 'map:instrumentRegistry.messages', defaultClassName: 'absolute right-3 top-28 z-[1000]', defaultVisible: false, Component: MessagesInstrument, variants: [
+    { id: 'latest', labelKey: 'map:instrumentDisplay.latest', Component: () => <MessagesInstrument variant="latest" /> },
+  ] },
   { id: 'controls', labelKey: 'map:instrumentRegistry.controls', defaultClassName: 'absolute left-[124px] top-[420px] z-[1000]', defaultVisible: false, Component: FlightControlInstrument, variants: [
     { id: 'compact', labelKey: 'map:instrumentDisplay.compact', Component: () => <FlightControlInstrument variant="compact" /> },
     { id: 'bar', labelKey: 'map:instrumentDisplay.bar', Component: () => <FlightControlInstrument variant="bar" /> },
+  ] },
+  { id: 'wind', round: true, profiles: ['air'], labelKey: 'map:instrumentRegistry.wind', defaultClassName: 'absolute left-3 top-[736px] z-[1000]', defaultVisible: false, Component: WindInstrument, NumericComponent: WindNumeric },
+  { id: 'rangefinder', labelKey: 'map:instrumentRegistry.rangefinder', defaultClassName: 'absolute left-[124px] top-[680px] z-[1000]', defaultVisible: false, Component: RangefinderInstrument, variants: [
+    { id: 'proximity', labelKey: 'map:instrumentDisplay.proximity', Component: ProximityInstrument, round: true },
+  ] },
+  { id: 'ekf', labelKey: 'map:instrumentRegistry.ekf', defaultClassName: 'absolute left-[124px] top-[760px] z-[1000]', defaultVisible: false, Component: EkfInstrument, variants: [
+    { id: 'compact', labelKey: 'map:instrumentDisplay.compact', Component: EkfCompact },
+  ] },
+  { id: 'flight-timer', labelKey: 'map:instrumentRegistry.flightTimer', defaultClassName: 'absolute left-[124px] top-[840px] z-[1000]', defaultVisible: false, Component: FlightTimerInstrument },
+  { id: 'sticks', labelKey: 'map:instrumentRegistry.sticks', defaultClassName: 'absolute left-[124px] top-[600px] z-[1000]', defaultVisible: false, Component: SticksInstrument, variants: [
+    { id: 'compact', labelKey: 'map:instrumentDisplay.compact', Component: () => <SticksInstrument variant="compact" /> },
+  ] },
+  { id: 'in-flight-adjust', profiles: ['air'], labelKey: 'map:instrumentRegistry.inFlightAdjust', defaultClassName: 'absolute left-[124px] top-[540px] z-[1000]', defaultVisible: false, Component: InFlightAdjustInstrument, variants: [
+    { id: 'compact', labelKey: 'map:instrumentDisplay.compact', Component: () => <InFlightAdjustInstrument variant="compact" /> },
+    { id: 'bar', labelKey: 'map:instrumentDisplay.bar', Component: () => <InFlightAdjustInstrument variant="bar" /> },
   ] },
 ];

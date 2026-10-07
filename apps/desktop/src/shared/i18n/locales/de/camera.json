@@ -120,8 +120,7 @@
     "terrainDetail": "Geländedetail",
     "terrainHint": "Der Boden direkt beim Luftfahrzeug verwendet immer die schärfsten Bilder.",
     "thisVehicle": "dieses Fahrzeug",
-    "testSubjects": "Testobjekte für Tracking",
-    "testSubjectsTip": "Autos, eine Person und Gebäude in der Nähe des Fluggeräts, um ActiveTrack im Simulator auszuprobieren. Werden beim Einschalten vor dem Fluggerät platziert."
+    "imagerySource": "Bildquelle"
   },
   "presets": {
     "ardudeckSim": {

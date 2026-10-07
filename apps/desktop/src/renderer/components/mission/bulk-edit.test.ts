@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { MissionItem } from '../../../shared/mission-types';
 import { MAV_CMD, MAV_FRAME } from '../../../shared/mission-types';
-import { bulkSetAltitude, bulkSetSpeed, selectionTouchesGroups, setWaypointHeading, waypointHeading } from './bulk-edit';
+import { bulkSetAltitude, bulkShiftAltitude, bulkSetSpeed, selectionTouchesGroups, setWaypointHeading, waypointHeading } from './bulk-edit';
 
 function item(seq: number, command: number, overrides: Partial<MissionItem> = {}): MissionItem {
   return {
@@ -164,5 +164,31 @@ describe('setWaypointHeading', () => {
     const relative = [item(0, MAV_CMD.NAV_WAYPOINT), item(1, MAV_CMD.CONDITION_YAW, { param1: 30, param4: 1 })];
     expect(waypointHeading(relative, 0)).toBeNull();
     expect(setWaypointHeading(relative, 0, null).changed).toBe(0);
+  });
+});
+
+describe('bulkShiftAltitude', () => {
+  it('moves every located item by the same amount and keeps the profile shape', () => {
+    const items = [
+      item(0, MAV_CMD.NAV_WAYPOINT, { altitude: 40 }),
+      item(1, MAV_CMD.DO_CHANGE_SPEED, { param2: 5, altitude: 0 }),
+      item(2, MAV_CMD.NAV_WAYPOINT, { altitude: 75 }),
+    ];
+    const r = bulkShiftAltitude(items, new Set([0, 1, 2]), 20);
+    expect(r.changed).toBe(2);
+    expect(r.items.map((it) => it.altitude)).toEqual([60, 0, 95]);
+  });
+
+  it('never takes a waypoint below zero', () => {
+    const items = [item(0, MAV_CMD.NAV_WAYPOINT, { altitude: 30 }), item(1, MAV_CMD.NAV_WAYPOINT, { altitude: 100 })];
+    expect(bulkShiftAltitude(items, new Set([0, 1]), -50).items.map((it) => it.altitude)).toEqual([0, 50]);
+  });
+
+  it('leaves items outside the selection and a zero shift alone', () => {
+    const items = [item(0, MAV_CMD.NAV_WAYPOINT, { altitude: 30 }), item(1, MAV_CMD.NAV_WAYPOINT, { altitude: 100 })];
+    expect(bulkShiftAltitude(items, new Set([1]), 10).items.map((it) => it.altitude)).toEqual([30, 110]);
+    const none = bulkShiftAltitude(items, new Set([0, 1]), 0);
+    expect(none.changed).toBe(0);
+    expect(none.items).toBe(items);
   });
 });

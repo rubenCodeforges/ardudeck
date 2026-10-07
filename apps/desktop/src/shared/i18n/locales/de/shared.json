@@ -40,7 +40,9 @@
     "notPersisted_other": "{{count}} Kalibrierwerte haben den Neustart nicht überstanden.",
     "nothingToVerify": "Nichts zu prüfen.",
     "persisted": "Kalibrierung nach dem Neustart auf dem Fahrzeug bestätigt.",
-    "readBackFailed": "Die Kalibrierung konnte nicht vom Fahrzeug zurückgelesen werden."
+    "readBackFailed": "Die Kalibrierung konnte nicht vom Fahrzeug zurückgelesen werden.",
+    "noCompassFitness": "Keine Kompass-Fitness gemeldet.",
+    "recorded": "Erfasst."
   },
   "calibrationTypes": {
     "accel6point": {

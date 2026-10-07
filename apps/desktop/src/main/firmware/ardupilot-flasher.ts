@@ -7,7 +7,7 @@
  * NOT STM32 DFU or STM32 ROM bootloader — this is ArduPilot's own bootloader
  */
 
-import { SerialTransport, listSerialPorts } from '@ardudeck/comms';
+import { SerialTransport, listSerialPorts, type SerialPortInfo } from '@ardudeck/comms';
 import * as fs from 'fs/promises';
 import * as zlib from 'zlib';
 import { BrowserWindow } from 'electron';
@@ -70,7 +70,24 @@ function crc32(data: Uint8Array, state: number = 0): number {
 /**
  * Send progress update to renderer
  */
-function sendProgress(window: BrowserWindow | null, progress: FlashProgress): void {
+export interface FlashSink {
+  progress(progress: FlashProgress): void;
+  log(level: 'info' | 'warn' | 'error', message: string): void;
+  /** Tells this board's bootloader port apart from other boards re-enumerating at the same time. */
+  isOwnPort?(port: SerialPortInfo): boolean;
+}
+
+type FlashTarget = BrowserWindow | FlashSink | null;
+
+function isSink(target: FlashTarget): target is FlashSink {
+  return target !== null && typeof (target as FlashSink).progress === 'function';
+}
+
+function sendProgress(window: FlashTarget, progress: FlashProgress): void {
+  if (isSink(window)) {
+    window.progress(progress);
+    return;
+  }
   if (window && !window.isDestroyed()) {
     window.webContents.send(IPC_CHANNELS.FIRMWARE_PROGRESS, progress);
   }
@@ -80,7 +97,11 @@ function sendProgress(window: BrowserWindow | null, progress: FlashProgress): vo
  * Send log message to renderer console
  */
 let logId = Date.now();
-function sendLog(window: BrowserWindow | null, level: 'info' | 'warn' | 'error', message: string): void {
+function sendLog(window: FlashTarget, level: 'info' | 'warn' | 'error', message: string): void {
+  if (isSink(window)) {
+    window.log(level, message);
+    return;
+  }
   if (window && !window.isDestroyed()) {
     window.webContents.send(IPC_CHANNELS.CONSOLE_LOG, {
       id: ++logId,
@@ -178,7 +199,7 @@ async function getSync(transport: SerialTransport, timeout: number = 1000): Prom
  */
 async function ardupilotSync(
   transport: SerialTransport,
-  window: BrowserWindow | null,
+  window: FlashTarget,
   maxAttempts: number = 3
 ): Promise<boolean> {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -235,7 +256,7 @@ async function getDeviceInfo(
  */
 async function chipErase(
   transport: SerialTransport,
-  window: BrowserWindow | null
+  window: FlashTarget
 ): Promise<void> {
   sendLog(window, 'info', 'Erasing flash (this may take up to 20 seconds)...');
 
@@ -286,7 +307,7 @@ async function programMulti(
 async function programFirmware(
   transport: SerialTransport,
   firmware: Uint8Array,
-  window: BrowserWindow | null,
+  window: FlashTarget,
   abortSignal?: AbortSignal
 ): Promise<void> {
   const totalChunks = Math.ceil(firmware.length / PROG_MULTI_MAX);
@@ -330,7 +351,7 @@ async function verifyCrc(
   transport: SerialTransport,
   firmware: Uint8Array,
   flashSize: number,
-  window: BrowserWindow | null
+  window: FlashTarget
 ): Promise<boolean> {
   sendLog(window, 'info', 'Verifying firmware CRC...'); // i18n-exempt
 
@@ -372,7 +393,7 @@ async function verifyCrc(
 /**
  * Reboot the board back into the application
  */
-async function reboot(transport: SerialTransport, window: BrowserWindow | null): Promise<void> {
+async function reboot(transport: SerialTransport, window: FlashTarget): Promise<void> {
   sendLog(window, 'info', 'Rebooting into application...'); // i18n-exempt
   try {
     await transport.write(new Uint8Array([REBOOT, EOC]));
@@ -389,7 +410,7 @@ async function reboot(transport: SerialTransport, window: BrowserWindow | null):
  */
 async function rebootToBootloaderNsh(
   port: string,
-  window: BrowserWindow | null,
+  window: FlashTarget,
 ): Promise<boolean> {
   let transport: SerialTransport | null = null;
   try {
@@ -435,7 +456,7 @@ async function rebootToBootloaderNsh(
 export async function flashWithArduPilotBootloader(
   firmwarePath: string,
   board: DetectedBoard,
-  window: BrowserWindow | null,
+  window: FlashTarget,
   abortController?: AbortController,
   options?: FlashOptions
 ): Promise<FlashResult> {
@@ -552,10 +573,16 @@ export async function flashWithArduPilotBootloader(
         let newPort: string | undefined;
         for (let i = 0; i < 16; i++) {
           await new Promise(r => setTimeout(r, 500));
-          const portsNow = (await listSerialPorts()).map(p => p.path);
+          const portInfos = await listSerialPorts();
+          const portsNow = portInfos.map(p => p.path);
+          const ownPort = (path: string) => {
+            if (!isSink(window) || !window.isOwnPort) return true;
+            const info = portInfos.find(p => p.path === path);
+            return info ? window.isOwnPort(info) : false;
+          };
 
           // Look for a new port that wasn't there before
-          const newPorts = portsNow.filter(p => !portsBeforeSet.has(normalizePort(p)));
+          const newPorts = portsNow.filter(p => !portsBeforeSet.has(normalizePort(p)) && ownPort(p));
           if (newPorts.length > 0) {
             newPort = newPorts[0];
             sendLog(window, 'info', `New bootloader port appeared: ${newPort}`);

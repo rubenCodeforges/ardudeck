@@ -25,7 +25,7 @@ async function removeDotBinDirs(dir) {
   }
 }
 
-module.exports = async function afterPack({ electronPlatformName, appOutDir }) {
+module.exports = async function afterPack({ electronPlatformName, appOutDir, packager }) {
   // macOS: remove .bin symlink directories from unpacked asar to prevent
   // ENOENT errors during code signing (broken symlinks in @serialport etc.)
   if (electronPlatformName === 'darwin') {
@@ -41,7 +41,7 @@ module.exports = async function afterPack({ electronPlatformName, appOutDir }) {
 
   // Linux: wrap executable with --no-sandbox
   if (electronPlatformName === 'linux') {
-    const execName = '@ardudeckdesktop';
+    const execName = packager.executableName;
     const execPath = path.join(appOutDir, execName);
     const binPath = path.join(appOutDir, `${execName}.bin`);
 
