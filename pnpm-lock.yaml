@@ -56,6 +56,9 @@ importers:
       '@ardudeck/sim-engine':
         specifier: workspace:*
         version: link:../sim-engine
+      '@ardudeck/sitl':
+        specifier: workspace:*
+        version: link:../../packages/sitl
       '@ardudeck/stm32-dfu':
         specifier: workspace:*
         version: link:../../packages/stm32-dfu
@@ -414,6 +417,18 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.1.9
+        version: 2.1.9(@types/node@20.19.27)(jsdom@29.1.1)
+
+  packages/sitl:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.5
+        version: 20.19.27
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
         version: 2.1.9(@types/node@20.19.27)(jsdom@29.1.1)
 
   packages/stm32-dfu:

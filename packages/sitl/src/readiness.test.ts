@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { PassThrough } from 'node:stream';
-import { waitForSerial0Announce } from './sitl-readiness';
+import { waitForSerial0Announce } from './readiness';
 
 describe('SITL SERIAL0 readiness', () => {
   it('resolves on the announcement even when it arrives split across chunks', async () => {

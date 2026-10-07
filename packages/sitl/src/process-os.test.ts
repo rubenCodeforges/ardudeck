@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isSitlBinary, parseNetstatListeners, withPathPrepended } from './sitl-os';
+import { isSitlBinary, parseNetstatListeners, withPathPrepended } from './process-os';
 
 const NETSTAT = `
 Active Connections
