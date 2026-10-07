@@ -998,6 +998,8 @@ const TELEM_STREAM_MESSAGES: { msgId: number; cat: 'attitude' | 'position' | 'ot
   { msgId: 27, cat: 'other' },           // RAW_IMU
   { msgId: 29, cat: 'other' },           // SCALED_PRESSURE
   { msgId: 168, cat: 'other', hz: 1 },   // WIND (ArduPilot wind estimation, 1Hz is plenty)
+  { msgId: 132, cat: 'other', hz: 5 },   // DISTANCE_SENSOR (rangefinder + proximity sectors)
+  { msgId: 193, cat: 'other', hz: 2 },   // EKF_STATUS_REPORT (EKF health instrument)
   { msgId: 231, cat: 'other', hz: 1 },   // WIND_COV (PX4's wind message; AP uses 168)
   { msgId: 241, cat: 'other' },          // VIBRATION (for motor test view)
   { msgId: 147, cat: 'other' },          // BATTERY_STATUS (per-monitor batteries, #126)
@@ -2703,6 +2705,8 @@ const MSG_POSITION_TARGET_GLOBAL_INT = 87;
 const MSG_COMMAND_ACK = 77;
 const MSG_TERRAIN_REPORT = 136;
 const MSG_WIND = 168;
+const MSG_DISTANCE_SENSOR = 132;
+const MSG_EKF_STATUS_REPORT = 193;
 const MSG_WIND_COV = 231;
 const MSG_NAMED_VALUE_FLOAT = 251;
 const MSG_STATUSTEXT = 253;
@@ -3159,6 +3163,41 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       const dirFrom = (Math.atan2(windE, windN) * 180 / Math.PI + 180 + 360) % 360;
       queueMavlinkTelemetry(mainWindow, {
         wind: { direction: dirFrom, speed: Math.hypot(windN, windE), speedZ: -windD },
+      });
+      break;
+    }
+
+    case MSG_DISTANCE_SENSOR: {
+      // DISTANCE_SENSOR (132) wire order: time_boot_ms(4), min_distance(2), max_distance(2),
+      //   current_distance(2) cm, type(1), id(1), orientation(1), covariance(1), then extensions
+      //   horizontal_fov(4) vertical_fov(4) quaternion(16) signal_quality(1 @38, 0 = not reported).
+      const orientation = payload[12] ?? 0;
+      const quality = payload[38] ?? 0;
+      const reading = {
+        distance: readUint16(payload, 8) / 100,
+        min: readUint16(payload, 4) / 100,
+        max: readUint16(payload, 6) / 100,
+        orientation,
+        quality: quality === 0 ? null : quality,
+      };
+      // several sensors arrive within one batch: merge by orientation instead of overwriting
+      const pending = (mavlinkTelemetryBatches[parseVehicleKey]?.distanceSensors ?? {}) as Record<number, typeof reading>;
+      queueMavlinkTelemetry(mainWindow, { distanceSensors: { ...pending, [orientation]: reading } });
+      break;
+    }
+
+    case MSG_EKF_STATUS_REPORT: {
+      // EKF_STATUS_REPORT (193) wire order: velocity_variance(4), pos_horiz_variance(4),
+      //   pos_vert_variance(4), compass_variance(4), terrain_alt_variance(4), flags(2)
+      queueMavlinkTelemetry(mainWindow, {
+        ekf: {
+          velocity: readFloat(payload, 0),
+          posHoriz: readFloat(payload, 4),
+          posVert: readFloat(payload, 8),
+          compass: readFloat(payload, 12),
+          terrain: readFloat(payload, 16),
+          flags: readUint16(payload, 20),
+        },
       });
       break;
     }

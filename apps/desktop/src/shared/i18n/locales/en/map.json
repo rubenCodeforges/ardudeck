@@ -162,7 +162,9 @@
     "compact": "Compact",
     "inline": "Inline",
     "numeric": "Numeric",
-    "strip": "Strip"
+    "strip": "Strip",
+    "proximity": "Proximity",
+    "latest": "Latest only"
   },
   "instrumentRegistry": {
     "altitude": "Altitude",
@@ -186,7 +188,11 @@
     "vsi": "VSI",
     "xtrack": "Cross-track",
     "inFlightAdjust": "In-flight adjust",
-    "sticks": "Sticks (joystick)"
+    "sticks": "Sticks (joystick)",
+    "wind": "Wind",
+    "rangefinder": "Rangefinder",
+    "ekf": "EKF health",
+    "flightTimer": "Flight timer"
   },
   "instrumentsCatalog": {
     "arrange": "Arrange",
@@ -388,7 +394,11 @@
   },
   "messagesInstrument": {
     "none": "No messages",
-    "title": "Messages"
+    "title": "Messages",
+    "now": "now",
+    "seconds": "{{n}}s",
+    "minutes": "{{n}}m",
+    "hours": "{{n}}h"
   },
   "offlineArea": {
     "allCachedSize": "All {{count}} tiles already cached ({{size}})",
@@ -534,5 +544,45 @@
     "inControl": "FLYING · {{fps}} Hz",
     "joystickInControl": "JOYSTICK FLYING",
     "hint": "Switch CONTROL on, then drag the sticks. No joystick needed."
+  },
+  "sensorInstruments": {
+    "wind": "WIND",
+    "calm": "CALM",
+    "from": "from {{deg}}°",
+    "head": "HEAD",
+    "tail": "TAIL",
+    "cross": "X",
+    "rangefinder": "RANGEFINDER",
+    "quality": "Q {{q}}%",
+    "noSensor": "NO SENSOR",
+    "noTarget": "OUT OF RANGE",
+    "tooClose": "TOO CLOSE",
+    "agl": "AGL",
+    "proximity": "PROXIMITY",
+    "clear": "CLEAR",
+    "up": "up {{d}}",
+    "ekf": "EKF",
+    "ekfStatus": {
+      "noData": "NO DATA",
+      "initialising": "INITIALISING",
+      "gpsGlitch": "GPS GLITCH",
+      "bad": "BAD",
+      "check": "CHECK",
+      "ok": "OK"
+    },
+    "ekfRow": {
+      "vel": "VEL",
+      "posH": "POS H",
+      "posV": "POS V",
+      "mag": "MAG",
+      "terr": "TERR"
+    },
+    "flight": "FLIGHT TIME",
+    "armed": "ARMED",
+    "disarmed": "DISARMED",
+    "endurance": "ENDURANCE",
+    "needCapacity": "Set the battery capacity (BATT_CAPACITY) to see endurance",
+    "notDrawing": "Shown once the motors draw current",
+    "atDraw": "At {{a}} A average draw"
   }
 }

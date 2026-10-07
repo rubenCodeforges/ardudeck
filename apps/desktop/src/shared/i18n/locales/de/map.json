@@ -162,7 +162,9 @@
     "compact": "Kompakt",
     "inline": "Inline",
     "numeric": "Numerisch",
-    "strip": "Leiste"
+    "strip": "Leiste",
+    "proximity": "Nähe",
+    "latest": "Nur neueste"
   },
   "instrumentRegistry": {
     "altitude": "Höhe",
@@ -186,7 +188,11 @@
     "vsi": "VSI",
     "xtrack": "Querablage",
     "inFlightAdjust": "Im Flug anpassen",
-    "sticks": "Sticks (Joystick)"
+    "sticks": "Sticks (Joystick)",
+    "wind": "Wind",
+    "rangefinder": "Entfernungsmesser",
+    "ekf": "EKF-Zustand",
+    "flightTimer": "Flugzeit"
   },
   "instrumentsCatalog": {
     "arrange": "Anordnen",
@@ -388,7 +394,11 @@
   },
   "messagesInstrument": {
     "none": "Keine Meldungen",
-    "title": "Meldungen"
+    "title": "Meldungen",
+    "now": "jetzt",
+    "seconds": "{{n}}s",
+    "minutes": "{{n}}m",
+    "hours": "{{n}}h"
   },
   "offlineArea": {
     "allCachedSize": "Alle {{count}} Kacheln bereits zwischengespeichert ({{size}})",
@@ -534,5 +544,45 @@
     "inControl": "FLIEGT · {{fps}} Hz",
     "joystickInControl": "JOYSTICK FLIEGT",
     "hint": "STEUERN einschalten, dann die Sticks ziehen. Kein Joystick nötig."
+  },
+  "sensorInstruments": {
+    "wind": "WIND",
+    "calm": "STILL",
+    "from": "aus {{deg}}°",
+    "head": "GEGEN",
+    "tail": "RÜCKEN",
+    "cross": "X",
+    "rangefinder": "ENTFERNUNGSMESSER",
+    "quality": "Q {{q}}%",
+    "noSensor": "KEIN SENSOR",
+    "noTarget": "AUSSER REICHWEITE",
+    "tooClose": "ZU NAH",
+    "agl": "ÜBER GRUND",
+    "proximity": "NÄHE",
+    "clear": "FREI",
+    "up": "oben {{d}}",
+    "ekf": "EKF",
+    "ekfStatus": {
+      "noData": "KEINE DATEN",
+      "initialising": "STARTET",
+      "gpsGlitch": "GPS-STÖRUNG",
+      "bad": "SCHLECHT",
+      "check": "PRÜFEN",
+      "ok": "OK"
+    },
+    "ekfRow": {
+      "vel": "GESCHW",
+      "posH": "POS H",
+      "posV": "POS V",
+      "mag": "KOMPASS",
+      "terr": "GELÄNDE"
+    },
+    "flight": "FLUGZEIT",
+    "armed": "SCHARF",
+    "disarmed": "GESICHERT",
+    "endurance": "RESTFLUGZEIT",
+    "needCapacity": "Akkukapazität (BATT_CAPACITY) setzen, um die Restflugzeit zu sehen",
+    "notDrawing": "Erscheint, sobald die Motoren Strom ziehen",
+    "atDraw": "Bei durchschnittlich {{a}} A"
   }
 }
