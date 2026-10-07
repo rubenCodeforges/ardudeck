@@ -365,8 +365,6 @@ function BrowseCard({
   const { t } = useTranslation();
   const isEnabled = installed ? installed.enabled !== false : false;
   const version = cargo.version ?? installed?.version ?? '';
-  const cover = useModuleStore((st) => st.covers[cargo.slug]);
-  const [coverFailed, setCoverFailed] = useState(false);
 
   return (
     <div
@@ -382,17 +380,6 @@ function BrowseCard({
       data-tip={t('modules:moduleManager.viewDetails')}
       className="card flex flex-col overflow-hidden cursor-pointer hover:border-purple-500/30 transition-colors focus:outline-none focus:ring-1 focus:ring-purple-500/40"
     >
-      {cover && !coverFailed && (
-        <div className="relative aspect-video bg-surface-raised border-b border-subtle overflow-hidden">
-          <img
-            src={cover}
-            alt=""
-            loading="lazy"
-            className={`w-full h-full object-cover ${installed && !isEnabled ? 'opacity-60' : ''}`}
-            onError={() => setCoverFailed(true)}
-          />
-        </div>
-      )}
       <div className="card-body flex-1 space-y-3">
         <div className="flex items-start gap-3">
           <CargoIcon iconUrl={cargo.iconUrl} active={!installed || isEnabled} className="w-10 h-10" />

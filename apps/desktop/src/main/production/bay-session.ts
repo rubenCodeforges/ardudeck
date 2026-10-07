@@ -175,14 +175,19 @@ export class BaySession {
 
   private async connect(): Promise<void> {
     this.setPhase('connecting');
+    const network = this.port.startsWith('tcp:');
+    const endpoint = network ? this.port.slice(4) : this.port;
     try {
       await this.openLink();
     } catch (err) {
-      this.setPhase('error', { error: err instanceof Error ? err.message : String(err) });
+      const msg = err instanceof Error ? err.message : String(err);
+      this.setPhase('error', {
+        error: network ? this.deps.text('bay.nothingListening', { endpoint }) : this.deps.text('bay.portUnavailable', { port: endpoint, reason: msg }),
+      });
       return;
     }
     if (!(await this.waitHeartbeat(10_000))) {
-      this.setPhase('error', { error: this.deps.text('bay.noHeartbeat') });
+      this.setPhase('error', { error: network ? this.deps.text('bay.noHeartbeatNetwork', { endpoint }) : this.deps.text('bay.noHeartbeat') });
       return;
     }
     await this.identify();

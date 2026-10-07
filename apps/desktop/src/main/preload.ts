@@ -877,6 +877,7 @@ const api = {
     unwrapIpc<import('../shared/production-types').ProductionModel | null>(IPC_CHANNELS.PRODUCTION_CAPTURE_FILE, name),
   productionCaptureVault: (name: string, unitUid: string) =>
     unwrapIpc<import('../shared/production-types').ProductionModel>(IPC_CHANNELS.PRODUCTION_CAPTURE_VAULT, name, unitUid),
+  productionDeleteModel: (id: string) => unwrapIpc<void>(IPC_CHANNELS.PRODUCTION_DELETE_MODEL, id),
   productionAttachFirmware: (modelId: string) =>
     unwrapIpc<import('../shared/production-types').ProductionModel | null>(IPC_CHANNELS.PRODUCTION_ATTACH_FIRMWARE, modelId),
   productionListRuns: (limit?: number) => unwrapIpc<import('../shared/production-types').ProductionRun[]>(IPC_CHANNELS.PRODUCTION_LIST_RUNS, limit),

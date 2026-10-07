@@ -19,6 +19,7 @@ async function wrap<T>(work: () => Promise<T> | T): Promise<IpcResult<T>> {
 export interface ProductionIpcDeps {
   send: (channel: string, data: unknown) => void;
   portsInUse: () => string[];
+  endpointsInUse: () => string[];
   log: (level: 'info' | 'warn' | 'error', message: string) => void;
 }
 
@@ -31,12 +32,17 @@ export function registerProductionIpc(mainWindow: BrowserWindow, deps: Productio
   manager = new BayManager({
     emit: (states) => deps.send(IPC_CHANNELS.PRODUCTION_BAYS_STATE, states),
     portsInUse: deps.portsInUse,
+    endpointsInUse: deps.endpointsInUse,
     log: deps.log,
     onVaultChanged: () => deps.send(IPC_CHANNELS.PRODUCTION_VAULT_CHANGED, null),
   });
   const m = manager;
 
   ipcMain.handle(IPC_CHANNELS.PRODUCTION_LIST_MODELS, () => wrap(() => records.listModels()));
+  ipcMain.handle(IPC_CHANNELS.PRODUCTION_DELETE_MODEL, (_, id: string) => wrap(async () => {
+    await records.deleteModel(id);
+    deps.send(IPC_CHANNELS.PRODUCTION_VAULT_CHANGED, null);
+  }));
   ipcMain.handle(IPC_CHANNELS.PRODUCTION_UPDATE_RULES, (_, id: string, rules: ProductionRules) => wrap(() => records.updateModelRules(id, rules)));
   ipcMain.handle(IPC_CHANNELS.PRODUCTION_LIST_RUNS, (_, limit?: number) => wrap(() => records.listRuns(limit)));
   ipcMain.handle(IPC_CHANNELS.PRODUCTION_GET_STATION, () => wrap(stationName));

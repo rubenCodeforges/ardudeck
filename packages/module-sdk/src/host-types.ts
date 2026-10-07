@@ -936,6 +936,8 @@ export interface RendererHostApi {
      */
     captureGolden(source: { bayId: string } | 'connected' | { vaultUnit: string } | 'file', name: string): Promise<ProductionModelInfo | null>;
     updateRules(modelId: string, rules: ProductionRulesInfo): Promise<ProductionModelInfo | null>;
+    /** Remove a model (recoverable in vault history). Certificates already issued are kept. */
+    deleteModel(modelId: string): Promise<void>;
     /** Host file picker for the model's .apj; null when the operator cancels. */
     attachFirmware(modelId: string): Promise<ProductionModelInfo | null>;
     previewGolden(bayId: string, modelId: string): Promise<{ deltas: QaConfigDeltaInfo[]; armed: boolean }>;

@@ -8,6 +8,18 @@ import type {
   QaReport,
 } from './production-types';
 
+/** Firmware family a vehicle label belongs to; labels come as MAV_TYPE names ("Quadrotor") or classes ("copter"). */
+export function vehicleClass(label: string | undefined): string | undefined {
+  if (!label) return undefined;
+  const v = label.trim().toLowerCase();
+  if (/copter|rotor|coaxial|helicopter|heli/.test(v) && !/vtol/.test(v)) return 'copter';
+  if (/plane|fixed wing|vtol|wing|airship|balloon|kite|parafoil/.test(v)) return 'plane';
+  if (/rover|boat/.test(v)) return 'rover';
+  if (/sub/.test(v)) return 'sub';
+  if (/tracker/.test(v)) return 'tracker';
+  return v;
+}
+
 export interface QaInput {
   model: ProductionModel;
   golden: Array<{ id: string; value: number }>;
@@ -16,6 +28,7 @@ export interface QaInput {
   liveFirmware?: string;
   liveFirmwareVersion?: string;
   liveBoardId?: string;
+  liveVehicleType?: string;
   calibrations: CalibrationRecordIpc[];
   /** Names of present+enabled sensors the autopilot reports unhealthy; null = no SYS_STATUS seen. */
   unhealthySensors: string[] | null;
@@ -112,9 +125,25 @@ export function evaluateQa(input: QaInput): QaReport {
     checks.push({ id: 'firmware', status: 'pass', code: 'firmwareOk', vars: { version: input.liveFirmwareVersion ?? model.firmware ?? '' } });
   }
 
+  if (!model.vehicleType) {
+    checks.push({ id: 'vehicle', status: 'skip', code: 'vehicleNotPinned' });
+  } else if (vehicleClass(input.liveVehicleType) !== vehicleClass(model.vehicleType)) {
+    checks.push({
+      id: 'vehicle',
+      status: 'fail',
+      code: input.liveVehicleType ? 'vehicleMismatch' : 'vehicleUnknown',
+      vars: { expected: model.vehicleType, actual: input.liveVehicleType ?? '' },
+    });
+  } else {
+    checks.push({ id: 'vehicle', status: 'pass', code: 'vehicleOk', vars: { vehicle: model.vehicleType } });
+  }
+
+  // A board that does not report its target (SITL, some boards) cannot prove it is the pinned one.
   if (!model.boardId) {
     checks.push({ id: 'board', status: 'skip', code: 'boardNotPinned' });
-  } else if (input.liveBoardId && input.liveBoardId !== model.boardId) {
+  } else if (!input.liveBoardId) {
+    checks.push({ id: 'board', status: 'fail', code: 'boardUnknown', vars: { expected: model.boardId } });
+  } else if (input.liveBoardId !== model.boardId) {
     checks.push({ id: 'board', status: 'fail', code: 'boardMismatch', vars: { expected: model.boardId, actual: input.liveBoardId } });
   } else {
     checks.push({ id: 'board', status: 'pass', code: 'boardOk', vars: { board: model.boardId } });

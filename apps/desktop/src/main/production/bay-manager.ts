@@ -16,6 +16,8 @@ export interface BayManagerDeps {
   emit: (states: BayState[]) => void;
   /** Ports the rest of the app holds open (main connection, fleet links). */
   portsInUse: () => string[];
+  /** host:port network endpoints the rest of the app is connected to. */
+  endpointsInUse: () => string[];
   log: (level: 'info' | 'warn' | 'error', message: string) => void;
   /** Called when the vault changed, so open vault views refresh. */
   onVaultChanged: () => void;
@@ -206,6 +208,14 @@ export class BayManager {
     const host = m[1]!;
     const port = Number(m[2]);
     const id = `tcp:${host}:${port}`;
+    // ArduPilot SITL takes one client per port: a bay on the main connection's port would never hear the board.
+    const local = (h: string) => (h === 'localhost' || h === '::1' ? '127.0.0.1' : h);
+    if (this.deps.endpointsInUse().some((e) => {
+      const [eh, ep] = [e.slice(0, e.lastIndexOf(':')), Number(e.slice(e.lastIndexOf(':') + 1))];
+      return local(eh) === local(host) && ep === port;
+    })) {
+      throw new Error(t('main:productionBay.endpointInUse', { endpoint: `${host}:${port}`, alt: `${host}:${port + 2}` }));
+    }
     if (this.sessions.has(id)) return id;
     if (persist) stationStore.set('tcpBays', [...new Set([...stationStore.get('tcpBays'), `${host}:${port}`])]);
     const session = this.makeSession(id, id, async () => {
@@ -489,6 +499,7 @@ export class BayManager {
       liveFirmware: st.firmware,
       liveFirmwareVersion: st.firmwareVersion,
       liveBoardId: st.boardId,
+      liveVehicleType: st.vehicleType,
       calibrations: records,
       unhealthySensors: unhealthyBenchSensors(st.sensors),
       serial,

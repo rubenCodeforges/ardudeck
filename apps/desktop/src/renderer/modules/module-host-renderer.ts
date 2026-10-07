@@ -673,6 +673,7 @@ export function createRendererHostApi(
           return window.electronAPI.productionBayCapture(source.bayId, name);
         },
         updateRules: (modelId, rules) => api().productionUpdateRules(modelId, rules),
+        deleteModel: (modelId) => api().productionDeleteModel(modelId),
         attachFirmware: (modelId) => api().productionAttachFirmware(modelId),
         previewGolden: (bayId, modelId) => { requireProduction(); return productionHost.previewGolden(bayId, modelId); },
         armModel: (modelId, bayId) => { requireProduction(); return productionHost.armModel(modelId, bayId); },

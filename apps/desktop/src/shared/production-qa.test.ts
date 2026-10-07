@@ -9,6 +9,7 @@ const model: ProductionModel = {
   firmware: 'ardupilot',
   firmwareVersion: '4.5.7',
   boardId: 'CubeOrange',
+  vehicleType: 'copter',
   paramCount: 4,
   createdAt: 0,
   updatedAt: 0,
@@ -45,6 +46,7 @@ function input(over: Partial<QaInput> = {}): QaInput {
     liveFirmware: 'ardupilot',
     liveFirmwareVersion: '4.5.7',
     liveBoardId: 'CubeOrange',
+    liveVehicleType: 'copter',
     calibrations: [cal('accel-6point'), cal('compass')],
     unhealthySensors: [],
     serial: 'AO-0001',
@@ -83,8 +85,19 @@ describe('evaluateQa', () => {
     expect(check(evaluateQa(input({ liveFirmwareVersion: undefined })), 'firmware').code).toBe('firmwareVersionUnknown');
   });
 
-  it('fails a different board target', () => {
-    expect(check(evaluateQa(input({ liveBoardId: 'Pixhawk6X' })), 'board').status).toBe('fail');
+  it('fails a different board target, and a board that does not report one', () => {
+    expect(check(evaluateQa(input({ liveBoardId: 'Pixhawk6X' })), 'board').code).toBe('boardMismatch');
+    expect(check(evaluateQa(input({ liveBoardId: undefined })), 'board').code).toBe('boardUnknown');
+  });
+
+  it('matches vehicle labels by class, whatever source named them', () => {
+    expect(check(evaluateQa(input({ model: { ...model, vehicleType: 'Quadrotor' }, liveVehicleType: 'copter' })), 'vehicle').status).toBe('pass');
+    expect(check(evaluateQa(input({ model: { ...model, vehicleType: 'Fixed Wing' }, liveVehicleType: 'copter' })), 'vehicle').code).toBe('vehicleMismatch');
+  });
+
+  it('fails a golden for another vehicle type before judging its parameters', () => {
+    expect(check(evaluateQa(input({ liveVehicleType: 'plane' })), 'vehicle').code).toBe('vehicleMismatch');
+    expect(check(evaluateQa(input({ liveVehicleType: undefined })), 'vehicle').code).toBe('vehicleUnknown');
   });
 
   it('requires each calibration on record, good, and verified after reboot', () => {
@@ -120,10 +133,11 @@ describe('evaluateQa', () => {
   });
 
   it('skips firmware and board checks when the model does not pin them', () => {
-    const loose = { ...model, firmware: undefined, firmwareVersion: undefined, boardId: undefined };
+    const loose = { ...model, firmware: undefined, firmwareVersion: undefined, boardId: undefined, vehicleType: undefined };
     const r = evaluateQa(input({ model: loose, liveFirmwareVersion: '9.9.9', liveBoardId: 'Other' }));
     expect(check(r, 'firmware').status).toBe('skip');
     expect(check(r, 'board').status).toBe('skip');
+    expect(check(r, 'vehicle').status).toBe('skip');
     expect(r.passed).toBe(true);
   });
 });

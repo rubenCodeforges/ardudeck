@@ -245,6 +245,7 @@ export const IPC_CHANNELS = {
   PRODUCTION_LIST_MODELS: 'production:list-models',
   PRODUCTION_SAVE_MODEL: 'production:save-model',
   PRODUCTION_UPDATE_RULES: 'production:update-rules',
+  PRODUCTION_DELETE_MODEL: 'production:delete-model',
   PRODUCTION_ATTACH_FIRMWARE: 'production:attach-firmware',
   PRODUCTION_CAPTURE_FILE: 'production:capture-file',
   PRODUCTION_CAPTURE_VAULT: 'production:capture-vault',

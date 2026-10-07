@@ -321,3 +321,16 @@ export async function saveModelFromVaultUnit(name: string, unitUid: string): Pro
   const content = await fsp.readFile(join(repoDir(), 'units', unit, 'params.param'), 'utf-8');
   return saveModelFromParamText(name, content, unit);
 }
+
+/** Removes a model as a commit, so its golden stays recoverable in history. Certificates already issued are untouched. */
+export async function deleteModel(id: string): Promise<void> {
+  await ensureRepo();
+  const clean = sanitizeSegment(id);
+  const dir = repoDir();
+  const prefix = `models/${clean}/`;
+  const files = (await git.listFiles({ fs, dir })).filter((f) => f.startsWith(prefix));
+  if (files.length === 0) throw new Error(`Model ${clean} not found`); // i18n-exempt: wrapped by the IPC layer
+  for (const filepath of files) await git.remove({ fs, dir, filepath });
+  await fsp.rm(join(dir, 'models', clean), { recursive: true, force: true });
+  await git.commit({ fs, dir, message: `delete model ${clean}`, author: { name: 'ArduDeck', email: 'vault@ardudeck.app' } }); // i18n-exempt
+}

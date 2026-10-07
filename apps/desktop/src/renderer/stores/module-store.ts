@@ -25,8 +25,6 @@ interface ModuleState {
   catalogError: string | null;
   /** Slug currently being installed from the browse catalog, or null. */
   installingSlug: string | null;
-  /** First screenshot of each catalog cargo (from its detail preview), shown on the browse card. */
-  covers: Record<string, string>;
 
   // Cargo detail (marketing preview shown in the detail modal)
   /** Slug whose detail modal is open, or null when closed. */
@@ -80,7 +78,6 @@ export const useModuleStore = create<ModuleState>((set, get) => ({
   catalogLoading: false,
   catalogError: null,
   installingSlug: null,
-  covers: {},
   openDetailSlug: null,
   detail: null,
   detailLoading: false,
@@ -216,19 +213,6 @@ export const useModuleStore = create<ModuleState>((set, get) => ({
         catalogError: result.error ?? null,
         catalogLoading: false,
       });
-      // The list carries no screenshots; each cargo's detail does. One parallel fetch per
-      // cargo not seen yet, and a cargo without screenshots simply keeps its icon card.
-      const known = get().covers;
-      void Promise.all(result.cargos.filter((c) => !(c.slug in known)).map(async (c) => {
-        try {
-          const { detail } = await window.electronAPI.moduleCatalogDetail(c.slug);
-          const shots = detail?.preview?.blocks.find((b) => b.type === 'screenshots');
-          const url = shots && shots.type === 'screenshots' ? shots.images[0]?.url : undefined;
-          if (url) set((st) => ({ covers: { ...st.covers, [c.slug]: url } }));
-        } catch {
-          // no cover: the card keeps its icon layout
-        }
-      }));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       set({ catalogError: message, catalogLoading: false });

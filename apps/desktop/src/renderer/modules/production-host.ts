@@ -3,6 +3,7 @@ import { t } from '../../shared/i18n/index.js';
 import type { BayState } from '../../shared/production-bay-types';
 import type { ProductionModel, QaConfigDelta } from '../../shared/production-types';
 import { useConnectionStore } from '../stores/connection-store';
+import { mavTypeToVehicleType } from '../../shared/parameter-metadata';
 import { useParameterStore } from '../stores/parameter-store';
 import { useFleetRepoStore, isWeakBoardUid } from '../stores/fleet-repo-store';
 
@@ -127,7 +128,8 @@ export async function captureFromConnected(name: string): Promise<ProductionMode
   const model = await window.electronAPI.productionSaveModel(
     {
       name,
-      vehicleType: c.vehicleType,
+      // Same class labels bays report ("copter"), not the display name ("Quadrotor").
+      vehicleType: c.mavType !== undefined ? mavTypeToVehicleType(c.mavType) ?? c.vehicleType : c.vehicleType,
       firmware: c.firmware,
       firmwareVersion: c.firmwareVersion,
       boardId: c.boardId,

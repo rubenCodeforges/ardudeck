@@ -66,6 +66,7 @@ describe.skipIf(!SITL_BIN)('BayManager with two SITL bays', () => {
         states = s;
       },
       portsInUse: () => [],
+      endpointsInUse: () => [],
       log: (level, msg) => { if (process.env.BAY_DEBUG) console.log(new Date().toISOString().slice(11, 23), level, msg); },
       onVaultChanged: () => undefined,
     });

@@ -10546,6 +10546,13 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       ...(connectionState.isConnected && lastConnectOptions?.type === 'serial' && lastConnectOptions.port ? [lastConnectOptions.port] : []),
       ...connectionRegistry.listTransports().map((e) => e.config.port).filter((p): p is string => typeof p === 'string'),
     ],
+    endpointsInUse: () => [
+      ...(connectionState.isConnected && lastConnectOptions?.type === 'tcp' && lastConnectOptions.host && lastConnectOptions.tcpPort
+        ? [`${lastConnectOptions.host}:${lastConnectOptions.tcpPort}`] : []),
+      ...connectionRegistry.listTransports()
+        .filter((e) => e.config.type === 'tcp' && e.config.host && e.config.tcpPort)
+        .map((e) => `${e.config.host}:${e.config.tcpPort}`),
+    ],
     log: (level, message) => sendLog(mainWindow, level, message),
   });
 

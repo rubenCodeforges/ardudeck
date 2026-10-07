@@ -627,7 +627,10 @@
       "rebootRefused": "Das Board hat den Neustart abgelehnt. Entschärfen und erneut versuchen.",
       "didNotReturn": "Das Board ist nach dem Neustart nicht zurückgekommen. Ab- und wieder anstecken.",
       "calCancelled": "Kalibrierung abgebrochen",
-      "calSilentFailure": "Das Board hat Erfolg gemeldet, aber keine neuen Kalibrierwerte gespeichert. Erneut kalibrieren."
+      "calSilentFailure": "Das Board hat Erfolg gemeldet, aber keine neuen Kalibrierwerte gespeichert. Erneut kalibrieren.",
+      "nothingListening": "Unter {{endpoint}} lauscht nichts. Simulator starten oder Adresse prüfen.",
+      "noHeartbeatNetwork": "{{endpoint}} nimmt die Verbindung an, sendet aber kein MAVLink. Ist ArduDeck mit demselben Simulator-Port verbunden, den nächsten verwenden (5762 bei einem Standard-SITL).",
+      "portUnavailable": "{{port}} kann nicht geöffnet werden: {{reason}}"
     },
     "badEndpoint": "Host:Port verwenden, zum Beispiel 127.0.0.1:5760",
     "unknownBay": "Dieser Platz existiert nicht mehr. Das Board wurde vermutlich abgesteckt.",
@@ -644,6 +647,7 @@
     "pickFirmware": "Firmware für dieses Modell (.apj oder .px4)",
     "nameRequired": "Dem Modell einen Namen geben",
     "pickParamFile": "Parameterdatei für dieses Modell",
-    "paramFiles": "Parameterdateien"
+    "paramFiles": "Parameterdateien",
+    "endpointInUse": "ArduDeck ist bereits mit {{endpoint}} verbunden, und ein Simulator bedient pro Port nur einen Client. Den nächsten Port des Simulators verwenden: {{alt}}."
   }
 }
