@@ -303,7 +303,8 @@
     "vehicleNotReachable": "Vehicle not reachable",
     "vehicleSelectionFailed": "Vehicle selection failed to sync ({{vehicle}}) - commands still target the previous vehicle",
     "writeProbeNoResponse": "FC did not respond to a write probe within 1.5 s. The MAVLink FTP server may be disabled or the FC has no writable filesystem (no SD card?).",
-    "writeProbeRejected": "FC rejected the write probe: {{error}}"
+    "writeProbeRejected": "FC rejected the write probe: {{error}}",
+    "inavNoParams": "This flight controller has no MAVLink parameters (INAV). Configure it over MSP."
   },
   "licenseValidator": {
     "invalidKeyFormat": "Invalid key format",

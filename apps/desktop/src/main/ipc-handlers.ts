@@ -3762,8 +3762,8 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
             clearTimeout(paramDownloadTimeout);
             paramDownloadTimeout = null;
           }
-          sendLog(mainWindow, 'info', 'This flight controller has no MAVLink parameters (INAV). Configure it over MSP.');
-          safeSend(mainWindow, IPC_CHANNELS.PARAM_ERROR, 'This flight controller has no MAVLink parameters (INAV). Configure it over MSP.');
+          sendLog(mainWindow, 'info', t('main:ipc.inavNoParams'));
+          safeSend(mainWindow, IPC_CHANNELS.PARAM_ERROR, t('main:ipc.inavNoParams'));
           sendConnectionState(mainWindow);
         }
         break;

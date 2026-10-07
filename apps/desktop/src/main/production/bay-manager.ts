@@ -434,7 +434,7 @@ export class BayManager {
           if (w.failed.length > 0) break;
         }
         lastMissing = missing.length;
-        if (!(await s.reboot())) return { ...result, error: t('main:productionBay.didNotReturn') };
+        if (!(await s.reboot())) return { ...result, error: t('main:productionBay.bay.didNotReturn') };
       }
       const remaining = configDeltas(golden, s.getParams(), model.rules.ignoreParams);
       result.missing = remaining.filter((d) => d.actual === null).map((d) => d.id);

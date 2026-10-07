@@ -303,7 +303,8 @@
     "vehicleNotReachable": "Fahrzeug nicht erreichbar",
     "vehicleSelectionFailed": "Fahrzeugauswahl konnte nicht synchronisiert werden ({{vehicle}}) - Befehle gehen weiterhin an das vorherige Fahrzeug",
     "writeProbeNoResponse": "Der FC hat nicht innerhalb von 1,5 s auf einen Schreibtest geantwortet. Der MAVLink-FTP-Server ist möglicherweise deaktiviert oder der FC hat kein beschreibbares Dateisystem (keine SD-Karte?).",
-    "writeProbeRejected": "Der FC hat den Schreibtest abgelehnt: {{error}}"
+    "writeProbeRejected": "Der FC hat den Schreibtest abgelehnt: {{error}}",
+    "inavNoParams": "Dieser Flugcontroller hat keine MAVLink-Parameter (INAV). Über MSP konfigurieren."
   },
   "licenseValidator": {
     "invalidKeyFormat": "Ungültiges Schlüsselformat",
