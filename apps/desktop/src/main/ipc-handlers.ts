@@ -2979,7 +2979,7 @@ function handleMagCalReportPacket(payload: Uint8Array): void {
 }
 
 function handleVehicleCommandLong(mainWindow: BrowserWindow, payload: Uint8Array): void {
-  // COMMAND_LONG (76) received FROM FC — ArduPilot sends ACCELCAL_VEHICLE_POS during 6-point calibration
+  // COMMAND_LONG (76) received FROM FC: ArduPilot sends ACCELCAL_VEHICLE_POS during 6-point calibration
   // Wire layout: param1-7(float32)@0-24, command(U16)@28, targetSystem(U8)@30, targetComponent(U8)@31, confirmation(U8)@32
   if (payload.length >= 30) {
     const incomingCommand = readUint16(payload, 28);
