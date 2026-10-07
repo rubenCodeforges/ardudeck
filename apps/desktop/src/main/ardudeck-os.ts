@@ -134,8 +134,11 @@ export async function setOsActiveLink(id: string): Promise<{ success: boolean; e
 }
 
 /** Save a vehicle the OS discovered as a connection and switch the OS link to it. */
-export async function connectOsDiscovered(connection: OsDiscoveredVehicle['connection']): Promise<{ success: boolean; error?: string }> {
-  const result = await osWrite('POST', '/links', { connection, activate: true });
+export async function connectOsDiscovered(
+  connection: OsDiscoveredVehicle['connection'],
+  join = false,
+): Promise<{ success: boolean; error?: string }> {
+  const result = await osWrite('POST', '/links', join ? { connection, join: true } : { connection, activate: true });
   return result.success ? { success: true } : result;
 }
 

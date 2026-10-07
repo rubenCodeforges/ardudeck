@@ -76,8 +76,10 @@ function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
  *   GET    /v1/vehicle/params    cached parameter snapshot for the live vehicle
  *   GET    /v1/links             saved connections, active one, detected USB devices, discovered simulators
  *   GET    /v1/gnss              GNSS receivers on this machine (model, RTK capability, fix) and the operator position
- *   POST   /v1/links             {connection, activate?} add or replace a connection
- *   POST   /v1/links/active      {id} switch to a saved connection
+ *   POST   /v1/links             {connection, activate?, join?} add or replace a connection
+ *   POST   /v1/links/active      {id} switch to a saved connection alone
+ *   POST   /v1/links/join        {id} run a saved connection alongside those in use (a swarm)
+ *   POST   /v1/links/leave       {id} stop running a connection
  *   POST   /v1/links/enabled     {enabled} master switch for the vehicle link
  *   DELETE /v1/links/:id         remove a saved connection
  *   GET    /v1/sim               simulated swarm: available, isRunning, instances
@@ -167,13 +169,21 @@ async function handleWrite(link: LinkService, sim: SimSwarm | undefined, req: In
     const body = await readJson(req);
     switch (path) {
       case '/v1/links': {
-        const conn = await link.upsertConnection(body.connection, body.activate === true);
+        const conn = await link.upsertConnection(body.connection, body.activate === true, body.join === true);
         log?.('info', `links: saved ${conn.id} (${conn.name})${body.activate === true ? ', active' : ''}`);
         return json(res, 200, link.settings);
       }
       case '/v1/links/active':
         await link.setActive(String(body.id ?? ''));
         log?.('info', `links: active ${String(body.id)}`);
+        return json(res, 200, link.settings);
+      case '/v1/links/join':
+        await link.join(String(body.id ?? ''));
+        log?.('info', `links: joined ${String(body.id)}`);
+        return json(res, 200, link.settings);
+      case '/v1/links/leave':
+        await link.leave(String(body.id ?? ''));
+        log?.('info', `links: left ${String(body.id)}`);
         return json(res, 200, link.settings);
       case '/v1/links/enabled':
         await link.setEnabled(body.enabled === true);

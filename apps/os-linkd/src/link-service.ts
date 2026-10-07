@@ -107,11 +107,9 @@ export class LinkService {
     this.engineTransport = new EngineTransport(`ws://${config.engineBind}`, 'ArduDeck OS');
     this.settingsStore = new LinkSettingsStore(config.settingsFile, config.vehiclePort);
     this.settingsState = this.settingsStore.load();
-    // The serial port of the active vehicle link is never probed by the GNSS detector.
-    this.gnss = new GnssDetector(log, (path) => {
-      const c = this.activeConnection;
-      return this.settingsState.enabled && c?.type === 'serial' && c.path === path;
-    });
+    // Serial ports the vehicle link uses are never probed by the GNSS detector.
+    this.gnss = new GnssDetector(log, (path) =>
+      this.settingsState.enabled && this.connectionsInUse.some((c) => c.type === 'serial' && c.path === path));
   }
 
   async start(): Promise<void> {
@@ -146,6 +144,12 @@ export class LinkService {
     return this.settingsState.connections.find((c) => c.id === this.settingsState.activeId) ?? null;
   }
 
+  /** Every connection the link runs: the active one and those joined to it. */
+  get connectionsInUse(): Connection[] {
+    const ids = new Set([this.settingsState.activeId, ...this.settingsState.joinedIds]);
+    return this.settingsState.connections.filter((c) => ids.has(c.id));
+  }
+
   /**
    * Any change that would drop the live link is refused while the vehicle is
    * armed, whoever asks (quick settings, Link Settings, the app, a script).
@@ -164,31 +168,56 @@ export class LinkService {
   async setActive(id: string): Promise<void> {
     if (!this.settingsState.connections.some((c) => c.id === id)) throw new Error(`no connection ${id}`);
     if (id !== this.settingsState.activeId) this.assertSafeToDropLink();
-    this.settingsState = { ...this.settingsState, activeId: id, enabled: true };
+    this.settingsState = { ...this.settingsState, activeId: id, joinedIds: [], enabled: true };
     await this.commit();
   }
 
-  /** Add (or replace by id) a connection; `activate` switches to it. */
-  async upsertConnection(input: unknown, activate: boolean): Promise<Connection> {
+  /** Run a saved connection alongside the active one, so its vehicles join the fleet. */
+  async join(id: string): Promise<void> {
+    if (!this.settingsState.connections.some((c) => c.id === id)) throw new Error(`no connection ${id}`);
+    if (!this.settingsState.enabled) return this.setActive(id);
+    if (id === this.settingsState.activeId || this.settingsState.joinedIds.includes(id)) return;
+    this.assertSafeToDropLink();
+    this.settingsState = { ...this.settingsState, joinedIds: [...this.settingsState.joinedIds, id] };
+    await this.commit();
+  }
+
+  /** Stop running a connection; leaving the active one hands its place to a joined one. */
+  async leave(id: string): Promise<void> {
+    const { activeId, joinedIds } = this.settingsState;
+    if (id !== activeId && !joinedIds.includes(id)) return;
+    this.assertSafeToDropLink();
+    if (id === activeId && joinedIds.length === 0) return this.setEnabled(false);
+    this.settingsState = id === activeId
+      ? { ...this.settingsState, activeId: joinedIds[0]!, joinedIds: joinedIds.slice(1) }
+      : { ...this.settingsState, joinedIds: joinedIds.filter((j) => j !== id) };
+    await this.commit();
+  }
+
+  /**
+   * Add (or replace by id) a connection. `activate` switches to it alone; `join`
+   * runs it alongside the connections already in use.
+   */
+  async upsertConnection(input: unknown, activate: boolean, join = false): Promise<Connection> {
     const conn = parseConnection(input);
-    // Activating another connection, or editing the active one, reopens the link.
-    if (activate || conn.id === this.settingsState.activeId) this.assertSafeToDropLink();
+    const inUse = this.connectionsInUse.some((c) => c.id === conn.id);
+    // Activating another connection, or editing one in use, reopens the link.
+    if (activate || inUse) this.assertSafeToDropLink();
     const others = this.settingsState.connections.filter((c) => c.id !== conn.id);
-    this.settingsState = {
-      ...this.settingsState,
-      connections: [...others, conn],
-      ...(activate ? { activeId: conn.id, enabled: true } : {}),
-    };
+    this.settingsState = { ...this.settingsState, connections: [...others, conn] };
+    if (join) return this.join(conn.id).then(() => conn);
+    if (activate) this.settingsState = { ...this.settingsState, activeId: conn.id, joinedIds: [], enabled: true };
     await this.commit();
     return conn;
   }
 
   async removeConnection(id: string): Promise<void> {
-    if (id === this.settingsState.activeId) this.assertSafeToDropLink();
+    if (this.connectionsInUse.some((c) => c.id === id)) this.assertSafeToDropLink();
     const connections = this.settingsState.connections.filter((c) => c.id !== id);
     if (connections.length === 0) throw new Error('cannot remove the last connection');
     const activeId = this.settingsState.activeId === id ? connections[0]!.id : this.settingsState.activeId;
-    this.settingsState = { ...this.settingsState, connections, activeId };
+    const joinedIds = this.settingsState.joinedIds.filter((j) => j !== id && j !== activeId);
+    this.settingsState = { ...this.settingsState, connections, activeId, joinedIds };
     await this.commit();
   }
 
@@ -210,9 +239,8 @@ export class LinkService {
   }
 
   private engineLinks(): string[] {
-    const conn = this.activeConnection;
-    const primary = this.settingsState.enabled && conn ? [engineLinkFor(conn)] : [];
-    return [...primary, ...[...this.extraLinks.values()].flat()];
+    const saved = this.settingsState.enabled ? this.connectionsInUse.map(engineLinkFor) : [];
+    return [...saved, ...[...this.extraLinks.values()].flat()];
   }
 
   private async commit(): Promise<void> {

@@ -10,6 +10,8 @@ interface OsIntegrationStore {
   refreshLinks: () => Promise<void>;
   setActiveLink: (id: string) => Promise<{ success: boolean; error?: string }>;
   connectDiscovered: (vehicle: OsDiscoveredVehicle) => Promise<{ success: boolean; error?: string }>;
+  /** Join every discovered vehicle to the OS link at once, as a swarm. */
+  connectAllDiscovered: (vehicles: OsDiscoveredVehicle[]) => Promise<{ success: boolean; error?: string }>;
   openLinkSettings: () => void;
 }
 
@@ -68,6 +70,18 @@ export const useOsIntegrationStore = create<OsIntegrationStore>((set, get) => ({
     const result = await window.electronAPI.connectOsDiscovered(vehicle.connection);
     await get().refreshLinks();
     return result;
+  },
+
+  connectAllDiscovered: async (vehicles) => {
+    for (const v of vehicles) {
+      const result = await window.electronAPI.connectOsDiscovered(v.connection, true);
+      if (!result.success) {
+        await get().refreshLinks();
+        return result;
+      }
+    }
+    await get().refreshLinks();
+    return { success: true };
   },
 
   openLinkSettings: () => {

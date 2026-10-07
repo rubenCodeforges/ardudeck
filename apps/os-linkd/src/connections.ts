@@ -16,6 +16,8 @@ export interface LinkSettings {
   /** Master switch: off closes the vehicle link entirely. */
   enabled: boolean;
   activeId: string;
+  /** Connections that run alongside the active one, such as the other members of a swarm. */
+  joinedIds: string[];
   connections: Connection[];
 }
 
@@ -131,9 +133,10 @@ export class LinkSettingsStore {
       });
       if (connections.length === 0) connections.push(fallback);
       const activeId = connections.some((c) => c.id === raw.activeId) ? raw.activeId! : connections[0]!.id;
-      return { enabled: raw.enabled !== false, activeId, connections };
+      const joinedIds = (raw.joinedIds ?? []).filter((id) => id !== activeId && connections.some((c) => c.id === id));
+      return { enabled: raw.enabled !== false, activeId, joinedIds, connections };
     } catch {
-      return { enabled: true, activeId: fallback.id, connections: [fallback] };
+      return { enabled: true, activeId: fallback.id, joinedIds: [], connections: [fallback] };
     }
   }
 

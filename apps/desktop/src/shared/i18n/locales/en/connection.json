@@ -226,6 +226,7 @@
     "pillTitle": "Vehicle link managed by ArduDeck OS. Click to open Vehicle Link settings.",
     "detected": "Detected",
     "connectTo": "Connect",
-    "discoveredDetail": "System {{sysid}} · TCP {{host}}:{{port}}"
+    "discoveredDetail": "System {{sysid}} · TCP {{host}}:{{port}}",
+    "connectAll": "Connect all {{count}}"
   }
 }

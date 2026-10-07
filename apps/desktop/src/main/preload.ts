@@ -2390,8 +2390,8 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.OS_GET_LINKS),
   setOsActiveLink: (id: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.OS_SET_ACTIVE_LINK, id),
-  connectOsDiscovered: (connection: OsDiscoveredVehicle['connection']): Promise<{ success: boolean; error?: string }> =>
-    ipcRenderer.invoke(IPC_CHANNELS.OS_CONNECT_DISCOVERED, connection),
+  connectOsDiscovered: (connection: OsDiscoveredVehicle['connection'], join?: boolean): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.OS_CONNECT_DISCOVERED, connection, join),
   openOsLinkSettings: (): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.OS_OPEN_LINK_SETTINGS),
 

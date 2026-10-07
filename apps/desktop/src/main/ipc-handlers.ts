@@ -13644,7 +13644,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.OS_GET_INTEGRATION, () => probeArduDeckOs());
   ipcMain.handle(IPC_CHANNELS.OS_GET_LINKS, () => getOsLinks());
   ipcMain.handle(IPC_CHANNELS.OS_SET_ACTIVE_LINK, (_e, id: string) => setOsActiveLink(String(id)));
-  ipcMain.handle(IPC_CHANNELS.OS_CONNECT_DISCOVERED, (_e, connection: OsDiscoveredVehicle['connection']) => connectOsDiscovered(connection));
+  ipcMain.handle(IPC_CHANNELS.OS_CONNECT_DISCOVERED, (_e, connection: OsDiscoveredVehicle['connection'], join?: boolean) =>
+    connectOsDiscovered(connection, join === true));
   ipcMain.handle(IPC_CHANNELS.OS_OPEN_LINK_SETTINGS, () => openOsLinkSettings());
 
   ipcMain.handle(IPC_CHANNELS.APP_GET_VERSION, (): string => {

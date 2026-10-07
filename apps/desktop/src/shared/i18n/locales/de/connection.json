@@ -226,6 +226,7 @@
     "pillTitle": "Fahrzeugverbindung wird von ArduDeck OS verwaltet. Klicken, um die Verbindungseinstellungen zu öffnen.",
     "detected": "Gefunden",
     "connectTo": "Verbinden",
-    "discoveredDetail": "System {{sysid}} · TCP {{host}}:{{port}}"
+    "discoveredDetail": "System {{sysid}} · TCP {{host}}:{{port}}",
+    "connectAll": "Alle {{count}} verbinden"
   }
 }

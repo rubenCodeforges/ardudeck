@@ -126,7 +126,7 @@ class LinkPage {
             : v?.connected ? `Connected: ${v.firmware} in ${v.mode}${v.armed ? ', armed' : ''}`
                 : links.link.error ? `Problem: ${links.link.error}` : 'Searching for the vehicle';
 
-        const key = JSON.stringify([links.activeId, links.connections, links.detected, (links.discovered ?? []).map(v => v.id)]);
+        const key = JSON.stringify([links.activeId, links.joinedIds, links.connections, links.detected, (links.discovered ?? []).map(v => v.id)]);
         if (!rebuild && key === this._lastKey) return;
         this._lastKey = key;
         this.renderConnections(links);
@@ -135,7 +135,8 @@ class LinkPage {
 
     renderConnections(links) {
         if (this.connGroup) this.page.remove(this.connGroup);
-        this.connGroup = new Adw.PreferencesGroup({title: 'Connections', description: 'The checked connection is active. Pick another to switch.'});
+        this.connGroup = new Adw.PreferencesGroup({title: 'Connections', description: 'The checked connection is active; pick another to switch. Join more to fly them together as a swarm.'});
+        const joined = links.joinedIds ?? [];
         let first = null;
         for (const c of links.connections) {
             const row = new Adw.ActionRow({title: c.name, subtitle: describe(c), activatable: true});
@@ -147,6 +148,16 @@ class LinkPage {
             });
             row.add_prefix(radio);
             row.set_activatable_widget(radio);
+            if (joined.includes(c.id)) {
+                const leave = new Gtk.Button({label: 'Leave', valign: Gtk.Align.CENTER, tooltip_text: 'Stop running this connection', css_classes: ['flat']});
+                leave.connect('clicked', () => void this.act(() => request('POST', '/links/leave', {id: c.id}), `${c.name} left the swarm`));
+                row.add_suffix(new Gtk.Label({label: 'Joined', css_classes: ['dim-label']}));
+                row.add_suffix(leave);
+            } else if (c.id !== links.activeId) {
+                const join = new Gtk.Button({label: 'Join', valign: Gtk.Align.CENTER, tooltip_text: 'Run alongside the active connection', css_classes: ['flat']});
+                join.connect('clicked', () => void this.act(() => request('POST', '/links/join', {id: c.id}), `${c.name} joined`));
+                row.add_suffix(join);
+            }
             const edit = new Gtk.Button({icon_name: 'document-edit-symbolic', valign: Gtk.Align.CENTER, tooltip_text: 'Edit', css_classes: ['flat']});
             edit.connect('clicked', () => this.openEditor(c));
             const del = new Gtk.Button({icon_name: 'user-trash-symbolic', valign: Gtk.Align.CENTER, tooltip_text: 'Remove', css_classes: ['flat'], sensitive: links.connections.length > 1});
@@ -164,6 +175,13 @@ class LinkPage {
         const saved = new Set(links.connections.filter(c => c.type === 'serial').map(c => c.path));
         const devices = links.detected ?? [];
         const simulators = links.discovered ?? [];
+        if (simulators.length > 1) {
+            const all = new Gtk.Button({label: `Connect all ${simulators.length}`, valign: Gtk.Align.CENTER, css_classes: ['suggested-action']});
+            all.connect('clicked', () => void this.act(async () => {
+                for (const v of simulators) await request('POST', '/links', {connection: v.connection, join: true});
+            }, `${simulators.length} simulators joined as a swarm`));
+            this.detectGroup.set_header_suffix(all);
+        }
         if (devices.length === 0 && simulators.length === 0)
             this.detectGroup.add(new Adw.ActionRow({title: 'Nothing detected', subtitle: 'Plug in a SiK or ELRS radio or a flight controller by USB, or start a simulator.'}));
         for (const v of simulators) {

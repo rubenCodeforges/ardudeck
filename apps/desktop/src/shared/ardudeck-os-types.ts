@@ -42,6 +42,8 @@ export interface OsConnection {
 export interface OsLinksState {
   enabled: boolean;
   activeId: string;
+  /** Connections running alongside the active one (a swarm). */
+  joinedIds?: string[];
   connections: OsConnection[];
   link: { open: boolean; error: string | null; clients: { host: string; port: number }[] };
   detected: { path: string; kind: string; label: string; verified?: boolean }[];

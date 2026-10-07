@@ -34,6 +34,7 @@ export function OsLinkPanel(): JSX.Element {
   const links = useOsIntegrationStore((s) => s.links);
   const setActiveLink = useOsIntegrationStore((s) => s.setActiveLink);
   const connectDiscovered = useOsIntegrationStore((s) => s.connectDiscovered);
+  const connectAllDiscovered = useOsIntegrationStore((s) => s.connectAllDiscovered);
   const openLinkSettings = useOsIntegrationStore((s) => s.openLinkSettings);
   const connectionState = useConnectionStore((s) => s.connectionState);
   const [pending, setPending] = useState<string | null>(null);
@@ -72,6 +73,14 @@ export function OsLinkPanel(): JSX.Element {
     setPending(null);
   };
 
+  const connectAll = async () => {
+    setPending('all');
+    setError(null);
+    const result = await connectAllDiscovered(discovered);
+    if (!result.success) setError(result.error ?? t('connection:osLink.switchFailed'));
+    setPending(null);
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="px-5 py-4 border-b border-subtle">
@@ -97,7 +106,7 @@ export function OsLinkPanel(): JSX.Element {
           <div className="space-y-2">
             <div className="text-xs font-semibold uppercase tracking-wider text-content-tertiary">{t('connection:osLink.connections')}</div>
             {links.connections.map((c) => {
-              const isActive = c.id === links.activeId;
+              const isActive = c.id === links.activeId || (links.joinedIds ?? []).includes(c.id);
               return (
                 <button
                   key={c.id}
@@ -123,7 +132,18 @@ export function OsLinkPanel(): JSX.Element {
 
         {discovered.length > 0 && (
           <div className="space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-wider text-content-tertiary">{t('connection:osLink.detected')}</div>
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-semibold uppercase tracking-wider text-content-tertiary">{t('connection:osLink.detected')}</div>
+              {discovered.length > 1 && (
+                <button
+                  onClick={() => void connectAll()}
+                  disabled={pending !== null}
+                  className="px-2.5 py-1 rounded-md text-xs font-medium bg-teal-600 hover:bg-teal-500 text-white disabled:opacity-50"
+                >
+                  {pending === 'all' ? t('connection:osLink.switching') : t('connection:osLink.connectAll', { count: discovered.length })}
+                </button>
+              )}
+            </div>
             {discovered.map((v) => (
               <div key={v.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-subtle">
                 <span className="flex-1 min-w-0">
