@@ -154,7 +154,21 @@
     "virtualHint": "Woher die Stickpositionen statt von einem physischen Gamepad kommen. Gas bleibt, wo Sie es loslassen; der rechte Stick federt zurück. Beide zentrieren sich, wenn das Fenster den Fokus verliert.",
     "virtualMappingNote": "Die Bildschirm-Sticks nutzen diese Zuordnung nicht: Sie gehen auf die Kanäle, die das Fahrzeug in RCMAP_ROLL / PITCH / THROTTLE / YAW festlegt. Die Balken unten zeigen dennoch, was gesendet wird.",
     "virtualOffHint": "Schalten Sie oben die Joystick-Eingabe ein, um diese zu nutzen.",
-    "waitingController": "Warte auf einen Controller…"
+    "waitingController": "Warte auf einen Controller…",
+    "safeZoneTip": "Wo dieser Kanal stehen muss, bevor du übernehmen kannst",
+    "safeAtTip": "Wo dieser Kanal vor einer Übernahme stehen muss. Auto lässt das Fluggerät anhand seiner Einstellungen entscheiden.",
+    "safeAt": {
+      "auto": "Auto",
+      "centre": "Mitte",
+      "low": "Unten",
+      "high": "Oben",
+      "any": "Nicht prüfen"
+    },
+    "basis": {
+      "radio": "Abgleich mit deiner Fernsteuerung: der Joystick muss treffen, was sie gerade sendet, damit die Übernahme nichts bewegt.",
+      "rules": "Nach den Einstellungen des Fluggeräts: Stickkanäle aus RCMAP, Mitten aus den Kanal-Trims und Gas bei null Schub.",
+      "defaults": "Parameter noch nicht geladen: Kanäle 1 bis 4 und Gas unten angenommen."
+    }
   },
   "mapPanel": {
     "attitude": "Fluglage",

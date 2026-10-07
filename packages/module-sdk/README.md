@@ -36,6 +36,8 @@ node packages/create-ardudeck-module/bin/create.mjs my-module
 
 Slug must match `^[a-z][a-z0-9]*(\.[a-z][a-z0-9-]*)+$`. Version must be semver.
 
+`requires` (optional) lists other cargo slugs this one builds on, e.g. `["com.ardudeck.vault"]`. When the cargo is activated the host installs any missing free dependency alongside it.
+
 `entry` may be empty (`{}`) for a pure activator cargo: a module that ships no code and only unlocks built-in features through the host's capability map (see "Gating built-in features" below). `com.ardudeck.mission-library` is the reference: manifest-only, gates the Mission Library view and the planner's Save to Library option.
 
 ## Renderer entry
@@ -101,6 +103,9 @@ See `src/host-types.ts` for full typings. The renderer host exposes telemetry, c
 
 Everything registered through these is removed when the module unloads or reloads.
 
+- `host.views` - `register({ viewId, component })` fills a nav view. Either a built-in view your cargo unlocks (see "Gating built-in features"), or a cargo-owned view such as `production`: the host shows its rail entry only while a cargo holding the matching permission has registered it, so these load from a dev folder like any cargo.
+- `host.production` - production line station (requires the `production` permission; records go to the Fleet Vault, so pair it with `vault` and `requires: ["com.ardudeck.vault"]`). Every USB autopilot becomes a **bay** with its own MAVLink link, so boards are worked in parallel: `startBays()`/`stopBays()`/`isStationRunning()`, `getBays()`/`subscribeBays()`, `addSimulatorBay(endpoint)`, `removeBay(id, ignore?)`, `setBayModel()`/`setModelForAllBays()`; models via `listModels()`, `captureGolden({ bayId } | 'connected', name)`, `updateRules()`, `attachFirmware()`; per bay `prepare()` (flash if the firmware differs, wipe to defaults, write the golden through reboots until it matches), `flash()`, `resetToDefaults()`, `reboot()`, `startCalibration()`/`confirmCalibrationPosition()`/`cancelCalibration()`, `runQa()`, `submit()`; `armModel()` approves a golden for the session (required for `autoPrepare`); `listRuns()`, `onRecordsChanged()`, `openHostView()`. The host writes a golden only behind its own consent dialog (never calibration, sensor ids or runtime counters), judges QA itself and writes the birth certificate on a pass, so a module drives the flow but cannot forge a result. QA checks carry stable `code` values (`calNeedsReboot`, `configDiffers`, ...) for the module to translate.
+
 ### Example: a vendor hardware cargo
 
 ```ts
@@ -127,6 +132,7 @@ Declare what your module needs in `module.json`:
 - `filesystem` - Reserved for future use (currently all modules get a scoped data dir)
 - `network` - Reserved for future use
 - `vault` - Fleet Vault access via `host.vault` (read history, take snapshots, trigger sync)
+- `production` - production line station via `host.production` (see Host API)
 - `dronecan` - propose DroneCAN node parameter writes (always reviewed by the pilot) and restart nodes via `host.dronecan` (reading needs no permission)
 
 Permissions are enforced by the host at runtime.

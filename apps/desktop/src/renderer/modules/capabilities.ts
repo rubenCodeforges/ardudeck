@@ -76,6 +76,15 @@ export const CAPABILITIES: Capability[] = [
   { slug: LUA_GRAPH_CARGO_SLUG, viewId: 'lua-graph' },
 ];
 
+/**
+ * Views a cargo brings entirely itself: the body is the cargo's, the host only
+ * adds the rail entry while a cargo holding the permission has registered it.
+ * Nothing built-in is unlocked, so these load from a dev folder like any cargo.
+ */
+export const CARGO_VIEWS: Readonly<Partial<Record<ViewId, string>>> = {
+  production: 'production',
+};
+
 const GATED_VIEWS: ReadonlyMap<ViewId, string> = new Map(
   CAPABILITIES.filter((c) => c.viewId).map((c): [ViewId, string] => [c.viewId!, c.slug]),
 );

@@ -33,7 +33,7 @@ import {
   type ElevationGrid,
   type SvtQuality,
 } from './svt/svt-terrain';
-import { loadDrapeRings, recenterDistanceM } from './svt/svt-satellite';
+import { loadDrapeRings, recenterDistanceM, validImagery } from './svt/svt-satellite';
 import {
   eulerRatesFromBody,
   lerpAngle,
@@ -212,11 +212,7 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
   // overlay can drive its own camera with the exact same fov (zero calibration).
   const [svtFov, setSvtFov] = useState(62);
   const satellite = useCameraStore((s) => s.svtSatellite);
-  const subjects = useCameraStore((s) => s.svtSubjects);
-  useEffect(() => {
-    sceneRef.current?.setTestSubjects(subjects);
-    dirtyRef.current = true;
-  }, [subjects]);
+  const imagery = useCameraStore((s) => validImagery(s.svtImagery));
   const quality = useCameraStore((s) => s.svtQuality);
   // The grid the drape follows: state, not a ref, so a new patch re-runs the
   // imagery effect. Quality changes and the toggle do the same.
@@ -399,7 +395,6 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
 
     const scene = createSvtScene(canvas);
     sceneRef.current = scene;
-    scene.setTestSubjects(useCameraStore.getState().svtSubjects);
     setSvtFov(scene.getFov());
 
     const sizeToContainer = () => {
@@ -452,7 +447,7 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
           shown.headingDeg !== was.headingDeg
         ));
       shownRef.current = shown;
-      if (dirtyRef.current || moved || scene.isAnimating()) {
+      if (dirtyRef.current || moved) {
         dirtyRef.current = false;
         if (shown) scene.setPose(shown);
         scene.render();
@@ -554,7 +549,7 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
     drapeBusyRef.current = true;
     void (async () => {
       try {
-        const rings = await loadDrapeRings(grid, SVT_QUALITY[quality].outerRingTiles, { lat, lon });
+        const rings = await loadDrapeRings(grid, SVT_QUALITY[quality].outerRingTiles, { lat, lon }, undefined, undefined, imagery);
         if (token !== drapeTokenRef.current) {
           for (const ring of rings) ring.texture.dispose();
           return;
@@ -572,7 +567,7 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [satellite, quality, drapeGrid, drapeLatKey, drapeLonKey, drapeRetry]);
+  }, [satellite, imagery, quality, drapeGrid, drapeLatKey, drapeLonKey, drapeRetry]);
 
   const overlayAttitude = att ? { roll: att.roll, pitch: att.pitch } : null;
   // The 3D scene already shows a true banked horizon — drop the flat cyan line.

@@ -185,7 +185,8 @@
     "tilt": "Neigung",
     "vsi": "VSI",
     "xtrack": "Querablage",
-    "inFlightAdjust": "Im Flug anpassen"
+    "inFlightAdjust": "Im Flug anpassen",
+    "sticks": "Sticks (Joystick)"
   },
   "instrumentsCatalog": {
     "arrange": "Anordnen",
@@ -520,5 +521,18 @@
     "tagRadius": "RAD",
     "set": "SETZEN",
     "revert": "Zurück zum zuletzt gesendeten Wert"
+  },
+  "sticksInstrument": {
+    "title": "Sticks",
+    "left": "GIER · GAS",
+    "right": "ROLL · NICK",
+    "control": "STEUERN",
+    "onTip": "Mit diesen Bildschirm-Sticks fliegen. Rollen, Nicken und Gieren federn in die Mitte zurück; die Sticks starten dort, wo das Fluggerät schon ist, das Einschalten bewegt also nichts.",
+    "offTip": "Die Sticks an die eigene Fernsteuerung des Fluggeräts zurückgeben",
+    "off": "AUS",
+    "noVehicle": "KEIN FLUGGERÄT",
+    "inControl": "FLIEGT · {{fps}} Hz",
+    "joystickInControl": "JOYSTICK FLIEGT",
+    "hint": "STEUERN einschalten, dann die Sticks ziehen. Kein Joystick nötig."
   }
 }

@@ -34,7 +34,7 @@ import {
   DEFAULT_RC_FUNCTIONS,
   type RcFunctionMap,
 } from '../utils/pseudo-tx';
-import { packOverrideChannels } from '../utils/rc-vehicle-override';
+import { packOverrideChannels, packStickChannels } from '../utils/rc-vehicle-override';
 import {
   claimRcOverride,
   releaseRcOverride,
@@ -55,7 +55,7 @@ const EMPTY_DEVICE: RawDevice = { axes: [], buttons: [] };
 const VIRTUAL_DEVICE_NAME = 'On-screen sticks';
 
 /** RCMAP_* from the vehicle, so the sticks land on the channels it reads. */
-function rcFunctionsFromParams(): RcFunctionMap {
+export function rcFunctionsFromParams(): RcFunctionMap {
   const p = useParameterStore.getState().parameters;
   const read = (name: string, fallback: number) => {
     const v = p.get(name)?.value;
@@ -381,7 +381,7 @@ export const usePseudoTxStore = create<PseudoTxState>((set, get) => ({
         set({ vehicleSendError: i18nT('stores:pseudoTxStore.linkLost') });
         return;
       }
-      const packed = packOverrideChannels(ch, get().mapping);
+      const packed = virtualAxes ? packStickChannels(ch, rcFunctionsFromParams()) : packOverrideChannels(ch, get().mapping);
       const now = Date.now();
       if (vehicleFpsWindowStart === 0) vehicleFpsWindowStart = now;
       void bridge.rcOverrideSetChannels?.(packed).then((r) => {

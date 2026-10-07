@@ -113,6 +113,11 @@ export const INSTRUMENT_SEMANTICS: Record<string, InstrumentSemantics> = {
     priority: 100,
     idealSectors: ['A4'],
   },
+  sticks: {
+    role: 'command',
+    priority: 72,
+    idealSectors: ['A3', 'B4'],
+  },
   'in-flight-adjust': {
     role: 'command',
     priority: 70,

@@ -43,6 +43,7 @@ import { InstrumentStrip } from './InstrumentStrip';
 import { MessagesInstrument } from './MessagesInstrument';
 import { FlightControlInstrument } from './FlightControlInstrument';
 import { InFlightAdjustInstrument } from './InFlightAdjustInstrument';
+import { SticksInstrument } from './SticksInstrument';
 import { CompactReadout, type ReadoutSource } from './CompactReadout';
 import { PANEL_WIDTH } from './stripMetrics';
 import { useLinkUp, useHeartbeatAgeMs, HEARTBEAT_STALE_MS } from './useLinkUp';
@@ -1342,6 +1343,9 @@ export const MAP_INSTRUMENTS: MapInstrumentDef[] = [
   { id: 'controls', labelKey: 'map:instrumentRegistry.controls', defaultClassName: 'absolute left-[124px] top-[420px] z-[1000]', defaultVisible: false, Component: FlightControlInstrument, variants: [
     { id: 'compact', labelKey: 'map:instrumentDisplay.compact', Component: () => <FlightControlInstrument variant="compact" /> },
     { id: 'bar', labelKey: 'map:instrumentDisplay.bar', Component: () => <FlightControlInstrument variant="bar" /> },
+  ] },
+  { id: 'sticks', labelKey: 'map:instrumentRegistry.sticks', defaultClassName: 'absolute left-[124px] top-[600px] z-[1000]', defaultVisible: false, Component: SticksInstrument, variants: [
+    { id: 'compact', labelKey: 'map:instrumentDisplay.compact', Component: () => <SticksInstrument variant="compact" /> },
   ] },
   { id: 'in-flight-adjust', profiles: ['air'], labelKey: 'map:instrumentRegistry.inFlightAdjust', defaultClassName: 'absolute left-[124px] top-[540px] z-[1000]', defaultVisible: false, Component: InFlightAdjustInstrument, variants: [
     { id: 'compact', labelKey: 'map:instrumentDisplay.compact', Component: () => <InFlightAdjustInstrument variant="compact" /> },

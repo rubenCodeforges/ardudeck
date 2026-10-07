@@ -120,5 +120,27 @@
     "replacesFence_other": "This replaces the inclusion fence already held ({{count}} shapes, {{points}} points). It will no longer apply.",
     "returnPoint": "the return point",
     "writeToAircraft": "Write to aircraft"
+  },
+  "production": {
+    "notConnected": "Connect a vehicle first",
+    "paramsNotLoaded": "Wait for the parameter download to finish",
+    "modelNotFound": "Model {{model}} is not in the vault",
+    "nameRequired": "Give the model a name",
+    "declined": "Writing the golden configuration was declined"
+  },
+  "productionWriteDialog": {
+    "kicker": "Production line",
+    "title": "Write the {{model}} golden configuration?",
+    "body_one": "{{count}} parameter on this board differs from the golden right now.",
+    "body_other": "{{count}} parameters on this board differ from the golden right now.",
+    "resetFirst": "The board is first wiped to firmware defaults, then the whole golden is written and the board restarted until it matches.",
+    "armBody": "Every board prepared at this station gets this golden until the app restarts, including boards prepared automatically when plugged in.",
+    "param": "Parameter",
+    "now": "Board now",
+    "golden": "Golden",
+    "calibrationKept": "Calibration, sensor ids and runtime counters are never written: they belong to each board.",
+    "remember": "Write this golden to every board without asking again until the app restarts",
+    "write": "Write golden",
+    "arm": "Arm this model"
   }
 }

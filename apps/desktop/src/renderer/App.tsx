@@ -29,6 +29,7 @@ import { ModuleRuntime } from './modules/ModuleRuntime';
 import { MountPoint } from './modules/MountPoint';
 import { ModuleDock } from './modules/ModuleDock';
 import { ModuleProposalDialog } from './modules/ModuleProposalDialog';
+import { ProductionWriteDialog } from './modules/ProductionWriteDialog';
 import { DroneCanReviewDialog } from './modules/DroneCanReviewDialog';
 import { CompanionDashboard } from './components/companion/CompanionDashboard';
 import { LogsView } from './components/logs/LogsView';
@@ -1086,6 +1087,10 @@ function App() {
         // Local-first: history, diffs, GitHub setup and sync all work offline
         return <ModuleViewBody viewId="vault" />;
       }
+      if (currentView === 'production') {
+        // Stations sit idle between boards; the run log stays usable
+        return <ModuleViewBody viewId="production" />;
+      }
       if (currentView === 'modules') {
         return <ModuleManagerView />;
       }
@@ -1205,6 +1210,8 @@ function App() {
         return <TrainerView />;
       case 'vault':
         return <ModuleViewBody viewId="vault" />;
+      case 'production':
+        return <ModuleViewBody viewId="production" />;
       case 'telemetry':
       default:
         return <TelemetryDashboard />;
@@ -1333,6 +1340,7 @@ function App() {
     <MountPoint name="floatingOverlay" />
     <ModuleDock />
     <ModuleProposalDialog />
+    <ProductionWriteDialog />
     <DroneCanReviewDialog />
     <VaultBackupDialog />
     </ModuleRuntime>

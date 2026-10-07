@@ -108,6 +108,13 @@ interface CommitArea {
 /**
  * Exposed API for renderer process
  */
+/** Main returns { ok, data } | { ok, error } so the renderer sees a clean Error, not Electron's remote-method wrapper. */
+async function unwrapIpc<T>(channel: string, ...args: unknown[]): Promise<T> {
+  const res = (await ipcRenderer.invoke(channel, ...args)) as { ok: true; data: T } | { ok: false; error: string };
+  if (!res.ok) throw new Error(res.error);
+  return res.data;
+}
+
 const api = {
   // App environment — matches main process isDev logic
   isDev: process.env.NODE_ENV === 'development',
@@ -859,6 +866,62 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_GH_LIST_REPOS),
   fleetRepoGhUseExisting: (fullName: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_GH_USE_EXISTING, fullName),
+  productionListModels: () => unwrapIpc<import('../shared/production-types').ProductionModel[]>(IPC_CHANNELS.PRODUCTION_LIST_MODELS),
+  productionSaveModel: (
+    input: { name: string; vehicleType?: string; firmware?: string; firmwareVersion?: string; boardId?: string; sourceUnit?: string },
+    params: Array<{ id: string; value: number }>,
+  ) => unwrapIpc<import('../shared/production-types').ProductionModel>(IPC_CHANNELS.PRODUCTION_SAVE_MODEL, input, params),
+  productionUpdateRules: (id: string, rules: import('../shared/production-types').ProductionRules) =>
+    unwrapIpc<import('../shared/production-types').ProductionModel | null>(IPC_CHANNELS.PRODUCTION_UPDATE_RULES, id, rules),
+  productionCaptureFile: (name: string) =>
+    unwrapIpc<import('../shared/production-types').ProductionModel | null>(IPC_CHANNELS.PRODUCTION_CAPTURE_FILE, name),
+  productionCaptureVault: (name: string, unitUid: string) =>
+    unwrapIpc<import('../shared/production-types').ProductionModel>(IPC_CHANNELS.PRODUCTION_CAPTURE_VAULT, name, unitUid),
+  productionAttachFirmware: (modelId: string) =>
+    unwrapIpc<import('../shared/production-types').ProductionModel | null>(IPC_CHANNELS.PRODUCTION_ATTACH_FIRMWARE, modelId),
+  productionListRuns: (limit?: number) => unwrapIpc<import('../shared/production-types').ProductionRun[]>(IPC_CHANNELS.PRODUCTION_LIST_RUNS, limit),
+  productionGetStation: () => unwrapIpc<string>(IPC_CHANNELS.PRODUCTION_GET_STATION),
+  productionSetStation: (name: string) => unwrapIpc<string>(IPC_CHANNELS.PRODUCTION_SET_STATION, name),
+  onProductionVaultChanged: (cb: () => void) => {
+    const handler = () => cb();
+    ipcRenderer.on(IPC_CHANNELS.PRODUCTION_VAULT_CHANGED, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.PRODUCTION_VAULT_CHANGED, handler);
+  },
+  productionBaysStart: () => unwrapIpc<import('../shared/production-bay-types').BayState[]>(IPC_CHANNELS.PRODUCTION_BAYS_START),
+  productionBaysStop: () => unwrapIpc<void>(IPC_CHANNELS.PRODUCTION_BAYS_STOP),
+  productionBaysList: () => unwrapIpc<{ running: boolean; bays: import('../shared/production-bay-types').BayState[] }>(IPC_CHANNELS.PRODUCTION_BAYS_LIST),
+  onProductionBays: (cb: (bays: import('../shared/production-bay-types').BayState[]) => void) => {
+    const handler = (_: unknown, bays: import('../shared/production-bay-types').BayState[]) => cb(bays);
+    ipcRenderer.on(IPC_CHANNELS.PRODUCTION_BAYS_STATE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.PRODUCTION_BAYS_STATE, handler);
+  },
+  productionBayAddTcp: (endpoint: string) => unwrapIpc<string>(IPC_CHANNELS.PRODUCTION_BAY_ADD_TCP, endpoint),
+  productionBayRemove: (bayId: string, ignore: boolean) => unwrapIpc<void>(IPC_CHANNELS.PRODUCTION_BAY_REMOVE, bayId, ignore),
+  productionUnignorePorts: () => unwrapIpc<void>(IPC_CHANNELS.PRODUCTION_UNIGNORE_PORTS),
+  productionBaySetModel: (bayId: string, modelId: string | null) => unwrapIpc<void>(IPC_CHANNELS.PRODUCTION_BAY_SET_MODEL, bayId, modelId),
+  productionBaySetModelAll: (modelId: string) => unwrapIpc<void>(IPC_CHANNELS.PRODUCTION_BAY_SET_MODEL_ALL, modelId),
+  productionBayPreview: (bayId: string, modelId: string) => unwrapIpc<{
+    deltas: import('../shared/production-types').QaConfigDelta[]; goldenOid?: string; consented: boolean; modelName: string; updatedAt: number;
+  }>(IPC_CHANNELS.PRODUCTION_BAY_PREVIEW, bayId, modelId),
+  productionGrantConsent: (modelId: string, goldenOid: string | undefined, updatedAt: number) =>
+    unwrapIpc<void>(IPC_CHANNELS.PRODUCTION_GRANT_CONSENT, modelId, goldenOid, updatedAt),
+  productionBayPrepare: (bayId: string, modelId: string, consentGiven: boolean) =>
+    unwrapIpc<import('./production/bay-manager').PrepareResult>(IPC_CHANNELS.PRODUCTION_BAY_PREPARE, bayId, modelId, consentGiven),
+  productionBayFlash: (bayId: string, modelId: string) => unwrapIpc<{ success: boolean; error?: string }>(IPC_CHANNELS.PRODUCTION_BAY_FLASH, bayId, modelId),
+  productionBayReset: (bayId: string) => unwrapIpc<boolean>(IPC_CHANNELS.PRODUCTION_BAY_RESET, bayId),
+  productionBayReboot: (bayId: string) => unwrapIpc<boolean>(IPC_CHANNELS.PRODUCTION_BAY_REBOOT, bayId),
+  productionBayCalStart: (bayId: string, type: import('../shared/production-types').ProductionCalibrationType) =>
+    unwrapIpc<{ success: boolean; error?: string }>(IPC_CHANNELS.PRODUCTION_BAY_CAL_START, bayId, type),
+  productionBayCalConfirm: (bayId: string, position: number) =>
+    unwrapIpc<{ success: boolean; error?: string }>(IPC_CHANNELS.PRODUCTION_BAY_CAL_CONFIRM, bayId, position),
+  productionBayCalCancel: (bayId: string) => unwrapIpc<void>(IPC_CHANNELS.PRODUCTION_BAY_CAL_CANCEL, bayId),
+  productionBayQa: (bayId: string, modelId: string, serial: string) =>
+    unwrapIpc<import('../shared/production-types').QaReport>(IPC_CHANNELS.PRODUCTION_BAY_QA, bayId, modelId, serial),
+  productionBaySubmit: (bayId: string, modelId: string, serial: string, operator: string, notes?: string) =>
+    unwrapIpc<{ report: import('../shared/production-types').QaReport; run: import('../shared/production-types').ProductionRun }>(
+      IPC_CHANNELS.PRODUCTION_BAY_SUBMIT, bayId, modelId, serial, operator, notes),
+  productionBayCapture: (bayId: string, name: string) =>
+    unwrapIpc<import('../shared/production-types').ProductionModel>(IPC_CHANNELS.PRODUCTION_BAY_CAPTURE, bayId, name),
   navOpenView: (view: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.NAV_OPEN_VIEW, view),
 
