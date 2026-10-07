@@ -14,7 +14,7 @@ import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useFlightControlStore } from '../../stores/flight-control-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useMessagesStore } from '../../stores/messages-store';
-import { useMissionStore } from '../../stores/mission-store';
+import { useMissionStore, useFcSeqOffset } from '../../stores/mission-store';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useArduPilotSitlStore } from '../../stores/ardupilot-sitl-store';
 import { useSettingsStore } from '../../stores/settings-store';
@@ -834,7 +834,7 @@ function MavlinkFlightControl({ mavTypeOverride }: { mavTypeOverride?: number })
     return () => clearTimeout(t);
   }, [pendingOp]);
 
-  const fcSeqOffset = useMissionStore((s) => s.fcSeqOffset);
+  const fcSeqOffset = useFcSeqOffset();
   const setSelectedSeq = useMissionStore((s) => s.setSelectedSeq);
   // Fly-to-waypoint: retarget the active WP on the live vehicle. The store shows
   // renumbered indices (HOME stripped); the FC wants the raw seq, so add the

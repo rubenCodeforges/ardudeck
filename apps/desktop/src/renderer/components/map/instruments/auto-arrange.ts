@@ -113,6 +113,36 @@ export const INSTRUMENT_SEMANTICS: Record<string, InstrumentSemantics> = {
     priority: 100,
     idealSectors: ['A4'],
   },
+  wind: {
+    role: 'navigation',
+    priority: 55,
+    idealSectors: ['F2', 'F1'],
+  },
+  rangefinder: {
+    role: 'primaryFlight',
+    priority: 58,
+    idealSectors: ['B3', 'A3'],
+  },
+  ekf: {
+    role: 'status',
+    priority: 60,
+    idealSectors: ['A2', 'B1'],
+  },
+  'flight-timer': {
+    role: 'power',
+    priority: 57,
+    idealSectors: ['F3', 'E4'],
+  },
+  sticks: {
+    role: 'command',
+    priority: 72,
+    idealSectors: ['A3', 'B4'],
+  },
+  'in-flight-adjust': {
+    role: 'command',
+    priority: 70,
+    idealSectors: ['A3', 'B4'],
+  },
   attitude: {
     role: 'primaryFlight',
     priority: 90,

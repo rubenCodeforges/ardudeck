@@ -40,7 +40,9 @@
     "notPersisted_other": "{{count}} calibration values did not survive the reboot.",
     "nothingToVerify": "Nothing to verify.",
     "persisted": "Calibration confirmed on the vehicle after reboot.",
-    "readBackFailed": "Could not read the calibration back from the vehicle."
+    "readBackFailed": "Could not read the calibration back from the vehicle.",
+    "noCompassFitness": "No compass fitness reported.",
+    "recorded": "Recorded."
   },
   "calibrationTypes": {
     "accel6point": {

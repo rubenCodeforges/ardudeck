@@ -241,6 +241,39 @@ export const IPC_CHANNELS = {
   FLEET_REPO_LINK_UNIT: 'fleet-repo:link-unit',
   FLEET_REPO_GH_LIST_REPOS: 'fleet-repo:gh-list-repos',
   FLEET_REPO_GH_USE_EXISTING: 'fleet-repo:gh-use-existing',
+  // Production line (golden models, bays, QA runs, birth certificates)
+  PRODUCTION_LIST_MODELS: 'production:list-models',
+  PRODUCTION_SAVE_MODEL: 'production:save-model',
+  PRODUCTION_UPDATE_RULES: 'production:update-rules',
+  PRODUCTION_DELETE_MODEL: 'production:delete-model',
+  PRODUCTION_ATTACH_FIRMWARE: 'production:attach-firmware',
+  PRODUCTION_CAPTURE_FILE: 'production:capture-file',
+  PRODUCTION_CAPTURE_VAULT: 'production:capture-vault',
+  PRODUCTION_LIST_RUNS: 'production:list-runs',
+  PRODUCTION_GET_STATION: 'production:get-station',
+  PRODUCTION_SET_STATION: 'production:set-station',
+  PRODUCTION_VAULT_CHANGED: 'production:vault-changed', // Event from main
+  PRODUCTION_BAYS_START: 'production:bays-start',
+  PRODUCTION_BAYS_STOP: 'production:bays-stop',
+  PRODUCTION_BAYS_LIST: 'production:bays-list',
+  PRODUCTION_BAYS_STATE: 'production:bays-state', // Event from main
+  PRODUCTION_BAY_ADD_TCP: 'production:bay-add-tcp',
+  PRODUCTION_BAY_REMOVE: 'production:bay-remove',
+  PRODUCTION_UNIGNORE_PORTS: 'production:unignore-ports',
+  PRODUCTION_BAY_SET_MODEL: 'production:bay-set-model',
+  PRODUCTION_BAY_SET_MODEL_ALL: 'production:bay-set-model-all',
+  PRODUCTION_BAY_PREVIEW: 'production:bay-preview',
+  PRODUCTION_GRANT_CONSENT: 'production:grant-consent',
+  PRODUCTION_BAY_PREPARE: 'production:bay-prepare',
+  PRODUCTION_BAY_FLASH: 'production:bay-flash',
+  PRODUCTION_BAY_RESET: 'production:bay-reset',
+  PRODUCTION_BAY_REBOOT: 'production:bay-reboot',
+  PRODUCTION_BAY_CAL_START: 'production:bay-cal-start',
+  PRODUCTION_BAY_CAL_CONFIRM: 'production:bay-cal-confirm',
+  PRODUCTION_BAY_CAL_CANCEL: 'production:bay-cal-cancel',
+  PRODUCTION_BAY_QA: 'production:bay-qa',
+  PRODUCTION_BAY_SUBMIT: 'production:bay-submit',
+  PRODUCTION_BAY_CAPTURE: 'production:bay-capture',
 
   // Mission planning
   MISSION_DOWNLOAD: 'mission:download',
@@ -1273,6 +1306,8 @@ export interface ConnectionState {
    * Unset on MSP connections, which use fcVariant instead.
    */
   firmware?: FirmwareSource;
+  /** MAVLink link answered PARAM_REQUEST_LIST with an empty PARAM_VALUE: no parameter interface (INAV). */
+  paramsUnsupported?: boolean;
   vehicleType?: string;
   mavType?: number; // Raw MAV_TYPE for metadata lookup
   // MSP-specific (Betaflight/iNav)

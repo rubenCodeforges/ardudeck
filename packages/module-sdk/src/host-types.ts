@@ -461,6 +461,145 @@ export interface VehicleIdentity {
 }
 
 
+// ── Production line (requires the 'production' manifest permission) ──
+// Every USB autopilot plugged into the station becomes a bay with its own
+// link, so boards are prepared, calibrated and judged in parallel. The host
+// owns the links, writes the golden only behind its own consent dialog, judges
+// QA and records the result: a module drives and renders, it cannot forge a pass.
+
+export type ProductionCalibrationType = 'accel-level' | 'accel-quick' | 'accel-6point' | 'compass' | 'gyro';
+
+export interface ProductionRulesInfo {
+  requiredCalibrations: ProductionCalibrationType[];
+  allowMarginal: boolean;
+  requirePersistence: boolean;
+  /** Names that may differ from the golden; trailing * = prefix. */
+  ignoreParams: string[];
+  requireSensorsHealthy: boolean;
+  /** Prepare wipes the board to firmware defaults first. */
+  resetParams: boolean;
+  /** Prepare starts by itself when a board is plugged into a bay assigned to this model (once the model is armed). */
+  autoPrepare: boolean;
+}
+
+export interface ProductionModelInfo {
+  id: string;
+  name: string;
+  vehicleType?: string;
+  firmware?: string;
+  firmwareVersion?: string;
+  boardId?: string;
+  paramCount: number;
+  createdAt: number;
+  updatedAt: number;
+  sourceUnit?: string;
+  /** Set when an .apj is pinned: Prepare flashes it onto any board running something else. */
+  firmwareFile?: string;
+  firmwareSha256?: string;
+  firmwareBoardId?: number;
+  rules: ProductionRulesInfo;
+}
+
+export type BayPhase =
+  | 'connecting' | 'identifying' | 'loading-params' | 'ready' | 'writing'
+  | 'calibrating' | 'rebooting' | 'resetting' | 'flashing' | 'lost' | 'error';
+
+export interface CalibrationRecordInfo {
+  type: string;
+  verdict: string;
+  summary: string;
+  completedAt: number;
+  written: Record<string, number>;
+  persistence: null | { state: string; summary: string; mismatched: string[]; checkedAt: number };
+}
+
+export interface BayCalibrationInfo {
+  type: ProductionCalibrationType;
+  progress: number;
+  statusText: string;
+  /** 6-point: pose the autopilot waits for (0 level, 1 left, 2 right, 3 nose down, 4 nose up, 5 inverted). */
+  currentPosition?: number;
+  positionStatus?: boolean[];
+  compassProgress?: number[];
+  awaitingPosition: boolean;
+}
+
+export interface QaConfigDeltaInfo {
+  id: string;
+  expected: number;
+  actual: number | null;
+}
+
+/**
+ * `id`: 'firmware' | 'board' | 'config' | 'cal:<type>' | 'sensors' | 'serial' | 'identity'.
+ * `code` is a stable machine code (e.g. 'calNeedsReboot'); translate it in the module.
+ */
+export interface QaCheckInfo {
+  id: string;
+  status: 'pass' | 'fail' | 'skip';
+  code: string;
+  vars?: Record<string, string | number>;
+}
+
+export interface QaReportInfo {
+  passed: boolean;
+  checks: QaCheckInfo[];
+  configDeltas: QaConfigDeltaInfo[];
+  evaluatedAt: number;
+}
+
+export interface BayInfo {
+  id: string;
+  /** Serial port path, or tcp:host:port for a simulator bench. */
+  port: string;
+  phase: BayPhase;
+  phaseDetail?: string;
+  progress?: number;
+  /** Hardware identity; null when the board reports none (cannot be certified). */
+  boardUid: string | null;
+  sitl: boolean;
+  boardId?: string;
+  firmware?: 'ardupilot' | 'px4';
+  firmwareVersion?: string;
+  vehicleType?: string;
+  paramCount: number;
+  paramTotal: number;
+  sensors: { present: number; enabled: number; health: number } | null;
+  calibration: BayCalibrationInfo | null;
+  lastCalResult?: { type: ProductionCalibrationType; success: boolean; error?: string; rebootRequired?: boolean };
+  records: CalibrationRecordInfo[];
+  qa?: QaReportInfo;
+  modelId?: string;
+  lastStatusText?: string;
+  error?: string;
+  updatedAt: number;
+}
+
+export interface PrepareResultInfo {
+  ok: boolean;
+  flashed: boolean;
+  reset: boolean;
+  written: number;
+  missing: string[];
+  failed: string[];
+  error?: string;
+}
+
+export interface ProductionRunInfo {
+  id: string;
+  passed: boolean;
+  serial: string;
+  unitUid: string;
+  modelId: string;
+  operator: string;
+  station: string;
+  at: number;
+  failed: string[];
+  notes?: string;
+}
+
+export type ProductionHostView = 'calibration' | 'firmware' | 'parameters' | 'vault';
+
 // --- Config cards ---------------------------------------------------------
 // A module adds a card to an existing configuration screen. The host owns the
 // slot's position; the module supplies the card body.
@@ -767,6 +906,60 @@ export interface RendererHostApi {
     openFolder(): void;
     /** Opens the host's backup setup; credentials never pass through a module */
     openBackupSetup(): void;
+  };
+  /**
+   * Production line station. Requires the 'production' manifest permission.
+   * Records land in the fleet vault (models/, units/<uid>/birth.json, production/runs/).
+   */
+  production: {
+    /** Start watching USB for autopilots (each becomes a bay). Call when the station view opens. */
+    startBays(): Promise<BayInfo[]>;
+    /** Close every bay and release the ports. Bays keep running while the operator looks at other views. */
+    stopBays(): Promise<void>;
+    isStationRunning(): Promise<boolean>;
+    getBays(): BayInfo[];
+    subscribeBays(listener: (bays: BayInfo[]) => void): () => void;
+    /** A simulator or network bench as a bay, e.g. "127.0.0.1:5760". */
+    addSimulatorBay(endpoint: string): Promise<string>;
+    /** `ignore` keeps that USB port out of the station until restoreIgnoredPorts(). */
+    removeBay(bayId: string, ignore?: boolean): Promise<void>;
+    restoreIgnoredPorts(): Promise<void>;
+    setBayModel(bayId: string, modelId: string | null): Promise<void>;
+    setModelForAllBays(modelId: string): Promise<void>;
+    /** Station name stamped on every run (defaults to the computer name). */
+    getStation(): Promise<string>;
+    setStation(name: string): Promise<string>;
+    listModels(): Promise<ProductionModelInfo[]>;
+    /**
+     * Save a full configuration as a model's golden: a bay, the vehicle on the app's main connection,
+     * a Fleet Vault vehicle's latest snapshot, or a .param file the operator picks (null if cancelled).
+     */
+    captureGolden(source: { bayId: string } | 'connected' | { vaultUnit: string } | 'file', name: string): Promise<ProductionModelInfo | null>;
+    updateRules(modelId: string, rules: ProductionRulesInfo): Promise<ProductionModelInfo | null>;
+    /** Remove a model (recoverable in vault history). Certificates already issued are kept. */
+    deleteModel(modelId: string): Promise<void>;
+    /** Host file picker for the model's .apj; null when the operator cancels. */
+    attachFirmware(modelId: string): Promise<ProductionModelInfo | null>;
+    previewGolden(bayId: string, modelId: string): Promise<{ deltas: QaConfigDeltaInfo[]; armed: boolean }>;
+    /** Host consent dialog that clears this model's golden for every bay until the app restarts. Needed for autoPrepare. */
+    armModel(modelId: string, bayId: string): Promise<boolean>;
+    /** Flash if needed, reset, write the golden through reboots until the board matches. Asks consent unless armed. */
+    prepare(bayId: string, modelId: string): Promise<PrepareResultInfo>;
+    flash(bayId: string, modelId: string): Promise<{ success: boolean; error?: string }>;
+    resetToDefaults(bayId: string): Promise<boolean>;
+    /** Reboot; calibration persistence is re-checked when the board is back. */
+    reboot(bayId: string): Promise<boolean>;
+    startCalibration(bayId: string, type: ProductionCalibrationType): Promise<{ success: boolean; error?: string }>;
+    /** 6-point: confirm the board is held in `position` (from BayCalibrationInfo.currentPosition). */
+    confirmCalibrationPosition(bayId: string, position: number): Promise<{ success: boolean; error?: string }>;
+    cancelCalibration(bayId: string): Promise<void>;
+    runQa(bayId: string, modelId: string, serial: string): Promise<QaReportInfo>;
+    /** Run QA and record the outcome. A pass writes the unit's birth certificate. */
+    submit(bayId: string, modelId: string, serial: string, operator: string, notes?: string): Promise<{ report: QaReportInfo; run: ProductionRunInfo }>;
+    listRuns(limit?: number): Promise<ProductionRunInfo[]>;
+    /** Fires after a golden, certificate or run was written to the vault. */
+    onRecordsChanged(listener: () => void): () => void;
+    openHostView(view: ProductionHostView): void;
   };
   /**
    * Which vehicle the app currently attributes work to (auto-detected or

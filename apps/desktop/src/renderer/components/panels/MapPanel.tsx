@@ -254,9 +254,11 @@ function getCommandShape(cmd: number): string {
 // rings the marker in that group's (vehicle's) identity colour so a fleet's
 // per-vehicle waypoints are distinguishable at a glance; the fill still encodes
 // the command type.
-function createWaypointIcon(wp: MissionItem, isCurrent: boolean, groupColor?: string): L.DivIcon {
+const COMPLETED_COLOR = '#10b981';
+
+function createWaypointIcon(wp: MissionItem, isCurrent: boolean, groupColor?: string, isDone = false): L.DivIcon {
   const baseColor = getCommandColor(wp.command);
-  const bgColor = isCurrent ? '#f59e0b' : baseColor;
+  const bgColor = isCurrent ? '#f59e0b' : isDone ? COMPLETED_COLOR : baseColor;
   const size = isCurrent ? 28 : 24;
   const shape = getCommandShape(wp.command);
   const displayText = shape || (wp.seq + 1).toString();
@@ -884,6 +886,7 @@ function CommandPopupOverlay({
   useLayoutEffect(() => {
     const el = popupRef.current;
     if (!el) return;
+    const place = () => {
     const rect = mapContainer.getBoundingClientRect();
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -912,6 +915,16 @@ function CommandPopupOverlay({
     }
 
     setPos({ left, top, ready: true });
+    };
+    place();
+    // Picking a command grows the card; re-place so it stays on screen
+    const ro = new ResizeObserver(place);
+    ro.observe(el);
+    window.addEventListener('resize', place);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', place);
+    };
   }, [anchorPx.x, anchorPx.y, mapContainer]);
 
   // Click-outside dismiss. mousedown so the click that started outside the
@@ -933,10 +946,11 @@ function CommandPopupOverlay({
   return createPortal(
     <div
       ref={popupRef}
-      className="tactical-command-popup fixed z-[2000] pointer-events-auto rounded-xl shadow-2xl border border-strong bg-surface-overlay backdrop-blur-md p-2 w-[300px]"
+      className="tactical-command-popup fixed z-[2000] pointer-events-auto rounded-xl shadow-2xl border border-strong bg-surface-overlay backdrop-blur-md p-2 w-[300px] overflow-y-auto overscroll-contain"
       style={{
         left: pos.left,
         top: pos.top,
+        maxHeight: 'calc(100vh - 24px)',
         visibility: pos.ready ? 'visible' : 'hidden',
       }}
     >
@@ -1871,6 +1885,7 @@ const MissionOverlays = React.memo(function MissionOverlays() {
   const groups = useMissionStore((s) => s.groups);
   const missionHome = useMissionStore((s) => s.homePosition);
   const currentSeq = useMissionStore((s) => s.currentSeq);
+  const reachedSeq = useMissionStore((s) => s.reachedSeq);
   const activeVehicleKey = useActiveVehicleStore((s) => s.activeVehicleKey);
   const viewMode = useTelemMissionViewStore((s) => s.mode);
 
@@ -1918,6 +1933,14 @@ const MissionOverlays = React.memo(function MissionOverlays() {
     return plans;
   }, [groups, missionItems, activeVehicleKey, viewMode]);
 
+  // Last located waypoint the FC reported reached: the route up to it has been flown
+  const doneIdx = (wps: MissionItem[]) => {
+    if (reachedSeq === null) return -1;
+    let idx = -1;
+    wps.forEach((wp, i) => { if (wp.seq <= reachedSeq) idx = i; });
+    return idx;
+  };
+
   return (
     <>
       {groupPlans.map((plan) => {
@@ -1942,6 +1965,12 @@ const MissionOverlays = React.memo(function MissionOverlays() {
                 pathOptions={{ color: plan.color, weight: plan.dim ? 2 : 3, opacity: plan.dim ? 0.3 : 0.85 }}
               />
             )}
+            {!plan.dim && doneIdx(plan.waypoints) > 0 && (
+              <Polyline
+                positions={buildMissionPath(plan.waypoints.slice(0, doneIdx(plan.waypoints) + 1)).positions}
+                pathOptions={{ color: COMPLETED_COLOR, weight: 4, opacity: 0.9 }}
+              />
+            )}
             {loiters.map((wp) => (
               <Circle
                 key={`loiter-${plan.id}-${wp.seq}`}
@@ -1962,7 +1991,7 @@ const MissionOverlays = React.memo(function MissionOverlays() {
                     ? startIcon
                     : role === 'end'
                       ? endIcon
-                      : createWaypointIcon(wp, wp.seq === currentSeq, plan.color)
+                      : createWaypointIcon(wp, wp.seq === currentSeq, plan.color, reachedSeq !== null && wp.seq <= reachedSeq)
                 }
                 zIndexOffset={role === 'current' ? 1000 : 0}
               />

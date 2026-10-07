@@ -141,6 +141,8 @@ export interface MavlinkCalibrationDeps {
   sendComplete: (event: CalibrationCompleteEvent) => void;
 }
 
+/** One calibration state machine per link: the GUI uses the shared instance, production bays one each. */
+export function createMavlinkCalibration() {
 // =============================================================================
 // State
 // =============================================================================
@@ -225,11 +227,11 @@ let compassMotActive = false;
 // Init
 // =============================================================================
 
-export function initMavlinkCalibration(context: MavlinkCalibrationDeps): void {
+function initMavlinkCalibration(context: MavlinkCalibrationDeps): void {
   deps = context;
 }
 
-export function cleanupMavlinkCalibration(): void {
+function cleanupMavlinkCalibration(): void {
   cancelMavlinkCalibration();
   deps = null;
 }
@@ -238,7 +240,7 @@ export function cleanupMavlinkCalibration(): void {
 // Public API
 // =============================================================================
 
-export function isMavlinkCalibrationActive(): boolean {
+function isMavlinkCalibrationActive(): boolean {
   return activeCalType !== null;
 }
 
@@ -250,7 +252,7 @@ export function isMavlinkCalibrationActive(): boolean {
  * GPS lock provides the local earth-field vector. AP solves for the offsets
  * in a single shot and writes COMPASS_OFS_*. Reboot recommended afterward.
  */
-export async function sendFixedMagCalYaw(headingDeg: number): Promise<{ success: boolean; error?: string }> {
+async function sendFixedMagCalYaw(headingDeg: number): Promise<{ success: boolean; error?: string }> {
   if (!deps) return { success: false, error: t('main:mavlinkCalibration.notInitialized') };
   if (pendingFixedMagCalYawResolver) {
     return { success: false, error: t('main:mavlinkCalibration.magCalInProgress') };
@@ -297,7 +299,7 @@ export async function sendFixedMagCalYaw(headingDeg: number): Promise<{ success:
  * whole time. There is no start ACK - the running state is confirmed by the
  * arrival of COMPASSMOT_STATUS frames, which the renderer decodes directly.
  */
-export async function startCompassMot(): Promise<{ success: boolean; error?: string }> {
+async function startCompassMot(): Promise<{ success: boolean; error?: string }> {
   if (!deps) return { success: false, error: t('main:mavlinkCalibration.notInitialized') };
   if (compassMotActive) return { success: false, error: t('main:mavlinkCalibration.compassMotInProgress') };
 
@@ -324,7 +326,7 @@ export async function startCompassMot(): Promise<{ success: boolean; error?: str
  * PREFLIGHT_CALIBRATION. Mission Planner sends it twice for reliability over
  * lossy links, so we do the same.
  */
-export async function stopCompassMot(): Promise<{ success: boolean; error?: string }> {
+async function stopCompassMot(): Promise<{ success: boolean; error?: string }> {
   if (!deps) return { success: false, error: t('main:mavlinkCalibration.notInitialized') };
 
   deps.sendLog('info', 'Finishing CompassMot (COMMAND_ACK for PREFLIGHT_CALIBRATION)'); // i18n-exempt
@@ -339,7 +341,7 @@ export async function stopCompassMot(): Promise<{ success: boolean; error?: stri
   return { success: true };
 }
 
-export async function startMavlinkCalibration(
+async function startMavlinkCalibration(
   type: CalibrationTypeId,
   firmware: CalibrationFirmware = 'ardupilot',
 ): Promise<{ success: boolean; error?: string }> {
@@ -370,7 +372,7 @@ export async function startMavlinkCalibration(
   }
 }
 
-export async function confirmMavlinkPosition(position: number): Promise<{ success: boolean; error?: string }> {
+async function confirmMavlinkPosition(position: number): Promise<{ success: boolean; error?: string }> {
   if (!deps) return { success: false, error: t('main:mavlinkCalibration.notInitialized') };
   if (activeCalType !== 'accel-6point') return { success: false, error: t('main:calibration.sixPointNotInProgress') };
   // PX4 detects orientations automatically and has no confirm step; the UI
@@ -439,7 +441,7 @@ export async function confirmMavlinkPosition(position: number): Promise<{ succes
   return { success: true };
 }
 
-export function cancelMavlinkCalibration(): void {
+function cancelMavlinkCalibration(): void {
   // Hand the mag cal messages back to the vehicle's own stream rates.
   if (activeCalType === 'compass' && activeFirmware === 'ardupilot') {
     void requestMagCalStreams(-1);
@@ -479,7 +481,7 @@ export function cancelMavlinkCalibration(): void {
  * receives PREFLIGHT_CALIBRATION with every param zero (the QGC convention).
  * Fire-and-forget: local state is torn down regardless.
  */
-export function abortVehicleCalibration(): void {
+function abortVehicleCalibration(): void {
   if (!deps || !activeCalType) return;
   if (activeFirmware === 'px4') {
     void deps.sendCommandLong(MAV_CMD_PREFLIGHT_CALIBRATION, {
@@ -516,7 +518,7 @@ function armOneShotTimeout(type: 'accel-level' | 'accel-quick' | 'gyro'): void {
 // STATUSTEXT handler — called from ipc-handlers when STATUSTEXT is received
 // =============================================================================
 
-export function handleCalibrationStatusText(text: string, severity: number): void {
+function handleCalibrationStatusText(text: string, severity: number): void {
   if (!deps || !activeCalType) return;
 
   const lower = text.toLowerCase();
@@ -876,7 +878,7 @@ function popcount(mask: number): number {
 }
 
 /** MAG_CAL_PROGRESS (191): live completion percentage while rotating. */
-export function handleMagCalProgress(compassId: number, _calStatus: number, completionPct: number): void {
+function handleMagCalProgress(compassId: number, _calStatus: number, completionPct: number): void {
   if (!deps || activeCalType !== 'compass') return;
   // Cap below 100 until MAG_CAL_REPORT confirms the fit — the pct hits 100
   // before the FC has judged fitness.
@@ -900,7 +902,7 @@ export function handleMagCalProgress(compassId: number, _calStatus: number, comp
 }
 
 /** MAG_CAL_REPORT (192): per-compass result. One arrives for each compass. */
-export function handleMagCalReport(compassId: number, calMask: number, calStatus: number, fitness: number): void {
+function handleMagCalReport(compassId: number, calMask: number, calStatus: number, fitness: number): void {
   if (!deps || activeCalType !== 'compass') return;
 
   const label = `Compass ${compassId + 1}`;
@@ -965,7 +967,7 @@ function finishMagCalIfDone(expected: number): void {
 // COMMAND_ACK handler — called from ipc-handlers
 // =============================================================================
 
-export function handleCalibrationCommandAck(command: number, result: number): void {
+function handleCalibrationCommandAck(command: number, result: number): void {
   if (!deps) return;
 
   // FIXED_MAG_CAL_YAW runs independently of the activeCalType state machine,
@@ -1050,11 +1052,9 @@ export function handleCalibrationCommandAck(command: number, result: number): vo
       // met — AP checks ins.calibrated() before accepting trim cal, which
       // requires a prior 6-point accel calibration.
       let userError: string;
-      if (result === 1 && activeCalType === 'accel-quick') {
-        // AP refuses a second simple cal within 5 s of the last one.
+      if (result === 1 && (activeCalType === 'accel-quick' || activeCalType === 'accel-level')) {
+        // AP (4.5+) refuses accel and trim cal within 5 s of boot or of the last accel cal, or while one runs.
         userError = t('main:mavlinkCalibration.stillBusy');
-      } else if (result === 1 && activeCalType === 'accel-level') {
-        userError = t('main:mavlinkCalibration.accelNotCalibrated');
       } else if (result === 1) {
         userError = t('main:mavlinkCalibration.notReady');
       } else {
@@ -1104,7 +1104,7 @@ export function handleCalibrationCommandAck(command: number, result: number): vo
 // Incoming COMMAND_LONG handler — ArduPilot sends ACCELCAL_VEHICLE_POS to GCS
 // =============================================================================
 
-export function handleIncomingCommandLong(command: number, param1: number): void {
+function handleIncomingCommandLong(command: number, param1: number): void {
   if (!deps || activeCalType !== 'accel-6point') return;
   // ACCELCAL_VEHICLE_POS is ArduPilot's pose-request protocol. PX4 never
   // sends it; during a PX4 run such a frame is stray traffic, not protocol.
@@ -1380,3 +1380,42 @@ function armCompassStallTimer(): void {
     cancelMavlinkCalibration();
   }, COMPASS_CAL_STALL_MS);
 }
+
+
+return {
+  initMavlinkCalibration,
+  cleanupMavlinkCalibration,
+  isMavlinkCalibrationActive,
+  sendFixedMagCalYaw,
+  startCompassMot,
+  stopCompassMot,
+  startMavlinkCalibration,
+  confirmMavlinkPosition,
+  cancelMavlinkCalibration,
+  abortVehicleCalibration,
+  handleCalibrationStatusText,
+  handleMagCalProgress,
+  handleMagCalReport,
+  handleCalibrationCommandAck,
+  handleIncomingCommandLong,
+};
+}
+
+export type MavlinkCalibration = ReturnType<typeof createMavlinkCalibration>;
+
+const shared = createMavlinkCalibration();
+export const initMavlinkCalibration = shared.initMavlinkCalibration;
+export const cleanupMavlinkCalibration = shared.cleanupMavlinkCalibration;
+export const isMavlinkCalibrationActive = shared.isMavlinkCalibrationActive;
+export const sendFixedMagCalYaw = shared.sendFixedMagCalYaw;
+export const startCompassMot = shared.startCompassMot;
+export const stopCompassMot = shared.stopCompassMot;
+export const startMavlinkCalibration = shared.startMavlinkCalibration;
+export const confirmMavlinkPosition = shared.confirmMavlinkPosition;
+export const cancelMavlinkCalibration = shared.cancelMavlinkCalibration;
+export const abortVehicleCalibration = shared.abortVehicleCalibration;
+export const handleCalibrationStatusText = shared.handleCalibrationStatusText;
+export const handleMagCalProgress = shared.handleMagCalProgress;
+export const handleMagCalReport = shared.handleMagCalReport;
+export const handleCalibrationCommandAck = shared.handleCalibrationCommandAck;
+export const handleIncomingCommandLong = shared.handleIncomingCommandLong;

@@ -27,7 +27,9 @@ export type TelemetryField =
   | 'gps'
   | 'battery'
   | 'vfrHud'
-  | 'rcChannels';
+  | 'rcChannels'
+  | 'wind'
+  | 'ekf';
 
 const STAMP_SELECTOR = {
   attitude: (s: { lastAttitude: number }) => s.lastAttitude,
@@ -36,6 +38,8 @@ const STAMP_SELECTOR = {
   battery: (s: { lastBattery: number }) => s.lastBattery,
   vfrHud: (s: { lastVfrHud: number }) => s.lastVfrHud,
   rcChannels: (s: { lastRcChannels: number }) => s.lastRcChannels,
+  wind: (s: { lastWind: number }) => s.lastWind,
+  ekf: (s: { lastEkf: number }) => s.lastEkf,
 } as const;
 
 /**

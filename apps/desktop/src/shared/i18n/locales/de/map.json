@@ -162,7 +162,9 @@
     "compact": "Kompakt",
     "inline": "Inline",
     "numeric": "Numerisch",
-    "strip": "Leiste"
+    "strip": "Leiste",
+    "proximity": "Nähe",
+    "latest": "Nur neueste"
   },
   "instrumentRegistry": {
     "altitude": "Höhe",
@@ -184,7 +186,13 @@
     "steer": "Lenkung",
     "tilt": "Neigung",
     "vsi": "VSI",
-    "xtrack": "Querablage"
+    "xtrack": "Querablage",
+    "inFlightAdjust": "Im Flug anpassen",
+    "sticks": "Sticks (Joystick)",
+    "wind": "Wind",
+    "rangefinder": "Entfernungsmesser",
+    "ekf": "EKF-Zustand",
+    "flightTimer": "Flugzeit"
   },
   "instrumentsCatalog": {
     "arrange": "Anordnen",
@@ -386,7 +394,11 @@
   },
   "messagesInstrument": {
     "none": "Keine Meldungen",
-    "title": "Meldungen"
+    "title": "Meldungen",
+    "now": "jetzt",
+    "seconds": "{{n}}s",
+    "minutes": "{{n}}m",
+    "hours": "{{n}}h"
   },
   "offlineArea": {
     "allCachedSize": "Alle {{count}} Kacheln bereits zwischengespeichert ({{size}})",
@@ -512,5 +524,65 @@
     "clearLog": "Alarmprotokoll leeren",
     "disclaimer": "Nur zur Lageerkennung. Eventuelle Gegenmaßnahmen werden von gesondert befugten Stellen durchgeführt.",
     "in": "in"
+  },
+  "inFlightAdjustInstrument": {
+    "title": "IM FLUG ANPASSEN",
+    "fixedWingOnly": "NUR STARRFLÜGLER",
+    "tagRadius": "RAD",
+    "set": "SETZEN",
+    "revert": "Zurück zum zuletzt gesendeten Wert"
+  },
+  "sticksInstrument": {
+    "title": "Sticks",
+    "left": "GIER · GAS",
+    "right": "ROLL · NICK",
+    "control": "STEUERN",
+    "onTip": "Mit diesen Bildschirm-Sticks fliegen. Rollen, Nicken und Gieren federn in die Mitte zurück; die Sticks starten dort, wo das Fluggerät schon ist, das Einschalten bewegt also nichts.",
+    "offTip": "Die Sticks an die eigene Fernsteuerung des Fluggeräts zurückgeben",
+    "off": "AUS",
+    "noVehicle": "KEIN FLUGGERÄT",
+    "inControl": "FLIEGT · {{fps}} Hz",
+    "joystickInControl": "JOYSTICK FLIEGT",
+    "hint": "STEUERN einschalten, dann die Sticks ziehen. Kein Joystick nötig."
+  },
+  "sensorInstruments": {
+    "wind": "WIND",
+    "calm": "STILL",
+    "from": "aus {{deg}}°",
+    "head": "GEGEN",
+    "tail": "RÜCKEN",
+    "cross": "X",
+    "rangefinder": "ENTFERNUNGSMESSER",
+    "quality": "Q {{q}}%",
+    "noSensor": "KEIN SENSOR",
+    "noTarget": "AUSSER REICHWEITE",
+    "tooClose": "ZU NAH",
+    "agl": "ÜBER GRUND",
+    "proximity": "NÄHE",
+    "clear": "FREI",
+    "up": "oben {{d}}",
+    "ekf": "EKF",
+    "ekfStatus": {
+      "noData": "KEINE DATEN",
+      "initialising": "STARTET",
+      "gpsGlitch": "GPS-STÖRUNG",
+      "bad": "SCHLECHT",
+      "check": "PRÜFEN",
+      "ok": "OK"
+    },
+    "ekfRow": {
+      "vel": "GESCHW",
+      "posH": "POS H",
+      "posV": "POS V",
+      "mag": "KOMPASS",
+      "terr": "GELÄNDE"
+    },
+    "flight": "FLUGZEIT",
+    "armed": "SCHARF",
+    "disarmed": "GESICHERT",
+    "endurance": "RESTFLUGZEIT",
+    "needCapacity": "Akkukapazität (BATT_CAPACITY) setzen, um die Restflugzeit zu sehen",
+    "notDrawing": "Erscheint, sobald die Motoren Strom ziehen",
+    "atDraw": "Bei durchschnittlich {{a}} A"
   }
 }

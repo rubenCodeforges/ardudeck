@@ -154,7 +154,7 @@ import { AP_PERIPH_METADATA_URL, parsePeriphMetadata } from '../shared/periph-pa
 import { formatPx4Event, px4EventSeverity, setPx4EventMetadata } from './px4-events/index.js';
 import { COMP_METADATA_TYPE, fetchPx4ComponentMetadata } from './px4-component-info/index.js';
 import { px4CellVoltageAtThreshold } from '../shared/px4-battery.js';
-import { verifyCalibrationPersisted } from '../shared/calibration-quality.js';
+import { saveCalibrationRecord, listCalibrationRecords, verifyCalibrationRecords, type CalibrationRecord } from './calibration/calibration-records.js';
 import type { AttitudeData, PositionData, GpsData, BatteryData, VfrHudData, FlightState, RcChannelsData, NavControllerData, GuidedTargetData } from '../shared/telemetry-types.js';
 import { COPTER_MODES, PLANE_MODES, ROVER_MODES, SUB_MODES, getPx4ModeName } from '../shared/telemetry-types.js';
 import type { MissionItem, MissionProgress, MavFrame } from '../shared/mission-types.js';
@@ -165,6 +165,8 @@ import type { RallyItem } from '../shared/rally-types.js';
 import type { DetectedBoard, FirmwareSource, FirmwareVehicleType, FirmwareManifest, FirmwareVersion, FlashResult, FlashOptions } from '../shared/firmware-types.js';
 import type { MotorTestStartRequest, MotorTestResponse, EscTelemetryData, EscMotorTelemetry } from '../shared/motor-test-types.js';
 import { getBoardInfoFromVersion } from '../shared/board-ids.js';
+import { decodeAutopilotVersion } from '../shared/autopilot-version.js';
+import { registerProductionIpc, shutdownProduction, releaseProductionPort } from './production/production-ipc.js';
 import { detectBoards, fetchFirmwareVersions, downloadFirmware, copyCustomFirmware, flashWithDfu, flashWithAvrdude, flashWithSerialBootloader, flashWithArduPilotBootloader, getArduPilotBoards, getArduPilotVersions, getBetaflightBoards, getBetaflightVersions, resolveBetaflightDownloadUrl, getInavBoards, getInavVersions, type BoardInfo, type VersionGroup } from './firmware/index.js';
 import { scanForEdgeTxCards, probeVolume as probeEdgeTxVolume } from './edgetx/sd-detector.js';
 import { getPackage as getEdgeTxPackage, catalogInfo as edgeTxCatalogInfo, ARDUDECK_BW_SCRIPT } from './edgetx/package-registry.js';
@@ -456,32 +458,6 @@ const paramHistoryStore = new Store<{ boards: Record<string, BoardParamHistory> 
   defaults: { boards: {} },
 });
 
-/**
- * Calibration record per board, so a calibration can be PROVEN after the
- * reboot rather than assumed.
- *
- * The dangerous moment is the reboot: the wizard reports success, the FC
- * restarts, and nothing checks that the new values actually came back. An
- * operator reasonably assumes a rebooted vehicle kept its calibration. This
- * survives both the reboot and an app restart, so the answer is still there
- * when the vehicle reconnects.
- */
-interface CalibrationRecord {
-  /** 'accel-6point' | 'compass' | ... */
-  type: string;
-  /** Values the calibration produced, to be compared after the reboot. */
-  written: Record<string, number>;
-  /** 'good' | 'marginal' | 'bad' | 'unknown' at the time it was written. */
-  verdict: string;
-  summary: string;
-  completedAt: number;
-  /** null until the vehicle has reconnected and been re-read. */
-  persistence: null | { state: string; summary: string; mismatched: string[]; checkedAt: number };
-}
-const calibrationRecordStore = new Store<{ boards: Record<string, CalibrationRecord[]> }>({
-  name: 'calibration-records',
-  defaults: { boards: {} },
-});
 
 /**
  * What board was really on the other end of a USB serial number.
@@ -1022,6 +998,8 @@ const TELEM_STREAM_MESSAGES: { msgId: number; cat: 'attitude' | 'position' | 'ot
   { msgId: 27, cat: 'other' },           // RAW_IMU
   { msgId: 29, cat: 'other' },           // SCALED_PRESSURE
   { msgId: 168, cat: 'other', hz: 1 },   // WIND (ArduPilot wind estimation, 1Hz is plenty)
+  { msgId: 132, cat: 'other', hz: 5 },   // DISTANCE_SENSOR (rangefinder + proximity sectors)
+  { msgId: 193, cat: 'other', hz: 2 },   // EKF_STATUS_REPORT (EKF health instrument)
   { msgId: 231, cat: 'other', hz: 1 },   // WIND_COV (PX4's wind message; AP uses 168)
   { msgId: 241, cat: 'other' },          // VIBRATION (for motor test view)
   { msgId: 147, cat: 'other' },          // BATTERY_STATUS (per-monitor batteries, #126)
@@ -2727,6 +2705,8 @@ const MSG_POSITION_TARGET_GLOBAL_INT = 87;
 const MSG_COMMAND_ACK = 77;
 const MSG_TERRAIN_REPORT = 136;
 const MSG_WIND = 168;
+const MSG_DISTANCE_SENSOR = 132;
+const MSG_EKF_STATUS_REPORT = 193;
 const MSG_WIND_COV = 231;
 const MSG_NAMED_VALUE_FLOAT = 251;
 const MSG_STATUSTEXT = 253;
@@ -3183,6 +3163,41 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       const dirFrom = (Math.atan2(windE, windN) * 180 / Math.PI + 180 + 360) % 360;
       queueMavlinkTelemetry(mainWindow, {
         wind: { direction: dirFrom, speed: Math.hypot(windN, windE), speedZ: -windD },
+      });
+      break;
+    }
+
+    case MSG_DISTANCE_SENSOR: {
+      // DISTANCE_SENSOR (132) wire order: time_boot_ms(4), min_distance(2), max_distance(2),
+      //   current_distance(2) cm, type(1), id(1), orientation(1), covariance(1), then extensions
+      //   horizontal_fov(4) vertical_fov(4) quaternion(16) signal_quality(1 @38, 0 = not reported).
+      const orientation = payload[12] ?? 0;
+      const quality = payload[38] ?? 0;
+      const reading = {
+        distance: readUint16(payload, 8) / 100,
+        min: readUint16(payload, 4) / 100,
+        max: readUint16(payload, 6) / 100,
+        orientation,
+        quality: quality === 0 ? null : quality,
+      };
+      // several sensors arrive within one batch: merge by orientation instead of overwriting
+      const pending = (mavlinkTelemetryBatches[parseVehicleKey]?.distanceSensors ?? {}) as Record<number, typeof reading>;
+      queueMavlinkTelemetry(mainWindow, { distanceSensors: { ...pending, [orientation]: reading } });
+      break;
+    }
+
+    case MSG_EKF_STATUS_REPORT: {
+      // EKF_STATUS_REPORT (193) wire order: velocity_variance(4), pos_horiz_variance(4),
+      //   pos_vert_variance(4), compass_variance(4), terrain_alt_variance(4), flags(2)
+      queueMavlinkTelemetry(mainWindow, {
+        ekf: {
+          velocity: readFloat(payload, 0),
+          posHoriz: readFloat(payload, 4),
+          posVert: readFloat(payload, 8),
+          compass: readFloat(payload, 12),
+          terrain: readFloat(payload, 16),
+          flags: readUint16(payload, 20),
+        },
       });
       break;
     }
@@ -3737,6 +3752,23 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       // Deserialize parameter value
       const param = deserializeParamValue(payload);
 
+      // INAV answers PARAM_REQUEST_LIST with one empty PARAM_VALUE (telemetry/mavlink.c), even when posing as ArduPilot
+      if (param.paramCount === 0 && !param.paramId) {
+        if (!connectionState.paramsUnsupported) {
+          connectionState.paramsUnsupported = true;
+          if (connectionState.firmware === 'ardupilot') connectionState.firmware = 'custom';
+          paramDownloadActive = false;
+          if (paramDownloadTimeout) {
+            clearTimeout(paramDownloadTimeout);
+            paramDownloadTimeout = null;
+          }
+          sendLog(mainWindow, 'info', t('main:ipc.inavNoParams'));
+          safeSend(mainWindow, IPC_CHANNELS.PARAM_ERROR, t('main:ipc.inavNoParams'));
+          sendConnectionState(mainWindow);
+        }
+        break;
+      }
+
       // PX4 transmits integer params bytewise: the param_value bytes hold the
       // raw typed integer bits, not a float. Reinterpret from the raw wire
       // bytes (not the already-decoded float, which is lossy for int bits)
@@ -4010,24 +4042,8 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
             }
           }
 
-          // Check uid2 (18 bytes at offset 60) - supersedes uid if non-zero
-          let hasUid2 = false;
-          if (payload.length >= 78) {
-            for (let i = 60; i < 78; i++) {
-              if (payload[i] !== 0) { hasUid2 = true; break; }
-            }
-          }
-
-          let boardUid: string;
-          if (hasUid2) {
-            // uid2 as hex string
-            boardUid = Array.from(payload.slice(60, 78)).map(b => b.toString(16).padStart(2, '0')).join('');
-          } else if (uid !== 0n) {
-            boardUid = uid.toString(16);
-          } else {
-            // No UID - use systemId fallback
-            boardUid = `mavlink-${connectionState.systemId ?? 0}`;
-          }
+          const identity = decodeAutopilotVersion(payload);
+          const boardUid = identity.boardUid ?? `mavlink-${connectionState.systemId ?? 0}`;
 
           if (!connectionState.boardUid) {
             connectionState.boardUid = boardUid;
@@ -6283,6 +6299,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     lastConnectOptions = { ...options };
     suppressAutoReconnect = false;
     lastSerialUsbId = null;
+    // The operator picked this port for the main connection: a production bay holding it lets go.
+    if (options.type === 'serial' && options.port) await releaseProductionPort(options.port);
     if (options.type === 'serial' && options.port) {
       void listSerialPorts()
         .then((ports) => {
@@ -8091,30 +8109,16 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   /** Record what a calibration wrote, so the reboot can be checked against it. */
   ipcMain.handle(IPC_CHANNELS.CALIBRATION_RECORD_SAVE, (_, boardUid: string, record: CalibrationRecord) => {
     if (!boardUid) return { success: false, error: t('main:ipc.noBoardIdentity') };
-    const boards = calibrationRecordStore.get('boards');
-    // One record per calibration type: the latest run is the one that matters.
-    // A record whose every parameter this run rewrote is retired too, or it is
-    // later checked against values it no longer owns and reported as a
-    // reboot loss (a 6-point cal overwriting what a quick cal wrote).
-    const names = new Set(Object.keys(record.written));
-    const existing = (boards[boardUid] ?? []).filter(
-      (r) => r.type !== record.type && !Object.keys(r.written).every((n) => names.has(n)),
-    );
-    boards[boardUid] = [record, ...existing].slice(0, 12);
-    calibrationRecordStore.set('boards', boards);
+    saveCalibrationRecord(boardUid, record);
     return { success: true };
   });
 
   ipcMain.handle(IPC_CHANNELS.CALIBRATION_RECORD_LIST, (_, boardUid: string): CalibrationRecord[] => {
     if (!boardUid) return [];
-    return calibrationRecordStore.get('boards')[boardUid] ?? [];
+    return listCalibrationRecords(boardUid);
   });
 
-  /**
-   * Read the calibration back off the vehicle and compare it with what was
-   * written. This is the check that closes the "FC rebooted, so it must be
-   * fine" gap: nothing else proves the values survived.
-   */
+  // The check that closes the "FC rebooted, so it must be fine" gap: nothing else proves the values survived.
   ipcMain.handle(IPC_CHANNELS.CALIBRATION_RECORD_VERIFY, async (_, boardUid: string): Promise<{
     success: boolean;
     records?: CalibrationRecord[];
@@ -8124,50 +8128,14 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     if (!currentTransport?.isOpen || !connectionState.isConnected) {
       return { success: false, error: t('main:ipc.notConnected') };
     }
-
-    const boards = calibrationRecordStore.get('boards');
-    // Retire records a later run fully overwrote, including ones stored before
-    // save-time superseding existed.
-    const records = (boards[boardUid] ?? []).filter((r, i, all) =>
-      !all.some(
-        (other, j) =>
-          j !== i &&
-          other.completedAt > r.completedAt &&
-          Object.keys(r.written).every((n) => n in other.written),
-      ),
-    );
-    if (records.length !== (boards[boardUid] ?? []).length) {
-      boards[boardUid] = records;
-      calibrationRecordStore.set('boards', boards);
-    }
-
-    const unchecked = records.filter((r) => r.persistence === null);
-    if (unchecked.length === 0) return { success: true, records };
-
-    const names = [...new Set(unchecked.flatMap((r) => Object.keys(r.written)))];
-    const readBack = await readParamsFromVehicle(names);
-    const checkedAt = Date.now();
-
-    boards[boardUid] = records.map((record) => {
-      if (record.persistence !== null) return record;
-      const result = verifyCalibrationPersisted(record.written, readBack);
-      if (result.state === 'unverified') return record; // try again next connect
-      sendLog(
-        mainWindow,
-        result.state === 'verified' ? 'info' : 'error',
-        `Calibration check (${record.type}): ${result.summary}`,
-      );
-      // A calibration the reboot threw away is a flight-safety fact, so it goes
-      // to the Messages panel at CRITICAL, where the voice announcer picks it
-      // up too. A log line is exactly what gets missed.
-      if (result.state !== 'verified' && mainWindow) {
+    const records = await verifyCalibrationRecords(boardUid, readParamsFromVehicle, (record, verified) => {
+      sendLog(mainWindow, verified ? 'info' : 'error', `Calibration check (${record.type}): ${record.persistence?.summary ?? ''}`);
+      // CRITICAL in Messages so the voice announcer picks it up: a log line is exactly what gets missed.
+      if (!verified && mainWindow) {
         emitStatusText(mainWindow, 2, `${record.type} calibration did NOT survive the reboot. Recalibrate before flying.`);
       }
-      return { ...record, persistence: { ...result, checkedAt } };
     });
-    calibrationRecordStore.set('boards', boards);
-
-    return { success: true, records: boards[boardUid] };
+    return { success: true, records };
   });
 
   ipcMain.handle(IPC_CHANNELS.PARAM_READ_BATCH, async (_, paramIds: string[]): Promise<{
@@ -8799,6 +8767,43 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
     // Altitude frame: 6 = rel home (default), 11 = terrain, 5 = AMSL.
     const altFrame = frame === 11 || frame === 5 ? frame : 6;
+
+    // ArduPlane (plane and quadplane) has no DO_ORBIT: it circles a DO_REPOSITION target,
+    // param3 = loiter radius, param4 non-zero = CCW (GCS_MAVLink_Plane.cpp handle_command_int_do_reposition)
+    const activeKey = connectionRegistry.getActiveVehicleKey();
+    const veh = activeKey ? connectionRegistry.getVehicleByKey(activeKey) : null;
+    const mavType = veh?.mavType ?? connectionState.mavType;
+    const isArduPilot = veh ? veh.autopilot === 3 : connectionState.firmware === 'ardupilot';
+    const isArduPlane = isArduPilot && mavType !== undefined && (mavType === 1 || (mavType >= 19 && mavType <= 25));
+    if (isArduPlane) {
+      try {
+        const payload = serializeCommandInt({
+          targetSystem: target.sysid,
+          targetComponent: 1,
+          frame: altFrame,
+          command: 192,       // MAV_CMD_DO_REPOSITION
+          current: 0,
+          autocontinue: 0,
+          param1: -1,         // groundspeed: default
+          param2: 1,          // MAV_DO_REPOSITION_FLAGS_CHANGE_MODE (GUIDED)
+          param3: Math.abs(radius),
+          param4: radius < 0 ? 1 : 0,
+          x: Math.round(lat * 1e7),
+          y: Math.round(lon * 1e7),
+          z: alt,
+        });
+        const packet = await sendMavlinkPacket(COMMAND_INT_ID, payload, COMMAND_INT_CRC_EXTRA, { link: target.transport });
+        await target.transport.write(packet);
+        connectionState.packetsSent++;
+        lastGotoFrameBySysid.set(target.sysid, altFrame);
+        sendLog(mainWindow, 'info', `Sent plane orbit (DO_REPOSITION) center=${lat.toFixed(7)}, ${lon.toFixed(7)} alt=${alt.toFixed(1)}m radius=${Math.abs(radius)}m ${radius < 0 ? 'CCW' : 'CW'}`);
+        return true;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : t('common:unknownError');
+        sendLog(mainWindow, 'error', 'Failed to send ORBIT command', message);
+        return false;
+      }
+    }
 
     try {
       const payload = serializeCommandInt({
@@ -10573,6 +10578,23 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     return result;
   });
 
+  registerProductionIpc(mainWindow, {
+    send: (channel, data) => safeSend(mainWindow, channel, data),
+    // Ports the main connection and fleet links hold: a bay must never steal them.
+    portsInUse: () => [
+      ...(connectionState.isConnected && lastConnectOptions?.type === 'serial' && lastConnectOptions.port ? [lastConnectOptions.port] : []),
+      ...connectionRegistry.listTransports().map((e) => e.config.port).filter((p): p is string => typeof p === 'string'),
+    ],
+    endpointsInUse: () => [
+      ...(connectionState.isConnected && lastConnectOptions?.type === 'tcp' && lastConnectOptions.host && lastConnectOptions.tcpPort
+        ? [`${lastConnectOptions.host}:${lastConnectOptions.tcpPort}`] : []),
+      ...connectionRegistry.listTransports()
+        .filter((e) => e.config.type === 'tcp' && e.config.host && e.config.tcpPort)
+        .map((e) => `${e.config.host}:${e.config.tcpPort}`),
+    ],
+    log: (level, message) => sendLog(mainWindow, level, message),
+  });
+
   // ============================================================================
   // Mission Planning handlers
   // ============================================================================
@@ -11876,6 +11898,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       if (options?.noRebootSequence) {
         sendLog(mainWindow, 'info', 'No reboot sequence - assuming board is already in bootloader mode');
       }
+
+      // A production bay holding this board lets go so the Firmware screen can flash it.
+      if (board.port) await releaseProductionPort(board.port);
 
       // Create new abort controller for this flash operation
       firmwareAbortController = new AbortController();
@@ -14632,6 +14657,13 @@ async function withDeadline(label: string, ms: number, work: Promise<unknown>): 
  * causing issues on next connection or potential BSOD.
  */
 export async function cleanupOnShutdown(): Promise<void> {
+  try {
+    // Production bays hold USB serial ports open
+    await withDeadline('closing production bays', 2000, shutdownProduction());
+  } catch (err) {
+    console.warn('[Shutdown] Error closing production bays:', err);
+  }
+
   try {
     // Drop the NTRIP caster connection so it doesn't linger past the app
     cleanupNtrip();
