@@ -68,6 +68,11 @@ function ArrowUpIcon({ className }: { className?: string }) {
 // Cargo icon (remote iconUrl with a cube-glyph fallback)
 // ---------------------------------------------------------------------------
 
+/** The icon.png a cargo ships in its own bundle; CargoIcon falls back to the cube when there is none. */
+function bundledIconUrl(slug: string): string {
+  return `ardudeck-module://${slug}/icon.png`;
+}
+
 function CargoIcon({
   iconUrl,
   active,
@@ -78,6 +83,8 @@ function CargoIcon({
   className?: string;
 }) {
   const [failed, setFailed] = useState(false);
+  // A new URL (a dev cargo rebuilt, an icon added) deserves a fresh attempt.
+  useEffect(() => setFailed(false), [iconUrl]);
   const wrapper = `rounded-lg flex items-center justify-center shrink-0 overflow-hidden ${
     active
       ? 'bg-purple-500/10 border border-purple-500/20'
@@ -358,6 +365,8 @@ function BrowseCard({
   const { t } = useTranslation();
   const isEnabled = installed ? installed.enabled !== false : false;
   const version = cargo.version ?? installed?.version ?? '';
+  const cover = useModuleStore((st) => st.covers[cargo.slug]);
+  const [coverFailed, setCoverFailed] = useState(false);
 
   return (
     <div
@@ -373,6 +382,17 @@ function BrowseCard({
       data-tip={t('modules:moduleManager.viewDetails')}
       className="card flex flex-col overflow-hidden cursor-pointer hover:border-purple-500/30 transition-colors focus:outline-none focus:ring-1 focus:ring-purple-500/40"
     >
+      {cover && !coverFailed && (
+        <div className="relative aspect-video bg-surface-raised border-b border-subtle overflow-hidden">
+          <img
+            src={cover}
+            alt=""
+            loading="lazy"
+            className={`w-full h-full object-cover ${installed && !isEnabled ? 'opacity-60' : ''}`}
+            onError={() => setCoverFailed(true)}
+          />
+        </div>
+      )}
       <div className="card-body flex-1 space-y-3">
         <div className="flex items-start gap-3">
           <CargoIcon iconUrl={cargo.iconUrl} active={!installed || isEnabled} className="w-10 h-10" />
@@ -928,10 +948,11 @@ function ModuleCard({
   onToggle: (enabled: boolean) => void;
 }) {
   const isEnabled = module.enabled !== false;
+  const catalogIcon = useModuleStore((st) => st.catalog.find((c) => c.slug === module.slug)?.iconUrl ?? null);
 
   return (
     <div className="flex items-center gap-3 px-4 py-3">
-      <CargoIcon iconUrl={null} active={isEnabled} className="w-10 h-10" />
+      <CargoIcon iconUrl={catalogIcon ?? bundledIconUrl(module.slug)} active={isEnabled} className="w-10 h-10" />
 
       {/* Info */}
       <div className={`flex-1 min-w-0 ${isEnabled ? '' : 'opacity-60'}`}>
@@ -1001,6 +1022,12 @@ function DevCargoSection() {
   const [available, setAvailable] = useState(false);
   const [items, setItems] = useState<{ slug: string; name: string; version: string; path: string }[]>([]);
   const [error, setError] = useState('');
+  // Bumped on every rebuild so a freshly added icon.png shows without reopening the screen.
+  const [iconEpoch, setIconEpoch] = useState(0);
+  useEffect(() => {
+    const off = window.electronAPI.onModuleDevChanged?.(() => setIconEpoch((e) => e + 1));
+    return () => { off?.(); };
+  }, []);
 
   const refresh = async () => setItems(await window.electronAPI.moduleDevList());
 
@@ -1047,11 +1074,14 @@ function DevCargoSection() {
               key={m.slug}
               className="flex items-center justify-between rounded border border-subtle px-3 py-2"
             >
-              <div className="min-w-0">
-                <div className="truncate text-sm text-content">
-                  {m.name} <span className="text-content-tertiary">{m.version}</span>
+              <div className="flex items-center gap-3 min-w-0">
+                <CargoIcon iconUrl={`${bundledIconUrl(m.slug)}?v=${iconEpoch}`} active className="w-10 h-10" />
+                <div className="min-w-0">
+                  <div className="truncate text-sm text-content">
+                    {m.name} <span className="text-content-tertiary">{m.version}</span>
+                  </div>
+                  <div className="truncate text-[11px] text-content-tertiary">{m.path}</div>
                 </div>
-                <div className="truncate text-[11px] text-content-tertiary">{m.path}</div>
               </div>
               <div className="ml-3 flex shrink-0 items-center gap-3">
                 <button
