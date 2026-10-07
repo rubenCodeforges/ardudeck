@@ -282,7 +282,7 @@ export class LinkService {
       clientHost: this.config.clientBind,
       clientPort: this.config.clientPort,
       canWrite: writable(this.transport),
-      engine: this.engine.status,
+      engine: { ...this.engine.status, url: `ws://${this.config.engineBind}` },
       roster: this.engineTransport.roster,
       clients: this.router.list().map(({ host, port }) => ({ host, port })),
       ...this.stats,

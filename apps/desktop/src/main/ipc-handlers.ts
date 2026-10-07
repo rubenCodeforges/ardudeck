@@ -179,7 +179,10 @@ import { GpsPassthrough } from './gps/gps-passthrough.js';
 import { telemetryKeyFor } from './telemetry-routing.js';
 import { MavlinkFtpClient, parseParamPack, PARAM_PCK_PATH, parseFtpPayload } from './mavlink-ftp/index.js';
 import { VEHICLE_NAMES, isVehicleHeartbeat } from '@ardudeck/vehicle-core';
-import { probeArduDeckOs, isOsLinkEndpoint, fetchOsParams, isOsManaged, getOsLinks, setOsActiveLink, openOsLinkSettings } from './ardudeck-os.js';
+import {
+  probeArduDeckOs, isOsLinkEndpoint, fetchOsParams, isOsManaged, getOsLinks, setOsActiveLink, openOsLinkSettings,
+  startOsSimSwarm, stopOsSimSwarm, getOsSimStatus,
+} from './ardudeck-os.js';
 import { ingestNamedValueFloat, getScriptHealth, resetHeartbeat, subscribeHealth } from './script-installer/heartbeat-tracker.js';
 import * as scriptRegistry from './script-installer/registry-store.js';
 import { getScriptBundle } from './script-installer/bundle.js';
@@ -12699,6 +12702,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // A swarm and the single SITL both want base port 5760, so they are mutually
   // exclusive: starting a swarm tears down any single instance + its RC sender.
   ipcMain.handle(IPC_CHANNELS.SWARM_SITL_START, async (_event, config: SwarmSitlConfig): Promise<{ success: boolean; error?: string; instances?: SwarmSitlStatus['instances'] }> => {
+    if (isOsManaged()) {
+      const result = await startOsSimSwarm(config);
+      if (result.status) safeSend(mainWindow, IPC_CHANNELS.SWARM_SITL_STATE, result.status);
+      return { success: result.success, error: result.error, instances: result.status?.instances };
+    }
     if (ardupilotSitlProcess.isRunning) {
       ardupilotRcSender.stop();
       await ardupilotSitlProcess.stopAndWait(5000);
@@ -12708,7 +12716,12 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     return swarmSitlProcess.start(config);
   });
 
-  ipcMain.handle(IPC_CHANNELS.SWARM_SITL_STOP, async (): Promise<{ success: boolean }> => {
+  ipcMain.handle(IPC_CHANNELS.SWARM_SITL_STOP, async (): Promise<{ success: boolean; error?: string }> => {
+    if (isOsManaged()) {
+      const result = await stopOsSimSwarm();
+      safeSend(mainWindow, IPC_CHANNELS.SWARM_SITL_STATE, await getOsSimStatus());
+      return result;
+    }
     try {
       swarmSitlProcess.stop();
       return { success: true };
@@ -12719,6 +12732,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   });
 
   ipcMain.handle(IPC_CHANNELS.SWARM_SITL_STATUS, async (): Promise<SwarmSitlStatus> => {
+    if (isOsManaged()) return getOsSimStatus();
     return swarmSitlProcess.getStatus();
   });
 

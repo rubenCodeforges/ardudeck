@@ -80,7 +80,7 @@ function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
  *   POST   /v1/links/active      {id} switch to a saved connection
  *   POST   /v1/links/enabled     {enabled} master switch for the vehicle link
  *   DELETE /v1/links/:id         remove a saved connection
- *   GET    /v1/sim               simulated swarm: available, running, instances
+ *   GET    /v1/sim               simulated swarm: available, isRunning, instances
  *   POST   /v1/sim/swarm         {count, formation?, spacingM?} start a simulated copter swarm
  *   DELETE /v1/sim/swarm         stop it
  *
@@ -140,7 +140,7 @@ export function createApi(link: LinkService, serviceVersion: string, { os = read
       case '/v1/gnss':
         return json(res, 200, { operator: link.gnss.operatorFix(), devices: link.gnss.list() });
       case '/v1/sim':
-        return json(res, 200, sim?.status ?? { available: false, running: false, instances: [] });
+        return json(res, 200, sim?.status ?? { available: false, isRunning: false, instances: [] });
       default:
         return json(res, 404, { error: 'not found' });
     }

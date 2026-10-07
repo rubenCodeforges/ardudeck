@@ -12,10 +12,13 @@
  */
 import { spawn } from 'node:child_process';
 import type { OsIntegrationInfo, OsParamSnapshot, OsLinksState } from '../shared/ardudeck-os-types.js';
+import type { SwarmSitlConfig, SwarmSitlStatus } from '../shared/ipc-channels.js';
 
 const API_BASE = 'http://127.0.0.1:47801/v1';
 const PROBE_TIMEOUT_MS = 800;
 const PARAMS_TIMEOUT_MS = 3000;
+/** Starting a swarm waits for every simulator to announce its port. */
+const SIM_START_TIMEOUT_MS = 60_000;
 /**
  * Fixed local port for the app's side of the OS link. Like UDP client mode in
  * general (issue #86), a stable source port keeps reconnects on the same
@@ -106,21 +109,50 @@ export async function getOsLinks(): Promise<OsLinksState | null> {
   }
 }
 
-/** Switch the OS link to another saved connection (affects every client, as intended). */
-export async function setOsActiveLink(id: string): Promise<{ success: boolean; error?: string }> {
+type OsWriteResult<T> = { success: true; body: T } | { success: false; error: string };
+
+async function osWrite<T>(method: 'POST' | 'DELETE', path: string, body: unknown, timeoutMs = PARAMS_TIMEOUT_MS): Promise<OsWriteResult<T>> {
   try {
-    const res = await fetch(`${API_BASE}/links/active`, {
-      method: 'POST',
+    const res = await fetch(`${API_BASE}${path}`, {
+      method,
       headers: { 'Content-Type': 'application/json', 'X-ArduDeck': '1' },
-      body: JSON.stringify({ id }),
-      signal: AbortSignal.timeout(PARAMS_TIMEOUT_MS),
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
     });
-    if (res.ok) return { success: true };
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    return { success: false, error: body.error ?? `HTTP ${res.status}` };
+    const json = (await res.json().catch(() => ({}))) as T & { error?: string };
+    if (res.ok) return { success: true, body: json };
+    return { success: false, error: json.error ?? `HTTP ${res.status}` };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
+}
+
+/** Switch the OS link to another saved connection (affects every client, as intended). */
+export async function setOsActiveLink(id: string): Promise<{ success: boolean; error?: string }> {
+  const result = await osWrite('POST', '/links/active', { id });
+  return result.success ? { success: true } : result;
+}
+
+/** Start the OS's simulated swarm; its vehicles join the fleet through the OS engine. */
+export async function startOsSimSwarm(config: SwarmSitlConfig): Promise<{ success: boolean; error?: string; status?: SwarmSitlStatus }> {
+  const result = await osWrite<SwarmSitlStatus>('POST', '/sim/swarm',
+    { count: config.count, formation: config.formation, spacingM: config.spacingM }, SIM_START_TIMEOUT_MS);
+  return result.success ? { success: true, status: result.body } : result;
+}
+
+export async function stopOsSimSwarm(): Promise<{ success: boolean; error?: string }> {
+  const result = await osWrite('DELETE', '/sim/swarm', undefined);
+  return result.success ? { success: true } : result;
+}
+
+export async function getOsSimStatus(): Promise<SwarmSitlStatus> {
+  try {
+    const res = await fetch(`${API_BASE}/sim`, { signal: AbortSignal.timeout(PARAMS_TIMEOUT_MS) });
+    if (res.ok) return (await res.json()) as SwarmSitlStatus;
+  } catch {
+    // Service unreachable: report no swarm.
+  }
+  return { isRunning: false, instances: [] };
 }
 
 /** Open the system's Vehicle Link settings window. */

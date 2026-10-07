@@ -20,7 +20,7 @@ export interface SimSwarmRequest {
 
 export interface SimSwarmStatus {
   available: boolean;
-  running: boolean;
+  isRunning: boolean;
   instances: SwarmInstanceStatus[];
 }
 
@@ -52,7 +52,7 @@ export class SimSwarm {
   }
 
   get status(): SimSwarmStatus {
-    return { available: existsSync(this.sitlBinary), running: this.swarm.isRunning, instances: this.swarm.snapshot() };
+    return { available: existsSync(this.sitlBinary), isRunning: this.swarm.isRunning, instances: this.swarm.snapshot() };
   }
 
   async start(request: SimSwarmRequest): Promise<SimSwarmStatus> {
