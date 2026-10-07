@@ -13,7 +13,7 @@ const API = 'http://127.0.0.1:47801/v1';
 const REFRESH_MS = 2000;
 const APP_ID = 'ardudeck.desktop';
 const SETTINGS_APP_ID = 'com.ardudeck.Settings.desktop';
-const MAX_CONNECTIONS_SHOWN = 3;
+const MAX_CONNECTIONS_SHOWN = 2;
 
 function vehicleLine(v) {
     const kind = {ardupilot: 'ArduPilot', px4: 'PX4'}[v.firmware] ?? 'Vehicle';
@@ -43,7 +43,6 @@ class VehicleLinkToggle extends QuickMenuToggle {
         this.menu.addMenuItem(this._detectedSection);
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addAction('Open ArduDeck', () => this._launch(APP_ID));
-        this.menu.addAction('All Connections…', () => this._launch(SETTINGS_APP_ID));
 
         this.connect('clicked', () => this.menu.open());
         this.menu.connect('open-state-changed', (_m, open) => {
@@ -94,9 +93,8 @@ class VehicleLinkToggle extends QuickMenuToggle {
 
         this._savedSection.removeAll();
         const inUseIds = new Set([links.activeId, ...(links.joinedIds ?? [])]);
-        const shown = links.connections.filter(c => inUseIds.has(c.id))
-            .concat(links.connections.filter(c => !inUseIds.has(c.id)))
-            .slice(0, Math.max(MAX_CONNECTIONS_SHOWN, inUseIds.size));
+        const inUse = links.connections.filter(c => inUseIds.has(c.id));
+        const shown = inUse.slice(0, MAX_CONNECTIONS_SHOWN);
         for (const c of shown) {
             const item = new PopupMenu.PopupMenuItem(c.name);
             const inUse = c.id === links.activeId || (links.joinedIds ?? []).includes(c.id);
@@ -106,6 +104,9 @@ class VehicleLinkToggle extends QuickMenuToggle {
             });
             this._savedSection.addMenuItem(item);
         }
+        const showAll = new PopupMenu.PopupMenuItem(`Show all ${links.connections.length} connections…`);
+        showAll.connect('activate', () => this._launch(SETTINGS_APP_ID));
+        this._savedSection.addMenuItem(showAll);
 
         // USB radios and flight controllers that are plugged in but not saved yet.
         this._detectedSection.removeAll();
