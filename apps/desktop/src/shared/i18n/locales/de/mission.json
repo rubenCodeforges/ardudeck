@@ -571,6 +571,11 @@
       "wpCount_one": "{{count}} WP",
       "wpCount_other": "{{count}} WPs"
     },
+    "heading": {
+      "label": "Kurs",
+      "auto": "Automatisch",
+      "hint": "Hält diesen Kurs auf dem Weg zu diesem Wegpunkt und dort (0 ist Norden). Leer lassen für den normalen Kurs. Fügt nach dem Wegpunkt ein Condition Yaw ein."
+    },
     "list": {
       "addWaypoint": "Wegpunkt hinzufügen",
       "allSameFlight": "Alle Vermessungen sind bereits im selben Flug",
@@ -809,5 +814,17 @@
       "yawDirection": "-1=GUZ 0=auto 1=UZ",
       "yawRelative": "0=abs 1=rel"
     }
+  },
+  "allHeights": {
+    "button": "Alle Höhen",
+    "buttonTip": "Die Höhe aller Wegpunkte auf einmal ändern",
+    "title": "Alle Höhen ({{count}} Wegpunkte)",
+    "shift": "Anheben oder absenken",
+    "set": "Alle setzen auf",
+    "shiftHint": "Verschiebt alle Wegpunkte um denselben Betrag, das Profil behält seine Form. Nichts geht unter 0.",
+    "setHint": "Gibt allen Wegpunkten diese Höhe; das Profil wird flach.",
+    "raise": "Anheben",
+    "lower": "Absenken",
+    "surveyWarning": "Die Mission enthält Vermessungs-Wegpunkte. Beim Neuerzeugen der Vermessung werden sie aus ihrer Konfiguration neu gebaut und diese Änderung überschrieben; für dauerhafte Änderungen die Höheneinstellung der Vermessung verwenden."
   }
 }

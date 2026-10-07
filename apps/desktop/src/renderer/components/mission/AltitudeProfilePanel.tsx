@@ -5,6 +5,7 @@ import { useSettingsStore } from '../../stores/settings-store';
 import { commandHasLocation, hasValidCoordinates, mavFrameToAltFrame, MAV_CMD, type MissionItem } from '../../../shared/mission-types';
 import { getElevations, interpolatePathPoints } from '../../utils/elevation-api';
 import { AutoAdjustAltitudeDialog } from './AutoAdjustAltitudeDialog';
+import { AllHeightsPopover } from './AllHeightsPopover';
 import type { PlanResult, PlannerWaypoint } from './terrain-altitude-planner';
 import {
   altitudeValueFromMeters,
@@ -113,6 +114,7 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
 
   const { missionItems, selectedSeq, currentSeq, setSelectedSeq, updateWaypoint, setHasTerrainCollisions, applyTerrainPlan, homePosition } = useMissionStore();
   const [autoAdjustOpen, setAutoAdjustOpen] = useState(false);
+  const [allHeightsOpen, setAllHeightsOpen] = useState(false);
   const { missionDefaults } = useSettingsStore();
   const safeAltitudeBuffer = missionDefaults.safeAltitudeBuffer;
   const maxWaypointMarkers = useSettingsStore((s) => s.surveyPerformance.maxWaypointMarkers);
@@ -799,6 +801,15 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
               {t('mission:altitudeProfilePanel.autoAdjust')}
             </button>
           )}
+          {!readOnly && (
+            <button
+              onClick={() => setAllHeightsOpen(true)}
+              className="px-2 py-0.5 text-[10px] font-medium text-content-secondary bg-surface-raised hover:text-content rounded transition-colors"
+              title={t('mission:allHeights.buttonTip')}
+            >
+              {t('mission:allHeights.button')}
+            </button>
+          )}
           {viewRange && (
             <button
               onClick={() => setViewRange(null)}
@@ -1175,6 +1186,7 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
         </>
       )}
 
+      {allHeightsOpen && <AllHeightsPopover onClose={() => setAllHeightsOpen(false)} />}
       {autoAdjustOpen && (
         <AutoAdjustAltitudeDialog
           waypoints={plannerWaypoints}

@@ -303,7 +303,8 @@
     "vehicleNotReachable": "Fahrzeug nicht erreichbar",
     "vehicleSelectionFailed": "Fahrzeugauswahl konnte nicht synchronisiert werden ({{vehicle}}) - Befehle gehen weiterhin an das vorherige Fahrzeug",
     "writeProbeNoResponse": "Der FC hat nicht innerhalb von 1,5 s auf einen Schreibtest geantwortet. Der MAVLink-FTP-Server ist möglicherweise deaktiviert oder der FC hat kein beschreibbares Dateisystem (keine SD-Karte?).",
-    "writeProbeRejected": "Der FC hat den Schreibtest abgelehnt: {{error}}"
+    "writeProbeRejected": "Der FC hat den Schreibtest abgelehnt: {{error}}",
+    "inavNoParams": "Dieser Flugcontroller hat keine MAVLink-Parameter (INAV). Über MSP konfigurieren."
   },
   "licenseValidator": {
     "invalidKeyFormat": "Ungültiges Schlüsselformat",
@@ -330,7 +331,6 @@
   },
   "mavlinkCalibration": {
     "accelFailed": "Kalibrierung des Beschleunigungssensors fehlgeschlagen",
-    "accelNotCalibrated": "Beschleunigungssensor noch nicht kalibriert. Führen Sie zuerst die Schnell- (eine Position) oder 6-Punkt-Kalibrierung des Beschleunigungssensors durch und kalibrieren Sie dann erneut waagerecht.",
     "allSidesCaptured": "Alle Seiten erfasst, wird abgeschlossen",
     "badOrientation": "falsche Ausrichtung, prüfen Sie die Einbaurichtung (COMPASS_ORIENT)",
     "badOrientationMounting": "falsche Ausrichtung - prüfen Sie die Einbaurichtung von Board/Kompass (COMPASS_ORIENT)",
@@ -388,7 +388,7 @@
       "right": "Rechte Seite unten",
       "up": "Kopfüber (Oberseite unten)"
     },
-    "stillBusy": "Der Flugcontroller ist noch mit der letzten Kalibrierung beschäftigt. Warten Sie einige Sekunden und versuchen Sie es erneut.",
+    "stillBusy": "Der Flugcontroller lehnt Kalibrierungen 5 Sekunden nach dem Start oder nach einer anderen Kalibrierung ab. Einige Sekunden warten und erneut versuchen.",
     "stoppedResponding": "Das Fahrzeug hat während der Kalibrierung nicht mehr geantwortet. Es wurde nichts gespeichert, prüfen Sie die Verbindung und versuchen Sie es erneut.",
     "tiltedLevel": "Das Fahrzeug ist mehr als 10° aus der Waagerechten geneigt. Legen Sie den Flugcontroller auf eine ebene Fläche und versuchen Sie es erneut.",
     "unsupportedPx4Type": "Nicht unterstützter PX4-Kalibrierungstyp: {{type}}",
@@ -465,7 +465,9 @@
     "requesting": "{{slug}} wird beim Hangar angefordert...",
     "signatureFailed": "Prüfung der Bundle-Signatur für {{slug}} fehlgeschlagen",
     "validatingKey": "Lizenzschlüssel wird geprüft...",
-    "verifying": "{{slug}} wird geprüft..."
+    "verifying": "{{slug}} wird geprüft...",
+    "installingDependency": "Benötigtes Cargo {{slug}} wird installiert...",
+    "dependencyFailed": "Installiert, aber das benötigte Cargo {{slug}} konnte nicht installiert werden: {{msg}}"
   },
   "msp": {
     "notConnected": "Nicht verbunden"
@@ -623,5 +625,34 @@
   "ardudeckOs": {
     "transportName": "ArduDeck-OS-Verbindung",
     "connectBlocked": "Unter ArduDeck OS verwaltet das System die Fahrzeugverbindung. Ändern Sie sie unter Fahrzeugverbindung."
+  },
+  "productionBay": {
+    "bay": {
+      "noHeartbeat": "Das Board antwortet nicht. USB-Kabel prüfen oder Firmware flashen, wenn das Board neu ist.",
+      "rebootRefused": "Das Board hat den Neustart abgelehnt. Entschärfen und erneut versuchen.",
+      "didNotReturn": "Das Board ist nach dem Neustart nicht zurückgekommen. Ab- und wieder anstecken.",
+      "calCancelled": "Kalibrierung abgebrochen",
+      "calSilentFailure": "Das Board hat Erfolg gemeldet, aber keine neuen Kalibrierwerte gespeichert. Erneut kalibrieren.",
+      "nothingListening": "Unter {{endpoint}} lauscht nichts. Simulator starten oder Adresse prüfen.",
+      "noHeartbeatNetwork": "{{endpoint}} nimmt die Verbindung an, sendet aber kein MAVLink. Ist ArduDeck mit demselben Simulator-Port verbunden, den nächsten verwenden (5762 bei einem Standard-SITL).",
+      "portUnavailable": "{{port}} kann nicht geöffnet werden: {{reason}}"
+    },
+    "badEndpoint": "Host:Port verwenden, zum Beispiel 127.0.0.1:5760",
+    "unknownBay": "Dieser Platz existiert nicht mehr. Das Board wurde vermutlich abgesteckt.",
+    "bayBusy": "Dieser Platz ist noch mit dem letzten Schritt beschäftigt",
+    "modelNotFound": "Modell {{model}} ist nicht im Vault",
+    "noFirmware": "Diesem Modell ist keine Firmware zugeordnet",
+    "needsConsent": "Das Schreiben der Golden-Konfiguration wurde nicht freigegeben",
+    "noFirmwareOnBoard": "Auf dem Board läuft keine Firmware. Die Firmware des Modells hinterlegen, damit sie geflasht werden kann.",
+    "resetFailed": "Das Board wurde nicht auf Standardwerte zurückgesetzt",
+    "configStillDiffers_one": "{{count}} Parameter weicht noch vom Golden ab",
+    "configStillDiffers_other": "{{count}} Parameter weichen noch vom Golden ab",
+    "notReady": "Warten, bis das Board bereit ist",
+    "operatorRequired": "Namen des Bedieners eingeben",
+    "pickFirmware": "Firmware für dieses Modell (.apj oder .px4)",
+    "nameRequired": "Dem Modell einen Namen geben",
+    "pickParamFile": "Parameterdatei für dieses Modell",
+    "paramFiles": "Parameterdateien",
+    "endpointInUse": "ArduDeck ist bereits mit {{endpoint}} verbunden, und ein Simulator bedient pro Port nur einen Client. Den nächsten Port des Simulators verwenden: {{alt}}."
   }
 }

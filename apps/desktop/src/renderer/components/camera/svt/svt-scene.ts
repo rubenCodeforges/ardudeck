@@ -177,6 +177,7 @@ export function createSvtScene(canvas: HTMLCanvasElement): SvtScene {
   let terrainGrid: THREE.LineSegments | null = null;
   let clearanceM = NaN;
 
+
   return {
     resize(width: number, height: number) {
       renderer.setSize(width, height, false);

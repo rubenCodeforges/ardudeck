@@ -303,7 +303,8 @@
     "vehicleNotReachable": "Vehicle not reachable",
     "vehicleSelectionFailed": "Vehicle selection failed to sync ({{vehicle}}) - commands still target the previous vehicle",
     "writeProbeNoResponse": "FC did not respond to a write probe within 1.5 s. The MAVLink FTP server may be disabled or the FC has no writable filesystem (no SD card?).",
-    "writeProbeRejected": "FC rejected the write probe: {{error}}"
+    "writeProbeRejected": "FC rejected the write probe: {{error}}",
+    "inavNoParams": "This flight controller has no MAVLink parameters (INAV). Configure it over MSP."
   },
   "licenseValidator": {
     "invalidKeyFormat": "Invalid key format",
@@ -330,7 +331,6 @@
   },
   "mavlinkCalibration": {
     "accelFailed": "Accelerometer calibration failed",
-    "accelNotCalibrated": "Accelerometer not yet calibrated. Run the Quick (one position) or 6-point accelerometer calibration first, then level again.",
     "allSidesCaptured": "All sides captured, finishing up",
     "badOrientation": "bad orientation, check the mounting direction (COMPASS_ORIENT)",
     "badOrientationMounting": "bad orientation - check the board/compass mounting direction (COMPASS_ORIENT)",
@@ -388,7 +388,7 @@
       "right": "Right Side Down",
       "up": "Inverted (Top Down)"
     },
-    "stillBusy": "The flight controller is still busy with the last calibration. Wait a few seconds and try again.",
+    "stillBusy": "The flight controller refuses calibration for 5 seconds after it boots or finishes another calibration. Wait a few seconds and try again.",
     "stoppedResponding": "The vehicle stopped responding during calibration. Nothing was saved, check the connection and try again.",
     "tiltedLevel": "Vehicle is tilted more than 10° from level. Place the flight controller on a flat surface and try again.",
     "unsupportedPx4Type": "Unsupported PX4 calibration type: {{type}}",
@@ -465,7 +465,9 @@
     "requesting": "Requesting {{slug}} from the Hangar...",
     "signatureFailed": "Bundle signature verification failed for {{slug}}",
     "validatingKey": "Validating license key...",
-    "verifying": "Verifying {{slug}}..."
+    "verifying": "Verifying {{slug}}...",
+    "installingDependency": "Installing required cargo {{slug}}...",
+    "dependencyFailed": "Installed, but required cargo {{slug}} could not be installed: {{msg}}"
   },
   "msp": {
     "notConnected": "Not connected"
@@ -623,5 +625,34 @@
   "ardudeckOs": {
     "transportName": "ArduDeck OS link",
     "connectBlocked": "On ArduDeck OS the vehicle link is managed by the system. Change it in Vehicle Link."
+  },
+  "productionBay": {
+    "bay": {
+      "noHeartbeat": "The board does not answer. Check the USB cable, or flash firmware if the board is new.",
+      "rebootRefused": "The board refused to reboot. Disarm it and try again.",
+      "didNotReturn": "The board did not come back after restarting. Unplug it and plug it in again.",
+      "calCancelled": "Calibration cancelled",
+      "calSilentFailure": "The board reported success but did not store any new calibration values. Calibrate again.",
+      "nothingListening": "Nothing is listening at {{endpoint}}. Start the simulator, or check the address.",
+      "noHeartbeatNetwork": "{{endpoint}} accepts the connection but sends no MAVLink. If ArduDeck is connected to the same simulator port, use the next one (5762 for a default SITL).",
+      "portUnavailable": "Cannot open {{port}}: {{reason}}"
+    },
+    "badEndpoint": "Use host:port, for example 127.0.0.1:5760",
+    "unknownBay": "This bay no longer exists. The board was probably unplugged.",
+    "bayBusy": "This bay is still busy with the last step",
+    "modelNotFound": "Model {{model}} is not in the vault",
+    "noFirmware": "No firmware is attached to this model",
+    "needsConsent": "The golden configuration was not approved for writing",
+    "noFirmwareOnBoard": "The board runs no firmware. Attach the model's firmware so it can be flashed.",
+    "resetFailed": "The board did not reset to defaults",
+    "configStillDiffers_one": "{{count}} parameter still differs from the golden",
+    "configStillDiffers_other": "{{count}} parameters still differ from the golden",
+    "notReady": "Wait until the board is ready",
+    "operatorRequired": "Enter the operator name",
+    "pickFirmware": "Firmware for this model (.apj or .px4)",
+    "nameRequired": "Give the model a name",
+    "pickParamFile": "Parameter file for this model",
+    "paramFiles": "Parameter files",
+    "endpointInUse": "ArduDeck is already connected to {{endpoint}}, and a simulator talks to one client per port. Use the simulator's next port, {{alt}}."
   }
 }

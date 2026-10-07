@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { packOverrideChannels, OVERRIDE_IGNORE, OVERRIDE_CHANNELS } from './rc-vehicle-override';
+import { packOverrideChannels, packStickChannels, OVERRIDE_IGNORE, OVERRIDE_CHANNELS } from './rc-vehicle-override';
 import { RC_CHANNEL_COUNT, defaultChannelMap, type ChannelMap } from './pseudo-tx';
 
 function unmapped(): ChannelMap[] {
@@ -45,5 +45,22 @@ describe('packOverrideChannels', () => {
     expect(out[16]).toBe(OVERRIDE_IGNORE);
     expect(out[17]).toBe(OVERRIDE_IGNORE);
     expect(out[15]).toBe(1600);
+  });
+});
+
+describe('packStickChannels', () => {
+  it('sends only the four stick channels, never the flight-mode or aux channels', () => {
+    const ch = new Array(16).fill(1500);
+    ch[2] = 1100;
+    const out = packStickChannels(ch, { roll: 1, pitch: 2, throttle: 3, yaw: 4 });
+    expect(out.slice(0, 4)).toEqual([1500, 1500, 1100, 1500]);
+    expect(out.slice(4).every((v) => v === OVERRIDE_IGNORE)).toBe(true);
+    expect(out).toHaveLength(OVERRIDE_CHANNELS);
+  });
+
+  it('follows RCMAP', () => {
+    const out = packStickChannels(new Array(16).fill(1500), { roll: 2, pitch: 3, throttle: 1, yaw: 9 });
+    expect(out[8]).toBe(1500);
+    expect(out[3]).toBe(OVERRIDE_IGNORE);
   });
 });

@@ -16,13 +16,23 @@
     "wind": "Wind"
   },
   "joystickSafety": {
-    "assignAxes": "Zuerst Rollen, Nicken, Gas und Gieren zuweisen",
-    "axisPitch": "Nicken",
-    "axisRoll": "Rollen",
-    "axisYaw": "Gieren",
-    "centreSticks_one": "Stick für {{axes}} zentrieren",
-    "centreSticks_other": "Sticks für {{axes}} zentrieren",
-    "closeThrottle": "Gas auf null stellen"
+    "assign": "Zuerst {{names}} zuweisen",
+    "offTarget": "{{name}} (CH{{ch}}) bei {{pwm}}, braucht {{want}}",
+    "channel": "CH{{n}}",
+    "role": {
+      "roll": "Rollen",
+      "pitch": "Nicken",
+      "throttle": "Gas",
+      "yaw": "Gieren"
+    },
+    "want": {
+      "centre": "etwa {{pwm}} (Mitte)",
+      "idle": "{{pwm}} oder weniger (Leerlauf)",
+      "zeroThrust": "etwa {{pwm}} (kein Schub)",
+      "radio": "etwa {{pwm}} (deine Fernsteuerung)",
+      "low": "{{pwm}} oder weniger (unten)",
+      "high": "{{pwm}} oder mehr (oben)"
+    }
   },
   "osdCategories": {
     "altitude": {

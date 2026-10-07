@@ -13,7 +13,7 @@ import { USER_CMD, SUB_CMD, type ScriptManifest } from '../../shared/script-inst
 import { i18n, t } from '../../shared/i18n/index.js';
 
 const FILENAME = 'ardudeck_commands.lua';
-const VERSION = '1.0.0';
+const VERSION = '1.2.0';
 
 let cached: ScriptBundle | null = null;
 let cachedLanguage: string | null = null;

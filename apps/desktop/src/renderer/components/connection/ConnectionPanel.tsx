@@ -1,3 +1,4 @@
+import { useFlightStack } from '../../hooks/useFlightStack';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
@@ -34,6 +35,7 @@ interface MavlinkForwardStatus {
 }
 
 export function ConnectionPanel() {
+  const flightStackKind = useFlightStack();
   const { t } = useTranslation();
   const usbCatalogs = hardwareCatalogRegistry.useEntries();
   const { connectionState, isConnecting, error, connect, disconnect, setError } = useConnectionStore();
@@ -1417,7 +1419,7 @@ export function ConnectionPanel() {
               {(connectionState.autopilot || connectionState.firmware) && (
                 <div className="flex justify-between">
                   <span className="text-content-secondary">{t('connection:connectionPanel.autopilot')}</span>
-                  <span className="text-content font-medium">{firmwareLabel(connectionState)}</span>
+                  <span className="text-content font-medium">{flightStackKind === 'inav' ? 'INAV' : firmwareLabel(connectionState)}</span>
                 </div>
               )}
               {connectionState.vehicleType && (

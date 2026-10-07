@@ -87,7 +87,7 @@ export const AuxChannelPicker: React.FC<AuxChannelPickerProps> = ({
 
       {/* Dropdown menu */}
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full bg-surface-raised border border rounded-lg shadow-xl overflow-hidden">
+        <div className="absolute z-50 mt-1 w-full bg-surface-solid border border rounded-lg shadow-xl overflow-hidden">
           {AUX_CHANNELS.map((channel) => {
             const rcValue = getRcValue(channel.index);
             const isSelected = channel.index === selected;

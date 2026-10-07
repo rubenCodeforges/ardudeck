@@ -141,3 +141,14 @@ describe('ring spans', () => {
     }
   });
 });
+
+describe('terrain imagery source', () => {
+  it('never asks a source for zooms past its native imagery', async () => {
+    const { imageryMaxZoom, bestZoom, SVT_IMAGERY_LAYERS } = await import('./svt-satellite');
+    expect(imageryMaxZoom('googleSat')).toBe(19);
+    expect(imageryMaxZoom('satellite')).toBe(18);
+    expect(imageryMaxZoom('bingSat')).toBe(19);
+    const tiny = { south: 47.0, north: 47.0005, west: 8.0, east: 8.0005 };
+    for (const key of SVT_IMAGERY_LAYERS) expect(bestZoom(tiny, 16, imageryMaxZoom(key))).toBe(imageryMaxZoom(key));
+  });
+});

@@ -56,8 +56,9 @@ import {
   boardPortRegistry, configCardRegistry, nodeProfileRegistry, detectHardware, firmwareSourceRegistry, hardwareCatalogRegistry,
   viewBodyRegistry,
 } from './module-extension-registries';
-import { viewOwnerSlug } from './capabilities';
+import { viewOwnerSlug, CARGO_VIEWS } from './capabilities';
 import { vaultWorkspaceState, subscribeVaultWorkspace } from './vault-workspace';
+import * as productionHost from './production-host';
 import { sampleCanBusHealth } from '../lib/can-bus-health';
 import { useDroneCanStore } from '../stores/dronecan-store';
 import { useFirmwareStore } from '../stores/firmware-store';
@@ -173,6 +174,12 @@ export function createRendererHostApi(
     const res = await p;
     if (!res.success) throw new Error(res.error);
     return res.data;
+  };
+
+  const requireProduction = () => {
+    if (!permissions.includes('production')) {
+      throw new Error(`[module:${slug}] production access requires the 'production' manifest permission`);
+    }
   };
 
   const requireVault = () => {
@@ -434,7 +441,11 @@ export function createRendererHostApi(
     views: {
       register: (reg) => {
         if (!reg?.viewId || !reg.component) throw new Error(`[module:${slug}] view needs a viewId and a component`);
-        if (viewOwnerSlug(reg.viewId) !== slug) throw new Error(`[module:${slug}] view '${reg.viewId}' is not unlocked by this cargo`);
+        const cargoViewPermission = CARGO_VIEWS[reg.viewId as keyof typeof CARGO_VIEWS];
+        const cargoOwned = cargoViewPermission !== undefined && permissions.includes(cargoViewPermission);
+        if (!cargoOwned && viewOwnerSlug(reg.viewId) !== slug) throw new Error(`[module:${slug}] view '${reg.viewId}' is not unlocked by this cargo`);
+        const holder = viewBodyRegistry.list().find((e) => e.id === reg.viewId && e.slug !== slug);
+        if (holder) throw new Error(`[module:${slug}] view '${reg.viewId}' is already provided by ${holder.slug}`);
         viewBodyRegistry.register(slug, reg.viewId, reg.component);
       },
       unregister: (viewId) => viewBodyRegistry.unregister(slug, viewId),
@@ -634,6 +645,57 @@ export function createRendererHostApi(
         useFleetRepoStore.getState().setBackupSetupOpen(true);
       },
     },
+
+    production: (() => {
+      const api = () => {
+        requireProduction();
+        return window.electronAPI;
+      };
+      return {
+        startBays: () => { requireProduction(); return productionHost.startBays(); },
+        stopBays: () => api().productionBaysStop(),
+        isStationRunning: async () => (await api().productionBaysList()).running,
+        getBays: () => { requireProduction(); return productionHost.getBays(); },
+        subscribeBays: (listener) => { requireProduction(); return productionHost.subscribeBays(listener); },
+        addSimulatorBay: (endpoint) => api().productionBayAddTcp(endpoint),
+        removeBay: (bayId, ignore) => api().productionBayRemove(bayId, Boolean(ignore)),
+        restoreIgnoredPorts: () => api().productionUnignorePorts(),
+        setBayModel: (bayId, modelId) => api().productionBaySetModel(bayId, modelId),
+        setModelForAllBays: (modelId) => api().productionBaySetModelAll(modelId),
+        getStation: () => api().productionGetStation(),
+        setStation: (name) => api().productionSetStation(name),
+        listModels: () => api().productionListModels(),
+        captureGolden: (source, name) => {
+          requireProduction();
+          if (source === 'connected') return productionHost.captureFromConnected(name);
+          if (source === 'file') return window.electronAPI.productionCaptureFile(name);
+          if ('vaultUnit' in source) return window.electronAPI.productionCaptureVault(name, source.vaultUnit);
+          return window.electronAPI.productionBayCapture(source.bayId, name);
+        },
+        updateRules: (modelId, rules) => api().productionUpdateRules(modelId, rules),
+        deleteModel: (modelId) => api().productionDeleteModel(modelId),
+        attachFirmware: (modelId) => api().productionAttachFirmware(modelId),
+        previewGolden: (bayId, modelId) => { requireProduction(); return productionHost.previewGolden(bayId, modelId); },
+        armModel: (modelId, bayId) => { requireProduction(); return productionHost.armModel(modelId, bayId); },
+        prepare: (bayId, modelId) => { requireProduction(); return productionHost.prepare(bayId, modelId); },
+        flash: (bayId, modelId) => api().productionBayFlash(bayId, modelId),
+        resetToDefaults: (bayId) => api().productionBayReset(bayId),
+        reboot: (bayId) => api().productionBayReboot(bayId),
+        startCalibration: (bayId, type) => api().productionBayCalStart(bayId, type),
+        confirmCalibrationPosition: (bayId, position) => api().productionBayCalConfirm(bayId, position),
+        cancelCalibration: (bayId) => api().productionBayCalCancel(bayId),
+        runQa: (bayId, modelId, serial) => api().productionBayQa(bayId, modelId, serial),
+        submit: (bayId, modelId, serial, operator, notes) => api().productionBaySubmit(bayId, modelId, serial, operator, notes),
+        listRuns: (limit) => api().productionListRuns(limit),
+        onRecordsChanged: (listener) => { requireProduction(); return productionHost.onRecordsChanged(listener); },
+        openHostView: (view) => {
+          requireProduction();
+          if (['calibration', 'firmware', 'parameters', 'vault'].includes(view)) {
+            useNavigationStore.getState().setView(view);
+          }
+        },
+      };
+    })(),
 
     vehicleIdentity: {
       get: () => getCurrentVaultUnit(),

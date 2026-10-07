@@ -90,8 +90,11 @@ export function SurveyStartButton() {
     if (!open) return;
     const handler = (e: MouseEvent) => {
       const target = e.target as Element;
-      // Clicks in a tour card leave it open: the tour is showing this menu.
-      if (ref.current && !ref.current.contains(target) && !target.closest?.('.reactour__popover')) setOpen(false);
+      // The open state is shared by every mounted Survey button, so "inside" means
+      // inside any of them; otherwise another instance closes the menu on mousedown
+      // and the click on a menu item lands on nothing. Tour cards leave it open too.
+      if (target.closest?.('[data-survey-menu-root], .reactour__popover')) return;
+      setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -115,7 +118,7 @@ export function SurveyStartButton() {
   };
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} data-survey-menu-root className="relative">
       <button
         data-tour="mission-survey"
         onClick={() => setOpen(!open)}

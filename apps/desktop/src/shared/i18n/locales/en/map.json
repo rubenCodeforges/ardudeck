@@ -162,7 +162,9 @@
     "compact": "Compact",
     "inline": "Inline",
     "numeric": "Numeric",
-    "strip": "Strip"
+    "strip": "Strip",
+    "proximity": "Proximity",
+    "latest": "Latest only"
   },
   "instrumentRegistry": {
     "altitude": "Altitude",
@@ -184,7 +186,13 @@
     "steer": "Steering",
     "tilt": "Tilt",
     "vsi": "VSI",
-    "xtrack": "Cross-track"
+    "xtrack": "Cross-track",
+    "inFlightAdjust": "In-flight adjust",
+    "sticks": "Sticks (joystick)",
+    "wind": "Wind",
+    "rangefinder": "Rangefinder",
+    "ekf": "EKF health",
+    "flightTimer": "Flight timer"
   },
   "instrumentsCatalog": {
     "arrange": "Arrange",
@@ -386,7 +394,11 @@
   },
   "messagesInstrument": {
     "none": "No messages",
-    "title": "Messages"
+    "title": "Messages",
+    "now": "now",
+    "seconds": "{{n}}s",
+    "minutes": "{{n}}m",
+    "hours": "{{n}}h"
   },
   "offlineArea": {
     "allCachedSize": "All {{count}} tiles already cached ({{size}})",
@@ -512,5 +524,65 @@
     "clearLog": "Clear alert log",
     "disclaimer": "Awareness only. Mitigation, if any, is performed by separately authorized parties.",
     "in": "in"
+  },
+  "inFlightAdjustInstrument": {
+    "title": "IN-FLIGHT ADJUST",
+    "fixedWingOnly": "FIXED-WING ONLY",
+    "tagRadius": "RAD",
+    "set": "SET",
+    "revert": "Revert to the value last sent"
+  },
+  "sticksInstrument": {
+    "title": "Sticks",
+    "left": "YAW · THROTTLE",
+    "right": "ROLL · PITCH",
+    "control": "CONTROL",
+    "onTip": "Fly with these on-screen sticks. Roll, pitch and yaw spring back to centre; the sticks start where the vehicle already is, so switching on moves nothing.",
+    "offTip": "Hand the sticks back to the vehicle's own radio",
+    "off": "OFF",
+    "noVehicle": "NO VEHICLE",
+    "inControl": "FLYING · {{fps}} Hz",
+    "joystickInControl": "JOYSTICK FLYING",
+    "hint": "Switch CONTROL on, then drag the sticks. No joystick needed."
+  },
+  "sensorInstruments": {
+    "wind": "WIND",
+    "calm": "CALM",
+    "from": "from {{deg}}°",
+    "head": "HEAD",
+    "tail": "TAIL",
+    "cross": "X",
+    "rangefinder": "RANGEFINDER",
+    "quality": "Q {{q}}%",
+    "noSensor": "NO SENSOR",
+    "noTarget": "OUT OF RANGE",
+    "tooClose": "TOO CLOSE",
+    "agl": "AGL",
+    "proximity": "PROXIMITY",
+    "clear": "CLEAR",
+    "up": "up {{d}}",
+    "ekf": "EKF",
+    "ekfStatus": {
+      "noData": "NO DATA",
+      "initialising": "INITIALISING",
+      "gpsGlitch": "GPS GLITCH",
+      "bad": "BAD",
+      "check": "CHECK",
+      "ok": "OK"
+    },
+    "ekfRow": {
+      "vel": "VEL",
+      "posH": "POS H",
+      "posV": "POS V",
+      "mag": "MAG",
+      "terr": "TERR"
+    },
+    "flight": "FLIGHT TIME",
+    "armed": "ARMED",
+    "disarmed": "DISARMED",
+    "endurance": "ENDURANCE",
+    "needCapacity": "Set the battery capacity (BATT_CAPACITY) to see endurance",
+    "notDrawing": "Shown once the motors draw current",
+    "atDraw": "At {{a}} A average draw"
   }
 }

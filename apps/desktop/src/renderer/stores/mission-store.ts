@@ -25,7 +25,7 @@ import {
 import { splitMissionForFleet } from '../components/mission/distribute-fleet';
 import { computeSurveyGroupSignature } from '../components/survey/survey-group-signature';
 import { applyFlightBreaks, groupEndsFlight, inFlightOrder, flightBoundaries } from '../components/mission/mission-end';
-import { bulkSetAltitude, bulkSetSpeed } from '../components/mission/bulk-edit';
+import { bulkSetAltitude, bulkShiftAltitude, bulkSetSpeed, setWaypointHeading } from '../components/mission/bulk-edit';
 import { buildArduPilotWireMission, shiftJumpTargets } from '../../shared/mission-wire';
 import { useSettingsStore } from './settings-store';
 import { effectiveMissionFirmware } from '../utils/mission-firmware';
@@ -191,6 +191,19 @@ function missionHasHomeSlot(): boolean {
   return effectiveMissionFirmware(connectionState, toggle) === 'ardupilot';
 }
 
+/** Raw FC seq minus our seq for the live vehicle: ArduPilot keeps HOME at 0, which our list never holds. */
+export function fcSeqOffsetNow(): number {
+  return missionHasHomeSlot() ? 1 : 0;
+}
+
+/** Reactive fcSeqOffsetNow() for components that turn our seqs into FC seqs. */
+export function useFcSeqOffset(): number {
+  const link = useConnectionStore((s) => s.connectionState);
+  const toggle = useSettingsStore((s) => s.missionDefaults.missionFirmware);
+  if (link.isConnected && link.firmware === 'custom') return 0;
+  return effectiveMissionFirmware(link, toggle) === 'ardupilot' ? 1 : 0;
+}
+
 function toWireMission(items: MissionItem[], home: HomePosition | null): MissionItem[] {
   return missionHasHomeSlot() ? buildArduPilotWireMission(items, home) : items;
 }
@@ -270,6 +283,8 @@ interface MissionStore {
    *  diagnostics so the UI can show a hint when display vs. observed behavior
    *  disagree (off-by-one tuning of fcSeqOffset). */
   currentSeqRaw: number | null;
+  /** Highest waypoint the FC reported reached (MISSION_ITEM_REACHED), aligned like currentSeq. */
+  reachedSeq: number | null;
   /**
    * How much to subtract from raw FC `MISSION_CURRENT.seq` to align it with
    * our store's renumbered `missionItems[].seq`. ArduPilot includes HOME at
@@ -447,8 +462,11 @@ interface MissionStore {
   removeWaypoints: (seqs: number[]) => void;
   /** Set altitude on the selected location commands; returns how many changed. */
   bulkSetAltitude: (seqs: number[], altMeters: number) => number;
+  bulkShiftAltitude: (seqs: number[], deltaMeters: number) => number;
   /** DO_CHANGE_SPEED for the selection (<= 0 clears); returns how many changed. */
   bulkSetSpeed: (seqs: number[], speedMs: number) => number;
+  /** ArduPilot heading for one waypoint (CONDITION_YAW after it); null removes it. */
+  setWaypointHeading: (seq: number, headingDeg: number | null) => void;
   reorderWaypoints: (fromSeq: number, toSeq: number) => void;
   insertMissionItems: (items: MissionItem[]) => void;
   applyTerrainPlan: (plan: {
@@ -492,6 +510,7 @@ interface MissionStore {
   setMissionItemsFromFile: (items: MissionItem[], groups?: Group[]) => void;
   updateProgress: (progress: MissionProgress) => void;
   setCurrentSeq: (seq: number) => void;
+  setReachedSeq: (seq: number) => void;
   setError: (error: string | null) => void;
   setLoading: (loading: boolean) => void;
   setUploadComplete: (itemCount: number) => void;
@@ -683,6 +702,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   error: null,
   currentSeq: null,
   currentSeqRaw: null,
+  reachedSeq: null,
   fcSeqOffset: 0,
   isDirty: false,
   selectedSeq: null,
@@ -1159,6 +1179,13 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     return result.changed;
   },
 
+  bulkShiftAltitude: (seqs, deltaMeters) => {
+    const { missionItems } = get();
+    const result = bulkShiftAltitude(missionItems, new Set(seqs), deltaMeters);
+    if (result.changed > 0) set({ missionItems: result.items, isDirty: true });
+    return result.changed;
+  },
+
   bulkSetSpeed: (seqs, speedMs) => {
     const { missionItems, selectedSeq } = get();
     const result = bulkSetSpeed(missionItems, new Set(seqs), speedMs);
@@ -1168,6 +1195,11 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       result.items.length === missionItems.length ? selectedSeq : null;
     set({ missionItems: result.items, isDirty: true, selectedSeq: nextSelected });
     return result.changed;
+  },
+
+  setWaypointHeading: (seq, headingDeg) => {
+    const result = setWaypointHeading(get().missionItems, seq, headingDeg);
+    if (result.changed > 0) set({ missionItems: result.items, isDirty: true });
   },
 
   reorderWaypoints: (fromSeq: number, toSeq: number) => {
@@ -1286,6 +1318,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       selectedSeq: null,
       selectedGroupId: null,
       currentSeq: null,
+      reachedSeq: null,
       fcSeqOffset: 0,
       lastUploadedAt: null,
       lastUploadedGroupIds: [],
@@ -1835,9 +1868,20 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     // against missionItems[].seq. ArduPilot's HOME entry at raw seq 0 is
     // stripped on download, so raw seq N corresponds to renumbered seq N-1
     // when home was present.
-    const offset = get().fcSeqOffset;
+    // Derived, not stored: a restored or file-loaded list would otherwise leave a stale offset
+    const offset = fcSeqOffsetNow();
     const aligned = Math.max(0, seq - offset);
-    set({ currentSeq: aligned, currentSeqRaw: seq });
+    // Current moved back behind a reached waypoint: the mission restarted, so those aren't flown yet
+    const reached = get().reachedSeq;
+    const reachedSeq = reached !== null && aligned < reached ? (aligned > 0 ? aligned - 1 : null) : reached;
+    set({ currentSeq: aligned, currentSeqRaw: seq, reachedSeq });
+  },
+
+  setReachedSeq: (seq: number) => {
+    const aligned = seq - fcSeqOffsetNow();
+    if (aligned < 0) return; // ArduPilot's HOME slot
+    const prev = get().reachedSeq;
+    set({ reachedSeq: prev === null ? aligned : Math.max(prev, aligned) });
   },
 
   setError: (error: string | null) => {
@@ -1904,6 +1948,7 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       progress: null,
       error: null,
       currentSeq: null,
+      reachedSeq: null,
       fcSeqOffset: 0,
       isDirty: false,
       selectedSeq: null,

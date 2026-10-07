@@ -16,13 +16,23 @@
     "wind": "Wind"
   },
   "joystickSafety": {
-    "assignAxes": "Assign roll, pitch, throttle and yaw first",
-    "axisPitch": "pitch",
-    "axisRoll": "roll",
-    "axisYaw": "yaw",
-    "centreSticks_one": "Centre the {{axes}} stick",
-    "centreSticks_other": "Centre the {{axes}} sticks",
-    "closeThrottle": "Close the throttle"
+    "assign": "Assign {{names}} first",
+    "offTarget": "{{name}} (CH{{ch}}) at {{pwm}}, needs {{want}}",
+    "channel": "CH{{n}}",
+    "role": {
+      "roll": "Roll",
+      "pitch": "Pitch",
+      "throttle": "Throttle",
+      "yaw": "Yaw"
+    },
+    "want": {
+      "centre": "about {{pwm}} (centre)",
+      "idle": "{{pwm}} or less (idle)",
+      "zeroThrust": "about {{pwm}} (zero thrust)",
+      "radio": "about {{pwm}} (your radio)",
+      "low": "{{pwm}} or less (low)",
+      "high": "{{pwm}} or more (high)"
+    }
   },
   "osdCategories": {
     "altitude": {

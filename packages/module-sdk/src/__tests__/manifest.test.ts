@@ -112,4 +112,18 @@ describe('parseModuleManifest', () => {
     expect(parseModuleManifest('string').ok).toBe(false);
     expect(parseModuleManifest(42).ok).toBe(false);
   });
+  it('accepts required cargo slugs and rejects bad ones', () => {
+    const base = { manifestVersion: 1, slug: 'com.acme.station', name: 'x', version: '0.1.0', entry: {} };
+    expect(parseModuleManifest({ ...base, requires: ['com.ardudeck.vault'] }).ok).toBe(true);
+    expect(parseModuleManifest({ ...base, requires: 'com.ardudeck.vault' }).ok).toBe(false);
+    expect(parseModuleManifest({ ...base, requires: ['Bad Slug'] }).ok).toBe(false);
+    expect(parseModuleManifest({ ...base, requires: ['com.acme.station'] }).ok).toBe(false);
+  });
+
+  it('accepts the production permission', () => {
+    const result = parseModuleManifest({
+      manifestVersion: 1, slug: 'a.b', name: 'x', version: '0.1.0', entry: {}, permissions: ['production', 'vault'],
+    });
+    expect(result.ok).toBe(true);
+  });
 });

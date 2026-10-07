@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { SvtImageryPicker } from './svt/SvtImageryPicker';
 import { Camera, Circle, Film, Layers, RotateCw, SlidersHorizontal } from 'lucide-react';
 import { useActiveVehicleStore } from '../../stores/active-vehicle-store';
 import { useFleetVehicles, type FleetVehicle } from '../../hooks/useFleet';
@@ -294,6 +295,7 @@ export function CameraPanel() {
                       />
                       {t('camera:panel.satelliteImagery')}
                     </label>
+                    <SvtImageryPicker disabled={!store.svtSatellite} />
                     <div className="px-1.5 pb-1 text-[10px] uppercase tracking-wide text-content-tertiary">{t('camera:panel.terrainDetail')}</div>
                     <div className="flex overflow-hidden rounded-md border border-subtle">
                       {(['low', 'medium', 'high'] as const).map((q) => (

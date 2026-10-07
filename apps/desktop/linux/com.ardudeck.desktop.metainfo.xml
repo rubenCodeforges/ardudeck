@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.ardudeck.desktop</id>
+  <name>ArduDeck</name>
+  <summary>Ground control station for ArduPilot, PX4, Betaflight and iNav vehicles</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <developer id="com.codeforges">
+    <name>Codeforges</name>
+  </developer>
+  <description>
+    <p>
+      ArduDeck is an open-source ground control station. One app covers the whole workflow:
+      connect, configure, calibrate, plan, fly and analyze, from a single quad on USB to a fleet
+      of vehicles on radio, IP or cellular links.
+    </p>
+    <ul>
+      <li>Live telemetry with a map-first cockpit and dockable instruments</li>
+      <li>Parameter editing with review before every write, backups and history</li>
+      <li>Mission and survey planning with grid, crosshatch and circular patterns</li>
+      <li>Firmware flashing, calibration and sensor setup</li>
+      <li>Flight log explorer with plots, FFT and health checks</li>
+      <li>Built-in SITL simulator and multi-vehicle fleet support</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">ardudeck.desktop</launchable>
+  <url type="homepage">https://ardudeck.com</url>
+  <url type="help">https://ardudeck.com/docs/</url>
+  <url type="bugtracker">https://github.com/rubenCodeforges/ardudeck/issues</url>
+  <url type="vcs-browser">https://github.com/rubenCodeforges/ardudeck</url>
+  <url type="contact">https://forum.ardudeck.com</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Telemetry dashboard with map and instruments</caption>
+      <image>https://raw.githubusercontent.com/rubenCodeforges/ardudeck/master/docs/screenshots/telemetry_dashboard.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Mission planning</caption>
+      <image>https://raw.githubusercontent.com/rubenCodeforges/ardudeck/master/docs/screenshots/mission_planning.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>ArduPilot parameters</caption>
+      <image>https://raw.githubusercontent.com/rubenCodeforges/ardudeck/master/docs/screenshots/params_screen.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Firmware flashing</caption>
+      <image>https://raw.githubusercontent.com/rubenCodeforges/ardudeck/master/docs/screenshots/firmware_flash.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>SITL simulator</caption>
+      <image>https://raw.githubusercontent.com/rubenCodeforges/ardudeck/master/docs/screenshots/sitl_simulator.png</image>
+    </screenshot>
+  </screenshots>
+  <categories>
+    <category>Science</category>
+    <category>Engineering</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.1" date="2026-09-07"/>
+    <release version="0.1.0" date="2026-07-28"/>
+  </releases>
+</component>

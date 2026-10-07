@@ -31,11 +31,7 @@ import {
   type CalibrationParamInfo,
 } from '../../shared/calibration-param-groups';
 import { useParameterStore } from './parameter-store';
-import {
-  assessAccelCalibration,
-  assessCompassFitness,
-  type CalibrationAssessment,
-} from '../../shared/calibration-quality';
+import { buildCalibrationRecord } from '../../shared/calibration-quality';
 
 // ============================================================================
 // Types — Force-accept calibration from file
@@ -720,7 +716,9 @@ export const useCalibrationStore = create<CalibrationState>((set, get) => ({
           // the optimistic success and flip to failed. This converts the
           // confusing "green banner + yellow warning" UI into a single
           // unambiguous outcome the user can act on.
-          if (result.status === 'unchanged') {
+          // Unchanged values only prove a failure when the FC never confirmed: a level
+          // board legitimately keeps AHRS_TRIM at 0 after an ACKed level calibration.
+          if (result.status === 'unchanged' && unconfirmed) {
             set({
               verification: result,
               calibrationSuccess: false,
@@ -1013,40 +1011,14 @@ async function recordCalibrationOutcome(
   }
   if (Object.keys(written).length === 0) return;
 
-  let assessment: CalibrationAssessment;
-  if (calType === 'compass') {
-    // Worst compass in the batch decides: one bad heading source is enough.
-    const fits = (useCalibrationStore.getState().calibrationData?.compassResults ?? [])
-      .map((r) => r.fitness)
-      .filter((f): f is number => typeof f === 'number');
-    assessment = fits.length > 0
-      ? fits.map((f) => assessCompassFitness(f)).reduce((worst, next) =>
-          (VERDICT_RANK[next.verdict] ?? 0) > (VERDICT_RANK[worst.verdict] ?? 0) ? next : worst)
-      : { verdict: 'unknown', summary: i18nT('stores:calibrationStore.noCompassFitness') };
-  } else if (calType === 'accel-6point') {
-    const num = (name: string): number | undefined => written[name];
-    const offsets = num('INS_ACCOFFS_X') !== undefined
-      ? { x: num('INS_ACCOFFS_X')!, y: num('INS_ACCOFFS_Y') ?? 0, z: num('INS_ACCOFFS_Z') ?? 0 }
-      : undefined;
-    const scales = num('INS_ACCSCAL_X') !== undefined
-      ? { x: num('INS_ACCSCAL_X')!, y: num('INS_ACCSCAL_Y') ?? 1, z: num('INS_ACCSCAL_Z') ?? 1 }
-      : undefined;
-    assessment = assessAccelCalibration({ offsets, scales });
-  } else {
-    assessment = { verdict: 'unknown', summary: i18nT('stores:calibrationStore.recorded') };
-  }
-
-  await window.electronAPI?.calibrationRecordSave(boardUid, {
-    type: calType,
-    written,
-    verdict: assessment.verdict,
-    summary: assessment.advice ? `${assessment.summary} ${assessment.advice}` : assessment.summary,
-    completedAt: Date.now(),
-    persistence: null,
-  });
+  const fits = calType === 'compass'
+    ? (useCalibrationStore.getState().calibrationData?.compassResults ?? [])
+        .map((r) => r.fitness)
+        .filter((f): f is number => typeof f === 'number')
+    : [];
+  await window.electronAPI?.calibrationRecordSave(boardUid, buildCalibrationRecord(calType, written, fits));
 }
 
-const VERDICT_RANK: Record<string, number> = { good: 0, unknown: 1, marginal: 2, bad: 3 };
 
 async function verifyCalibrationParams(
   calType: CalibrationTypeId,

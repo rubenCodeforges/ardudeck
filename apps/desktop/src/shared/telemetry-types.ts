@@ -75,6 +75,33 @@ export interface WindData {
   speedZ: number;      // m/s vertical
 }
 
+/** DISTANCE_SENSOR (132): one rangefinder or one proximity sector. Distances in metres. */
+export interface DistanceSensorData {
+  distance: number;
+  min: number;
+  max: number;
+  /** MAV_SENSOR_ORIENTATION: 25 down, 24 up, 0-7 yaw sectors 45 degrees apart from the nose. */
+  orientation: number;
+  /** 1-100, or null when the sensor does not report quality. */
+  quality: number | null;
+  receivedAt: number;
+}
+
+/** MAV_SENSOR_ORIENTATION of a downward rangefinder. */
+export const ORIENTATION_DOWN = 25;
+export const ORIENTATION_UP = 24;
+
+/** EKF_STATUS_REPORT (193): normalised innovation ratios, where 1 is the rejection limit. */
+export interface EkfStatusData {
+  velocity: number;
+  posHoriz: number;
+  posVert: number;
+  compass: number;
+  terrain: number;
+  /** EKF_STATUS_FLAGS bitmask. */
+  flags: number;
+}
+
 /** NAV_CONTROLLER_OUTPUT (62) - the autopilot's live navigation solution. */
 export interface NavControllerData {
   navBearing: number;    // degrees - bearing the nav controller is steering toward
@@ -157,6 +184,8 @@ export interface TelemetryState {
   lastVibration: number;
   lastEscTelemetry: number;
   lastServoOutput: number;
+  lastWind: number;
+  lastEkf: number;
 
   // Data
   attitude: AttitudeData;
@@ -187,6 +216,13 @@ export interface TelemetryState {
   guidedTarget: GuidedTargetData | null;
   /** MAV_VTOL_STATE from EXTENDED_SYS_STATE. null on non-VTOL or before first report. */
   vtolState: VtolState | null;
+  /** Downward rangefinder; null until one reports. */
+  rangefinder: DistanceSensorData | null;
+  /** Proximity sectors by MAV_SENSOR_ORIENTATION (0-7 around, 24 up); stale ones age out by receivedAt. */
+  proximity: Record<number, DistanceSensorData>;
+  ekf: EkfStatusData | null;
+  /** When the vehicle armed this session, for the flight timer; null while disarmed. */
+  armedAt: number | null;
 }
 
 /** MAV_VTOL_STATE. A quadplane's mode name never says it is mid-transition. */

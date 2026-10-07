@@ -5,7 +5,8 @@ import { MediaGallery } from '../camera/MediaGallery';
 import { useNavigationStore, type ViewId } from '../../stores/navigation-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useSettingsStore, type ThemePreference } from '../../stores/settings-store';
-import { isViewAvailable, useEnabledCapabilitySlugs } from '../../modules/capabilities';
+import { isViewAvailable, useEnabledCapabilitySlugs, CARGO_VIEWS } from '../../modules/capabilities';
+import { viewBodyRegistry } from '../../modules/module-extension-registries';
 import { useTrainerAvailable, useTrainerStore } from '../../stores/trainer-store';
 import { useActiveVehicleStore } from '../../stores/active-vehicle-store';
 import { useVehicleProfileStore } from '../../stores/vehicle-profile-store';
@@ -69,6 +70,16 @@ const navItems: NavItem[] = [
         <circle cx="18" cy="6" r="3" />
         <circle cx="6" cy="18" r="3" />
         <path d="M18 9a9 9 0 01-9 9" />
+      </svg>
+    ),
+  },
+  {
+    id: 'production',
+    labelKey: 'navigation:navigationRail.productionLine',
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 21V10l5 3v-3l5 3V7l8 4v10H3z" />
+        <path d="M7 17h2M12 17h2M17 17h1" />
       </svg>
     ),
   },
@@ -272,8 +283,14 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
     (s) => (activeVehicleKey ? s.byVehicle[activeVehicleKey] : undefined),
   );
 
+  const viewBodies = viewBodyRegistry.useEntries();
+  const available = (id: ViewId) => {
+    if (id === 'trainer') return trainerAvailable;
+    if (CARGO_VIEWS[id]) return viewBodies.some((e) => e.id === id);
+    return isViewAvailable(id, enabledCapabilitySlugs);
+  };
   const visibleNavItems = allNavItems.filter((item) =>
-    (item.id === 'trainer' ? trainerAvailable : isViewAvailable(item.id, enabledCapabilitySlugs)) &&
+    available(item.id) &&
     !(isPx4 && arduPilotOnlyViews.has(item.id)) &&
     viewAllowedForVehicle(item.id, vehicleProfile),
   );
@@ -313,7 +330,7 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
           {item.icon}
 
           {/* Tooltip */}
-          <div className={`absolute left-full ml-2 px-2 py-1 bg-surface-raised text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg ${item.disabled ? 'text-content-tertiary' : 'text-content'}`}>
+          <div className={`absolute left-full ml-2 px-2 py-1 bg-surface-solid text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg ${item.disabled ? 'text-content-tertiary' : 'text-content'}`}>
             {t(item.labelKey)}
           </div>
         </button>
@@ -333,7 +350,7 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
           {item.icon}
 
           {/* Tooltip */}
-          <div className="absolute left-full ml-2 px-2 py-1 bg-surface-raised text-content-tertiary text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg">
+          <div className="absolute left-full ml-2 px-2 py-1 bg-surface-solid text-content-tertiary text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg">
             {t(item.labelKey)}
           </div>
         </button>
@@ -366,7 +383,7 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
-        <div className="absolute left-full ml-2 px-2 py-1 bg-surface-raised text-content text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg">
+        <div className="absolute left-full ml-2 px-2 py-1 bg-surface-solid text-content text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg">
           {t('navigation:navigationRail.reportBug')}
         </div>
       </button>
@@ -388,7 +405,7 @@ function MediaButton() {
         title={t('camera:gallery.title')}
       >
         <Film className="w-5 h-5" strokeWidth={1.5} />
-        <div className="absolute left-full ml-2 px-2 py-1 bg-surface-raised text-content text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg">
+        <div className="absolute left-full ml-2 px-2 py-1 bg-surface-solid text-content text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg">
           {t('camera:gallery.title')}
         </div>
       </button>
@@ -436,7 +453,7 @@ function ThemeToggle() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
       )}
-      <div className="absolute left-full ml-2 px-2 py-1 bg-surface-raised text-content text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg">
+      <div className="absolute left-full ml-2 px-2 py-1 bg-surface-solid text-content text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg">
         {t(THEME_LABEL_KEYS[theme])}
       </div>
     </button>

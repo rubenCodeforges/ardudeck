@@ -39,6 +39,8 @@ export interface ChannelMap {
   deadband: number;
   /** 0 = linear, 1 = maximum softening around centre, like EdgeTX expo. */
   expo: number;
+  /** Where this channel must rest before a handover; absent = let the vehicle decide. */
+  safeAt?: 'auto' | 'centre' | 'low' | 'high' | 'any';
 }
 
 export function defaultChannelMap(): ChannelMap {

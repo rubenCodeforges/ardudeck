@@ -31,6 +31,7 @@ export function MissionWaypointDotsLayer() {
   const map = useMap();
   const missionItems = useMissionStore((s) => s.missionItems);
   const currentSeq = useMissionStore((s) => s.currentSeq);
+  const reachedSeq = useMissionStore((s) => s.reachedSeq);
   // Highlight the fly-to target the operator is stepping through in the flight
   // controls, so a jump has spatial context on the map before it's committed.
   const selectedSeq = useMissionStore((s) => s.selectedSeq);
@@ -74,10 +75,12 @@ export function MissionWaypointDotsLayer() {
     const list: WaypointDotInfo[] = waypoints.map((wp) => {
       const num = wp.seq + 1;
       if (num > max) max = num;
-      return { seq: wp.seq, color: getCommandColor(wp.command), label: String(num) };
+      // Reached waypoints are green, like the flight map's pins
+      const done = reachedSeq !== null && wp.seq <= reachedSeq;
+      return { seq: wp.seq, color: done ? '#10b981' : getCommandColor(wp.command), label: String(num) };
     });
     return { infos: list, maxLabel: max };
-  }, [waypoints]);
+  }, [waypoints, reachedSeq]);
 
   const layerRef = useRef<WaypointCanvasLayer | null>(null);
   useEffect(() => {

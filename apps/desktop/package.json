@@ -212,8 +212,19 @@
       "category": "Utility",
       "target": [
         "AppImage",
-        "deb"
+        "deb",
+        "rpm"
+      ],
+      "executableName": "ardudeck",
+      "extraFiles": [
+        {
+          "from": "linux/com.ardudeck.desktop.metainfo.xml",
+          "to": "usr/share/metainfo/com.ardudeck.desktop.metainfo.xml"
+        }
       ]
+    },
+    "appImage": {
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
     }
   }
 }

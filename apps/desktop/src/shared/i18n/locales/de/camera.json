@@ -119,7 +119,8 @@
     "syntheticTip": "Synthetische Sicht (3D-Gelände aus GPS + Fluglage)",
     "terrainDetail": "Geländedetail",
     "terrainHint": "Der Boden direkt beim Luftfahrzeug verwendet immer die schärfsten Bilder.",
-    "thisVehicle": "dieses Fahrzeug"
+    "thisVehicle": "dieses Fahrzeug",
+    "imagerySource": "Bildquelle"
   },
   "presets": {
     "ardudeckSim": {

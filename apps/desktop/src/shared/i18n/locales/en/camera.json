@@ -119,7 +119,8 @@
     "syntheticTip": "Synthetic vision (3D terrain from GPS + attitude)",
     "terrainDetail": "Terrain detail",
     "terrainHint": "The ground nearest the aircraft always uses the sharpest imagery.",
-    "thisVehicle": "this vehicle"
+    "thisVehicle": "this vehicle",
+    "imagerySource": "Imagery source"
   },
   "presets": {
     "ardudeckSim": {

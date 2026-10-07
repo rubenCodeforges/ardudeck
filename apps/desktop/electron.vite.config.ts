@@ -39,6 +39,8 @@ export default defineConfig({
   },
   renderer: {
     root: 'src/renderer',
+    // lets the main process read a frozen page's JavaScript stack in development
+    server: { headers: { 'Document-Policy': 'include-js-call-stacks-in-crash-reports' } },
     // apps/desktop/node_modules keeps isolated-linker symlinks while react-i18next is hoisted to the
     // root; without dedupe the renderer bundles two Reacts and every hook throws.
     resolve: { dedupe: ['react', 'react-dom'] },

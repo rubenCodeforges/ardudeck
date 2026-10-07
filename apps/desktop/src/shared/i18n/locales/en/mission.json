@@ -571,6 +571,11 @@
       "wpCount_one": "{{count}} WP",
       "wpCount_other": "{{count}} WPs"
     },
+    "heading": {
+      "label": "Heading",
+      "auto": "Auto",
+      "hint": "Faces this heading on the way to and at this waypoint (0 is north). Leave empty for the normal heading. Adds a Condition Yaw after the waypoint."
+    },
     "list": {
       "addWaypoint": "Add Waypoint",
       "allSameFlight": "Every survey is already on the same flight",
@@ -809,5 +814,17 @@
       "yawDirection": "-1=CCW 0=auto 1=CW",
       "yawRelative": "0=abs 1=rel"
     }
+  },
+  "allHeights": {
+    "button": "All heights",
+    "buttonTip": "Change the altitude of every waypoint at once",
+    "title": "All heights ({{count}} waypoints)",
+    "shift": "Raise or lower",
+    "set": "Set all to",
+    "shiftHint": "Moves every waypoint by the same amount, so the profile keeps its shape. Nothing goes below 0.",
+    "setHint": "Gives every waypoint this altitude; the profile becomes flat.",
+    "raise": "Raise",
+    "lower": "Lower",
+    "surveyWarning": "The mission includes survey waypoints. Regenerating the survey rebuilds them from its config and overwrites this edit; use the survey's own altitude setting for lasting changes."
   }
 }

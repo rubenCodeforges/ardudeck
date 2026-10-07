@@ -6,8 +6,9 @@
  * Layout:
  *   units/<uid>/params.param    full parameter dump per flight controller
  *   units/<uid>/meta.json       board name, vehicle type, last snapshot info
- *   models/<model>/golden.param manufacturer baseline (v2, layout reserved)
- *   roles/<role>.param          operation overlays (v2, layout reserved)
+ *   models/<model>/golden.param production golden config (see production-records.ts)
+ *   roles/<role>.param          operation overlays (layout reserved)
+ *   production/runs/            production QA log
  *   sites/<site>/boundary.kml   area editor boundary
  *   sites/<site>/missions/*.waypoints
  *
@@ -106,7 +107,7 @@ interface VaultStoreSchema {
 
 const vaultStore = new Store<VaultStoreSchema>({ name: 'fleet-vault' });
 
-function repoDir(): string {
+export function repoDir(): string {
   return join(app.getPath('home'), '.ardudeck', 'fleet-repo');
 }
 
@@ -134,7 +135,7 @@ function setToken(token: string | null): void {
  * Current branch of the vault repo. Usually 'main', but an adopted existing
  * repository may use 'master' or anything else.
  */
-async function branchName(dir: string): Promise<string> {
+export async function branchName(dir: string): Promise<string> {
   try {
     return (await git.currentBranch({ fs, dir, fullname: false })) ?? BRANCH;
   } catch {
@@ -171,7 +172,7 @@ export async function ensureRepo(): Promise<void> {
   await git.commit({ fs, dir, message: 'Initialize fleet vault', author: COMMITTER }); // i18n-exempt
 }
 
-async function commitFiles(
+export async function commitFiles(
   files: Array<{ path: string; content: string }>,
   message: string,
 ): Promise<{ changed: boolean; oid?: string }> {
@@ -198,7 +199,7 @@ async function commitFiles(
 
 // ── Snapshots ───────────────────────────────────────────────────
 
-function sanitizeSegment(s: string): string {
+export function sanitizeSegment(s: string): string {
   return s.trim().replace(/[^a-zA-Z0-9._ -]/g, '_').replace(/ +/g, '-').slice(0, 80) || 'unnamed';
 }
 
@@ -206,7 +207,7 @@ function sanitizeSegment(s: string): string {
  * If some unit lists `uid` as an alias, snapshots for that uid land in the
  * aliased unit's folder so its history stays continuous.
  */
-async function resolveUnitDir(uid: string): Promise<string> {
+export async function resolveUnitDir(uid: string): Promise<string> {
   const clean = sanitizeSegment(uid);
   for (const unit of await listUnits()) {
     if (unit.uid === clean) return clean;

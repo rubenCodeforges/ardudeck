@@ -701,6 +701,25 @@ export class MediaEngine {
     }
   }
 
+  /** Live feeds as loopback RTSP, for a cargo that reads frames itself: camera feeds first, then published streams (Vision). */
+  async liveStreams(): Promise<{ sourceId: string; rtspUrl: string }[]> {
+    const cameras = [...this.sessions.entries()]
+      .filter(([, a]) => a.session.status === 'live' && a.session.path)
+      .map(([sourceId, a]) => ({ sourceId, rtspUrl: this.rtspUrl(a.session.path as string) }));
+    const taken = new Set([...this.sessions.values()].map((a) => a.session.path));
+    try {
+      const res = await fetch(`http://${HOST}:${API_PORT}/v3/paths/list`);
+      if (!res.ok) return cameras;
+      const body = (await res.json()) as { items?: { name?: string; ready?: boolean }[] };
+      const published = (body.items ?? [])
+        .filter((p): p is { name: string; ready: true } => typeof p.name === 'string' && p.ready === true && !taken.has(p.name))
+        .map((p) => ({ sourceId: p.name, rtspUrl: this.rtspUrl(p.name) }));
+      return [...cameras, ...published];
+    } catch {
+      return cameras; // hub not running
+    }
+  }
+
   /** Grab a single JPEG frame from a live session. */
   async snapshot(sourceId: string): Promise<CameraMediaActionResult> {
     const active = this.sessions.get(sourceId);

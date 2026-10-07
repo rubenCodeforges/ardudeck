@@ -1615,7 +1615,8 @@
     "savedPartial_one": "Saved {{saved}}/{{total}} channels, {{count}} param rejected.",
     "savedPartial_other": "Saved {{saved}}/{{total}} channels, {{count}} params rejected.",
     "signalLost": "Signal Lost",
-    "trim": "Trim"
+    "trim": "Trim",
+    "inavReadOnly": "INAV does not expose its settings over MAVLink. These are its live stick channels in INAV order; to change receiver, ports or channel map, connect over USB with MSP (INAV)."
   },
   "responsePlot": {
     "live": "LIVE",

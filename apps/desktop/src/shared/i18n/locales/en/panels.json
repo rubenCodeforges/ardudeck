@@ -101,6 +101,21 @@
     "receiverN": "GPS {{n}}",
     "vdop": "VDOP"
   },
+  "inFlightAdjust": {
+    "altSent": "Altitude change sent.",
+    "altTip": "New target altitude above home for the current target (DO_CHANGE_ALTITUDE). In AUTO the next waypoint sets its own altitude again.",
+    "changeAlt": "Change alt",
+    "changeSpeed": "Change speed",
+    "notSent": "Not sent: no vehicle link.",
+    "radiusFailed": "Loiter radius was not written.",
+    "radiusReason": "Loiter radius changed in flight",
+    "radiusSet": "Loiter radius set.",
+    "radiusTip": "Writes WP_LOITER_RAD after you review it. Used by LOITER and loiter waypoints; the sign (direction) is kept.",
+    "setLoiterRadius": "Set loiter radius",
+    "speedSent": "Speed change sent.",
+    "speedTip": "New target airspeed (DO_CHANGE_SPEED). Holds until the mission or another command changes it.",
+    "title": "In-flight adjust"
+  },
   "joystickPanel": {
     "armedWarning": "Armed. The sticks are live: this window must keep focus, because a browser stops reporting the controller when it does not have it.",
     "assign": "Assign",
@@ -139,7 +154,21 @@
     "virtualHint": "Where the stick positions come from, instead of a physical gamepad. Throttle holds where you leave it; the right stick springs back. Both centre if the window loses focus.",
     "virtualMappingNote": "The on-screen sticks do not use this mapping: they go to the channels the vehicle names in RCMAP_ROLL / PITCH / THROTTLE / YAW. The bars below still show what is being sent.",
     "virtualOffHint": "Turn joystick input on above to use these.",
-    "waitingController": "Waiting for a controller…"
+    "waitingController": "Waiting for a controller…",
+    "safeZoneTip": "Where this channel has to be before you can take control",
+    "safeAtTip": "Where this channel must rest before a handover. Auto lets the vehicle decide from its settings.",
+    "safeAt": {
+      "auto": "Auto",
+      "centre": "Centre",
+      "low": "Low",
+      "high": "High",
+      "any": "Don't check"
+    },
+    "basis": {
+      "radio": "Matching your radio: the joystick has to match what it sends now, so taking over moves nothing.",
+      "rules": "Using the vehicle's settings: stick channels from RCMAP, centres from the channel trims, and throttle at zero thrust.",
+      "defaults": "Vehicle parameters not loaded yet: assuming channels 1 to 4 and throttle at the bottom."
+    }
   },
   "mapPanel": {
     "attitude": "Attitude",

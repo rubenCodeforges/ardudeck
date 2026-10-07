@@ -14,15 +14,25 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { useEffect, useState } from 'react';
 import { Gamepad2, AlertTriangle, Hand, RotateCcw } from 'lucide-react';
-import { usePseudoTxStore } from '../../stores/pseudo-tx-store';
+import { usePseudoTxStore, rcFunctionsFromParams } from '../../stores/pseudo-tx-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
-import { preflightForControl, channelPwm } from '../../utils/joystick-safety';
+import { channelPwm, SAFE_AT_OPTIONS, type ChannelVerdict, type SafeAt } from '../../utils/joystick-safety';
+import { useHandoverCheck } from '../../hooks/useHandoverCheck';
 import type { ChannelSource } from '../../utils/pseudo-tx';
 import { VirtualSticks } from './VirtualSticks';
 
-/** The four a pilot must bind before anything else is worth showing. */
-const PRIMARY_KEYS = ['common:roll', 'common:pitch', 'common:throttle', 'common:yaw'];
+const ROLE_KEYS = { roll: 'common:roll', pitch: 'common:pitch', throttle: 'common:throttle', yaw: 'common:yaw' } as const;
+
+/** The stick a channel carries on this vehicle (RCMAP), or null for an aux channel. */
+function roleKey(index: number): string | null {
+  const fns = rcFunctionsFromParams();
+  const role = (Object.keys(ROLE_KEYS) as (keyof typeof ROLE_KEYS)[]).find((r) => fns[r] === index + 1);
+  return role ? ROLE_KEYS[role] : null;
+}
+
+/** Bar position (0-100) of a PWM value. */
+const barPct = (pwm: number) => Math.max(0, Math.min(100, ((pwm - 1000) / 1000) * 100));
 
 function sourceLabel(src: ChannelSource, t: TFunction): string {
   switch (src.kind) {
@@ -33,7 +43,7 @@ function sourceLabel(src: ChannelSource, t: TFunction): string {
   }
 }
 
-function ChannelRow({ index }: { index: number }): JSX.Element {
+function ChannelRow({ index, verdict }: { index: number; verdict?: ChannelVerdict }): JSX.Element {
   const { t } = useTranslation();
   const mapping = usePseudoTxStore((s) => s.mapping);
   const raw = usePseudoTxStore((s) => s.raw);
@@ -55,16 +65,34 @@ function ChannelRow({ index }: { index: number }): JSX.Element {
   const teaching = learning === index;
   // 1000-2000 over the bar's width; an unassigned channel shows no fill at all
   // rather than a neutral-looking centre it is not actually holding.
-  const fill = pwm === null ? 0 : Math.max(0, Math.min(100, ((pwm - 1000) / 1000) * 100));
+  const fill = pwm === null ? 0 : barPct(pwm);
+  const label = roleKey(index);
+  const tone = !verdict || pwm === null ? 'bg-blue-500/60' : verdict.ok ? 'bg-emerald-500/60' : 'bg-amber-500/70';
+  // the safe zone on the bar: a band for "near", the end stop region for one-sided targets
+  const zone = verdict
+    ? verdict.target.mode === 'near'
+      ? { left: barPct(verdict.target.pwm - verdict.target.tolerance), right: barPct(verdict.target.pwm + verdict.target.tolerance) }
+      : verdict.target.mode === 'atMost'
+        ? { left: 0, right: barPct(verdict.target.pwm) }
+        : { left: barPct(verdict.target.pwm), right: 100 }
+    : null;
 
   return (
     <div className="flex items-center gap-2 py-1">
       <div className="w-16 shrink-0 text-[11px] text-content-secondary">
-        {PRIMARY_KEYS[index] ? t(PRIMARY_KEYS[index]) : t('panels:joystickPanel.channelN', { n: index + 1 })}
+        {label ? t(label) : t('panels:joystickPanel.channelN', { n: index + 1 })}
+        {label && <span className="ml-1 text-content-tertiary">{index + 1}</span>}
       </div>
       <div className="relative h-4 flex-1 rounded bg-surface-raised overflow-hidden">
+        {zone && (
+          <div
+            className="absolute inset-y-0 border-x border-emerald-400/60 bg-emerald-400/10"
+            style={{ left: `${zone.left}%`, width: `${Math.max(1, zone.right - zone.left)}%` }}
+            data-tip={t('panels:joystickPanel.safeZoneTip')}
+          />
+        )}
         <div
-          className={`absolute inset-y-0 left-0 ${assigned ? 'bg-blue-500/60' : 'bg-transparent'}`}
+          className={`absolute inset-y-0 left-0 ${assigned ? tone : 'bg-transparent'}`}
           style={{ width: `${fill}%` }}
         />
         <div className="absolute inset-y-0 left-1/2 w-px bg-white/20" />
@@ -91,6 +119,14 @@ function ChannelRow({ index }: { index: number }): JSX.Element {
       >
         ⇄
       </button>
+      <select
+        value={map.safeAt ?? 'auto'}
+        onChange={(e) => updateMap(index, { safeAt: e.target.value as SafeAt })}
+        data-tip={t('panels:joystickPanel.safeAtTip')}
+        className="w-20 shrink-0 rounded bg-surface-raised px-1 py-1 text-[11px] text-content-secondary"
+      >
+        {SAFE_AT_OPTIONS.map((o) => <option key={o} value={o}>{t(`panels:joystickPanel.safeAt.${o}`)}</option>)}
+      </select>
       <button
         onClick={() => setSource(index, { kind: 'none' })}
         disabled={!assigned}
@@ -111,7 +147,6 @@ export function JoystickPanel(): JSX.Element {
   const usingVirtual = usePseudoTxStore((s) => s.virtualAxes !== null);
   const deviceName = usePseudoTxStore((s) => s.deviceName);
   const mappingMode = usePseudoTxStore((s) => s.mappingMode);
-  const mapping = usePseudoTxStore((s) => s.mapping);
   const raw = usePseudoTxStore((s) => s.raw);
   const enable = usePseudoTxStore((s) => s.enable);
   const disable = usePseudoTxStore((s) => s.disable);
@@ -127,7 +162,8 @@ export function JoystickPanel(): JSX.Element {
   const [refused, setRefused] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
 
-  const check = preflightForControl(mapping, raw);
+  const check = useHandoverCheck();
+  const verdictFor = (i: number) => check.channels.find((c) => c.target.channel === i + 1);
 
   // Losing the device mid-flight must not leave the vehicle waiting on frames
   // that will never come: main's watchdog releases after 700 ms, and this stops
@@ -205,8 +241,8 @@ export function JoystickPanel(): JSX.Element {
               {t('panels:joystickPanel.virtualMappingNote')}
             </div>
           )}
-          {[0, 1, 2, 3].map((i) => <ChannelRow key={i} index={i} />)}
-          {showAll && Array.from({ length: 12 }, (_, k) => k + 4).map((i) => <ChannelRow key={i} index={i} />)}
+          {[0, 1, 2, 3].map((i) => <ChannelRow key={i} index={i} verdict={verdictFor(i)} />)}
+          {showAll && Array.from({ length: 12 }, (_, k) => k + 4).map((i) => <ChannelRow key={i} index={i} verdict={verdictFor(i)} />)}
           <button
             onClick={() => setShowAll((v) => !v)}
             className="mt-1 text-[11px] text-content-tertiary hover:text-content"
@@ -276,6 +312,9 @@ export function JoystickPanel(): JSX.Element {
           </button>
         </div>
 
+        {!vehicleControl && enabled && connected && (
+          <div className="mt-2 text-[11px] text-content-tertiary">{t(`panels:joystickPanel.basis.${check.basis}`)}</div>
+        )}
         {!vehicleControl && enabled && connected && !check.ok && (
           <div className="mt-2 space-y-1">
             {check.problems.map((p) => (

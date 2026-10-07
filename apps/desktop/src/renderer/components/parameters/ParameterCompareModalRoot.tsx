@@ -60,11 +60,23 @@ function CompareModal() {
     useNavigationStore.getState().setView('parameters');
   }, []);
 
+  // Esc always gets the pilot out, even if the footer is off a very short screen.
+  useEffect(() => {
+    if (!showCompareModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (fileApplyResult) handleSummaryClose();
+      else if (!isApplyingFileParams) closeCompareModal();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showCompareModal, fileApplyResult, isApplyingFileParams, handleSummaryClose, closeCompareModal]);
+
   if (!showCompareModal) return null;
 
   return (
     <div className="fixed inset-0 bg-surface-overlay flex items-center justify-center z-[120]">
-      <div className="bg-surface-solid border border-subtle rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[640px] h-[640px] flex flex-col overflow-hidden">
+      <div className="bg-surface-solid border border-subtle rounded-xl shadow-2xl max-w-2xl w-full mx-4 h-[min(640px,calc(100vh_-_2rem))] flex flex-col overflow-hidden">
         {fileApplyResult ? (
           <SummaryView
             result={fileApplyResult}
@@ -312,6 +324,7 @@ interface SummaryViewProps {
 
 function SummaryView({ result, onClose, onGoToParameters }: SummaryViewProps) {
   const { t } = useTranslation();
+  const [showSkipped, setShowSkipped] = useState(false);
   return (
     <>
       <div className="px-6 py-4 border-b border-subtle">
@@ -381,16 +394,24 @@ function SummaryView({ result, onClose, onGoToParameters }: SummaryViewProps) {
         {result.skippedParams.length > 0 && (
           <div className="flex items-start gap-3">
             <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-            <div>
+            <div className="min-w-0 flex-1">
               <span className="text-sm text-blue-300">
                 {t('parameters:parameterCompareModal.notFound', { count: result.skippedParams.length })}
               </span>
-              <p className="font-mono text-xs text-blue-400/70 mt-1 break-words">
-                {result.skippedParams.map(p => p.id).join(', ')}
-              </p>
               <p className="text-xs text-content-secondary mt-1">
                 {t('parameters:parameterCompareModal.mayBecomeAvailable')}
               </p>
+              <button
+                onClick={() => setShowSkipped(v => !v)}
+                className="mt-2 text-xs text-blue-300 underline hover:text-blue-200"
+              >
+                {showSkipped ? t('parameters:parameterCompareModal.hideNames') : t('parameters:parameterCompareModal.showNames')}
+              </button>
+              {showSkipped && (
+                <p className="font-mono text-xs text-blue-400/70 mt-2 break-words max-h-40 overflow-auto rounded-lg border border-subtle p-2">
+                  {result.skippedParams.map(p => p.id).join(', ')}
+                </p>
+              )}
             </div>
           </div>
         )}

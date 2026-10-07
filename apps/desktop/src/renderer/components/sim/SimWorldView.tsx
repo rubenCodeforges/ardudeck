@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { SvtImageryPicker } from '../camera/svt/SvtImageryPicker';
 import { useTranslation } from 'react-i18next';
 import { useSimStateStore, type SimStateMessage } from '../../stores/sim-state-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
@@ -46,6 +47,7 @@ import {
 import {
   WIDE_RING_SPANS_M,
   loadDrapeRings,
+  validImagery,
   recenterDistanceM,
 } from '../camera/svt/svt-satellite';
 import { useCameraStore } from '../../stores/camera-store';
@@ -249,6 +251,7 @@ export default function SimWorldView() {
   const [cameraMode, setCameraMode] = useState<SimCameraMode>('orbit');
   const [showTerrain, setShowTerrain] = useState(false);
   const satellite = useCameraStore((s) => s.svtSatellite);
+  const imagery = useCameraStore((s) => validImagery(s.svtImagery));
   const quality = useCameraStore((s) => s.svtQuality);
   const setSvtSatellite = useCameraStore((s) => s.setSvtSatellite);
   const setSvtQuality = useCameraStore((s) => s.setSvtQuality);
@@ -745,7 +748,7 @@ export default function SimWorldView() {
     let cancelled = false;
     void (async () => {
       try {
-        const rings = await loadDrapeRings(simGrid, tuning.outer, at, spans, tuning.inner);
+        const rings = await loadDrapeRings(simGrid, tuning.outer, at, spans, tuning.inner, imagery);
         if (cancelled) {
           for (const ring of rings) ring.texture.dispose();
           return;
@@ -756,7 +759,7 @@ export default function SimWorldView() {
       }
     })();
     return () => { cancelled = true; };
-  }, [satellite, quality, simGrid, showTerrain, drapeCenter, cameraMode]);
+  }, [satellite, imagery, quality, simGrid, showTerrain, drapeCenter, cameraMode]);
 
   // The revert note is transient: clear it after a few seconds.
   useEffect(() => {
@@ -930,6 +933,7 @@ export default function SimWorldView() {
                   />
                   {t('sim:worldView.satelliteImagery')}
                 </label>
+                <SvtImageryPicker disabled={!satellite} />
                 <div className="mt-1 border-t border-subtle pt-1">
                   <div className="px-1.5 pb-1 text-[10px] uppercase tracking-wide text-content-tertiary">{t('sim:worldView.terrainDetail')}</div>
                   <div className="flex overflow-hidden rounded-md border border-subtle">

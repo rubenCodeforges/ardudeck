@@ -17,6 +17,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { SvtQuality } from '../components/camera/svt/svt-terrain';
+import { DEFAULT_SVT_IMAGERY, validImagery, type SvtImagery } from '../components/camera/svt/svt-satellite';
 import {
   type CameraSourceConfig,
   type CameraStreamSession,
@@ -48,6 +49,8 @@ interface CameraState {
   syntheticFallback: boolean;
   /** Drape satellite imagery over the synthetic-vision terrain. */
   svtSatellite: boolean;
+  /** Which map satellite layer textures the terrain */
+  svtImagery: SvtImagery;
   /** Synthetic-vision terrain detail (never the near-field imagery). */
   svtQuality: SvtQuality;
   /** Pin this window to one vehicle, ignoring the active selection. Null = follow. */
@@ -79,6 +82,7 @@ interface CameraState {
   setSyntheticFallback: (on: boolean) => void;
   setSvtSatellite: (on: boolean) => void;
   setSvtQuality: (quality: SvtQuality) => void;
+  setSvtImagery: (imagery: SvtImagery) => void;
   setLockedVehicle: (vehicleKey: string | null) => void;
   toggleOsd: (layer: keyof OsdLayers) => void;
   setGridCols: (cols: number) => void;
@@ -105,6 +109,7 @@ export const useCameraStore = create<CameraState>()(
       renderMode: 'live',
       syntheticFallback: true,
       svtSatellite: false,
+      svtImagery: DEFAULT_SVT_IMAGERY,
       svtQuality: 'medium',
       lockedVehicleKey: null,
       osd: { ...DEFAULT_OSD_LAYERS },
@@ -196,6 +201,7 @@ export const useCameraStore = create<CameraState>()(
       setSyntheticFallback: (syntheticFallback) => set({ syntheticFallback }),
       setSvtSatellite: (svtSatellite) => set({ svtSatellite }),
       setSvtQuality: (svtQuality) => set({ svtQuality }),
+      setSvtImagery: (svtImagery) => set({ svtImagery: validImagery(svtImagery) }),
       setLockedVehicle: (lockedVehicleKey) => set({ lockedVehicleKey }),
       toggleOsd: (layer) => set((s) => ({ osd: { ...s.osd, [layer]: !s.osd[layer] } })),
       setGridCols: (gridCols) => set({ gridCols: Math.max(1, Math.min(4, gridCols)) }),
@@ -239,6 +245,7 @@ export const useCameraStore = create<CameraState>()(
         renderMode: s.renderMode,
         syntheticFallback: s.syntheticFallback,
         svtSatellite: s.svtSatellite,
+        svtImagery: s.svtImagery,
         svtQuality: s.svtQuality,
         osd: s.osd,
         gridCols: s.gridCols,
@@ -249,6 +256,13 @@ export const useCameraStore = create<CameraState>()(
 );
 
 /** Sources owned by a given vehicle. */
+// The Vision stream renders in its own window: pick up settings changed in another window.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'ardudeck-camera') void useCameraStore.persist.rehydrate();
+  });
+}
+
 export function sourcesForVehicle(state: CameraState, vehicleKey: string): CameraSourceConfig[] {
   return Object.values(state.sources).filter((s) => s.vehicleKey === vehicleKey);
 }
