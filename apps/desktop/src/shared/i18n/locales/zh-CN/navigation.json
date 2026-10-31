@@ -1,9 +1,9 @@
 {
   "navigationRail": {
-    "cargo": "Cargo",
+    "cargo": "货物",
     "cliTerminal": "CLI 终端",
     "companionComputer": "伴随电脑",
-    "fleetVault": "机队保管库",
+    "fleetVault": "机队仓库",
     "luaGraphEditor": "Lua 图形编辑器",
     "osdTool": "OSD 工具",
     "parameters": "参数",
@@ -12,7 +12,7 @@
     "themeLight": "浅色主题",
     "themeSystem": "系统主题",
     "trainer": "训练器",
-    "locus": "Locus",
+    "locus": "轨迹",
     "weatherBriefing": "气象简报",
     "productionLine": "生产线",
     "themeBridge": "舰桥"
@@ -23,7 +23,7 @@
     "companion": "伴随",
     "firmware": "固件",
     "inspector": "MAVLINK",
-    "library": "资料库",
+    "library": "库",
     "locus": "轨迹",
     "logs": "日志",
     "lua-graph": "LUA",
@@ -32,14 +32,14 @@
     "osd": "OSD",
     "parameters": "参数",
     "production": "生产",
-    "radio-hud": "无线电",
+    "radio-hud": "遥控",
     "recording": "录制",
-    "report": "回报",
+    "report": "报告",
     "settings": "设置",
     "sitl": "SITL",
     "telemetry": "遥测",
-    "trainer": "训练",
-    "tribute": "献词",
+    "trainer": "TRAINER",
+    "tribute": "致敬",
     "vault": "机队",
     "weather": "天气"
   }

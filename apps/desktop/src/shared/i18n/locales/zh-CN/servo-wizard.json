@@ -5,42 +5,42 @@
     "elevator": "升降舵",
     "flyingWingHint": "升降副翼 = 副翼加升降舵合并",
     "front": "前",
-    "gimbalHint": "Pan = 水平,Tilt = 垂直",
+    "gimbalHint": "Pan = 水平，Tilt = 垂直",
     "leftAileron": "左副翼",
     "leftElevon": "左升降副翼",
     "leftVTail": "左 V 尾",
     "motor1": "电机 1",
     "motor2": "电机 2",
-    "panServo": "Pan 伺服",
+    "panServo": "Pan 舵机",
     "rightAileron": "右副翼",
     "rightElevon": "右升降副翼",
     "rightVTail": "右 V 尾",
     "rudder": "方向舵",
-    "tiltServo": "Tilt 伺服",
-    "tricopterHint": "只有偏航伺服需要设置",
-    "yawServo": "偏航伺服"
+    "tiltServo": "Tilt 舵机",
+    "tricopterHint": "只有偏航舵机需要设置",
+    "yawServo": "偏航舵机"
   },
   "planeTypeStep": {
     "continue": "继续 →",
-    "gimbalSubtitle": "你的主板已设置为多旋翼。你可以设置云台伺服来控制相机。",
-    "gimbalTip": "云台使用 RC 摇杆输入来控制 Pan/Tilt 伺服，以达到相机稳定。",
-    "gimbalTitle": "云台伺服设置",
-    "noServos": "无伺服",
+    "gimbalSubtitle": "你的主板已设置为多旋翼。你可以设置云台舵机来控制相机。",
+    "gimbalTip": "云台使用 RC 摇杆输入来控制 Pan/Tilt 舵机，以达到相机稳定。",
+    "gimbalTitle": "云台舵机设置",
+    "noServos": "无舵机",
     "quadHex": "四轴/六轴",
-    "servoCount_one": "{{count}} 个伺服",
-    "servoCount_other": "{{count}} 个伺服",
-    "subtitle": "请选择你的飞行器类型，以取得正确的伺服设置。",
+    "servoCount_one": "{{count}} 个舵机",
+    "servoCount_other": "{{count}} 个舵机",
+    "subtitle": "请选择你的飞行器类型，以获取正确的舵机设置。",
     "tip": "<b>四轴加相机？</b>请选云台。<b2>固定翼？</b2>大多数是传统型。",
     "title": "你的飞行器是哪一种类型？"
   },
   "servoAssignmentStep": {
     "clickToHighlight": "点击一个控制舵面以将其醒目标示",
-    "continue": "继续：测试伺服 →",
-    "duplicateWarning": "警告：多个舵面被指派到同一个伺服！",
+    "continue": "继续：测试舵机 →",
+    "duplicateWarning": "警告：多个舵面被指派到同一个舵机！",
     "noAircraft": "尚未选择飞行器类型",
-    "subtitle": "请将每个控制舵面对应到它在飞控上所连接的伺服输出。",
-    "tip": "<b>提示：</b>请检查飞控的接线。伺服输出通常标示为 S1-S8 或 SERVO1-8。在 iNav 中 S1 = 伺服 0。",
-    "title": "将伺服指派给控制舵面"
+    "subtitle": "请将每个控制舵面对应到它在飞控上所连接的舵机输出。",
+    "tip": "<b>提示：</b>请检查飞控的接线。舵机输出通常标示为 S1-S8 或 SERVO1-8。在 iNav 中 S1 = 舵机 0。",
+    "title": "将舵机指派给控制舵面"
   },
   "servoEndpointSlider": {
     "centerHandle": "中心",
@@ -55,18 +55,18 @@
   },
   "servoEndpointsStep": {
     "continue": "继续：查看 →",
-    "enableFeedback": "启用实时伺服回馈",
-    "feedbackEnabled": "● 已启用实时伺服回馈",
+    "enableFeedback": "启用实时舵机反馈",
+    "feedbackEnabled": "● 已启用实时舵机反馈",
     "livePosition": "实时位置",
     "quickTips": "快速提示：",
     "rate": "速率：",
-    "rateHint": "缩小行程范围。100% = 全行程,50% = 半行程。",
-    "subtitle": "设置每个伺服能移动多远。如果你的伺服在摇杆推到底时发出摩擦声，请在这里降低限制。",
-    "testingPosition": "正在测试伺服位置...",
+    "rateHint": "缩小行程范围。100% = 全行程，50% = 半行程。",
+    "subtitle": "设置每个舵机能移动多远。如果你的舵机在摇杆推到底时发出摩擦声，请在这里降低限制。",
+    "testingPosition": "正在测试舵机位置...",
     "tipGrinding": "<b>有摩擦声？</b>请降低最小或最大值",
     "tipNotLevel": "<b>摇杆居中时不水平？</b>请调整中心值",
     "tipSensitive": "<b>太敏感？</b>请降低速率百分比",
-    "title": "微调伺服行程"
+    "title": "微调舵机行程"
   },
   "servoPresets": {
     "aircraft": {
@@ -91,9 +91,9 @@
         "tip": "飞机最常见的配置。每个轴各有独立的控制舵面。"
       },
       "tricopter": {
-        "description": "带偏航伺服的三旋翼",
+        "description": "带偏航舵机的三旋翼",
         "name": "三旋翼",
-        "tip": "只有后方的偏航伺服需要设置。电机另行处理。"
+        "tip": "只有后方的偏航舵机需要设置。电机另行处理。"
       },
       "vtail": {
         "description": "带 V 尾的飞机（方向升降舵）",
@@ -142,12 +142,12 @@
       "gimbalPan": {
         "description": "云台水平旋转",
         "name": "云台 Pan",
-        "shortName": "Pan"
+        "shortName": "左右"
       },
       "gimbalTilt": {
         "description": "云台垂直旋转",
         "name": "云台 Tilt",
-        "shortName": "Tilt"
+        "shortName": "上下"
       },
       "rudder": {
         "description": "使飞机向左/向右偏航",
@@ -165,8 +165,8 @@
         "shortName": "右 V 尾"
       },
       "yawServo": {
-        "description": "三旋翼的尾部伺服，用于偏航控制",
-        "name": "偏航伺服",
+        "description": "三旋翼的尾部舵机，用于偏航控制",
+        "name": "偏航舵机",
         "shortName": "偏航"
       }
     }
@@ -185,9 +185,9 @@
     "saveFailed": "保存设置失败",
     "saveToFc": "保存到飞控",
     "saved": "设置保存成功！",
-    "savedHint": "设置已写入飞控。你现在可以关闭此精灵。",
+    "savedHint": "设置已写入飞控。你现在可以关闭此向导。",
     "source": "来源 {{source}}",
-    "subtitle": "在保存到飞控之前，请先确认你的伺服设置。",
+    "subtitle": "在保存到飞控之前，请先确认你的舵机设置。",
     "title": "查看你的设置"
   },
   "servoTestStep": {
@@ -196,11 +196,11 @@
     "checkElevons": "<b>升降副翼：</b>请同时测试横滚与俯仰动作",
     "checkRudder": "<b>方向舵：</b>偏航摇杆往右 → 方向舵应向右偏",
     "continue": "继续：校准 →",
-    "enablePolling": "启用实时伺服轮询",
+    "enablePolling": "启用实时舵机轮询",
     "howToCheck": "如何检查方向：",
     "instruction": {
-      "aileronLeft": "横滚摇杆往右 → 此伺服应向下移动",
-      "aileronRight": "横滚摇杆往右 → 此伺服应向上移动",
+      "aileronLeft": "横滚摇杆往右 → 此舵机应向下移动",
+      "aileronRight": "横滚摇杆往右 → 此舵机应向上移动",
       "default": "移动对应的摇杆",
       "elevator": "俯仰摇杆向后拉 → 后缘应向上",
       "elevonLeft": "横滚往右 → 下。俯仰往后 → 上（后缘）",
@@ -213,50 +213,50 @@
       "yawServo": "移动偏航摇杆 → 电机应倾转"
     },
     "moveStick": "移动摇杆以测试",
-    "pollingEnabled": "● 已启用实时伺服轮询",
-    "responding": "伺服有回应",
-    "reverseHint": "如果伺服<b>方向相反</b>,请点击<rev>反向</rev>。",
-    "servoIndex": "伺服 {{index}}",
-    "subtitle": "移动你的发射机摇杆，并确认每个伺服都正确回应。",
-    "title": "测试你的伺服",
+    "pollingEnabled": "● 已启用实时舵机轮询",
+    "responding": "舵机有回应",
+    "reverseHint": "如果舵机<b>方向相反</b>，请点击<rev>反向</rev>。",
+    "servoIndex": "舵机 {{index}}",
+    "subtitle": "移动你的遥控器摇杆，并确认每个舵机都正确回应。",
+    "title": "测试你的舵机",
     "undoReverse": "取消反向"
   },
   "servoTuningCard": {
     "clickToReverse": "点击以反向",
     "fwd": "正向",
-    "reversedTip": "伺服已反向",
+    "reversedTip": "舵机已反向",
     "testMax": "最大 →",
     "testMin": "← 最小"
   },
   "servoTuningView": {
     "clickToSelect": "点击舵面以选择",
-    "noConfig": "没有伺服设置",
+    "noConfig": "没有舵机设置",
     "saveFailed": "保存失败：{{error}}",
     "saveToFc": "保存到飞控",
     "saved": "已保存到飞控",
-    "useWizard": "请先使用精灵来设置你的伺服。"
+    "useWizard": "请先使用向导来设置你的舵机。"
   },
   "servoWizard": {
     "boardIsMultirotor": "主板已设置为多旋翼",
-    "changeMixerHint": "这会将混控类型变更为 AIRPLANE、保存到 EEPROM,并重新启动主板。",
-    "checkingSupport": "正在检查伺服支援...",
-    "completeWizardFirst": "请先完成精灵",
+    "changeMixerHint": "这会将混控类型变更为 AIRPLANE、保存到 EEPROM，并重新启动主板。",
+    "checkingSupport": "正在检查舵机支持...",
+    "completeWizardFirst": "请先完成向导",
     "configureAsAirplane": "设置为飞机",
     "configureAsPlaneQuestion": "要将此主板设置为飞机吗？",
     "configuring": "设居中...",
     "disconnecting": "断开连接中...",
     "failedWithMessage": "失败：{{message}}。请尝试 iNav Configurator 的 CLI。",
-    "fineTuneServos": "微调伺服",
-    "notAvailable": "无法使用伺服设置",
-    "oldFirmwareNote": "<b>注意：</b>iNav 2.0.0 非常旧。若此方法无效，你可能需要使用 iNav Configurator 的 CLI:<code>mixer AIRPLANE</code>,然后 <code>save</code>",
-    "platformChangeFailed": "变更平台失败。若为 iNav 2.0.0,请尝试使用 iNav Configurator CLI:mixer AIRPLANE,然后 save",
+    "fineTuneServos": "微调舵机",
+    "notAvailable": "无法使用舵机设置",
+    "oldFirmwareNote": "<b>注意：</b>iNav 2.0.0 非常旧。若此方法无效，你可能需要使用 iNav Configurator 的 CLI:<code>mixer AIRPLANE</code>，然后 <code>save</code>",
+    "platformChangeFailed": "变更平台失败。若为 iNav 2.0.0，请尝试使用 iNav Configurator CLI:mixer AIRPLANE，然后 save",
     "platformChanged": "平台已变更为 AIRPLANE!请重新连接以确认。",
     "rebooting": "正在重新启动主板...",
     "reconnectHint": "请使用顶端的连接面板重新连接。",
     "reconnecting": "重新连接中...",
     "savingEeprom": "已发送平台变更。正在保存到 EEPROM...",
-    "sendingPlatform": "正在发送平台设置(MSP2 + CLI 备援）...",
-    "servoCount": "- {{count}} 个伺服",
+    "sendingPlatform": "正在发送平台设置（MSP2 + CLI 备援）...",
+    "servoCount": "- {{count}} 个舵机",
     "settingPlatform": "正在将平台类型设为 AIRPLANE...",
     "steps": {
       "aircraft": {
@@ -264,11 +264,11 @@
         "label": "飞行器"
       },
       "assign": {
-        "description": "将伺服对应到控制舵面",
+        "description": "将舵机对应到控制舵面",
         "label": "指派"
       },
       "endpoints": {
-        "description": "调整伺服限制",
+        "description": "调整舵机限制",
         "label": "校准"
       },
       "review": {
@@ -276,19 +276,19 @@
         "label": "保存"
       },
       "test": {
-        "description": "验证伺服动作",
+        "description": "验证舵机动作",
         "label": "测试"
       }
     },
     "tune": "调整",
     "unknownError": "未知错误",
     "useConnectionPanel": "请使用连接面板重新连接到你的主板。",
-    "usedFor": "伺服设置用于：",
+    "usedFor": "舵机设置用于：",
     "usedForFixedWing": "<b>固定翼飞机</b> - 副翼、升降舵、方向舵",
     "usedForFlyingWing": "<b>飞翼</b> - 升降副翼混控",
-    "usedForGimbal": "<b>云台伺服</b> - 相机 Pan/Tilt（需要相容的主板）",
-    "waitingReboot": "正在等待主板重新启动(5 秒）...",
-    "wizard": "精灵"
+    "usedForGimbal": "<b>云台舵机</b> - 相机 Pan/Tilt（需要兼容的主板）",
+    "waitingReboot": "正在等待主板重新启动（5 秒）...",
+    "wizard": "向导"
   },
   "wizardNav": {
     "back": "← 返回"

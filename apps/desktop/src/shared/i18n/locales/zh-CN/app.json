@@ -1,7 +1,7 @@
 {
-  "altFrameReset": "预设高度参考已重置为 Home（载具拒绝了相对地形的设置）。",
+  "altFrameReset": "默认高度参考已重置为 Home（载具拒绝了相对地形的设置）。",
   "cliExit": {
-    "body": "离开 CLI 选项卡会发送 exit 指令，导致飞控重新启动(2 至 4 秒）。",
+    "body": "离开 CLI 选项卡会发送 exit 指令，导致飞控重新启动（2 至 4 秒）。",
     "leave": "离开并重新启动",
     "reconnect": "主板重新启动后，应用程序会自动重新连接。",
     "stay": "留在 CLI",
@@ -9,34 +9,34 @@
   },
   "legacyStream": {
     "allow": "请求数据流并保存到此载具",
-    "body": "{{label}} 对新式的逐条消息请求没有任何回应。旧式请求通常可行，但在这架飞行器上,ArduPilot<b> 会将这些速率保存到其 SR*_ 参数中</b>,这些设置在本次飞行后仍会保留，并且会出现在其他每一个地面站。",
-    "conservative": "若你允许，所请求的是保守的速率（姿态 10 Hz),而非你所选的遥测速度，这样速度慢的无线电链接也能保持可用。",
+    "body": "{{label}} 对新式的逐条消息请求没有任何回应。旧式请求通常可行，但在这架飞行器上，ArduPilot<b> 会将这些速率保存到其 SR*_ 参数中</b>，这些设置在本次飞行后仍会保留，并且会出现在其他每一个地面站。",
+    "conservative": "若你允许，所请求的是保守的速率（姿态 10 Hz），而非你所选的遥测速度，这样速度慢的无线电链接也能保持可用。",
     "decline": "别动我的载具",
-    "declineHint": "拒绝后会保留载具目前已有的速率。你可以自行在「参数」中提高其 SR*_ 参数。",
+    "declineHint": "拒绝后会保留载具当前已有的速率。你可以自行在「参数」中提高其 SR*_ 参数。",
     "fleetLink": "这是机队链接，因此每次连接都会发生。",
     "notWithoutAsking": "ArduDeck 不会在未询问的情况下更改你的载具。",
     "title": "{{label}} 没有遥测"
   },
   "mismatch": {
-    "body": "你的载具配置文件设为 <profile>{{profile}}</profile>,但已连接的飞控是 <fc>{{fc}}</fc>。",
+    "body": "你的载具配置文件设为 <profile>{{profile}}</profile>，但已连接的飞控是 <fc>{{fc}}</fc>。",
     "dontAskAgain": "不要再询问",
     "hint": "性能估算与设置可能与你的实际载具不符。",
     "ignoreOnce": "忽略这一次",
-    "title": "载具类型不符",
+    "title": "载具类型不匹配",
     "updateProfile": "将配置文件更新为 {{type}}"
   },
   "pseudoTx": {
-    "assignHint": "按下<b>指派</b>,然后移动你要用在该通道的摇杆或拨动开关。未指派的通道保持 1500。",
-    "detailConnected": "{{device}},已发送 {{frames}} 个 RC 帧",
+    "assignHint": "按下<b>指派</b>，然后移动你要用在该通道的摇杆或拨动开关。未指派的通道保持 1500。",
+    "detailConnected": "{{device}}，已发送 {{frames}} 个 RC 帧",
     "detailOff": "关闭，由下方滑块驱动 RC",
     "detailWaiting": "等待遥控器：请将 EdgeTX 设为 USB Joystick 模式",
     "framesToVehicle": "发送给载具 {{fps}} 帧/秒",
-    "gamepadWarning": ",看起来是游戏手柄，不是遥控器",
-    "monitorCounts": "{{axes}} 轴,{{buttons}} 按钮",
-    "monitorMapping": ",对应「{{mode}}」",
-    "monitorRawHid": ",原始 HID",
+    "gamepadWarning": "，看起来是游戏手柄，不是遥控器",
+    "monitorCounts": "{{axes}} 轴，{{buttons}} 按钮",
+    "monitorMapping": "，对应「{{mode}}」",
+    "monitorRawHid": "，原始 HID",
     "moveIt": "请移动它",
-    "overrideTip": "会向已连接的载具发送 RC_CHANNELS_OVERRIDE。摇杆「将会」控制飞行器。",
+    "overrideTip": "会向已连接的载具发送 RC_CHANNELS_OVERRIDE。摇杆将控制飞行器。",
     "reversedRestore": "此通道已反向，点击以还原",
     "source": {
       "axis": "轴 {{index}}",
@@ -45,8 +45,8 @@
       "unassigned": "未指派"
     },
     "standardLayoutWarning": "浏览器已对此设备应用其标准游戏手柄配置，只保留四个轴并舍弃其余，因此开关信号永远不会送达。请在遥控器已处于 USB Joystick 模式时重新插拔，或改用 USB 描述符不会被识别为游戏控制器的机型。",
-    "title": "使用 USB 发射机飞行",
-    "trainerActive": "Trainer 会话进行中，摇杆由 Trainer 掌控",
+    "title": "使用 USB 遥控器飞行",
+    "trainerActive": "Trainer 会话进行中，摇杆由 Trainer 控制",
     "unavailable": "无法使用",
     "vehicleOff": "关闭，不会向飞行器发送任何信号"
   },

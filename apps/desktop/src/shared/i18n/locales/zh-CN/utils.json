@@ -10,14 +10,14 @@
     "maxFromHome": "距 Home 最远",
     "reserve": "保留",
     "reserveDetail": "在最后一块电池上",
-    "setProfile": "请设置载具配置文件以取得续航信息",
+    "setProfile": "请设置载具配置文件以获取续航信息",
     "unknown": "未知",
     "usableEach": "每块约可用 {{duration}}",
     "wind": "风"
   },
   "joystickSafety": {
     "assign": "请先指派 {{names}}",
-    "offTarget": "{{name}} (CH{{ch}}) 为 {{pwm}},需要 {{want}}",
+    "offTarget": "{{name}} （CH{{ch}}） 为 {{pwm}}，需要 {{want}}",
     "channel": "CH{{n}}",
     "role": {
       "roll": "横滚",
@@ -52,7 +52,7 @@
       "name": "一般"
     },
     "gps": {
-      "description": "卫星数、HDOP、座标",
+      "description": "卫星数、HDOP、坐标",
       "name": "GPS"
     },
     "mission": {
@@ -83,7 +83,7 @@
     },
     "altitude": {
       "description": "距地面/Home 的高度",
-      "name": "高度 (AGL)"
+      "name": "高度 （AGL）"
     },
     "armed_status": {
       "description": "显示已解锁或已上锁状态",
@@ -111,7 +111,7 @@
     },
     "coordinates": {
       "description": "以两行显示纬度与经度",
-      "name": "座标"
+      "name": "坐标"
     },
     "craft_name": {
       "description": "用户设置的飞行器名称",
@@ -146,11 +146,11 @@
       "name": "飞行时间"
     },
     "flymode": {
-      "description": "目前飞行模式名称(ANGLE、HORIZON 等）",
+      "description": "当前飞行模式名称（ANGLE、HORIZON 等）",
       "name": "飞行模式"
     },
     "g_force": {
-      "description": "目前的 G 值负荷",
+      "description": "当前的 G 值负荷",
       "name": "G 值"
     },
     "gps_hdop": {
@@ -182,11 +182,11 @@
       "name": "IMU 温度"
     },
     "latitude": {
-      "description": "目前的纬度座标",
+      "description": "当前的纬度坐标",
       "name": "纬度"
     },
     "longitude": {
-      "description": "目前的经度座标",
+      "description": "当前的经度坐标",
       "name": "经度"
     },
     "mah_drawn": {
@@ -234,7 +234,7 @@
       "name": "RSSI (dBm)"
     },
     "rtc_time": {
-      "description": "实时时钟（目前时间）",
+      "description": "实时时钟（当前时间）",
       "name": "RTC 时间"
     },
     "speed": {
@@ -242,11 +242,11 @@
       "name": "地速"
     },
     "throttle": {
-      "description": "目前油门位置百分比",
+      "description": "当前油门位置百分比",
       "name": "油门"
     },
     "throttle_gauge": {
-      "description": "视觉化油门长条量表",
+      "description": "可视化油门长条量表",
       "name": "油门量表"
     },
     "vario": {
@@ -254,11 +254,11 @@
       "name": "升降速度计"
     },
     "vtx_channel": {
-      "description": "影像发射机频段/频道/功率",
+      "description": "图传频段/频道/功率",
       "name": "VTX 频道"
     },
     "warnings": {
-      "description": "系统警告（电量低、GPS 遗失等）",
+      "description": "系统警告（电量低、GPS 丢失等）",
       "name": "警告"
     },
     "wind_horizontal": {
@@ -272,11 +272,11 @@
   },
   "radioPreflight": {
     "firmwareFail": "ArduPilot {{major}}.{{minor}} 太旧，无法通过 MAVLink 进行摇杆控制，请将飞控更新到 4.6 或更新版本。遥测仍可使用。",
-    "firmwarePass": "ArduPilot {{major}}.{{minor}} 支援通过 MAVLink 无线电进行摇杆控制。",
+    "firmwarePass": "ArduPilot {{major}}.{{minor}} 支持通过 MAVLink 无线电进行摇杆控制。",
     "firmwareUnknown": "尚无法判断固件版本。",
-    "firmwareVersion": "固件支援通过无线电发送 RC",
+    "firmwareVersion": "固件支持通过无线电发送 RC",
     "rcOverMavlink": "通过无线电链接进行摇杆控制",
-    "rcOverMavlinkFail": "载具被设置为忽略从无线电链接传入的 RC,因此你的摇杆不会有任何作用（无线电 Failsafe)。此修正会保留你现有已启用的接收机通信协议。",
+    "rcOverMavlinkFail": "载具被设置为忽略从无线电链接传入的 RC，因此你的摇杆不会有任何作用（无线电 Failsafe）。此修正会保留你现有已启用的接收机通信协议。",
     "rcOverMavlinkPass": "载具接受通过 MAVLink 无线电发送的 RC。",
     "rssiSource": "链接信号强度读数",
     "rssiSourceFail": "信号强度并非取自无线电链接，因此 RSSI 会显示为空或不正确。",
@@ -286,19 +286,19 @@
   "rcSourceArbiter": {
     "joystickOwns": "RC 链接由摇杆控制接管",
     "slidersOwn": "RC 链接由虚拟 RC 滑块接管",
-    "trainerOwnsSticks": "Trainer 会话进行中，摇杆由 Trainer 掌控"
+    "trainerOwnsSticks": "Trainer 会话进行中，摇杆由 Trainer 控制"
   },
   "receiverConstants": {
     "hint": {
-      "CRSF": "低延迟数位链接。用于 TBS Crossfire 与 ExpressLRS 接收机。",
+      "CRSF": "低延迟数字链接。用于 TBS Crossfire 与 ExpressLRS 接收机。",
       "FPORT": "FrSky F.Port 将 SBUS 与遥测合并在单一条在线。",
       "GHST": "ImmersionRC Ghost 超低延迟通信协议。",
-      "IBUS": "FlySky 数位通信协议。请连接到空闲的 UART RX 焊垫。",
+      "IBUS": "FlySky 数字通信协议。请连接到空闲的 UART RX 焊垫。",
       "MSP": "仅供地面站/SITL 控制使用。请勿搭配实体接收机使用。",
-      "SBUS": "反相序列通信协议。常见于 FrSky 与 RadioLink 接收机。部分主板需要硬件反相器。",
-      "SBUS_SHORT": "反相序列通信协议。常见于 FrSky 与 RadioLink 接收机。",
-      "SPEK2048": "Spektrum 卫星接收机。请先与发射机对频，再连接到 UART。",
-      "SPEK2048_SHORT": "Spektrum 卫星接收机。请先与发射机对频。",
+      "SBUS": "反相串行通信协议。常见于 FrSky 与 RadioLink 接收机。部分主板需要硬件反相器。",
+      "SBUS_SHORT": "反相串行通信协议。常见于 FrSky 与 RadioLink 接收机。",
+      "SPEK2048": "Spektrum 卫星接收机。请先与遥控器对频，再连接到 UART。",
+      "SPEK2048_SHORT": "Spektrum 卫星接收机。请先与遥控器对频。",
       "SRXL2": "Spektrum SRXL2 双向序列通信协议。"
     },
     "receiverType": {
@@ -308,8 +308,8 @@
   },
   "rssiState": {
     "noLink": "没有遥测链接",
-    "off": "载具上的 RSSI 报告已关闭(RSSI_TYPE = 0)",
-    "unconfigured": "接收机已连接，但没有报告信号强度。RSSI_TYPE 需要与接收机相符(CRSF/ELRS 为 3)。"
+    "off": "载具上的 RSSI 报告已关闭（RSSI_TYPE = 0）",
+    "unconfigured": "接收机已连接，但没有报告信号强度。RSSI_TYPE 需要与接收机相符（CRSF/ELRS 为 3）。"
   },
   "rubyOsd": {
     "category": {
@@ -321,7 +321,7 @@
       "Navigation": "导航",
       "Power": "电源",
       "System": "系统",
-      "Video": "影像"
+      "Video": "视频"
     },
     "element": {
       "ahi_heading": "AHI 航向",
@@ -347,8 +347,8 @@
       "home": "Home",
       "horizon": "地平线",
       "instruments": "仪表",
-      "link_quality_bars": "链接品质长条",
-      "link_quality_numbers": "链接品质数字",
+      "link_quality_bars": "链接质量长条",
+      "link_quality_numbers": "链接质量数字",
       "pitch": "俯仰",
       "radio_interfaces": "无线电界面",
       "radio_links": "无线电链接",
@@ -363,9 +363,9 @@
       "tx_power": "发射功率",
       "vehicle_radio_links": "载具无线电链接",
       "vertical_speed": "垂直速度",
-      "video_bitrate_history": "影像位元率历史",
-      "video_mbps": "影像 Mbps",
-      "video_mode": "影像模式",
+      "video_bitrate_history": "视频比特率历史",
+      "video_mbps": "视频 Mbps",
+      "video_mode": "视频模式",
       "wind": "风"
     }
   },

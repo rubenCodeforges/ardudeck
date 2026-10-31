@@ -1,26 +1,26 @@
 {
   "appStore": {
     "installFailed": "安装失败",
-    "uninstallFailed": "解除安装失败"
+    "uninstallFailed": "卸载失败"
   },
   "ardupilotSitlStore": {
     "browseFailed": "浏览失败",
-    "downloadBinaryFailed": "下载 {{track}} 执行档失败",
+    "downloadBinaryFailed": "下载 {{track}} 可执行文件失败",
     "downloadFailed": "下载失败",
     "flightGearFailed": "启动 FlightGear 失败",
     "model": {
       "balancebot": "平衡车",
       "coax": "共轴直升机",
       "hexa": "六旋翼",
-      "plane": "飞机（预设）",
-      "quad": "四旋翼（预设）",
+      "plane": "飞机（默认）",
+      "quad": "四旋翼（默认）",
       "quadPlus": "四旋翼 Plus (+)",
-      "rover": "地面车（预设）",
+      "rover": "地面车（默认）",
       "sailboat": "帆船",
       "single": "单旋翼直升机",
       "skid": "滑移转向",
       "spoilers": "带扰流板的飞机",
-      "vectored": "矢量式（预设）",
+      "vectored": "矢量式（默认）",
       "vectored6dof": "矢量式 6DOF",
       "vtail": "V 尾飞机"
     },
@@ -28,10 +28,10 @@
   },
   "calibrationStore": {
     "confirmPositionFailed": "确认位置失败",
-    "finalizing": "正在于飞控上完成校准...",
+    "finalizing": "正在飞控上完成校准...",
     "instructions": {
       "compass": "请将你的载具朝所有方向旋转",
-      "default": "请依照屏幕上的指示操作",
+      "default": "请按照屏幕提示操作",
       "gyro": "请让你的载具完全保持静止",
       "level": "请将你的载具放在水平面上",
       "opflow": "请将载具稳定地保持在有纹理的表面上方"
@@ -44,10 +44,10 @@
     "saveDataFailed": "保存校准数据失败",
     "savePersistentFailed": "保存到永久存储空间失败",
     "saving": "正在保存校准...",
-    "sensorMissing": "{{name}} 需要 {{sensor}} 传感器，但目前不可用",
-    "silentFailure": "飞控报告成功，但校准参数没有改变。校准其实静默失败了，请再试一次。",
+    "sensorMissing": "{{name}} 需要 {{sensor}} 传感器，但当前不可用",
+    "silentFailure": "飞控报告成功，但校准参数没有改变。校准静默失败了，请再试一次。",
     "startFailed": "启动校准失败",
-    "unsupportedProtocol": "{{protocol}} 通信协议不支援 {{name}}",
+    "unsupportedProtocol": "{{protocol}} 通信协议不支持 {{name}}",
     "verificationFailed": "验证失败",
     "waitingForFc": "正在等待飞控..."
   },
@@ -76,60 +76,60 @@
     "configurationFailed": "设置失败",
     "configuredAirplane": "主板已设置为飞机！准备好时请重新连接。",
     "configuringAirplane": "正在将主板设置为飞机...",
-    "connectRetry": "连接失败,{{seconds}} 秒后重试...",
+    "connectRetry": "连接失败，{{seconds}} 秒后重试...",
     "connectingAttempt": "正在连接到主板（第 {{attempt}}/{{max}} 次尝试）...",
-    "detectionFailed": "侦测失败",
+    "detectionFailed": "检测失败",
     "downloadFailed": "下载失败",
     "downloadingFirmware": "正在下载固件...",
-    "fetchBoardsFailed": "取得主板列表失败",
-    "fetchBoardsNoMessage": "取得主板列表失败（没有错误消息）",
-    "fetchVersionsFailed": "取得版本列表失败",
-    "fetchVersionsNoMessage": "取得版本列表失败（没有错误消息）",
+    "fetchBoardsFailed": "获取主板列表失败",
+    "fetchBoardsNoMessage": "获取主板列表失败（没有错误消息）",
+    "fetchVersionsFailed": "获取版本列表失败",
+    "fetchVersionsNoMessage": "获取版本列表失败（没有错误消息）",
     "noBoard": "没有连接的主板。请先点击「连接」。",
     "noBootloader": "在 {{port}} 上找不到 STM32 bootloader。请确认主板处于 bootloader 模式。",
     "noFile": "未选择固件文件",
     "noPortForReconnect": "找不到用于重新连接的端口",
-    "noUsbDevice": "未侦测到 USB 设备。请确认你的飞控已连接。",
+    "noUsbDevice": "未检测到 USB 设备。请确认你的飞控已连接。",
     "noVersion": "未选择固件版本",
     "probeFailed": "探测失败",
     "readMixerFailed": "读取 iNav 混控设置失败",
-    "reconnectAfterFlashFailed": "烧录后无法连接。USB 序列晶片可能需要实体拔除再插上。请中断主板连接、重新连接，然后使用伺服精灵将其设置为飞机。",
+    "reconnectAfterFlashFailed": "烧录后无法连接。USB 串行芯片可能需要物理拔插。请断开主板连接、重新连接，然后使用舵机向导将其设置为飞机。",
     "savingEeprom": "正在保存到 EEPROM...",
     "setPlatformFailed": "将平台类型设为飞机失败",
     "startingFlash": "开始烧录...",
-    "vehicleTypeMismatch": "载具类型不符：你选择了 {{selected}},但所选版本是 {{version}}。请重新选择载具与版本，然后再试一次。",
-    "waitingReboot": "正在等待主板重新启动(6 秒）..."
+    "vehicleTypeMismatch": "载具类型不匹配：你选择了 {{selected}}，但所选版本是 {{version}}。请重新选择载具与版本，然后再试一次。",
+    "waitingReboot": "正在等待主板重新启动（6 秒）..."
   },
   "fleetRepoStore": {
     "boundarySaved": "边界已保存到 {{site}}",
     "boundaryUnchanged": "边界自上次快照以来没有变更",
-    "cannotIdentify": "无法识别载具。请在保管库的「正在处理」下选择一个。",
+    "cannotIdentify": "无法识别载具。请在仓库的「正在处理」下选择一个。",
     "deleteFailed": "无法删除载具",
     "deleted": "载具已删除。它的快照仍保留在历史记录中。",
-    "firmwareMismatch": "该快照取自 {{snapshotFirmware}},但此载具正在执行 {{liveFirmware}}。其参数名称无法跨飞行堆叠沿用。",
+    "firmwareMismatch": "该快照取自 {{snapshotFirmware}}，但此载具运行 {{liveFirmware}}。其参数名称无法跨飞控栈沿用。",
     "linkFailed": "链接失败",
-    "linked": "载具已链接；快照会继续记录在该单元中",
+    "linked": "载具已链接；快照会继续记录在该载具中",
     "missionSaved": "任务已保存到 {{site}}",
     "missionUnchanged": "任务自上次快照以来没有变更",
-    "newVehicleSaved": "已保存新载具「{{name}}」({{count}} 个参数）",
+    "newVehicleSaved": "已保存新载具「{{name}}」（{{count}} 个参数）",
     "noChanges": "自上次快照以来没有变更",
-    "noMission": "没有可建立快照的已加载任务。",
-    "noParams": "没有可建立快照的已加载参数。",
-    "noSurveyPolygon": "地图上没有可建立快照的测绘多边形。",
-    "readSnapshotFailed": "无法从保管库读取快照。",
+    "noMission": "没有已加载的任务可用于快照。",
+    "noParams": "没有已加载的参数可用于快照。",
+    "noSurveyPolygon": "地图上地图上没有测绘多边形可用于快照。",
+    "readSnapshotFailed": "无法从仓库读取快照。",
     "renameFailed": "重命名失败",
-    "restoredPartial": "已还原 {{applied}} 项,{{failed}} 项失败",
+    "restoredPartial": "已还原 {{applied}} 项，{{failed}} 项失败",
     "restored_one": "已还原 {{count}} 个参数",
     "restored_other": "已还原 {{count}} 个参数",
     "snapshotFailed": "快照失败",
-    "snapshotSaved": "快照已保存({{count}} 个参数）",
+    "snapshotSaved": "快照已保存（{{count}} 个参数）",
     "syncFailed": "同步失败",
     "synced": "已与 GitHub 同步",
-    "vaultUnavailable": "保管库无法使用",
-    "wrongOwner": "该快照属于 {{owner}},而不是目前连接的载具。请从此载具的历史记录打开快照，或如果这就是该飞行器，请将「正在处理」设为 {{owner}}。"
+    "vaultUnavailable": "仓库无法使用",
+    "wrongOwner": "该快照属于 {{owner}}，而不是当前连接的载具。请从此载具的历史记录打开快照，或如果这就是该飞行器，请将「正在处理」设为 {{owner}}。"
   },
   "flightControlStore": {
-    "trainerActive": "Trainer 会话进行中，摇杆由 Trainer 掌控"
+    "trainerActive": "Trainer 会话进行中，摇杆由 Trainer 控制"
   },
   "groupShapeStore": {
     "description": {
@@ -171,9 +171,9 @@
     "downloadedInto": "已从飞控下载 {{count}} 个航点到「{{group}}」",
     "groupEmptySave": "此群组中没有可保存的航点",
     "groupEmptyUpload": "此群组中没有可上传的航点",
-    "mspNotSupported": "下载航点失败：不支援 MSP",
+    "mspNotSupported": "下载航点失败：不支持 MSP",
     "noWaypointsOnFc": "飞控上没有航点",
-    "noWaypointsToUpload": "没有可上传的航点（是否已取消选择所有群组？)",
+    "noWaypointsToUpload": "没有可上传的航点（是否已取消选择所有群组？）",
     "recovered": "已从你上次的会话撤销 {{count}} 个航点",
     "savedToFile": "已将 {{count}} 个航点保存到文件",
     "uploadFailed": "上传任务失败",
@@ -206,28 +206,28 @@
     "startFailed": "启动多载具失败"
   },
   "osdStore": {
-    "ardupilotFont": "ArduPilot 通过 OSD_FONT 参数选择字型，而非通过上传",
+    "ardupilotFont": "ArduPilot 通过 OSD_FONT 参数选择字体，而非通过上传",
     "connectFcFirst": "请先连接到飞控",
     "connectFirst": "请先连接到 ArduPilot 或 Betaflight/iNav 飞控",
-    "connectForFont": "请连接 Betaflight/iNAV 主板以上传类比字型",
+    "connectForFont": "请连接 Betaflight/iNAV 主板以上传模拟字体",
     "downloadingParams": "正在下载参数…",
-    "fontUploadFailed": "字型上传失败：{{msg}}",
-    "fontUploaded": "字型已上传({{count}} 个字元）,请重新启动飞控以应用",
-    "loadFontFailed": "加载字型失败",
+    "fontUploadFailed": "字体上传失败：{{msg}}",
+    "fontUploaded": "字体已上传（{{count}} 个字符），请重新启动飞控以应用",
+    "loadFontFailed": "加载字体失败",
     "loadedFromFc": "已从飞控加载 {{count}} 个元素",
     "loadedFromScreen": "已从屏幕 {{screen}} 加载 {{resolved}} 个元素",
     "noConfig": "飞控没有回传 OSD 设置",
-    "noFont": "尚未加载字型",
-    "noOsdParams": "此主板没有 OSD 参数（要设置 OSD_TYPE 吗？)",
+    "noFont": "尚未加载字体",
+    "noOsdParams": "此主板没有 OSD 参数（要设置 OSD_TYPE 吗？）",
     "readFailed": "读取失败：{{msg}}",
     "reading": "正在从飞控读取...",
     "unknownError": "未知错误",
-    "unknownFont": "未知的内建字型：{{name}}",
+    "unknownFont": "未知的内置字体：{{name}}",
     "uploadFailed": "上传失败：{{msg}}",
     "uploadedPartial": "已上传 {{confirmed}}/{{total}};{{failed}} 个未确认",
     "uploadedSaved": "已上传 {{count}} 个元素并保存到飞控",
     "uploadedToScreen": "已将 {{count}} 个参数上传到屏幕 {{screen}}",
-    "uploadingFont": "正在将字型上传到飞控 NVM…",
+    "uploadingFont": "正在将字体上传到飞控 NVM…",
     "uploadingLayout": "正在上传 OSD 布局...",
     "uploadingParams": "正在上传 {{count}} 个参数..."
   },
@@ -236,11 +236,11 @@
     "setFailed": "设置参数失败"
   },
   "pseudoTxStore": {
-    "enableFirst": "请先打开 USB 发射机",
+    "enableFirst": "请先打开 USB 遥控器",
     "linkLost": "载具链接中断，摇杆控制已释放",
     "needsMavlink": "需要已连接的 MAVLink 载具",
     "noBridge": "此窗口中没有 SITL RC 桥接，帧无处可去",
-    "overrideRejected": "覆写被链接拒绝"
+    "overrideRejected": "覆盖被链接拒绝"
   },
   "px4SitlStore": {
     "disconnecting": "正在中断与已停止的 SITL 的连接。",
@@ -262,7 +262,7 @@
     "task": {
       "checkPlatform": "正在检查平台",
       "clearModes": "正在清除旧模式",
-      "clearServoMixer": "正在清除伺服混控",
+      "clearServoMixer": "正在清除舵机混控",
       "exitCli": "正在离开 CLI 模式",
       "failsafe": "正在设置 Failsafe",
       "modes": "正在设置飞行模式",
@@ -272,7 +272,7 @@
       "saveEeprom": "正在保存到 EEPROM",
       "saveReboot": "正在保存并重新启动",
       "sendCli": "正在发送 CLI 指令",
-      "servoMixer": "正在设置伺服混控"
+      "servoMixer": "正在设置舵机混控"
     }
   },
   "rallyStore": {
@@ -285,28 +285,28 @@
     "uploaded": "已将 {{count}} 个集结点上传到飞控"
   },
   "servoWizardStore": {
-    "changePlatformFailed": "无法将平台变更为 {{platform}}。对于 iNav 2.0.0,你可能需要使用 iNav Configurator 变更混控类型，然后重新连接。",
-    "checkSupportFailed": "检查伺服支援失败。请再试一次。",
-    "firmwareTooOld": "此固件不支援伺服设置。iNav 2.0.0 可能太旧，请尝试更新到较新的版本。",
-    "multirotorNoServos": "此主板在多旋翼模式下无法使用伺服输出。这是硬件限制，并非所有飞控主板在设置为四轴/六轴时都能输出伺服信号。",
-    "noServos": "未侦测到伺服输出。请确认你的主板支援伺服。",
-    "noServosGimbal": "此主板没有可用于云台控制的伺服输出。",
+    "changePlatformFailed": "无法将平台变更为 {{platform}}。对于 iNav 2.0.0，你可能需要使用 iNav Configurator 变更混控类型，然后重新连接。",
+    "checkSupportFailed": "检查舵机支持失败。请再试一次。",
+    "firmwareTooOld": "此固件不支持舵机设置。iNav 2.0.0 可能太旧，请尝试更新到较新的版本。",
+    "multirotorNoServos": "此主板在多旋翼模式下无法使用舵机输出。这是硬件限制，并非所有飞控主板在设置为四轴/六轴时都能输出舵机信号。",
+    "noServos": "未检测到舵机输出。请确认你的主板支持舵机。",
+    "noServosGimbal": "此主板没有可用于云台控制的舵机输出。",
     "platformChangeError": "变更平台时发生错误：{{error}}。请尝试使用 iNav Configurator 变更混控类型。",
     "saveEepromFailed": "保存到 EEPROM 失败",
-    "setServoFailed": "设置伺服 {{index}} 失败",
+    "setServoFailed": "设置舵机 {{index}} 失败",
     "step": {
       "aircraft": "飞行器",
       "aircraftDesc": "选择你的飞行器类型",
       "assign": "指派",
-      "assignDesc": "将伺服对应到控制舵面",
+      "assignDesc": "将舵机对应到控制舵面",
       "endpoints": "校准",
-      "endpointsDesc": "调整伺服限制",
+      "endpointsDesc": "调整舵机限制",
       "review": "保存",
       "reviewDesc": "查看并保存",
       "test": "测试",
-      "testDesc": "验证伺服动作"
+      "testDesc": "验证舵机动作"
     },
-    "timeout": "逾时"
+    "timeout": "超时"
   },
   "signingStore": {
     "enableFailed": "启用签名失败",
@@ -328,13 +328,13 @@
     "startingBridge": "正在启动通信协议桥接...",
     "startingInav": "正在启动 iNav SITL...",
     "stoppingBridge": "正在停止通信协议桥接...",
-    "waitingFlightGear": "正在等待 FlightGear 初始化(15-30 秒）...",
-    "waitingXPlane": "正在等待 X-Plane 初始化(10 秒）...",
+    "waitingFlightGear": "正在等待 FlightGear 初始化（15-30 秒）...",
+    "waitingXPlane": "正在等待 X-Plane 初始化（10 秒）...",
     "xplaneFailed": "启动 X-Plane 失败"
   },
   "surveyAreaStore": {
-    "readFailed": "无法从保管库读取该区域",
-    "writeFailed": "无法写入保管库"
+    "readFailed": "无法从仓库读取该区域",
+    "writeFailed": "无法写入仓库"
   },
   "surveyStore": {
     "emptyFile": "空文件",
@@ -352,10 +352,10 @@
     "startFailed": "启动群飞失败"
   },
   "weatherStore": {
-    "unavailable": "无法取得天气数据。请检查你的网路连接后再试一次。"
+    "unavailable": "无法获取天气数据。请检查你的网络连接后再试一次。"
   },
   "windStore": {
-    "fetchFailed": "取得风数据失败",
-    "unavailable": "无法取得风数据"
+    "fetchFailed": "获取风数据失败",
+    "unavailable": "无法获取风数据"
   }
 }

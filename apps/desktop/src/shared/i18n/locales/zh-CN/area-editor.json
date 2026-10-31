@@ -2,7 +2,7 @@
   "areaEditorLayers": {
     "baseMap": "底图",
     "layers": "图层",
-    "layersCount": "图层 ({{count}})",
+    "layersCount": "图层 （{{count}}）",
     "overlays": "叠加层",
     "tip": "地图图层与叠加层"
   },
@@ -37,11 +37,11 @@
   "goToLocation": {
     "ariaLabel": "前往位置",
     "noMatch": "找不到符合的结果",
-    "placeholder": "前往地点或 纬度, 经度",
+    "placeholder": "前往地点或 纬度， 经度",
     "searchFailed": "搜索失败"
   },
   "hud": {
-    "addVehicle": "请新增载具配置文件以取得电池与续航数据。",
+    "addVehicle": "请新增载具配置文件以获取电池与续航数据。",
     "all": "全部",
     "area": "区域",
     "batteries": "电池",
@@ -55,7 +55,7 @@
     "selectObject": "选择对象以查看其简报，或切换到「全部」。",
     "selected": "已选择",
     "title": "飞行简报",
-    "unitsTip": "面积单位 {{areaUnit}},距离单位 {{distanceUnit}}"
+    "unitsTip": "面积单位 {{areaUnit}}，距离单位 {{distanceUnit}}"
   },
   "layers": {
     "base": {
@@ -75,7 +75,7 @@
       "traffic": "交通",
       "trafficHint": "实时 ADS-B 航空器",
       "wind": "风",
-      "windHint": "动态预报风场 (Open-Meteo)",
+      "windHint": "动态预报风场 （Open-Meteo）",
       "zones": "区域",
       "zonesHint": "DIPUL 德国无人机地理区域（仅限德国）"
     }
@@ -84,12 +84,12 @@
     "branchHint": "请先点击廊道，再从它画出分支（按两下完成）",
     "branchHintSelected": "沿著廊道点击以绘制分支，按两下完成",
     "buffer": "缓冲",
-    "bufferAria": "缓冲距离({{unit}})",
+    "bufferAria": "缓冲距离（{{unit}}）",
     "bufferTip": "依边界值扩张或缩小所选区域",
     "clearBranchesTip": "移除此廊道的所有分支",
     "clearBranches_one": "清除 {{count}} 个分支",
     "clearBranches_other": "清除 {{count}} 个分支",
-    "corridorWidthAria": "廊道宽度({{unit}})",
+    "corridorWidthAria": "廊道宽度（{{unit}}）",
     "corridorWidthTip": "廊道扫描宽度",
     "exportFailed": "导出失败",
     "exportKmlTip": "将区域导出为 KML",
@@ -130,13 +130,13 @@
       "polygon": "绘制区域：点击各点，按两下完成",
       "rectangle": "矩形：在地图上拖拽",
       "select": "选择与变形：移动、旋转、缩放",
-      "spline": "曲线廊道：沿著海岸线或道路点击各点，取得平滑曲线（按两下完成）",
+      "spline": "曲线廊道：沿著海岸线或道路点击各点，获取平滑曲线（按两下完成）",
       "split": "分割：选择区域，再画一条线穿过它（点击两次）"
     },
     "undoTip": "撤销 (Ctrl+Z)"
   },
   "objectsPanel": {
-    "autoConnect": "自动连接并优化 ({{count}})",
+    "autoConnect": "自动连接并优化 （{{count}}）",
     "autoConnectHint": "最长的成为主干；其余的接成分支",
     "autoConnectTip": "将勾选的廊道合并为一个测绘，并安排分支顺序，避免飞行器来回穿越",
     "badgeExclusion": "EXC",

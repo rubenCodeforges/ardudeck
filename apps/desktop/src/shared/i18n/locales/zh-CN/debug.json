@@ -10,7 +10,7 @@
       "all": "全部",
       "error": "错误",
       "info": "信息",
-      "packet": "封包"
+      "packet": "数据包"
     },
     "fix": "修正 ›",
     "jumpToLatest": "↓ 跳到最新（已暂停）",

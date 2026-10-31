@@ -1,12 +1,12 @@
 {
-  "applyHint": "写入数值会立即应用到节点上。请使用「保存到节点」,让设置在重新启动后仍然保留。",
-  "applyHintRestart": "你的部分变更需要在节点重新启动后才会生效。请先写入，再「保存到节点」,然后重新启动节点。",
+  "applyHint": "写入数值会立即应用到节点上。请使用「保存到节点」，让设置在重新启动后仍然保留。",
+  "applyHintRestart": "你的部分变更需要在节点重新启动后才会生效。请先写入，再「保存到节点」，然后重新启动节点。",
   "busHealth": {
-    "bitrate": "位元率",
+    "bitrate": "比特率",
     "busOff": "Bus-off 事件",
     "diagnosis": {
       "bus-off": {
-        "hint": "CAN 控制器进入 bus-off:总线有电气故障。请检查 CAN_H/CAN_L 是否短路或松脱、是否缺少接地，或缺少终端电阻。",
+        "hint": "CAN 控制器进入 bus-off：总线有电气故障。请检查 CAN_H/CAN_L 是否短路或松脱、是否缺少接地，或缺少终端电阻。",
         "title": "总线错误"
       },
       "healthy": {
@@ -14,43 +14,43 @@
         "title": "总线正常"
       },
       "idle": {
-        "hint": "此总线上没有任何发送或接收。请确认有 CAN 端口使用 DroneCAN,且变更 CAN 设置后飞控已重新启动。",
+        "hint": "此总线上没有任何发送或接收。请确认有 CAN 端口使用 DroneCAN，且变更 CAN 设置后飞控已重新启动。",
         "title": "没有流量"
       },
       "no-ack": {
-        "hint": "飞控有发送帧，但没有任何设备回应确认。请检查线材(CAN_H 与 CAN_L 是否接反）、设备是否有供电、两端是否都接上 120 Ω 终端电阻（多数自动驾驶仪内建一个）,以及位元率是否与设备一致(DroneCAN 预设为 1 Mbit/s)。",
+        "hint": "飞控有发送帧，但没有任何设备回应确认。请检查线材（CAN_H 与 CAN_L 是否接反）、设备是否有供电、两端是否都接上 120 Ω 终端电阻（多数自动驾驶仪内置一个），以及比特率是否与设备一致（DroneCAN 默认为 1 Mbit/s）。",
         "title": "总线上没有任何回应"
       },
       "rx-errors": {
-        "hint": "帧抵达时已损坏或被丢弃。请检查每个设备的终端电阻、线材长度与位元率。",
+        "hint": "帧抵达时已损坏或被丢弃。请检查每个设备的终端电阻、线材长度与比特率。",
         "title": "接收错误"
       }
     },
     "measuring": "量测中…",
     "received": "已接收",
     "sent": "发送成功",
-    "subtitle": "飞控所见的 CAN{{port}},每 5 秒量测一次",
+    "subtitle": "飞控所见的 CAN{{port}}，每 5 秒量测一次",
     "timeouts": "未获确认",
     "title": "总线健康状态",
-    "unavailable": "此固件不报告 CAN 统计数据（需要 MAVLink FTP 与 @SYS/can0_stats.txt)。"
+    "unavailable": "此固件不报告 CAN 统计数据（需要 MAVLink FTP 与 @SYS/can0_stats.txt）。"
   },
   "col": {
-    "default": "预设",
+    "default": "默认",
     "name": "名称",
     "range": "范围",
     "value": "值"
   },
   "confirmRestart": "确认重新启动",
   "danger": "注意",
-  "dangerTip": "错误的值可能使此节点脱离 CAN 总线，或覆写其 bootloader。之后要救回它，需要以 USB 或 SLCAN 连接该节点。",
+  "dangerTip": "错误的值可能使此节点脱离 CAN 总线，或覆盖其 bootloader。之后要救回它，需要以 USB 或 SLCAN 连接该节点。",
   "discard": "舍弃",
   "docsSource": "说明来自 ArduPilot AP_Periph 文件",
   "error": {
-    "failed": "飞控拒绝了此端口的 CAN 转送。",
+    "failed": "飞控拒绝了此端口的 CAN 转发。",
     "noResponse": "飞控没有回应。请检查该端口的驱动程序是否已启用，且变更 CAN 设置后飞控已重新启动。",
     "request": "请求失败：{{error}}",
-    "start": "无法启动 CAN 转送：{{error}}",
-    "unsupported": "此固件版本不支援通过 MAVLink 进行 CAN 转送，因此 ArduDeck 看不到 DroneCAN 总线。"
+    "start": "无法启动 CAN 转发：{{error}}",
+    "unsupported": "此固件版本不支持通过 MAVLink 进行 CAN 转发，因此 ArduDeck 看不到 DroneCAN 总线。"
   },
   "fcHint": "这是飞控本身。其设置位于一般的参数表中。",
   "filterPlaceholder": "筛选参数",
@@ -74,7 +74,7 @@
   },
   "noBitsSet": "未选择任何项目",
   "noBus": {
-    "body": "没有 CAN 端口使用 DroneCAN 通信协议。请将 CAN_P1_DRIVER 设为 1、CAN_D1_PROTOCOL 设为 DroneCAN,然后重新启动飞控。",
+    "body": "没有 CAN 端口使用 DroneCAN 通信协议。请将 CAN_P1_DRIVER 设为 1、CAN_D1_PROTOCOL 设为 DroneCAN，然后重新启动飞控。",
     "title": "尚未设置 DroneCAN 总线"
   },
   "noParams": "此节点没有报告任何参数。",
@@ -102,7 +102,7 @@
     "write_other": "写入 {{count}} 项变更"
   },
   "saveToNode": "保存到节点",
-  "saveToNodeTip": "将目前的值存入节点的快闪内存，让它们在重新启动后仍然保留",
+  "saveToNodeTip": "将当前的值存入节点的闪存，让它们在重新启动后仍然保留",
   "saved": "已保存到节点。",
   "software": "软件",
   "start": "开始",
@@ -112,7 +112,7 @@
     "idle": "已停止",
     "noResponse": "没有回应",
     "starting": "连接中",
-    "unsupported": "不支援"
+    "unsupported": "不支持"
   },
   "stop": "停止",
   "stoppedHint": "监控已停止。按「开始」以读取总线。",

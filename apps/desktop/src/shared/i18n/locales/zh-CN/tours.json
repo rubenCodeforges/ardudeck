@@ -4,8 +4,8 @@
     "nextTitle": "下一个：{{title}}"
   },
   "tourLaunchGate": {
-    "apNotInstalled": "尚未安装 ArduPilot SITL。请前往 SITL 查看画面下载执行档，连接后导航会自动接续。",
-    "apNotSupported": "此平台不支援 ArduPilot SITL。",
+    "apNotInstalled": "尚未安装 ArduPilot SITL。请前往 SITL 查看画面下载可执行文件，连接后导航会自动接续。",
+    "apNotSupported": "此平台不支持 ArduPilot SITL。",
     "connectOwnFc": "我要连接自己的飞控",
     "connectOwnToContinue": "请连接你自己的飞控以继续导航。",
     "failedToStartSitl": "SITL 启动失败",
@@ -20,10 +20,10 @@
   "tourPanelsGate": {
     "layoutAdjustment": "调整布局",
     "missing": "缺少：<b>{{panels}}</b>",
-    "panelsNotInLayout": "此导航会介绍目前布局中没有的面板：",
+    "panelsNotInLayout": "此导航会介绍当前布局中没有的面板：",
     "recommendedLayout": "建议布局",
     "skipTour": "跳过此导航",
-    "switchPrompt": "要切换到 <b>{{preset}}</b> 布局来观看导航吗？你目前的布局仍会保留，随时可从布局下拉菜单切换回来。",
+    "switchPrompt": "要切换到 <b>{{preset}}</b> 布局来观看导航吗？你当前的布局仍会保留，随时可从布局下拉菜单切换回来。",
     "switchTo": "切换到 {{preset}}"
   },
   "tourPrompt": {

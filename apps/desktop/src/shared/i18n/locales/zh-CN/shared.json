@@ -1,8 +1,8 @@
 {
   "boardUartLabels": {
-    "sbusUart1Inverter": "UART1 上的 SBUS 焊垫，内建反相器",
+    "sbusUart1Inverter": "UART1 上的 SBUS 焊垫，内置反相器",
     "sbusUart2": "UART2 上的 SBUS 焊垫",
-    "sbusUart2Inverter": "UART2 上的 SBUS 焊垫，内建反相器"
+    "sbusUart2Inverter": "UART2 上的 SBUS 焊垫，内置反相器"
   },
   "calibrationOrientation": {
     "leftSide": "将载具翻到左侧",
@@ -24,13 +24,13 @@
     "accelGoodOffsets": "良好：偏移 {{offsets}} m/s/s。",
     "accelNotRead": "未从载具读取校准值。",
     "accelOffsetsHigh": "已接受但偏高：偏移 {{offsets}} m/s/s。",
-    "accelOffsetsPastLimit": "偏移 {{offsets}} m/s/s,超过 {{limit}} 的解锁限制。",
+    "accelOffsetsPastLimit": "偏移 {{offsets}} m/s/s，超过 {{limit}} 的解锁限制。",
     "accelOffsetsPastLimitAdvice": "载具将拒绝解锁。请在真正水平的表面上重新校准。",
     "accelScaleHigh": "已接受但偏高：比例误差 {{percent}}%。",
-    "accelScalePastLimit": "比例误差 {{percent}}%,超过解锁限制。",
+    "accelScalePastLimit": "比例误差 {{percent}}%，超过解锁限制。",
     "accelScalePastLimitAdvice": "载具将拒绝解锁。请重新校准，每个位置都保持静止。",
     "fitnessGood": "良好：{{value}}。",
-    "fitnessRejected": "已拒绝：{{value}},超过 {{limit}} 的限制。",
+    "fitnessRejected": "已拒绝：{{value}}，超过 {{limit}} 的限制。",
     "fitnessRejectedAdvice": "请远离金属、电池与线路，然后再校准一次。",
     "fitnessValue": "适配度 {{value}} mGauss",
     "fitnessWeak": "已接受但偏弱：{{value}}。",
@@ -47,7 +47,7 @@
   "calibrationTypes": {
     "accel6point": {
       "description": "完整的 6 位置校准，精度最高。",
-      "name": "加速度计(6 点）"
+      "name": "加速度计（6 点）"
     },
     "accelLevel": {
       "description": "快速单一位置水平校准。请将载具放在平坦表面上。",
@@ -79,23 +79,23 @@
     }
   },
   "cameraTypes": {
-    "srtHint": "ffmpeg、OBS、VLC（仅 H264)",
+    "srtHint": "ffmpeg、OBS、VLC（仅 H264）",
     "webrtcHint": "可在任何浏览器打开，延迟最低"
   },
   "devLoadGuard": {
     "alreadyInstalled": "{{slug}} 已安装。请先移除它。",
     "noSlug": "信息列表没有 slug",
-    "reserved": "{{slug}} 控管一项内建功能，无法以开发方式加载"
+    "reserved": "{{slug}} 控管一项内置功能，无法以开发方式加载"
   },
   "dronebridgeTypes": {
     "esp32Mode": {
-      "accessPoint": "存取点",
+      "accessPoint": "接入点",
       "longRange": "长距离",
       "station": "站台（用户端）"
     }
   },
   "firmwareTypes": {
-    "customFile": "自订文件"
+    "customFile": "自定义文件"
   },
   "fleetLogMaintenance": {
     "batteryDetail": "最低电池组电压比先前飞行低约 {{drop}} V。电池组可能正在老化。",
@@ -105,11 +105,11 @@
     "labelVibration": "振动",
     "recurringDetail": "最近 {{total}} 次飞行中有 {{bad}} 次标记为{{label}}。请在下次任务前调查。",
     "recurringTitle": "反复出现{{label}}问题",
-    "vibrationDetail": "近期峰值振动平均为 {{recent}} m/s2,先前为 {{prior}}。请检查电机/螺旋桨平衡与隔振。",
+    "vibrationDetail": "近期峰值振动平均为 {{recent}} m/s2，先前为 {{prior}}。请检查电机/螺旋桨平衡与隔振。",
     "vibrationTitle": "振动呈上升趋势"
   },
   "flightModeMeta": {
-    "commit": "commit",
+    "commit": "提交",
     "gps": "GPS",
     "group": {
       "assisted": "辅助",
@@ -186,16 +186,16 @@
         "name": "变更速度"
       },
       "DO_CONTROL_VIDEO": {
-        "description": "控制机载影像系统",
-        "name": "控制影像"
+        "description": "控制机载视频系统",
+        "name": "控制视频"
       },
       "DO_DIGICAM_CONFIGURE": {
-        "description": "设置数位相机参数",
-        "name": "数位相机设置"
+        "description": "设置数码相机参数",
+        "name": "数码相机设置"
       },
       "DO_DIGICAM_CONTROL": {
         "description": "触发相机快门",
-        "name": "数位相机控制"
+        "name": "数码相机控制"
       },
       "DO_ENGINE_CONTROL": {
         "description": "启动/停止引擎",
@@ -258,7 +258,7 @@
         "name": "降落伞"
       },
       "DO_PAUSE_CONTINUE": {
-        "description": "暂停或继续目前任务",
+        "description": "暂停或继续当前任务",
         "name": "暂停/继续"
       },
       "DO_RALLY_LAND": {
@@ -270,8 +270,8 @@
         "name": "重复继电器"
       },
       "DO_REPEAT_SERVO": {
-        "description": "在 PWM 值之间循环伺服",
-        "name": "重复伺服"
+        "description": "在 PWM 值之间循环舵机",
+        "name": "重复舵机"
       },
       "DO_REPOSITION": {
         "description": "将载具重新定位到指定位置",
@@ -282,8 +282,8 @@
         "name": "脚本消息"
       },
       "DO_SET_ACTUATOR": {
-        "description": "设置致动器输出 (PX4)",
-        "name": "设置致动器"
+        "description": "设置执行器输出 （PX4）",
+        "name": "设置执行器"
       },
       "DO_SET_CAM_TRIGG_DIST": {
         "description": "依距离间隔触发相机",
@@ -330,7 +330,7 @@
         "name": "ROI 位置"
       },
       "DO_SET_ROI_NONE": {
-        "description": "取消 ROI,停止追踪",
+        "description": "取消 ROI，停止追踪",
         "name": "ROI 无"
       },
       "DO_SET_ROI_SYSID": {
@@ -342,8 +342,8 @@
         "name": "ROI 下一航点"
       },
       "DO_SET_SERVO": {
-        "description": "将伺服设置为 PWM 值",
-        "name": "设置伺服"
+        "description": "将舵机设置为 PWM 值",
+        "name": "设置舵机"
       },
       "DO_SPRAYER": {
         "description": "启用/停用农药喷洒器",
@@ -460,7 +460,7 @@
         "name": "相机模式"
       },
       "SET_CAMERA_SOURCE": {
-        "description": "设置相机影像来源",
+        "description": "设置相机视频源",
         "name": "相机来源"
       },
       "SET_CAMERA_ZOOM": {
@@ -483,14 +483,14 @@
     "unknownCommand": "未知指令 {{command}}"
   },
   "missionValidation": {
-    "altHigh": "{{count}} 个航点高于 {{altitude}},请检查你的高度参考。",
+    "altHigh": "{{count}} 个航点高于 {{altitude}}，请检查你的高度参考。",
     "altNonPositive": "{{count}} 个航点处于或低于 {{altitude}} 高度。",
     "badJumps": "{{count}} 个 DO_JUMP 指令指向不存在的航点。",
     "ceiling": "{{count}} 个项目超过飞控 {{ceiling}} 个项目的限制。请拆成较小的飞行。",
     "emptyGroup": "群组「{{name}}」没有航点。",
     "midMissionReturn_one": "有 {{count}} 个测绘在任务结束前就返航。请将它们连接起来，以便直接继续飞行。",
     "midMissionReturn_other": "有 {{count}} 个测绘在任务结束前就返航。请将它们连接起来，以便直接继续飞行。",
-    "noTakeoff": "没有起飞指令：载具会从目前状态直接飞往第一个航点。"
+    "noTakeoff": "没有起飞指令：载具会从当前状态直接飞往第一个航点。"
   },
   "parameterGroups": {
     "all": {
@@ -511,7 +511,7 @@
     },
     "failsafe": {
       "description": "Failsafe 动作与门槛",
-      "name": "Failsafe"
+      "name": "失控保护"
     },
     "flight_modes": {
       "description": "飞行模式设置",
@@ -522,7 +522,7 @@
       "name": "GPS"
     },
     "logging": {
-      "description": "数据记录与排程器",
+      "description": "数据记录与调度器",
       "name": "记录"
     },
     "motors": {
@@ -562,37 +562,37 @@
       "apBoardType": "设置的主板类型与这个飞控不符。",
       "apCompassInconsistent": "罗盘读数不一致，或磁场看起来不对。请远离金属与电源线，检查每个罗盘的方向，然后重新校准。",
       "apCompassUncalibrated": "罗盘尚未校准，或其校准已不再适用。",
-      "apCompassUnhealthy": "有罗盘没有回应。请检查其接线以及是否被侦测到。",
+      "apCompassUnhealthy": "有罗盘没有回应。请检查其接线以及是否被检测到。",
       "apEkfAttitude": "EKF 无法收敛。请让载具保持静止。在 SITL 中，请以「清除 EEPROM」重新启动，并在开机后等待 60-90 秒。",
       "apFence": "围栏需要位置，或载具位于围栏之外。请等待 GPS 锁定，或将载具移到围栏内。",
       "apFrameClass": "此载具尚未设置机架配置。请设置机架类别与类型，使其符合电机的排列方式。",
       "apGeneric": "此检查没有已知的自动修正方式。消息直接来自飞控；解锁前参考文件会说明每一项。",
-      "apGpsNotReady": "GPS 尚未有可用的定位，或未被侦测到。请在空旷天空下等待；若持续如此，请检查 GPS 设置。",
+      "apGpsNotReady": "GPS 尚未有可用的定位，或未被检测到。请在空旷天空下等待；若持续如此，请检查 GPS 设置。",
       "apGyro": "陀螺仪数值不一致或尚未校准。请让载具完全保持静止并重新启动，或执行陀螺仪校准。",
-      "apLogging": "无法记录：SD 卡遗失、已满或故障。请插入或更换记忆卡。",
-      "apMission": "任务无法依目前状态启动。请在任务规划器中检查。",
+      "apLogging": "无法记录：SD 卡丢失、已满或故障。请插入或更换存储卡。",
+      "apMission": "任务无法依当前状态启动。请在任务规划器中检查。",
       "apNeed3dFix": "正在等待 GPS 3D 定位。请移到空旷天空下等待。",
       "apNeedAlt": "EKF 需要高度估算。这是其他传感器错误造成的结果，请先修正那些。",
       "apNeedPosition": "EKF 需要有效的位置。请等待 GPS 锁定，并在开机后等待 60-90 秒让它收敛。",
-      "apRadioFailsafe": "飞控处于无线电 Failsafe。请打开发射机并确认已对频，且其油门范围高于 Failsafe 值。",
+      "apRadioFailsafe": "飞控处于无线电 Failsafe。请打开遥控器并确认已对频，且其油门范围高于 Failsafe 值。",
       "apRangefinder": "测距仪没有回应。请检查其接线。若没有安装，必须将其类型设为无。",
       "apRcUncalibrated": "无线电通道尚未校准。",
       "apSafetySwitch": "请按住载具上的安全开关，直到灯号恒亮。",
-      "apThrottleHigh": "油门不在最低位置。请将油门摇杆完全拉到底，并检查发射机上的油门微调。",
+      "apThrottleHigh": "油门不在最低位置。请将油门摇杆完全拉到底，并检查遥控器上的油门微调。",
       "apWaitOrReboot": "飞控要求你等待传感器稳定，或将它重新启动。",
       "px4Accel": "加速度计尚未校准或不一致。",
       "px4Attitude": "姿态估算不稳定。请将载具调成水平、减少振动，并让估算器稳定下来。",
       "px4Battery": "电池电量低或状况不佳。请充电或更换，若读数看起来不对，请检查电池设置。",
-      "px4Esc": "侦测到 ESC 或电机问题。请检查 ESC 接线、遥测与电机输出。",
+      "px4Esc": "检测到 ESC 或电机问题。请检查 ESC 接线、遥测与电机输出。",
       "px4Generic": "此检查没有已知的自动修正方式。消息直接来自飞控；飞行前检查参考文件会说明每一项。",
       "px4Geofence": "有地理围栏条件阻挡解锁。请将载具移到围栏内，或查看围栏。",
       "px4GpsFix": "正在等待 GPS 定位。请移到空旷天空下等待；若持续如此，请检查 GPS 设置。",
       "px4Gyro": "陀螺仪尚未校准。校准期间请让载具完全保持静止。",
       "px4Home": "尚未设置 Home 位置。请等待有效位置，以便捕获 Home。",
-      "px4KillSwitch": "紧急停止开关已启动。解锁前请在发射机上解除它。",
+      "px4KillSwitch": "紧急停止开关已启动。解锁前请在遥控器上解除它。",
       "px4Mag": "磁力计尚未校准，或其读数不一致。请远离金属与电源线并重新校准。",
       "px4PositionEstimate": "位置估算尚未就绪。请在空旷天空下等待 GPS 锁定，并让估算器稳定下来。",
-      "px4Radio": "无线电尚未校准或信号遗失。请打开发射机，确认已对频，并校准它。",
+      "px4Radio": "无线电尚未校准或信号丢失。请打开遥控器，确认已对频，并校准它。",
       "px4Vibration": "振动过大或加速度计削峰。请改善飞控的安装与隔振，并平衡螺旋桨。"
     },
     "link": {
@@ -637,7 +637,7 @@
     "ekfThresholdDisabled": {
       "consequence": "没有任何机制会阻止你在航向或位置估算不良时解锁，飞行中的 Failsafe 也无法触发。",
       "recommend": "恢复默认门槛",
-      "title": "导航品质检查已关闭"
+      "title": "导航质量检查已关闭"
     },
     "fenceRtlWithWeakCompass": {
       "consequence": "飞回 Home 需要的航向，正是你的罗盘校准较弱的部分；就地降落则不需要。",
@@ -661,7 +661,7 @@
     },
     "px4GcsLossDisabled": {
       "consequence": "如果飞行器在 RC 范围外时遥测中断，它会继续飞行，而你无法接触到它。",
-      "recommend": "链接遗失时返航",
+      "recommend": "链接丢失时返航",
       "title": "失去地面站链接什么都不会发生"
     },
     "px4MagCheckDisabled": {
@@ -671,13 +671,13 @@
     },
     "px4RcLossTerminates": {
       "consequence": "飞行终止与上锁都会让飞行器就地坠落。短暂的 RC 中断就会变成坠机。",
-      "recommend": "无线电遗失时返航",
+      "recommend": "无线电丢失时返航",
       "title": "失去无线电会切断电机"
     }
   },
   "safetyMonitor": {
-    "controllerFighting": "累积的 I 项胜过 P:指令与需求相反。",
-    "enablePidStreaming": "启用 PID 视频流 (GCS_PID_MASK)",
+    "controllerFighting": "累积的 I 项胜过 P：指令与需求相反。",
+    "enablePidStreaming": "启用 PID 视频流 （GCS_PID_MASK）",
     "latchCleared": "操作者已清除危险锁定",
     "signal": {
       "bodyRates": "地面上的机体角速率",
@@ -688,20 +688,20 @@
       "throttleClimbCoherence": "油门与爬升"
     },
     "throttleNotLifting": "加了油门却没有升起。",
-    "tipoverDetected": "在加速转动期间侦测到翻覆的前置模式"
+    "tipoverDetected": "在加速转动期间检测到翻覆的前置模式"
   },
   "sitlCustomFrame": {
     "missingField": "缺少或非数值的字段：{{key}}",
     "notJsonObject": "不是 JSON 对象",
     "slungLoadHardpoint": "slungLoad:hardpoint 必须是三个数字的阵列",
-    "slungLoadMissingField": "slungLoad:缺少或非数值的字段：{{key}}",
+    "slungLoadMissingField": "slungLoad：缺少或非数值的字段：{{key}}",
     "slungLoadNotObject": "slungLoad 必须是对象",
-    "slungLoadServoChannel": "slungLoad:{{key}} 必须是整数伺服通道",
+    "slungLoadServoChannel": "slungLoad:{{key}} 必须是整数舵机通道",
     "template": {
       "heavy_industrial_14s": "重型工业八旋翼 14S",
-      "heavy_octa": "重载八旋翼(Callisto 级）",
+      "heavy_octa": "重载八旋翼（Callisto 级）",
       "hexa": "六旋翼（中型电影机）",
-      "small_quad": "小型四旋翼（预设）"
+      "small_quad": "小型四旋翼（默认）"
     }
   },
   "sitlUnsafeParams": {
@@ -718,14 +718,14 @@
       "noFix": "无定位",
       "noGps": "无 GPS"
     },
-    "planeLandDisabled": "固定翼降落需要含 NAV_LAND 航点的任务（或 AUTOLAND 模式 + DO_LAND_START)"
+    "planeLandDisabled": "固定翼降落需要含 NAV_LAND 航点的任务（或 AUTOLAND 模式 + DO_LAND_START）"
   },
   "trafficTypes": {
     "adsbPreset": {
       "adsb-fi": "adsb.fi（免费，不需密钥）",
-      "adsbexchange": "ADSBExchange(RapidAPI 密钥）",
+      "adsbexchange": "ADSBExchange（RapidAPI 密钥）",
       "airplanes-live": "airplanes.live（免费，不需密钥）",
-      "custom": "自订端点"
+      "custom": "自定义端点"
     }
   },
   "vehicleProfile": {

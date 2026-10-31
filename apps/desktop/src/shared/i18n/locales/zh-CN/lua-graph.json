@@ -6,35 +6,35 @@
     "math": "数学",
     "sensors": "传感器",
     "timing": "计时",
-    "variables": "变数"
+    "variables": "变量"
   },
   "docs": {
     "apiReference": {
-      "content": "# ArduPilot Lua API 参考\r\n\r\n图形编辑器使用 ArduPilot Lua 脚本 API 生成代码。以下是可用的主要绑定及其用途。\r\n\r\n## 核心对象\r\n\r\n### gcs（地面控制站）\r\n\r\n```lua\r\ngcs:send_text(severity, message)\r\n```\r\n\r\n发送消息给 GCS。严重程度等级：0=Emergency、1=Alert、2=Critical、3=Error、4=Warning、5=Notice、6=Info、7=Debug。\r\n\r\n### vehicle\r\n\r\n```lua\r\nvehicle:set_mode(mode_number)\r\nvehicle:get_mode()\r\nvehicle:is_armed()\r\n```\r\n\r\n控制并查询载具状态。模式编号依载具而异（例如 Plane:0=Manual、10=Auto、11=RTL)。\r\n\r\n### ahrs（姿态与航向）\r\n\r\n```lua\r\nahrs:get_roll()     -- radians\r\nahrs:get_pitch()    -- radians\r\nahrs:get_yaw()      -- radians\r\nahrs:get_home()     -- Location object\r\nahrs:groundspeed_vector()\r\nahrs:airspeed_estimate()\r\n```\r\n\r\n存取姿态、位置与速度数据。\r\n\r\n### baro（气压计）\r\n\r\n```lua\r\nbaro:get_altitude()  -- meters above ground\r\n```\r\n\r\n### battery\r\n\r\n```lua\r\nbattery:voltage(instance)\r\nbattery:current_amps(instance)\r\nbattery:capacity_remaining_pct(instance)\r\n```\r\n\r\n读取电池数据。Instance 0 是主要电池。\r\n\r\n### rc（无线电控制）\r\n\r\n```lua\r\nrc:get_pwm(channel)          -- 1-16, returns PWM in microseconds\r\nrc:get_aux_cached(aux_fn)    -- returns switch position 0/1/2\r\n```\r\n\r\n读取 RC 输入通道与辅助开关状态。\r\n\r\n### SRV_Channels（伺服输出）\r\n\r\n```lua\r\nSRV_Channels:set_output_pwm(channel, pwm)\r\nSRV_Channels:set_output_pwm_chan_timeout(channel, pwm, timeout_ms)\r\n```\r\n\r\n控制伺服输出。暂时性的覆写请使用 `set_output_pwm_chan_timeout`。\r\n\r\n### param（参数）\r\n\r\n```lua\r\nparam:get(name)           -- returns value or nil\r\nparam:set(name, value)    -- returns true on success\r\nparam:set_and_save(name, value)\r\n```\r\n\r\n读取与写入飞控参数。\r\n\r\n### rangefinder\r\n\r\n```lua\r\nrangefinder:distance_cm(instance)\r\nrangefinder:distance_cm_orient(orientation)\r\n```\r\n\r\n方向：0=Forward、24=Up、25=Down。\r\n\r\n### relay\r\n\r\n```lua\r\nrelay:on(relay_num)\r\nrelay:off(relay_num)\r\nrelay:toggle(relay_num)\r\n```\r\n\r\n控制继电器输出 (0-5)。\r\n\r\n### serialLED\r\n\r\n```lua\r\nserialLED:set_num_neopixel(instance, count)\r\nserialLED:set_RGB(instance, led_index, r, g, b)\r\nserialLED:send(instance)\r\n```\r\n\r\n控制 NeoPixel / ProfiLED 灯条。\r\n\r\n## 脚本生命周期\r\n\r\n每个 ArduPilot Lua 脚本都遵循这个模式：\r\n\r\n```lua\r\nfunction update()\r\n  -- Your logic here\r\n  return update, interval_ms\r\nend\r\n\r\nreturn update, interval_ms\r\n```\r\n\r\n`return update, interval_ms` 会告诉 ArduPilot 在 `interval_ms` 毫秒后再次呼叫 `update()`。图形编辑器会依据**执行间隔**设置自动处理这一点。\r\n",
+      "content": "# ArduPilot Lua API 参考\r\n\r\n图形编辑器使用 ArduPilot Lua 脚本 API 生成代码。以下是可用的主要绑定及其用途。\r\n\r\n## 核心对象\r\n\r\n### gcs（地面站）\r\n\r\n```lua\r\ngcs:send_text(severity, message)\r\n```\r\n\r\n发送消息给 GCS。严重程度等级：0=Emergency、1=Alert、2=Critical、3=Error、4=Warning、5=Notice、6=Info、7=Debug。\r\n\r\n### vehicle\r\n\r\n```lua\r\nvehicle:set_mode(mode_number)\r\nvehicle:get_mode()\r\nvehicle:is_armed()\r\n```\r\n\r\n控制并查询载具状态。模式编号因载具而异（例如 Plane:0=Manual、10=Auto、11=RTL）。\r\n\r\n### ahrs（姿态与航向）\r\n\r\n```lua\r\nahrs:get_roll()     -- radians\r\nahrs:get_pitch()    -- radians\r\nahrs:get_yaw()      -- radians\r\nahrs:get_home()     -- Location object\r\nahrs:groundspeed_vector()\r\nahrs:airspeed_estimate()\r\n```\r\n\r\n访问姿态、位置与速度数据。\r\n\r\n### baro（气压计）\r\n\r\n```lua\r\nbaro:get_altitude()  -- meters above ground\r\n```\r\n\r\n### battery\r\n\r\n```lua\r\nbattery:voltage(instance)\r\nbattery:current_amps(instance)\r\nbattery:capacity_remaining_pct(instance)\r\n```\r\n\r\n读取电池数据。Instance 0 是主要电池。\r\n\r\n### rc（无线电控制）\r\n\r\n```lua\r\nrc:get_pwm(channel)          -- 1-16, returns PWM in microseconds\r\nrc:get_aux_cached(aux_fn)    -- returns switch position 0/1/2\r\n```\r\n\r\n读取 RC 输入通道与辅助开关状态。\r\n\r\n### SRV_Channels（舵机输出）\r\n\r\n```lua\r\nSRV_Channels:set_output_pwm(channel, pwm)\r\nSRV_Channels:set_output_pwm_chan_timeout(channel, pwm, timeout_ms)\r\n```\r\n\r\n控制舵机输出。暂时性的覆盖请使用 `set_output_pwm_chan_timeout`。\r\n\r\n### param（参数）\r\n\r\n```lua\r\nparam:get(name)           -- returns value or nil\r\nparam:set(name, value)    -- returns true on success\r\nparam:set_and_save(name, value)\r\n```\r\n\r\n读取与写入飞控参数。\r\n\r\n### rangefinder\r\n\r\n```lua\r\nrangefinder:distance_cm(instance)\r\nrangefinder:distance_cm_orient(orientation)\r\n```\r\n\r\n方向：0=Forward、24=Up、25=Down。\r\n\r\n### relay\r\n\r\n```lua\r\nrelay:on(relay_num)\r\nrelay:off(relay_num)\r\nrelay:toggle(relay_num)\r\n```\r\n\r\n控制继电器输出 （0-5）。\r\n\r\n### serialLED\r\n\r\n```lua\r\nserialLED:set_num_neopixel(instance, count)\r\nserialLED:set_RGB(instance, led_index, r, g, b)\r\nserialLED:send(instance)\r\n```\r\n\r\n控制 NeoPixel / ProfiLED 灯条。\r\n\r\n## 脚本生命周期\r\n\r\n每个 ArduPilot Lua 脚本都遵循这个模式：\r\n\r\n```lua\r\nfunction update()\r\n  -- Your logic here\r\n  return update, interval_ms\r\nend\r\n\r\nreturn update, interval_ms\r\n```\r\n\r\n`return update, interval_ms` 会告诉 ArduPilot 在 `interval_ms` 毫秒后再次调用 `update()`。图形编辑器会依据**执行间隔**设置自动处理这一点。\r\n",
       "title": "ArduPilot API"
     },
     "compilation": {
-      "content": "# 编译\r\n\r\n## 编译器如何运作\r\n\r\nLua 编译器通过多步骤管线，把你的视觉化图形转换成与 ArduPilot 相容的 Lua 代码。\r\n\r\n### 管线\r\n\r\n1. **拓扑排序** - 排列节点顺序，让每个节点都在其输入之后才被计算\r\n2. **变数指派** - 每个输出埠都会得到一个唯一的 Lua 变数名称\r\n3. **代码生成** - 每个节点使用指派的变数名称输出它的 Lua 代码\r\n4. **状态变数** - 计时与边缘侦测节点会在顶端宣告持久的状态变数\r\n5. **包装** - 全部包在 ArduPilot 的 `function update() ... return update, interval end` 模式中\r\n\r\n### 生成的代码结构\r\n\r\n```lua\r\n-- Auto-generated by ArduDeck Lua Graph Editor\r\n-- Graph: \"My Script\"\r\n\r\n-- State variables (persist across update cycles)\r\nlocal prev_state_1 = false\r\nlocal timer_2 = 0\r\n\r\nfunction update()\r\n  -- Sensor reads\r\n  local voltage_3 = battery:voltage(0)\r\n\r\n  -- Logic & math\r\n  local is_low_4 = voltage_3 < 11.1\r\n\r\n  -- Actions (guarded by triggers)\r\n  if is_low_4 then\r\n    gcs:send_text(4, \"LOW BATTERY\")\r\n  end\r\n\r\n  return update, 1000\r\nend\r\n\r\nreturn update, 1000\r\n```\r\n\r\n## 执行间隔\r\n\r\n执行间隔决定 ArduPilot 多久呼叫一次脚本的 `update()` 函式。它是依图形设置，预设为 200ms。\r\n\r\n| 间隔 | 使用情境 |\r\n| --- | --- |\r\n| 50-100ms | 快速传感器轮询、伺服控制 |\r\n| 200ms | 一般用途（预设） |\r\n| 500-1000ms | 慢速监控、电池检查 |\r\n| 5000ms+ | 定期记录、状态报告 |\r\n\r\n> 间隔越短，使用的 CPU 越多。ArduPilot 规定脚本两次执行之间至少约 50ms。\r\n\r\n## 错误侦测\r\n\r\n编译器会在生成代码之前拦截这些错误：\r\n\r\n- **未连接的动作节点** - 没有连接触发的动作节点\r\n- **循环相依** - 无法排序的回馈回圈\r\n- **类型不符** - 不相容的端口连接\r\n- **缺少必要属性** - 需要填入值的属性\r\n\r\n## 导出流程\r\n\r\n1. 点击工具栏上的**导出 Lua**\r\n2. 编译器验证并生成代码\r\n3. 若发现错误，会有对话框显示错误列表\r\n4. 若成功，会打开保存对话框以写入 `.lua` 文件\r\n5. 将文件复制到飞控的 SD 卡：`/scripts/your_script.lua`\r\n6. 重新启动飞控以开始执行脚本\r\n",
+      "content": "# 编译\r\n\r\n## 编译器如何运作\r\n\r\nLua 编译器通过多步骤管线，把你的可视化图形转换成与 ArduPilot 兼容的 Lua 代码。\r\n\r\n### 管线\r\n\r\n1. **拓扑排序** - 排列节点顺序，让每个节点都在其输入之后才被计算\r\n2. **变量指派** - 每个输出端口都会得到一个唯一的 Lua 变量名称\r\n3. **代码生成** - 每个节点使用指派的变量名称输出它的 Lua 代码\r\n4. **状态变量** - 计时与边缘检测节点会在顶端宣告持久的状态变量\r\n5. **包装** - 全部包在 ArduPilot 的 `function update() ... return update, interval end` 模式中\r\n\r\n### 生成的代码结构\r\n\r\n```lua\r\n-- Auto-generated by ArduDeck Lua Graph Editor\r\n-- Graph: \"My Script\"\r\n\r\n-- State variables (persist across update cycles)\r\nlocal prev_state_1 = false\r\nlocal timer_2 = 0\r\n\r\nfunction update()\r\n  -- Sensor reads\r\n  local voltage_3 = battery:voltage(0)\r\n\r\n  -- Logic & math\r\n  local is_low_4 = voltage_3 < 11.1\r\n\r\n  -- Actions (guarded by triggers)\r\n  if is_low_4 then\r\n    gcs:send_text(4, \"LOW BATTERY\")\r\n  end\r\n\r\n  return update, 1000\r\nend\r\n\r\nreturn update, 1000\r\n```\r\n\r\n## 执行间隔\r\n\r\n执行间隔决定 ArduPilot 多久调用一次脚本的 `update()` 函数。它是按图形设置，默认为 200ms。\r\n\r\n| 间隔 | 使用情境 |\r\n| --- | --- |\r\n| 50-100ms | 快速传感器轮询、舵机控制 |\r\n| 200ms | 一般用途（默认） |\r\n| 500-1000ms | 慢速监控、电池检查 |\r\n| 5000ms+ | 定期记录、状态报告 |\r\n\r\n> 间隔越短，使用的 CPU 越多。ArduPilot 规定脚本两次执行之间至少约 50ms。\r\n\r\n## 错误检测\r\n\r\n编译器会在生成代码之前拦截这些错误：\r\n\r\n- **未连接的动作节点** - 没有连接触发的动作节点\r\n- **循环依赖** - 无法排序的反馈循环\r\n- **类型不匹配** - 不兼容的端口连接\r\n- **缺少必要属性** - 需要填入值的属性\r\n\r\n## 导出流程\r\n\r\n1. 点击工具栏上的**导出 Lua**\r\n2. 编译器验证并生成代码\r\n3. 若发现错误，会有对话框显示错误列表\r\n4. 若成功，会打开保存对话框以写入 `.lua` 文件\r\n5. 将文件复制到飞控的 SD 卡：`/scripts/your_script.lua`\r\n6. 重新启动飞控以开始执行脚本\r\n",
       "title": "编译"
     },
     "connections": {
-      "content": "# 连接与数据流\r\n\r\n## 连接如何运作\r\n\r\n数据在图形中**由左向右**流动。每条连接把一个值从输出埠传到输入埠。每个更新周期中，编译器会依拓扑顺序计算节点（上游先于下游）。\r\n\r\n### 建立连接\r\n\r\n1. 将游标移到**输出埠**（节点右侧）上\r\n2. 点击并拖拽到**输入埠**（另一个节点的左侧）\r\n3. 放开即可建立连接\r\n\r\n### 移除连接\r\n\r\n- 点击连接将它选择，然后按 **Delete** 或 **Backspace**\r\n\r\n## 埠类型\r\n\r\n埠会依数据类型以颜色标示：\r\n\r\n| 类型 | 颜色 | 值 |\r\n| --- | --- | --- |\r\n| 数字 | 蓝色 | 整数或浮点数(`0`、`3.14`、`-100`) |\r\n| 布尔 | 紫色 | `true` 或 `false` |\r\n| 字符串 | 黄/琥珀色 | 文字值(`\"Hello\"`) |\r\n| 任意 | 灰色 | 接受任何类型 |\r\n\r\n## 类型相容性\r\n\r\n- **完全相同** - 数字对数字、布尔对布尔一律可行\r\n- **任意埠** - `any` 埠接受任何类型的连接\r\n- **数字转布尔** - 数字输出可连到布尔输入(`0` = false,非零 = true)\r\n- **布尔转数字** - 布尔输出可连到数字输入(`true` = 1,`false` = 0)\r\n- **不相容** - 字符串埠无法连到数字/布尔埠（编辑器会阻止）\r\n\r\n## 规则\r\n\r\n- 每个**输入埠**只接受**一**条连接（若拖第二条，以最后一条为准）\r\n- 每个**输出埠**可连到**多个**输入（扇出）\r\n- **不允许循环**:编译器会侦测并报告错误\r\n- 未连接的输入埠使用其**默认值**（显示在查看器中）\r\n\r\n## 数据流范例\r\n\r\n```\r\nBattery(Voltage) --> Compare(A)\r\n                                  --> Compare(Result) --> GCS Text(Trigger)\r\nConstant(11.1)   --> Compare(B)\r\n```\r\n\r\n每个周期：电池读取电压，常数提供 11.1,比较节点检查电压是否 < 11.1,结果会触发（或不触发）GCS 文字消息。\r\n",
+      "content": "# 连接与数据流\r\n\r\n## 连接如何运作\r\n\r\n数据在图形中**由左向右**流动。每条连接把一个值从输出端口传到输入端口。每个更新周期中，编译器会按拓扑顺序计算节点（上游先于下游）。\r\n\r\n### 建立连接\r\n\r\n1. 将光标移到**输出端口**（节点右侧）上\r\n2. 点击并拖拽到**输入端口**（另一个节点的左侧）\r\n3. 放开即可建立连接\r\n\r\n### 移除连接\r\n\r\n- 点击连接将它选择，然后按 **Delete** 或 **Backspace**\r\n\r\n## 端口类型\r\n\r\n端口会按数据类型以颜色标示：\r\n\r\n| 类型 | 颜色 | 值 |\r\n| --- | --- | --- |\r\n| 数字 | 蓝色 | 整数或浮点数（`0`、`3.14`、`-100`) |\r\n| 布尔 | 紫色 | `true` 或 `false` |\r\n| 字符串 | 黄/琥珀色 | 文字值（`\"Hello\"`） |\r\n| 任意 | 灰色 | 接受任何类型 |\r\n\r\n## 类型兼容性\r\n\r\n- **完全相同** - 数字对数字、布尔对布尔一律可行\r\n- **任意端口** - `any` 端口接受任何类型的连接\r\n- **数字转布尔** - 数字输出可连到布尔输入（`0` = false，非零 = true）\r\n- **布尔转数字** - 布尔输出可连到数字输入（`true` = 1,`false` = 0）\r\n- **不兼容** - 字符串端口无法连到数字/布尔端口（编辑器会阻止）\r\n\r\n## 规则\r\n\r\n- 每个**输入端口**只接受**一**条连接（若拖第二条，以最后一条为准）\r\n- 每个**输出端口**可连到**多个**输入（扇出）\r\n- **不允许循环**：编译器会检测并报告错误\r\n- 未连接的输入端口使用其**默认值**（显示在查看器中）\r\n\r\n## 数据流示例\r\n\r\n```\r\nBattery(Voltage) --> Compare(A)\r\n                                  --> Compare(Result) --> GCS Text(Trigger)\r\nConstant(11.1)   --> Compare(B)\r\n```\r\n\r\n每个周期：电池读取电压，常数提供 11.1，比较节点检查电压是否 < 11.1，结果会触发（或不触发）GCS 文字消息。\r\n",
       "title": "连接"
     },
     "examples": {
-      "content": "# 范例\r\n\r\n## 范例 1:低电量警示\r\n\r\n**目标：**电池低于 11.1V 时，发送警告给 GCS。\r\n\r\n### 节点\r\n\r\n1. **电池**传感器 - 读取电压\r\n2. **常数** - 值 `11.1`\r\n3. **比较** - 运算子 `<`（小于）\r\n4. **去弹跳** - 5000ms 延迟，避免洗版\r\n5. **发送 GCS 文字** - 消息「LOW BATTERY」,严重程度为警告\r\n\r\n### 连接\r\n\r\n- 电池 **Voltage** -> 比较 **A**\r\n- 常数 **Value** -> 比较 **B**\r\n- 比较 **Result** -> 去弹跳 **Input**\r\n- 去弹跳 **Output** -> 发送 GCS 文字 **Trigger**\r\n\r\n### 生成的 Lua\r\n\r\n```lua\r\nlocal WARN_SENT = false\r\n\r\nfunction update()\r\n  local voltage = battery:voltage(0)\r\n  local is_low = voltage < 11.1\r\n\r\n  if is_low and not WARN_SENT then\r\n    gcs:send_text(4, \"LOW BATTERY\")\r\n    WARN_SENT = true\r\n  elseif not is_low then\r\n    WARN_SENT = false\r\n  end\r\n\r\n  return update, 1000\r\nend\r\n\r\nreturn update, 1000\r\n```\r\n\r\n---\r\n\r\n## 范例 2:地理围栏距离警告\r\n\r\n**目标：**载具距 Home 超过 500m 时提醒飞手。\r\n\r\n### 节点\r\n\r\n1. **GPS 位置**传感器\r\n2. **常数** - 值 `500`\r\n3. **比较** - 运算子 `>`\r\n4. **发送 GCS 文字** - 消息「GEOFENCE WARNING」\r\n\r\n> 注意：GPS 位置提供的是原始纬度/经度。编译器会使用 ArduPilot 的 `ahrs:get_home()` API 计算距 Home 的距离。\r\n\r\n---\r\n\r\n## 范例 3:以 RC 开关触发相机\r\n\r\n**目标：**RC 通道 7 高于 1700us 时触发继电器。\r\n\r\n### 节点\r\n\r\n1. **RC 通道**传感器 - 通道 7\r\n2. **常数** - 值 `1700`\r\n3. **比较** - 运算子 `>`\r\n4. **上升缘** - 只在转换瞬间触发\r\n5. **触发继电器** - 继电器 0,状态 ON\r\n\r\n### 连接\r\n\r\n- RC 通道 **Value** -> 比较 **A**\r\n- 常数 **Value** -> 比较 **B**\r\n- 比较 **Result** -> 上升缘 **Input**\r\n- 上升缘 **Triggered** -> 触发继电器 **Trigger**\r\n\r\n### 生成的 Lua\r\n\r\n```lua\r\nlocal prev_state = false\r\n\r\nfunction update()\r\n  local ch7 = rc:get_pwm(7)\r\n  local is_high = ch7 > 1700\r\n\r\n  local rising = is_high and not prev_state\r\n  prev_state = is_high\r\n\r\n  if rising then\r\n    relay:on(0)\r\n  end\r\n\r\n  return update, 200\r\nend\r\n\r\nreturn update, 200\r\n```\r\n\r\n---\r\n\r\n## 范例 4:以测距仪进行地形跟随\r\n\r\n**目标：**每 2 秒将测距仪高度记录到 CSV 文件。\r\n\r\n### 节点\r\n\r\n1. **测距仪**传感器 - 实例 0\r\n2. **每隔执行** - 2000ms 间隔\r\n3. **气压高度**传感器\r\n4. **记录到文件** - 档名 `terrain.csv`,逗号分隔\r\n\r\n### 连接\r\n\r\n- 每隔执行 **Flow** -> 记录到文件 **Trigger**\r\n- 测距仪 **Distance** -> 记录到文件 **Value 1**\r\n- 气压高度 **Altitude** -> 记录到文件 **Value 2**\r\n\r\nSD 卡上生成的 CSV 文件会包含附带时间戳记的测距仪与气压高度数据。\r\n",
-      "title": "范例"
+      "content": "# 示例\r\n\r\n## 示例 1：低电量警告\r\n\r\n**目标：**电池低于 11.1V 时，发送警告给 GCS。\r\n\r\n### 节点\r\n\r\n1. **电池**传感器 - 读取电压\r\n2. **常数** - 值 `11.1`\r\n3. **比较** - 运算符 `<`（小于）\r\n4. **去抖** - 5000ms 延迟，避免刷屏\r\n5. **发送 GCS 文字** - 消息「LOW BATTERY」，严重程度为警告\r\n\r\n### 连接\r\n\r\n- 电池 **Voltage** -> 比较 **A**\r\n- 常数 **Value** -> 比较 **B**\r\n- 比较 **Result** -> 去抖 **Input**\r\n- 去抖 **Output** -> 发送 GCS 文字 **Trigger**\r\n\r\n### 生成的 Lua\r\n\r\n```lua\r\nlocal WARN_SENT = false\r\n\r\nfunction update()\r\n  local voltage = battery:voltage(0)\r\n  local is_low = voltage < 11.1\r\n\r\n  if is_low and not WARN_SENT then\r\n    gcs:send_text(4, \"LOW BATTERY\")\r\n    WARN_SENT = true\r\n  elseif not is_low then\r\n    WARN_SENT = false\r\n  end\r\n\r\n  return update, 1000\r\nend\r\n\r\nreturn update, 1000\r\n```\r\n\r\n---\r\n\r\n## 示例 2：地理围栏距离警告\r\n\r\n**目标：**载具距 Home 超过 500m 时提醒飞手。\r\n\r\n### 节点\r\n\r\n1. **GPS 位置**传感器\r\n2. **常数** - 值 `500`\r\n3. **比较** - 运算符 `>`\r\n4. **发送 GCS 文字** - 消息「GEOFENCE WARNING」\r\n\r\n> 注意：GPS 位置提供的是原始纬度/经度。编译器会使用 ArduPilot 的 `ahrs:get_home()` API 计算距 Home 的距离。\r\n\r\n---\r\n\r\n## 示例 3：以 RC 开关触发相机\r\n\r\n**目标：**RC 通道 7 高于 1700us 时触发继电器。\r\n\r\n### 节点\r\n\r\n1. **RC 通道**传感器 - 通道 7\r\n2. **常数** - 值 `1700`\r\n3. **比较** - 运算符 `>`\r\n4. **上升沿** - 只在转换瞬间触发\r\n5. **触发继电器** - 继电器 0，状态 ON\r\n\r\n### 连接\r\n\r\n- RC 通道 **Value** -> 比较 **A**\r\n- 常数 **Value** -> 比较 **B**\r\n- 比较 **Result** -> 上升沿 **Input**\r\n- 上升沿 **Triggered** -> 触发继电器 **Trigger**\r\n\r\n### 生成的 Lua\r\n\r\n```lua\r\nlocal prev_state = false\r\n\r\nfunction update()\r\n  local ch7 = rc:get_pwm(7)\r\n  local is_high = ch7 > 1700\r\n\r\n  local rising = is_high and not prev_state\r\n  prev_state = is_high\r\n\r\n  if rising then\r\n    relay:on(0)\r\n  end\r\n\r\n  return update, 200\r\nend\r\n\r\nreturn update, 200\r\n```\r\n\r\n---\r\n\r\n## 示例 4：以测距仪进行地形跟随\r\n\r\n**目标：**每 2 秒将测距仪高度记录到 CSV 文件。\r\n\r\n### 节点\r\n\r\n1. **测距仪**传感器 - 实例 0\r\n2. **每隔执行** - 2000ms 间隔\r\n3. **气压高度**传感器\r\n4. **记录到文件** - 文件名 `terrain.csv`，逗号分隔\r\n\r\n### 连接\r\n\r\n- 每隔执行 **Flow** -> 记录到文件 **Trigger**\r\n- 测距仪 **Distance** -> 记录到文件 **Value 1**\r\n- 气压高度 **Altitude** -> 记录到文件 **Value 2**\r\n\r\nSD 卡上生成的 CSV 文件会包含附带时间戳的测距仪与气压高度数据。\r\n",
+      "title": "示例"
     },
     "gettingStarted": {
-      "content": "# 快速入门\r\n\r\nLua 图形编辑器是用于 ArduPilot 的视觉化脚本环境。你不必手写 Lua 代码，而是在数据流图形中连接节点。编辑器会把你的图形编译成有效的 ArduPilot Lua 脚本，你可以把它上传到飞控的 SD 卡。\r\n\r\n## 运作方式\r\n\r\n1. 在左侧的调色盘中**点击节点**来新增\r\n2. 从输出埠拖拽到输入埠来**端口**\r\n3. 选择节点，在右侧的查看器面板中编辑其属性来**设置属性**\r\n4. **导出 Lua**,将图形编译成 `.lua` 文件\r\n\r\n## 界面\r\n\r\n| 区域 | 用途 |\r\n| --- | --- |\r\n| 工具栏 | 文件操作、撤销/重做、导出、范本、文件 |\r\n| 节点调色盘 | 依类别分组的所有可用节点 |\r\n| 画布 | 用来排列与连接节点的图形编辑器 |\r\n| 查看器 | 所选节点的属性与详细信息 |\r\n| Lua 预览 | 编译后 Lua 输出的实时预览 |\r\n\r\n## 工具栏动作\r\n\r\n- **新增** - 建立空白图形\r\n- **打开** - 加载 `.adgraph` 文件\r\n- **保存** - 保存为 `.adgraph` 文件\r\n- **范本** - 加载预先建好的范例图形\r\n- **导出 Lua** - 编译并保存 `.lua` 文件\r\n- **撤销 / 重做** - 所有图形变更的标准撤销/重做\r\n\r\n## 你的第一个脚本\r\n\r\n1. 点击传感器类别中的**电池**,新增电池节点\r\n2. 点击逻辑中的**比较**,新增比较节点\r\n3. 将 **Voltage** 输出连到 **A** 输入\r\n4. 新增**常数**节点，将其值设为 `11.1`\r\n5. 将常数的 **Value** 输出连到 **B** 输入\r\n6. 将比较运算子设为 `<`（小于）\r\n7. 在动作中新增**发送 GCS 文字**节点\r\n8. 将比较的 **Result** 连到 GCS 文字的 **Trigger**\r\n9. 点击**导出 Lua** 生成你的脚本\r\n\r\n> 这个脚本会在电池电压低于 11.1V 时发送 GCS 消息。\r\n\r\n## 保存与加载\r\n\r\n图形会保存成 `.adgraph` JSON 文件。其中包含完整的节点布局、连接、属性与窗口位置。你可以与其他 ArduDeck 用户分享 `.adgraph` 文件。\r\n\r\n**导出 Lua** 按钮会编译图形并保存成可在 ArduPilot 上执行的标准 `.lua` 文件。请把 `.lua` 文件复制到飞控 SD 卡上的 `scripts/` 目录。\r\n",
+      "content": "# 快速入门\r\n\r\nLua 图形编辑器是用于 ArduPilot 的可视化脚本环境。你不必手写 Lua 代码，而是在数据流图形中连接节点。编辑器会把你的图形编译成有效的 ArduPilot Lua 脚本，你可以把它上传到飞控的 SD 卡。\r\n\r\n## 运作方式\r\n\r\n1. 在左侧的调色板中**点击节点**来新增\r\n2. 从输出端口拖拽到输入端口来**端口**\r\n3. 选择节点，在右侧的查看器面板中编辑其属性来**设置属性**\r\n4. **导出 Lua**，将图形编译成 `.lua` 文件\r\n\r\n## 界面\r\n\r\n| 区域 | 用途 |\r\n| --- | --- |\r\n| 工具栏 | 文件操作、撤销/重做、导出、模板、文件 |\r\n| 节点调色板 | 按类别分组的所有可用节点 |\r\n| 画布 | 用来排列与连接节点的图形编辑器 |\r\n| 查看器 | 所选节点的属性与详细信息 |\r\n| Lua 预览 | 编译后 Lua 输出的实时预览 |\r\n\r\n## 工具栏动作\r\n\r\n- **新增** - 建立空白图形\r\n- **打开** - 加载 `.adgraph` 文件\r\n- **保存** - 保存为 `.adgraph` 文件\r\n- **模板** - 加载预先建好的示例图形\r\n- **导出 Lua** - 编译并保存 `.lua` 文件\r\n- **撤销 / 重做** - 所有图形变更的标准撤销/重做\r\n\r\n## 你的第一个脚本\r\n\r\n1. 点击传感器类别中的**电池**，新增电池节点\r\n2. 点击逻辑中的**比较**，新增比较节点\r\n3. 将 **Voltage** 输出连到 **A** 输入\r\n4. 新增**常数**节点，将其值设为 `11.1`\r\n5. 将常数的 **Value** 输出连到 **B** 输入\r\n6. 将比较运算符设为 `<`（小于）\r\n7. 在动作中新增**发送 GCS 文字**节点\r\n8. 将比较的 **Result** 连到 GCS 文字的 **Trigger**\r\n9. 点击**导出 Lua** 生成你的脚本\r\n\r\n> 这个脚本会在电池电压低于 11.1V 时发送 GCS 消息。\r\n\r\n## 保存与加载\r\n\r\n图形会保存成 `.adgraph` JSON 文件。其中包含完整的节点布局、连接、属性与窗口位置。你可以与其他 ArduDeck 用户分享 `.adgraph` 文件。\r\n\r\n**导出 Lua** 按钮会编译图形并保存成可在 ArduPilot 上执行的标准 `.lua` 文件。请把 `.lua` 文件复制到飞控 SD 卡上的 `scripts/` 目录。\r\n",
       "title": "快速入门"
     },
     "nodeReference": {
-      "content": "# 节点参考\r\n\r\n所有节点分为 7 个类别。每个节点都有具类型的输入/输出埠与可设置的属性。\r\n\r\n## 传感器\r\n\r\n传感器节点从飞控读取数据。它们没有输入，每个周期提供输出值。\r\n\r\n| 节点 | 输出 | 属性 | API |\r\n| --- | --- | --- | --- |\r\n| GPS 位置 | Latitude、Longitude、Altitude (m) | - | `gps:location(0)` |\r\n| 气压高度 | Altitude (m) | - | `baro:get_altitude()` |\r\n| 电池 | Voltage、Current (A)、Remaining % | 电池实例 (0-3) | `battery` |\r\n| 空速 | Airspeed (m/s) | - | `ahrs:airspeed_estimate()` |\r\n| RC 通道 | Value (us) | 通道 (1-16) | `rc:get_pwm(ch)` |\r\n| 测距仪 | Distance (m) | 实例 (0-3) | `rangefinder:distance_cm()` |\r\n| 姿态 | Roll、Pitch、Yaw (deg) | - | `ahrs:get_roll/pitch/yaw()` |\r\n| 地速 | Speed (m/s) | - | `ahrs:groundspeed_vector()` |\r\n| RC 辅助开关 | State (0-2)、Is High、Is Mid | 辅助功能 (0-999) | `rc:get_aux_cached()` |\r\n| 测距仪（指定方向） | Distance (m) | 方向 (Forward/Down/Up) | `rangefinder:distance_cm_orient()` |\r\n\r\n## 逻辑\r\n\r\n逻辑节点处理布尔与比较运算，用于决策。\r\n\r\n| 节点 | 输入 | 输出 | 属性 |\r\n| --- | --- | --- | --- |\r\n| 比较 | A (number)、B (number) | Result (boolean) | 运算子：>、<、==、!=、>=、<= |\r\n| If / Else | Condition (boolean) | True、False | - |\r\n| AND | A (boolean)、B (boolean) | Result (boolean) | - |\r\n| OR | A (boolean)、B (boolean) | Result (boolean) | - |\r\n| NOT | Input (boolean) | Result (boolean) | - |\r\n| 范围检查 | Value (number) | In Range (boolean) | Min、Max |\r\n| Switch | Value (number) | Case 0、Case 1、Case 2、Default | Case 0/1/2 值 |\r\n\r\n## 数学\r\n\r\n数学节点执行数值运算。\r\n\r\n| 节点 | 输入 | 输出 | 属性 |\r\n| --- | --- | --- | --- |\r\n| 加 | A、B | Result | - |\r\n| 减 | A、B | Result | - |\r\n| 乘 | A、B | Result | - |\r\n| 除 | A、B | Result（避免除以零） | - |\r\n| 限幅 | Value | Result | Min、Max |\r\n| 范围对应 | Value | Result | 输入 Min/Max、输出 Min/Max |\r\n| 绝对值 | Value | Result | - |\r\n| 最小 | A、B | Result | - |\r\n| 最大 | A、B | Result | - |\r\n\r\n## 动作\r\n\r\n动作节点会生成副作用，例如发送消息、控制伺服或写入文件。它们需要**布尔触发**输入：只有在触发为 `true` 时动作才会执行。\r\n\r\n| 节点 | 输入 | 属性 | API |\r\n| --- | --- | --- | --- |\r\n| 发送 GCS 文字 | Trigger | 消息、严重程度 (Emergency..Debug) | `gcs:send_text()` |\r\n| 设置伺服 | Trigger、PWM (number) | 伺服编号 (1-16) | `SRV_Channels:set_output_pwm()` |\r\n| 设置飞行模式 | Trigger | 模式编号 (0-30) | `vehicle:set_mode()` |\r\n| 设置参数 | Trigger、Value (number) | 参数名称 | `param:set()` |\r\n| 触发继电器 | Trigger | 继电器编号 (0-5)、状态 (ON/OFF) | `relay:on/off()` |\r\n| 记录到文件 | Trigger、Value 1-3 (any) | 文件名称、分隔符号 | `io.open/write/close` |\r\n| 设置 LED | Trigger、R、G、B (numbers) | LED 实例 (0-15) | `serialLED:set_RGB()` |\r\n| 序列写入 | Trigger、Data (any) | 实例、波特率、行尾 | `serial:find_serial()`, `port:write()` |\r\n| 网路发送 | Trigger、Data (any) | 通信协议 (UDP/TCP)、IP、端口 | `Socket()`, `sock:send()` |\r\n\r\n**序列写入**会把 Data 输入从飞控的一个 UART 发送。请先把一个未使用的 `SERIALx_PROTOCOL` 设为 28(Scripting);实例会选择第 N 个这类端口(0 = 第一个）。**网路发送**需要具网路功能的主板与 `NET_ENABLE = 1`(ArduPilot 4.5+);连接会在第一次触发时打开。\r\n\r\n## 计时\r\n\r\n计时节点控制事情何时发生、多久发生一次。\r\n\r\n| 节点 | 输入 | 输出 | 属性 |\r\n| --- | --- | --- | --- |\r\n| 每隔执行 | Trigger (boolean) | Flow (boolean) | 间隔 (100-60000 ms) |\r\n| 去弹跳 | Input (boolean) | Output (boolean) | 延迟 (50-10000 ms) |\r\n| 数值变更时 | Value (number) | Changed (boolean) | - |\r\n| 上升缘 | Input (boolean) | Triggered (boolean) | - |\r\n\r\n## 变数\r\n\r\n变数节点让你保存与取回可跨更新周期保留的值。\r\n\r\n| 节点 | 输入 | 输出 | 属性 |\r\n| --- | --- | --- | --- |\r\n| 常数 | - | Value (any) | 类型 (Number/String/Boolean)、值 |\r\n| 取得变数 | - | Value (any) | 变数名称 |\r\n| 设置变数 | Trigger、Value (any) | - | 变数名称 |\r\n\r\n## 流程\r\n\r\n用于整理图形的工具节点。\r\n\r\n| 节点 | 用途 |\r\n| --- | --- |\r\n| 注解 | 用于文件说明的文字标签，对编译后的代码没有影响 |\r\n| 自订 Lua | 以可设置的脚位插入你自己的 Lua 程序片段 |\r\n\r\n**自订 Lua**让你把手写的 Lua 放进图形。请在查看器中以逗号分隔的名称定义输入与输出脚位；每个输入脚位都会成为片段内的区域变数，片段的 `return` 值（依输出脚位顺序）会喂给输出脚位。范例：输入脚位 `dist, volt`、输出脚位 `msg`,代码 `return string.format(\"D=%.1f V=%.2f\", dist, volt)`。把输出接到序列写入或网路发送，就能视频流自订遥测。\r\n",
+      "content": "# 节点参考\r\n\r\n所有节点分为 7 个类别。每个节点都有带类型的输入/输出端口与可设置的属性。\r\n\r\n## 传感器\r\n\r\n传感器节点从飞控读取数据。它们没有输入，每个周期提供输出值。\r\n\r\n| 节点 | 输出 | 属性 | API |\r\n| --- | --- | --- | --- |\r\n| GPS 位置 | Latitude、Longitude、Altitude （m） | - | `gps:location(0)` |\r\n| 气压高度 | Altitude （m） | - | `baro:get_altitude()` |\r\n| 电池 | Voltage、Current （A）、Remaining % | 电池实例 （0-3） | `battery` |\r\n| 空速 | Airspeed (m/s) | - | `ahrs:airspeed_estimate()` |\r\n| RC 通道 | Value （us） | 通道 （1-16） | `rc:get_pwm(ch)` |\r\n| 测距仪 | Distance （m） | 实例 （0-3） | `rangefinder:distance_cm()` |\r\n| 姿态 | Roll、Pitch、Yaw （deg） | - | `ahrs:get_roll/pitch/yaw()` |\r\n| 地速 | Speed (m/s) | - | `ahrs:groundspeed_vector()` |\r\n| RC 辅助开关 | State （0-2）、Is High、Is Mid | 辅助功能 （0-999） | `rc:get_aux_cached()` |\r\n| 测距仪（指定方向） | Distance （m） | 方向 (Forward/Down/Up) | `rangefinder:distance_cm_orient()` |\r\n\r\n## 逻辑\r\n\r\n逻辑节点处理布尔与比较运算，用于决策。\r\n\r\n| 节点 | 输入 | 输出 | 属性 |\r\n| --- | --- | --- | --- |\r\n| 比较 | A （number）、B （number） | Result （boolean） | 运算符：>、<、==、!=、>=、<= |\r\n| If / Else | Condition （boolean） | True、False | - |\r\n| AND | A （boolean）、B （boolean） | Result （boolean） | - |\r\n| OR | A （boolean）、B （boolean） | Result （boolean） | - |\r\n| NOT | Input （boolean） | Result （boolean） | - |\r\n| 范围检查 | Value （number） | In Range （boolean） | Min、Max |\r\n| Switch | Value （number） | Case 0、Case 1、Case 2、Default | Case 0/1/2 值 |\r\n\r\n## 数学\r\n\r\n数学节点执行数值运算。\r\n\r\n| 节点 | 输入 | 输出 | 属性 |\r\n| --- | --- | --- | --- |\r\n| 加 | A、B | Result | - |\r\n| 减 | A、B | Result | - |\r\n| 乘 | A、B | Result | - |\r\n| 除 | A、B | Result（避免除以零） | - |\r\n| 限幅 | Value | Result | Min、Max |\r\n| 范围对应 | Value | Result | 输入 Min/Max、输出 Min/Max |\r\n| 绝对值 | Value | Result | - |\r\n| 最小 | A、B | Result | - |\r\n| 最大 | A、B | Result | - |\r\n\r\n## 动作\r\n\r\n动作节点会生成副作用，例如发送消息、控制舵机或写入文件。它们需要**布尔触发**输入：只有在触发为 `true` 时动作才会执行。\r\n\r\n| 节点 | 输入 | 属性 | API |\r\n| --- | --- | --- | --- |\r\n| 发送 GCS 文字 | Trigger | 消息、严重程度 （Emergency..Debug） | `gcs:send_text()` |\r\n| 设置舵机 | Trigger、PWM （number） | 舵机编号 （1-16） | `SRV_Channels:set_output_pwm()` |\r\n| 设置飞行模式 | Trigger | 模式编号 （0-30） | `vehicle:set_mode()` |\r\n| 设置参数 | Trigger、Value （number） | 参数名称 | `param:set()` |\r\n| 触发继电器 | Trigger | 继电器编号 （0-5）、状态 (ON/OFF) | `relay:on/off()` |\r\n| 记录到文件 | Trigger、Value 1-3 （any） | 文件名称、分隔符 | `io.open/write/close` |\r\n| 设置 LED | Trigger、R、G、B （numbers） | LED 实例 （0-15） | `serialLED:set_RGB()` |\r\n| 串口写入 | Trigger、Data （any） | 实例、波特率、行尾 | `serial:find_serial()`, `port:write()` |\r\n| 网络发送 | Trigger、Data （any） | 通信协议 (UDP/TCP)、IP、端口 | `Socket()`, `sock:send()` |\r\n\r\n**串口写入**会把 Data 输入从飞控的一个 UART 发送。请先把一个未使用的 `SERIALx_PROTOCOL` 设为 28(Scripting)；实例会选择第 N 个这类端口（0 = 第一个）。**网络发送**需要具网络功能的主板与 `NET_ENABLE = 1`(ArduPilot 4.5+）；连接会在第一次触发时打开。\r\n\r\n## 计时\r\n\r\n计时节点控制事情何时发生、多久发生一次。\r\n\r\n| 节点 | 输入 | 输出 | 属性 |\r\n| --- | --- | --- | --- |\r\n| 每隔执行 | Trigger （boolean） | Flow （boolean） | 间隔 (100-60000 ms) |\r\n| 去抖 | Input （boolean） | Output （boolean） | 延迟 (50-10000 ms) |\r\n| 数值变更时 | Value （number） | Changed （boolean） | - |\r\n| 上升沿 | Input （boolean） | Triggered （boolean） | - |\r\n\r\n## 变量\r\n\r\n变量节点让你保存与取回可跨更新周期保留的值。\r\n\r\n| 节点 | 输入 | 输出 | 属性 |\r\n| --- | --- | --- | --- |\r\n| 常数 | - | Value （any） | 类型 (Number/String/Boolean)、值 |\r\n| 获取变量 | - | Value （any） | 变量名称 |\r\n| 设置变量 | Trigger、Value （any） | - | 变量名称 |\r\n\r\n## 流程\r\n\r\n用于整理图形的工具节点。\r\n\r\n| 节点 | 用途 |\r\n| --- | --- |\r\n| 注释 | 用于文件说明的文字标签，对编译后的代码没有影响 |\r\n| 自定义 Lua | 以可设置的引脚插入你自己的 Lua 代码片段 |\r\n\r\n**自定义 Lua**让你把手写的 Lua 放进图形。请在查看器中以逗号分隔的名称定义输入与输出引脚；每个输入引脚都会成为片段内的局部变量，片段的 `return` 值（按输出引脚顺序）会喂给输出引脚。示例：输入引脚 `dist, volt`、输出引脚 `msg`，代码 `return string.format(\"D=%.1f V=%.2f\", dist, volt)`。把输出接到串口写入或网络发送，就能推流自定义遥测。\r\n",
       "title": "节点参考"
     },
     "tips": {
-      "content": "# 提示与限制\r\n\r\n## 提示\r\n\r\n### 使用注解节点\r\n\r\n新增**注解**节点来为图形的各个区段加上说明。它们对编译后的代码没有影响，但之后再回来看图形时会容易理解得多。\r\n\r\n### 从范本开始\r\n\r\n**范本**按钮提供针对常见工作预先建好的图形。加载一个，研究它的运作方式，再依你的需求修改。\r\n\r\n### 查看 Lua 预览\r\n\r\n右侧的 Lua 预览面板会实时显示编译输出。导出之前，请用它确认图形编译正确。\r\n\r\n### 警示请使用去弹跳\r\n\r\n没有去弹跳的话，在 true/false 之间快速切换的条件会在每个更新周期洗版 GCS 消息。在发送消息的动作节点之前，请务必加上**去弹跳**或**上升缘**节点。\r\n\r\n### 为变数命名\r\n\r\n使用**取得变数**与**设置变数**节点时，请用有描述性的名称，例如 `lowBatteryTriggered`,而不是 `x`。这些名称会出现在生成的代码中，有助于除错。\r\n\r\n### 由左至右整理\r\n\r\n把图形排成传感器输入在左、逻辑/数学在中间、动作在右。这符合自然的数据流方向，也最容易阅读。\r\n\r\n## 限制\r\n\r\n### ArduPilot 脚本限制\r\n\r\n- **内存限制** - 脚本被限制在约 50KB 的 Lua 堆积内存\r\n- **指令限制** - 每次 `update()` 呼叫都有位元码指令数上限，超过后 ArduPilot 会终止它\r\n- **不能有无限回圈** - 执行太久的脚本会被终止。请一律使用回呼模式(`return update, interval`)\r\n- **文件 I/O** - 写入 SD 卡很慢。记录频率请不要快过每 1-2 秒一次\r\n- **没有网路** - Lua 脚本无法打开 TCP/UDP socket\r\n\r\n### 图形编辑器限制\r\n\r\n- 为维持合理性能，每个图形最多约 **100 个节点**\r\n- 连接很多的复杂图形可能编译较慢\r\n- 编辑器（目前）不支援子图或巢状图形\r\n\r\n### 除错\r\n\r\n- 开发期间请多使用**发送 GCS 文字**节点来追踪数值\r\n- 开发消息请将严重程度设为 **Debug (7)**\r\n- 使用**记录到文件**节点记录数据，供飞行后分析\r\n- 若脚本无法启动，请检查 SD 卡上的 `/scripts/` 是否有错误记录\r\n- 常见问题：nil 值（传感器不可用）、除以零、超出内存限制\r\n\r\n### 脚本文件位置\r\n\r\n- ArduPilot 从 SD 卡上的 `/scripts/` 目录加载脚本\r\n- 脚本档名必须以 `.lua` 结尾\r\n- 脚本在开机时加载：新增/变更脚本后请重新启动飞控\r\n- 多数主板一次只会执行一个脚本（受内存限制）\r\n",
+      "content": "# 提示与限制\r\n\r\n## 提示\r\n\r\n### 使用注释节点\r\n\r\n新增**注释**节点来为图形的各个区段加上说明。它们对编译后的代码没有影响，但之后再回来看图形时会容易理解得多。\r\n\r\n### 从模板开始\r\n\r\n**模板**按钮提供针对常见工作预先建好的图形。加载一个，研究它的运作方式，再按你的需求修改。\r\n\r\n### 查看 Lua 预览\r\n\r\n右侧的 Lua 预览面板会实时显示编译输出。导出之前，请用它确认图形编译正确。\r\n\r\n### 警告请使用去抖\r\n\r\n没有去抖的话，在 true/false 之间快速切换的条件会在每个更新周期刷屏 GCS 消息。在发送消息的动作节点之前，请务必加上**去抖**或**上升沿**节点。\r\n\r\n### 为变量命名\r\n\r\n使用**获取变量**与**设置变量**节点时，请用有描述性的名称，例如 `lowBatteryTriggered`，而不是 `x`。这些名称会出现在生成的代码中，有助于调试。\r\n\r\n### 由左至右整理\r\n\r\n把图形排成传感器输入在左、逻辑/数学在中间、动作在右。这符合自然的数据流方向，也最容易阅读。\r\n\r\n## 限制\r\n\r\n### ArduPilot 脚本限制\r\n\r\n- **内存限制** - 脚本被限制在约 50KB 的 Lua 堆内存\r\n- **指令限制** - 每次 `update()` 调用都有字节码指令数上限，超过后 ArduPilot 会终止它\r\n- **不能有无限循环** - 执行太久的脚本会被终止。请一律使用回调模式（`return update, interval`）\r\n- **文件 I/O** - 写入 SD 卡很慢。记录频率请不要快过每 1-2 秒一次\r\n- **没有网络** - Lua 脚本无法打开 TCP/UDP socket\r\n\r\n### 图形编辑器限制\r\n\r\n- 为维持合理性能，每个图形最多约 **100 个节点**\r\n- 连接很多的复杂图形可能编译较慢\r\n- 编辑器（当前）不支持子图或嵌套图形\r\n\r\n### 调试\r\n\r\n- 开发期间请多使用**发送 GCS 文字**节点来追踪数值\r\n- 开发消息请将严重程度设为 **Debug （7）**\r\n- 使用**记录到文件**节点记录数据，供飞行后分析\r\n- 若脚本无法启动，请检查 SD 卡上的 `/scripts/` 是否有错误记录\r\n- 常见问题：nil 值（传感器不可用）、除以零、超出内存限制\r\n\r\n### 脚本文件位置\r\n\r\n- ArduPilot 从 SD 卡上的 `/scripts/` 目录加载脚本\r\n- 脚本文件名必须以 `.lua` 结尾\r\n- 脚本在开机时加载：新增/变更脚本后请重新启动飞控\r\n- 多数主板一次只会执行一个脚本（受内存限制）\r\n",
       "title": "提示与限制"
     }
   },
@@ -53,14 +53,14 @@
     "docs": "文件",
     "exportLua": "导出 Lua",
     "goBack": "返回",
-    "newDiscardMessage": "目前的图形有未保存的变更。建立新图形会舍弃它们。",
+    "newDiscardMessage": "当前的图形有未保存的变更。建立新图形会舍弃它们。",
     "newGraph": "新图形",
     "ok": "OK",
     "redo": "重做",
-    "templates": "范本"
+    "templates": "模板"
   },
   "inspectorPanel": {
-    "customLuaHint": "输入脚位可当作区域变数使用。结尾请以 <code>return</code> 依序列出输出脚位。",
+    "customLuaHint": "输入引脚可当作局部变量使用。结尾请以 <code>return</code> 按顺序列出输出引脚。",
     "descriptionPlaceholder": "这个脚本做什么？",
     "inputs": "输入",
     "outputs": "输出",
@@ -89,7 +89,7 @@
   },
   "nodeLibrary": {
     "action-gcs-text": {
-      "description": "在地面控制站显示消息",
+      "description": "在地面站显示消息",
       "inputs": {
         "trigger": "触发"
       },
@@ -103,7 +103,7 @@
           "4": "警告",
           "5": "注意",
           "6": "信息",
-          "7": "除错"
+          "7": "调试"
         }
       },
       "props": {
@@ -122,18 +122,18 @@
       "label": "记录到文件",
       "options": {
         "separator": {
-          "0": "逗号 (CSV)",
+          "0": "逗号 （CSV）",
           "1": "分号",
-          "2": "Tab"
+          "2": "制表符"
         }
       },
       "props": {
         "filename": "文件名称",
-        "separator": "分隔符号"
+        "separator": "分隔符"
       }
     },
     "action-mavlink-on-user-cmd": {
-      "description": "接收从 GCS 传来的 MAVLink 用户指令 (MAV_CMD_USER_1..5)。携带 4 个浮点数 + 纬度/经度/高度。",
+      "description": "接收从 GCS 传来的 MAVLink 用户指令 （MAV_CMD_USER_1..5）。携带 4 个浮点数 + 纬度/经度/高度。",
       "label": "收到 MAV_CMD_USER_*",
       "options": {
         "cmd_id": {
@@ -157,24 +157,24 @@
       }
     },
     "action-play-tune": {
-      "description": "在蜂鸣器上播放音调/旋律(MML 记谱）",
+      "description": "在蜂鸣器上播放音调/旋律（MML 记谱）",
       "inputs": {
         "trigger": "触发"
       },
       "label": "播放音调",
       "props": {
-        "tune": "音调 (MML)"
+        "tune": "音调 （MML）"
       }
     },
     "action-publish-named-float": {
-      "description": "通过 MAVLink 发送 NAMED_VALUE_FLOAT（名称最多 10 个字元）。用于心跳与轻量的发布/订阅。",
+      "description": "通过 MAVLink 发送 NAMED_VALUE_FLOAT（名称最多 10 个字符）。用于心跳与轻量的发布/订阅。",
       "inputs": {
         "trigger": "触发",
         "value": "值"
       },
       "label": "发布 Named Float",
       "props": {
-        "name": "名称（最多 10 个字元）"
+        "name": "名称（最多 10 个字符）"
       }
     },
     "action-relay": {
@@ -200,7 +200,7 @@
         "data": "数据",
         "trigger": "触发"
       },
-      "label": "序列写入",
+      "label": "串口写入",
       "options": {
         "line_ending": {
           "0": "无",
@@ -210,7 +210,7 @@
       },
       "props": {
         "baud": "波特率",
-        "instance": "脚本序列实例",
+        "instance": "脚本串口实例",
         "line_ending": "行尾"
       }
     },
@@ -249,14 +249,14 @@
       }
     },
     "action-set-servo": {
-      "description": "将伺服输出设为特定 PWM 值",
+      "description": "将舵机输出设为特定 PWM 值",
       "inputs": {
         "pwm": "PWM",
         "trigger": "触发"
       },
-      "label": "设置伺服",
+      "label": "设置舵机",
       "props": {
-        "servo_num": "伺服编号"
+        "servo_num": "舵机编号"
       }
     },
     "action-set-target-location": {
@@ -268,7 +268,7 @@
       "label": "设置目标位置"
     },
     "action-set-waypoint": {
-      "description": "设置目前任务指令索引（跳到某个航点）",
+      "description": "设置当前任务指令索引（跳到某个航点）",
       "inputs": {
         "trigger": "触发"
       },
@@ -278,12 +278,12 @@
       }
     },
     "action-socket-send": {
-      "description": "通过飞控网路堆叠以 UDP 或 TCP 发送字符串。需要具网路功能的主板，且 NET_ENABLE = 1(ArduPilot 4.5+)。",
+      "description": "通过飞控网络堆叠以 UDP 或 TCP 发送字符串。需要具网络功能的主板，且 NET_ENABLE = 1(ArduPilot 4.5+)。",
       "inputs": {
         "data": "数据",
         "trigger": "触发"
       },
-      "label": "网路发送",
+      "label": "网络发送",
       "options": {
         "protocol": {
           "0": "UDP",
@@ -297,30 +297,30 @@
       }
     },
     "flow-comment": {
-      "description": "用于文件说明的文字注解，对代码没有影响",
-      "label": "注解",
+      "description": "用于文件说明的文字注释，对代码没有影响",
+      "label": "注释",
       "props": {
-        "text": "注解"
+        "text": "注释"
       }
     },
     "flow-custom-lua": {
-      "description": "插入你自己的 Lua 程序片段。输入脚位会以脚位名称命名的区域变数传入；片段结尾请以「return <output pins>」喂给下游节点。",
-      "label": "自订 Lua",
+      "description": "插入你自己的 Lua 代码片段。输入引脚会以引脚名称命名的局部变量传入；片段结尾请以「return <output pins>」喂给下游节点。",
+      "label": "自定义 Lua",
       "props": {
         "code": "Lua 代码",
-        "inputs": "输入脚位（以逗号分隔）",
-        "outputs": "输出脚位（以逗号分隔）"
+        "inputs": "输入引脚（以逗号分隔）",
+        "outputs": "输出引脚（以逗号分隔）"
       }
     },
     "logic-and": {
-      "description": "逻辑 AND:两个输入都为 true 才为 true",
+      "description": "逻辑 AND：两个输入都为 true 才为 true",
       "label": "AND",
       "outputs": {
         "result": "结果"
       }
     },
     "logic-compare": {
-      "description": "以选定的运算子比较两个数字",
+      "description": "以选定的运算符比较两个数字",
       "label": "比较",
       "options": {
         "operator": {
@@ -336,7 +336,7 @@
         "result": "结果"
       },
       "props": {
-        "operator": "运算子"
+        "operator": "运算符"
       }
     },
     "logic-if-else": {
@@ -346,8 +346,8 @@
       },
       "label": "如果 / 否则",
       "outputs": {
-        "false_out": "False",
-        "true_out": "True"
+        "false_out": "假",
+        "true_out": "真"
       }
     },
     "logic-not": {
@@ -361,7 +361,7 @@
       }
     },
     "logic-or": {
-      "description": "逻辑 OR:任一输入为 true 即为 true",
+      "description": "逻辑 OR：任一输入为 true 即为 true",
       "label": "OR",
       "outputs": {
         "result": "结果"
@@ -386,12 +386,12 @@
       "inputs": {
         "value": "值"
       },
-      "label": "Switch",
+      "label": "开关",
       "outputs": {
         "case_0": "情况 0",
         "case_1": "情况 1",
         "case_2": "情况 2",
-        "default": "预设"
+        "default": "默认"
       },
       "props": {
         "case0_val": "情况 0 值",
@@ -431,14 +431,14 @@
       }
     },
     "math-divide": {
-      "description": "两数相除 (A / B),含除以零保护",
+      "description": "两数相除 (A / B)，含除以零保护",
       "label": "除",
       "outputs": {
         "result": "结果"
       }
     },
     "math-location-bearing": {
-      "description": "从位置 A 到位置 B 的罗盘方位（度）(0=北,90=东）",
+      "description": "从位置 A 到位置 B 的罗盘方位（度）（0=北，90=东）",
       "inputs": {
         "from": "从",
         "to": "到"
@@ -452,14 +452,14 @@
       "description": "两个位置之间的水平距离（公尺）",
       "label": "距离 A→B",
       "outputs": {
-        "distance_m": "距离 (m)"
+        "distance_m": "距离 （m）"
       }
     },
     "math-location-offset": {
       "description": "依方位（度）+ 距离（公尺）向前投影一个位置。回传新的位置。",
       "inputs": {
         "bearing_deg": "方位 (°)",
-        "distance_m": "距离 (m)",
+        "distance_m": "距离 （m）",
         "from": "从"
       },
       "label": "偏移位置",
@@ -512,47 +512,47 @@
       }
     },
     "sensor-ahrs-location": {
-      "description": "来自 AHRS 的实时载具位置(Location 对象：纬度/经度/高度合为一个值）",
+      "description": "来自 AHRS 的实时载具位置（Location 对象：纬度/经度/高度合为一个值）",
       "label": "AHRS 位置",
       "outputs": {
         "location": "位置"
       }
     },
     "sensor-airspeed": {
-      "description": "量测的空速(m/s)",
+      "description": "量测的空速（m/s）",
       "label": "空速",
       "outputs": {
         "airspeed_ms": "空速 (m/s)"
       }
     },
     "sensor-armed": {
-      "description": "载具目前是否已解锁",
+      "description": "载具当前是否已解锁",
       "label": "解锁状态",
       "outputs": {
         "is_armed": "已解锁"
       }
     },
     "sensor-attitude": {
-      "description": "载具目前姿态（横滚、俯仰、偏航）,单位为度",
+      "description": "载具当前姿态（横滚、俯仰、偏航），单位为度",
       "label": "姿态",
       "outputs": {
-        "pitch": "俯仰 (deg)",
-        "roll": "横滚 (deg)",
-        "yaw": "偏航 (deg)"
+        "pitch": "俯仰 （deg）",
+        "roll": "横滚 （deg）",
+        "yaw": "偏航 （deg）"
       }
     },
     "sensor-baro-alt": {
       "description": "气压高度，单位为公尺",
       "label": "气压高度",
       "outputs": {
-        "alt_m": "高度 (m)"
+        "alt_m": "高度 （m）"
       }
     },
     "sensor-battery": {
       "description": "电池电压、电流与剩余百分比",
       "label": "电池",
       "outputs": {
-        "current": "电流 (A)",
+        "current": "电流 （A）",
         "remaining_pct": "剩余 %",
         "voltage": "电压"
       },
@@ -562,38 +562,38 @@
     },
     "sensor-current-waypoint": {
       "description": "使用中的任务导航航点索引与指令 ID。",
-      "label": "目前航点",
+      "label": "当前航点",
       "outputs": {
         "index": "索引",
         "nav_id": "指令 ID"
       }
     },
     "sensor-flight-mode": {
-      "description": "来自载具的目前飞行模式编号",
+      "description": "来自载具的当前飞行模式编号",
       "label": "飞行模式",
       "outputs": {
         "mode_num": "模式编号"
       }
     },
     "sensor-gpio-read": {
-      "description": "读取 GPIO 脚位的数位准位。可接上 Pin 输入以由参数设置，或使用 Pin 属性。每个周期轮询一次：比执行间隔更短的脉冲会被漏掉，这类请使用脉冲输入（中断）。",
+      "description": "读取 GPIO 引脚的数字电平。可接上 Pin 输入以由参数设置，或使用 Pin 属性。每个周期轮询一次：比执行间隔更短的脉冲会被漏掉，这类请使用脉冲输入（中断）。",
       "inputs": {
-        "pin": "脚位"
+        "pin": "引脚"
       },
-      "label": "读取 GPIO 脚位",
+      "label": "读取 GPIO 引脚",
       "outputs": {
         "is_high": "为高",
-        "level": "准位 (0/1)"
+        "level": "电平 (0/1)"
       },
       "props": {
-        "pin": "脚位（备用）"
+        "pin": "引脚（备用）"
       }
     },
     "sensor-gps": {
-      "description": "来自飞控的目前 GPS 座标",
+      "description": "来自飞控的当前 GPS 坐标",
       "label": "GPS 位置",
       "outputs": {
-        "alt": "高度 (m)",
+        "alt": "高度 （m）",
         "lat": "纬度",
         "lng": "经度"
       }
@@ -602,7 +602,7 @@
       "description": "GPS 定位类型与卫星数",
       "label": "GPS 状态",
       "outputs": {
-        "fix_type": "定位类型 (0-6)",
+        "fix_type": "定位类型 （0-6）",
         "has_3d_fix": "有 3D 定位",
         "num_sats": "卫星"
       },
@@ -618,10 +618,10 @@
       }
     },
     "sensor-home": {
-      "description": "Home 位置座标与高度。同时提供浮点分量与 Location 对象，可串接到位置运算节点。",
+      "description": "Home 位置坐标与高度。同时提供浮点分量与 Location 对象，可串接到位置运算节点。",
       "label": "Home 位置",
       "outputs": {
-        "alt": "高度 (m)",
+        "alt": "高度 （m）",
         "lat": "纬度",
         "lng": "经度",
         "location": "位置"
@@ -635,11 +635,11 @@
         "value": "值"
       },
       "props": {
-        "name": "名称（最多 10 个字元）"
+        "name": "名称（最多 10 个字符）"
       }
     },
     "sensor-param-get": {
-      "description": "实时读取飞控参数（例如 CAM1_TRIGG_DIST)。若参数不存在则回传 0。",
+      "description": "实时读取飞控参数（例如 CAM1_TRIGG_DIST）。若参数不存在则回传 0。",
       "label": "读取参数",
       "outputs": {
         "value": "值"
@@ -649,22 +649,22 @@
       }
     },
     "sensor-pwm-pulse": {
-      "description": "通过硬件中断捕捉 GPIO 脚位上的短脉冲（例如 1-2 ms 的相机热靴脉冲）。脉冲宽度会在周期之间被锁存，因此慢速轮询也看得到。该脚位需要 SERVOx_FUNCTION = -1,且不可与 CAM1_FEEDBAK_PIN 共用（先挂上的人拥有中断）。",
+      "description": "通过硬件中断捕捉 GPIO 引脚上的短脉冲（例如 1-2 ms 的相机热靴脉冲）。脉冲宽度会在周期之间被锁存，因此慢速轮询也看得到。该引脚需要 SERVOx_FUNCTION = -1，且不可与 CAM1_FEEDBAK_PIN 共用（先挂上的人拥有中断）。",
       "label": "脉冲输入（中断）",
       "outputs": {
-        "ok": "脚位 OK",
+        "ok": "引脚 OK",
         "pulse_seen": "已见脉冲",
-        "width_us": "宽度 (us)"
+        "width_us": "宽度 （us）"
       },
       "props": {
-        "pin": "脚位"
+        "pin": "引脚"
       }
     },
     "sensor-rangefinder": {
       "description": "测距仪距离，单位为公尺",
       "label": "测距仪",
       "outputs": {
-        "distance_m": "距离 (m)"
+        "distance_m": "距离 （m）"
       },
       "props": {
         "instance": "实例"
@@ -681,7 +681,7 @@
         }
       },
       "outputs": {
-        "distance_m": "距离 (m)"
+        "distance_m": "距离 （m）"
       },
       "props": {
         "orientation": "方向"
@@ -694,24 +694,24 @@
         "is_high": "为高",
         "is_low": "为低",
         "is_mid": "为中",
-        "state": "状态 (0-2)"
+        "state": "状态 （0-2）"
       },
       "props": {
         "aux_fn": "辅助功能"
       }
     },
     "sensor-rc-channel": {
-      "description": "读取特定 RC 通道的值 (1-16)",
+      "description": "读取特定 RC 通道的值 （1-16）",
       "label": "RC 通道",
       "outputs": {
-        "value_us": "值 (us)"
+        "value_us": "值 （us）"
       },
       "props": {
         "channel": "通道"
       }
     },
     "sensor-velocity-ned": {
-      "description": "载具在北/东/下座标系中的速度 (m/s)",
+      "description": "载具在北/东/下坐标系中的速度 (m/s)",
       "label": "速度 NED",
       "outputs": {
         "vel_d": "下 (m/s)",
@@ -723,7 +723,7 @@
       "description": "估算的风速与风向",
       "label": "风估算",
       "outputs": {
-        "dir_deg": "方向 (deg)",
+        "dir_deg": "方向 （deg）",
         "speed_ms": "速度 (m/s)"
       }
     },
@@ -732,12 +732,12 @@
       "inputs": {
         "input": "输入"
       },
-      "label": "去弹跳",
+      "label": "去抖",
       "outputs": {
         "output": "输出"
       },
       "props": {
-        "delay_ms": "延迟 (ms)"
+        "delay_ms": "延迟 （ms）"
       }
     },
     "timing-falling-edge": {
@@ -751,10 +751,10 @@
       }
     },
     "timing-latch": {
-      "description": "Set/Reset 正反器：Set 让输出打开,Reset 让它关闭",
+      "description": "Set/Reset 正反器：Set 让输出打开，Reset 让它关闭",
       "inputs": {
-        "reset": "Reset",
-        "set": "Set"
+        "reset": "复位",
+        "set": "置位"
       },
       "label": "闩锁 / 切换",
       "outputs": {
@@ -776,7 +776,7 @@
       "inputs": {
         "input": "输入"
       },
-      "label": "上升缘",
+      "label": "上升沿",
       "outputs": {
         "triggered": "已触发"
       }
@@ -791,21 +791,21 @@
         "flow": "流程"
       },
       "props": {
-        "interval_ms": "间隔 (ms)"
+        "interval_ms": "间隔 （ms）"
       }
     },
     "timing-watchdog": {
-      "description": "若在逾时时间内没有收到 Kick,就输出 Expired。每次 Kick 都会重置计时器，而 Enable 为 false 时会保持重置。",
+      "description": "若在超时时间内没有收到 Kick，就输出 Expired。每次 Kick 都会重置计时器，而 Enable 为 false 时会保持重置。",
       "inputs": {
         "enable": "启用",
-        "kick": "Kick"
+        "kick": "喂狗"
       },
       "label": "看门狗计时器",
       "outputs": {
-        "expired": "Expired"
+        "expired": "已超时"
       },
       "props": {
-        "timeout_ms": "逾时 (ms)"
+        "timeout_ms": "超时 （ms）"
       }
     },
     "var-constant": {
@@ -827,24 +827,24 @@
       }
     },
     "var-get": {
-      "description": "读取具名变数",
-      "label": "取得变数",
+      "description": "读取具名变量",
+      "label": "获取变量",
       "outputs": {
         "value": "值"
       },
       "props": {
-        "name": "变数名称"
+        "name": "变量名称"
       }
     },
     "var-set": {
-      "description": "写入具名变数",
+      "description": "写入具名变量",
       "inputs": {
         "trigger": "触发",
         "value": "值"
       },
-      "label": "设置变数",
+      "label": "设置变量",
       "props": {
-        "name": "变数名称"
+        "name": "变量名称"
       }
     }
   },
@@ -863,12 +863,12 @@
     "Utility": "工具"
   },
   "templateDialog": {
-    "loadDiscardMessage": "目前的图形有未保存的变更。加载范本会舍弃它们。",
-    "loadTemplate": "加载范本",
-    "noMatches": "没有符合「{{query}}」的范本",
-    "searchPlaceholder": "搜索范本...",
+    "loadDiscardMessage": "当前的图形有未保存的变更。加载模板会舍弃它们。",
+    "loadTemplate": "加载模板",
+    "noMatches": "没有符合「{{query}}」的模板",
+    "searchPlaceholder": "搜索模板...",
     "subtitle": "预先建好的脚本，让你快速上手",
-    "title": "图形范本"
+    "title": "图形模板"
   },
   "templates": {
     "ad-heartbeat-beacon": {
@@ -876,8 +876,8 @@
       "name": "ArduDeck 心跳信标"
     },
     "aerial-survey": {
-      "description": "当所有测绘条件都符合时（已解锁、处于 AUTO 模式、移动中且在正确高度）,依计时间隔自动触发相机。每张照片都会记录 GPS 座标。",
-      "name": "空拍测绘自动化"
+      "description": "当所有测绘条件都符合时（已解锁、处于 AUTO 模式、移动中且在正确高度），依计时间隔自动触发相机。每张照片都会记录 GPS 坐标。",
+      "name": "航测自动化"
     },
     "attitude-led-display": {
       "description": "依载具姿态驱动 NeoPixel LED 颜色：横滚控制红色、俯仰控制绿色、偏航控制蓝色。由辅助开关启用，仅在已解锁时运作。",
@@ -888,7 +888,7 @@
       "name": "低电量自动 RTL"
     },
     "camera-on-arm": {
-      "description": "载具解锁或上锁时发出通知。可搭配继电器/伺服扩展，自动开始相机录影。基于 ArduPilot runcam_on_arm.lua。",
+      "description": "载具解锁或上锁时发出通知。可搭配继电器/舵机扩展，自动开始相机录影。基于 ArduPilot runcam_on_arm.lua。",
       "name": "解锁/上锁时相机动作"
     },
     "camera-trigger": {
@@ -896,19 +896,19 @@
       "name": "相机触发"
     },
     "camera-trigger-watchdog": {
-      "description": "当依距离触发的相机实际上没有再拍照时（例如过热）,在 GCS 警告并附上目前航点。以硬件中断捕捉热靴脉冲：轮询 gpio:read 会漏掉 1-2 ms 的脉冲。",
+      "description": "当依距离触发的相机实际上没有再拍照时（例如过热），在 GCS 警告并附上当前航点。以硬件中断捕捉热靴脉冲：轮询 gpio:read 会漏掉 1-2 ms 的脉冲。",
       "name": "相机触发看门狗"
     },
     "custom-serial-telemetry": {
-      "description": "用自订 Lua 节点把位置与电池信息格式化成自订文字句子，并每秒从串口与 UDP 视频流输出一次。",
-      "name": "自订序列遥测"
+      "description": "用自定义 Lua 节点把位置与电池信息格式化成自定义文字句子，并每秒从串口与 UDP 视频流输出一次。",
+      "name": "自定义串口遥测"
     },
     "depth-logger": {
       "description": "将测距仪深度与 GPS 位置记录到 CSV 文件，由 RC 辅助开关触发。",
       "name": "深度记录器"
     },
     "distance-triggered-rtl": {
-      "description": "当载具偏离 Home 超过 200m 时，自动切换到 RTL 模式。以位置运算加模式变更实作的备用地理围栏。",
+      "description": "当载具偏离 Home 超过 200m 时，自动切换到 RTL 模式。以位置运算加模式变更实现的备用地理围栏。",
       "name": "依距离触发的 RTL"
     },
     "flight-data-logger": {
@@ -921,18 +921,18 @@
     },
     "geofence-alert": {
       "description": "高度超过安全限制时发出警告。",
-      "name": "地理围栏警示"
+      "name": "地理围栏警告"
     },
     "gimbal-stabilizer": {
-      "description": "使用 RC 输入并带姿态补偿的双轴相机云台稳定。从操作者的摇杆输入中扣除载具俯仰/横滚，使伺服输出平顺稳定。",
+      "description": "使用 RC 输入并带姿态补偿的双轴相机云台稳定。从操作者的摇杆输入中扣除载具俯仰/横滚，使舵机输出平顺稳定。",
       "name": "云台稳定器"
     },
     "gps-satellite-monitor": {
-      "description": "当 GPS 定位品质低于 3D 定位时，以蜂鸣器警示飞手。",
+      "description": "当 GPS 定位质量低于 3D 定位时，以蜂鸣器警告飞手。",
       "name": "GPS 卫星监控"
     },
     "guided-set-target-rc": {
-      "description": "当 RC AUX 开关在 GUIDED 模式处于 HIGH 时，指令载具飞到距 Home 固定偏移的位置（例如起飞点北方 50m)。",
+      "description": "当 RC AUX 开关在 GUIDED 模式处于 HIGH 时，指令载具飞到距 Home 固定偏移的位置（例如起飞点北方 50m）。",
       "name": "以 RC 开关设置 GUIDED 目标"
     },
     "landing-gear": {
@@ -944,7 +944,7 @@
       "name": "LED 亮度开关"
     },
     "low-battery-warning": {
-      "description": "电池电压低于阈值时，发送 GCS 警示。",
+      "description": "电池电压低于阈值时，发送 GCS 警告。",
       "name": "低电量警告"
     },
     "mode-announcement": {
@@ -952,15 +952,15 @@
       "name": "模式播报"
     },
     "multi-timer-scheduler": {
-      "description": "三个以不同速率独立运行的计时器：每 2 秒记录 GPS、每 10 秒有条件的电池警告，以及每 30 秒的 GPS 品质检查。全部受解锁状态控制。",
-      "name": "多计时器任务排程器"
+      "description": "三个以不同速率独立运行的计时器：每 2 秒记录 GPS、每 10 秒有条件的电池警告，以及每 30 秒的 GPS 质量检查。全部受解锁状态控制。",
+      "name": "多定时器任务调度器"
     },
     "patrol-two-anchors": {
       "description": "每 30 秒在距 Home 的两个固定偏移之间切换 GUIDED 目标。简单的临时巡逻，不需要任务。",
       "name": "两个锚点之间巡逻"
     },
     "payload-drop": {
-      "description": "当 RC 辅助开关拨到 HIGH 时，释放以伺服驱动的载荷。",
+      "description": "当 RC 辅助开关拨到 HIGH 时，释放以舵机驱动的载荷。",
       "name": "载荷投放"
     },
     "preflight-health-check": {
@@ -972,8 +972,8 @@
       "name": "速度限制警告"
     },
     "telemetry-beacon": {
-      "description": "每秒将到 Home 的距离、卫星数与电池电压发布为 NAMED_VALUE_FLOAT,供自订 GCS 仪表板使用。",
-      "name": "遥测信标(3 通道）"
+      "description": "每秒将到 Home 的距离、卫星数与电池电压发布为 NAMED_VALUE_FLOAT，供自定义 GCS 仪表板使用。",
+      "name": "遥测信标（3 通道）"
     },
     "terrain-follow": {
       "description": "当测距仪读数超出地形跟随的安全范围时发出警告。",

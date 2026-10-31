@@ -2,27 +2,27 @@
   "briefing": {
     "clouds": "云量",
     "context": "背景信息",
-    "fetching": "正在取得预报...",
+    "fetching": "正在获取预报...",
     "flightConditions": "飞行条件",
     "forecastValid": "预报有效时间：{{clock}}（场地当地时间）· Open-Meteo",
     "launchGates": "起飞门槛",
-    "limits": "限制：阵风 {{gustC}} / {{gustN}} m/s,风速 {{windC}} / {{windN}} m/s,降水概率 {{probC}} / {{probN}}%,降水量 {{mmC}} / {{mmN}} mm,能见度低于 {{visC}} / {{visN}} km。",
+    "limits": "限制：阵风 {{gustC}} / {{gustN}} m/s，风速 {{windC}} / {{windN}} m/s，降水概率 {{probC}} / {{probN}}%，降水量 {{mmC}} / {{mmN}} mm，能见度低于 {{visC}} / {{visN}} km。",
     "locationAt": "{{location}} · 当地时间 {{clock}}",
     "noPosition": "没有可简报的位置",
     "noPositionHint": "请连接载具、设置 Home 位置，或打开任务地图，让简报知道要查询哪里的天气。",
     "precip": "降水",
     "precipChance": "降水概率",
-    "precipChanceTip": "注意 {{caution}}%,禁飞 {{nogo}}%",
-    "precipTip": "注意 {{caution}} mm,禁飞 {{nogo}} mm",
+    "precipChanceTip": "注意 {{caution}}%，禁飞 {{nogo}}%",
+    "precipTip": "注意 {{caution}} mm，禁飞 {{nogo}} mm",
     "pressure": "气压",
     "refreshTip": "刷新预报",
     "temp": "气温",
     "title": "飞行前气象简报",
-    "unavailable": "无法取得预报",
+    "unavailable": "无法获取预报",
     "updated": "已于 {{time}} 更新",
     "visibility": "能见度",
     "visibilityTip": "低于 {{caution}} km 注意，低于 {{nogo}} km 禁飞",
-    "windLimitTip": "注意 {{caution}},禁飞 {{nogo}} {{unit}}"
+    "windLimitTip": "注意 {{caution}}，禁飞 {{nogo}} {{unit}}"
   },
   "condition": {
     "clear": "晴",
@@ -36,25 +36,25 @@
     "calm": "平静",
     "declination": "磁偏角",
     "fieldStrength": "磁场强度",
-    "forecastKp": "预测 Kp(72 小时）",
+    "forecastKp": "预测 Kp（72 小时）",
     "forecastPeak": "72 小时预测峰值",
     "inHours": "{{hours}} 小时后",
     "inclination": "磁倾角",
-    "kpBarTip": "Kp {{kp}} ({{gScale}}),当地时间 {{clock}}",
-    "kpThresholdTip": "注意 Kp {{caution}},禁飞 Kp {{nogo}}(G1 风暴）",
+    "kpBarTip": "Kp {{kp}} （{{gScale}}），当地时间 {{clock}}",
+    "kpThresholdTip": "注意 Kp {{caution}}，禁飞 Kp {{nogo}}（G1 风暴）",
     "noStorm": "72 小时内无风暴预报",
     "peakKp": "峰值 Kp {{kp}}",
     "peakTip": "未来 72 小时内预测的最高 Kp",
     "sources": "Kp 来自 NOAA SWPC · 磁场来自 WMM2025（离线）",
     "title": "地磁",
-    "unavailable": "无法取得太空天气",
+    "unavailable": "无法获取太空天气",
     "unavailableHint": "无法连到 NOAA Kp 服务。天气判定不受影响。",
     "within72h": "72 小时内",
     "wmmInvalid": "WMM2025 已超出其有效期间；磁偏角与磁场数值仅为近似值。"
   },
   "locationDialog": {
     "clickToSet": "点击地图以设置简报位置",
-    "enterCoords": "输入座标",
+    "enterCoords": "输入坐标",
     "noMatches": "没有符合的结果。",
     "noPoint": "未选择任何位置",
     "resetAuto": "重置为自动",
@@ -62,7 +62,7 @@
     "searchPlaceholder": "搜索地点（城市、机场、地标）...",
     "subtitle": "点击地图放置标记，拖拽图钉微调，或搜索地点。",
     "title": "简报位置",
-    "typeCoordsTip": "输入精确座标",
+    "typeCoordsTip": "输入精确坐标",
     "useLocation": "使用此位置"
   },
   "locationPicker": {
@@ -72,16 +72,16 @@
     "planned": "计划位置"
   },
   "reason": {
-    "gustsCaution": "阵风 {{value}} 已接近限制({{limit}})。请密切监控。",
-    "gustsNogo": "阵风 {{value}} 已超过安全限制({{limit}})。有失控风险。",
-    "precipCaution": "侦测到 {{value}} mm 的小量降水。请保护机身。",
+    "gustsCaution": "阵风 {{value}} 已接近限制（{{limit}}）。请密切监控。",
+    "gustsNogo": "阵风 {{value}} 已超过安全限制（{{limit}}）。有失控风险。",
+    "precipCaution": "检测到 {{value}} mm 的小量降水。请保护机身。",
     "precipNogo": "降水量 {{value}} mm。电子设备有风险，请勿起飞。",
-    "precipProbCaution": "降水概率上升({{value}}%)。请留意天空。",
-    "precipProbNogo": "降水概率高({{value}}%)。预期一小时内会下雨。",
+    "precipProbCaution": "降水概率上升（{{value}}%）。请留意天空。",
+    "precipProbNogo": "降水概率高（{{value}}%）。预期一小时内会下雨。",
     "visibilityCaution": "能见度降低至 {{value}} km。请保持目视视线。",
-    "visibilityNogo": "能见度低，仅 {{value}} km,低于 {{limit}} km 的最低标准。",
-    "windCaution": "持续风速 {{value}} 已接近限制({{limit}})。",
-    "windNogo": "持续风速 {{value}} 已超过安全限制({{limit}})。"
+    "visibilityNogo": "能见度低，仅 {{value}} km，低于 {{limit}} km 的最低标准。",
+    "windCaution": "持续风速 {{value}} 已接近限制（{{limit}}）。",
+    "windNogo": "持续风速 {{value}} 已超过安全限制（{{limit}}）。"
   },
   "source": {
     "home": "Home 位置",
@@ -92,9 +92,9 @@
   "status": {
     "caution": "注意",
     "cautionSummary": "条件处于临界。起飞前请查看被标示的参数。",
-    "go": "GO",
+    "go": "可行",
     "goSummary": "条件在起飞限制内。",
-    "nogoPill": "NO GO",
+    "nogoPill": "不可行",
     "nogoSummary": "有一个或多个参数超过安全限制。请勿起飞。"
   }
 }

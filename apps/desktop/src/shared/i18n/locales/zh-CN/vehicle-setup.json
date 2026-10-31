@@ -11,7 +11,7 @@
       "why": "这里出错是多旋翼首次起飞翻机最常见的原因。"
     },
     "frameHeli": {
-      "name": "Helicopter",
+      "name": "直升机",
       "title": "你的直升机",
       "why": "直升机固件已经知道它是直升机。这里设置所有载具共用的部分；旋翼设置留在直升机设置中。"
     },
@@ -21,12 +21,12 @@
       "why": "让飞控板知道哪个方向是前方。"
     },
     "radio": {
-      "name": "Receiver",
+      "name": "接收机",
       "title": "连接你的接收机",
       "why": "串口上的接收机不会自动被发现。告诉 ArduDeck 它插在哪里。"
     },
     "compass": {
-      "name": "Compass",
+      "name": "罗盘",
       "title": "应该用哪个罗盘？",
       "why": "GPS 支架上的罗盘远离电机电流，通常更好。"
     },
@@ -36,7 +36,7 @@
       "why": "三个挡位，三种模式。每个挡位选一个。"
     },
     "motors": {
-      "name": "Motors",
+      "name": "电机",
       "title": "检查电机",
       "why": "一次一个电机。按你看到的回答。"
     },
@@ -56,27 +56,27 @@
       "why": "一把尺和一台厨房秤就够。ArduDeck 会算出失速速度，空速限制由此而来。"
     },
     "power": {
-      "name": "Power",
+      "name": "动力",
       "title": "用什么驱动？",
       "why": "决定油门输出以及是否需要进行电机检查。"
     },
     "extras": {
-      "name": "Extras",
+      "name": "附加部件",
       "title": "飞机上还有其他部件吗？",
       "why": "襟翼、减速板、可转向轮、起落架：每样都需要一路输出。"
     },
     "launch": {
-      "name": "Take-off",
+      "name": "起飞",
       "title": "如何起飞？",
       "why": "决定电机何时允许启动。"
     },
     "soar": {
-      "name": "Soaring",
+      "name": "滑翔",
       "title": "要使用热气流吗？",
       "why": "ArduPilot 可以在上升气流中盘旋，飞得更久。"
     },
     "airframe": {
-      "name": "Airframe",
+      "name": "机型",
       "title": "这是什么类型的飞机？",
       "why": "决定哪路输出驱动哪个舵面。"
     },
@@ -90,7 +90,7 @@
       "why": "尾座式飞机靠机翼飞行；问题是靠什么推动空气。"
     },
     "outputs": {
-      "name": "Outputs",
+      "name": "输出",
       "title": "每路输出接了什么？",
       "why": "把舵机和电调接到该机型的 ArduPilot 预期输出上。"
     },
@@ -100,7 +100,7 @@
       "why": "在 FBWA 模式下检查，此时飞控板负责增稳。舵面方向错误会导致起飞坠机。"
     },
     "thrcheck": {
-      "name": "Motor",
+      "name": "电机",
       "title": "检查电机",
       "why": "卸下桨叶。稍微推油门：电机必须转动，油门归零时停止。"
     },
@@ -125,7 +125,7 @@
       "why": "Q_ASSIST_SPEED。数值错误是常见的解锁前失败原因。"
     },
     "drive": {
-      "name": "Steering",
+      "name": "转向",
       "title": "如何转向？",
       "why": "决定输出 1 和输出 3 的功能。"
     },
@@ -169,7 +169,7 @@
       "why": "由桨叶和接线决定；ArduSub 可以在水中检测并修正。"
     },
     "joystick": {
-      "name": "Control",
+      "name": "操控",
       "title": "如何操控？",
       "why": "潜艇通常通过系绳用手柄操控，而不是遥控器。"
     }
@@ -202,30 +202,30 @@
       "aileronsY": "副翼（Y 线）",
       "aileronLeft": "副翼，左翼",
       "aileronRight": "副翼，右翼",
-      "elevator": "Elevator",
-      "rudder": "Rudder",
+      "elevator": "升降舵",
+      "rudder": "方向舵",
       "vtailLeft": "V 尾左",
       "vtailRight": "V 尾右",
       "elevonLeft": "升降副翼左",
       "elevonRight": "升降副翼右",
-      "throttle": "Throttle",
+      "throttle": "油门",
       "throttleEngine": "油门（发动机）",
-      "motor": "Motor",
+      "motor": "电机",
       "motorLeft": "电机左",
       "motorRight": "电机右",
-      "ignition": "Ignition",
-      "starter": "Starter",
+      "ignition": "点火",
+      "starter": "启动器",
       "flaperonLeft": "襟副翼左",
       "flaperonRight": "襟副翼右",
-      "flaps": "Flaps",
-      "airbrake": "Airbrake",
+      "flaps": "襟翼",
+      "airbrake": "减速板",
       "spoilerLeft": "扰流板左",
       "spoilerRight": "扰流板右",
       "groundSteering": "前轮 / 尾轮",
       "landingGear": "起落架",
       "liftMotor": "升力电机 {{n}}",
       "triYawServo": "后电机的偏航倾斜舵机",
-      "steering": "Steering",
+      "steering": "转向",
       "throttleLeft": "油门左",
       "throttleRight": "油门右",
       "omniMotor": "电机 {{n}}"
@@ -251,13 +251,13 @@
     }
   },
   "vehicle": {
-    "copter": "Copter",
-    "heli": "Helicopter",
-    "plane": "Plane",
+    "copter": "多旋翼",
+    "heli": "直升机",
+    "plane": "固定翼",
     "vtol": "VTOL",
-    "rover": "Rover",
-    "boat": "Boat",
-    "sub": "Sub"
+    "rover": "地面车",
+    "boat": "船",
+    "sub": "潜艇"
   },
   "choice": {
     "airframe": {
@@ -266,7 +266,7 @@
         "hint": "副翼、升降舵、方向舵"
       },
       "three": {
-        "label": "3-channel",
+        "label": "3 通道",
         "hint": "无副翼：方向舵转向"
       },
       "wing": {
@@ -274,7 +274,7 @@
         "hint": "两个升降副翼，无尾翼"
       },
       "vtail": {
-        "label": "V-tail",
+        "label": "V 尾",
         "hint": "副翼和 V 形尾翼"
       },
       "invv": {
@@ -312,15 +312,15 @@
     },
     "extras": {
       "flaps": {
-        "label": "Flaps",
+        "label": "襟翼",
         "hint": "独立的襟翼舵机"
       },
       "flaperon": {
-        "label": "Flaperons",
+        "label": "襟副翼",
         "hint": "兼作襟翼的副翼"
       },
       "airbrake": {
-        "label": "Airbrake",
+        "label": "减速板",
         "hint": "一路减速板输出"
       },
       "spoiler": {
@@ -332,7 +332,7 @@
         "hint": "前轮或尾轮"
       },
       "gear": {
-        "label": "Retracts",
+        "label": "收放式起落架",
         "hint": "起落架"
       }
     },
@@ -342,11 +342,11 @@
         "hint": "抛出后电机才启动"
       },
       "bungee": {
-        "label": "Bungee",
+        "label": "橡皮筋弹射",
         "hint": "长延时让桨叶避开弹射绳"
       },
       "cat": {
-        "label": "Catapult"
+        "label": "弹射"
       },
       "runway": {
         "label": "跑道，前轮",
@@ -387,15 +387,15 @@
     },
     "vtype": {
       "quad": {
-        "label": "Quadplane",
+        "label": "复合翼",
         "hint": "独立升力电机，最常见"
       },
       "tilt": {
-        "label": "Tilt-rotor",
+        "label": "倾转旋翼",
         "hint": "固定翼飞行时电机前倾"
       },
       "tail": {
-        "label": "Tailsitter",
+        "label": "尾座式",
         "hint": "以机尾立姿起飞"
       }
     },
@@ -441,7 +441,7 @@
         "hint": "电机本身可转动"
       },
       "sail": {
-        "label": "Sailboat",
+        "label": "帆船",
         "hint": "帆绞盘、翼帆或旋转桅杆"
       }
     },
@@ -503,7 +503,7 @@
         "hint": "5 个推进器"
       },
       "7": {
-        "label": "Custom",
+        "label": "自定义",
         "hint": "自定义推进器布局"
       }
     },
@@ -628,7 +628,7 @@
       "rcWarn": "RC 信号无法穿透水体：接收机需要系缆浮标。"
     },
     "check": {
-      "surfaces": "切换至 FBWA，卸下桨叶。不要在发射机上换插头或反向：在这里切换「反向」。",
+      "surfaces": "切换至 FBWA，卸下桨叶。不要在遥控器上换插头或反向：在这里切换「反向」。",
       "surfacesMixed": "混合舵面：如果只有一个轴错误，说明左右功能对调了（在「输出」中交换）。如果两个轴都错，切换「反向」。",
       "thrcheck": "卸下桨叶。普通 PWM 电调可能需要先做一次性油门行程校准。",
       "thrcheckIc": "自动重启尝试之间切勿靠近桨叶。",
@@ -641,9 +641,9 @@
   "wizard": {
     "title": "设置新载具",
     "stepOf": "第 {{n}} 步，共 {{total}} 步",
-    "back": "Back",
-    "next": "Next",
-    "finish": "Finish",
+    "back": "上一步",
+    "next": "下一步",
+    "finish": "完成",
     "reviewNote": "更改在写入前会显示供你确认",
     "reviewing": "等待你的确认...",
     "restarting": "正在重新启动飞控...",
@@ -653,26 +653,26 @@
     "restartNeeded": "这只有在飞控重新启动后才会生效。",
     "restartFor": "这些设置会在重新启动后出现：{{params}}",
     "restartNow": "立即重新启动",
-    "later": "Later",
+    "later": "稍后",
     "restartFailed": "飞控未接受重新启动。",
     "notBack": "飞控在重新启动后没有恢复连接。",
     "stillMissing": "重新启动后仍然缺失：{{params}}。此固件可能没有这些参数。",
     "noVehicle": "连接 ArduPilot 载具并加载其参数以开始。",
     "blocker": "飞控报告：{{text}}",
     "state": {
-      "found": "found",
-      "needsPilot": "check"
+      "found": "已找到",
+      "needsPilot": "需检查"
     },
-    "writes": "Writes",
+    "writes": "写入",
     "afterRestart": "重新启动后",
     "source": "来自 {{source}} 的值",
     "size": {
       "preset": "{{prop}} 寸桨，{{mm}} mm",
       "frame": "电机到电机，对角线",
       "frameNote": "大多数机架印的尺寸",
-      "prop": "Propeller",
+      "prop": "桨叶",
       "propNote": "桨上的第一个数字，10x4.5 就是 10",
-      "cells": "Battery",
+      "cells": "电池",
       "cellsNote": "由电池电压读取，如有错误请更改",
       "overlap": "{{prop}} 寸桨对 {{mm}} mm 机架来说太大：它们会互相碰撞。",
       "toScale": "按比例：{{mm}} mm 电机间距，{{prop}} 寸桨。",
@@ -707,22 +707,22 @@
         "hint": "位于机头，升降副翼转向"
       },
       "copter": {
-        "label": "Copter-style",
+        "label": "多旋翼式",
         "hint": "3 个或更多电机，像以尾部站立的四轴"
       }
     },
     "frameClass": {
-      "quad": "Quad",
-      "hexa": "Hexa",
-      "octa": "Octa",
+      "quad": "四轴",
+      "hexa": "六轴",
+      "octa": "八轴",
       "x8": "X8（共轴四轴）",
       "y6": "Y6（共轴三轴）",
       "dodeca": "共轴六轴",
-      "tri": "Tri",
-      "deca": "Deca",
+      "tri": "三轴",
+      "deca": "十轴",
       "single": "单旋翼机",
       "coax": "共轴直升机",
-      "bi": "Bicopter"
+      "bi": "双旋翼"
     },
     "noPicture": "此机架没有电机示意图。",
     "frameNote": {
@@ -758,7 +758,7 @@
     "outputsNote": "先按 ArduPilot 默认值，附加部件接在下一个空闲输出上。只有接线不同时才更改；舵面检查会抓出错误。",
     "outputsNoteVtol": "升力电机使用 4 + 电机编号，由 Q_ENABLE 设置。附加部件会跳过这些输出。",
     "check": {
-      "button": "Check",
+      "button": "检查",
       "stab": {
         "title": "增稳检查",
         "text": "向右倾斜飞机：副翼会抵抗"
@@ -776,19 +776,19 @@
         "text": "拨动它：点火被切断"
       },
       "start": {
-        "title": "Start",
+        "title": "启动",
         "text": "启动器运转，然后发动机怠速"
       },
       "spin": {
-        "title": "Spin",
+        "title": "转动",
         "text": "稍微推油门：电机转动"
       },
       "stop": {
-        "title": "Stop",
+        "title": "停止",
         "text": "油门归零：它停止"
       },
       "balance": {
-        "title": "Balance",
+        "title": "平衡",
         "text": "车轮离地，在 Manual 模式下用手向前推：车轮向前驱动"
       },
       "motorA": {
@@ -812,11 +812,11 @@
         "text": "向前转动布局中显示的轮子"
       },
       "sail": {
-        "title": "Sail",
+        "title": "帆",
         "text": "油门杆向下收帆"
       },
       "rudder": {
-        "title": "Rudder",
+        "title": "方向舵",
         "text": "摇杆向右：船会向右转"
       },
       "inWater": {
@@ -832,11 +832,11 @@
         "text": "在水面，下潜之前"
       }
     },
-    "reversed": "Reversed",
-    "normal": "Normal",
-    "yes": "Yes",
+    "reversed": "反向",
+    "normal": "正常",
+    "yes": "是",
     "psize": {
-      "span": "Wingspan",
+      "span": "翼展",
       "spanNote": "翼尖到翼尖",
       "root": "中段弦长",
       "rootNote": "前缘到后缘",
@@ -853,14 +853,14 @@
       "note": "Plane 4.5 重命名了这些参数：旧固件使用 ARSPD_FBW_MIN、TRIM_ARSPD_CM 和 ARSPD_FBW_MAX。ArduDeck 会写入飞控板所支持的名称。"
     },
     "battery": {
-      "chemistry": "Chemistry",
+      "chemistry": "化学类型",
       "chem": {
         "lipo": "LiPo",
         "lipohv": "LiPo HV",
         "liion": "Li-ion"
       },
-      "cells": "Cells",
-      "capacity": "Capacity",
+      "cells": "电芯",
+      "capacity": "容量",
       "monitor": {
         "4": {
           "label": "电源模块",
@@ -880,10 +880,10 @@
         }
       },
       "mark": {
-        "critical": "critical",
-        "low": "low",
-        "arm": "arm",
-        "full": "full"
+        "critical": "严重",
+        "low": "低",
+        "arm": "解锁",
+        "full": "满电"
       },
       "note": "电压来自 Mission Planner 初始参数。请用万用表在「电池」页校准电压和电流读数。"
     },
@@ -897,7 +897,7 @@
     "ready": {
       "none": "没有阻碍。可以解锁。",
       "noneSub": "装上桨叶，退后，然后解锁。",
-      "count_one": "{{count}} things still in the way",
+      "count_one": "仍有 {{count}} 项阻碍",
       "count_other": "仍有 {{count}} 项未完成",
       "sub": "可以按任意顺序处理。飞控一确认，列表就会更新。",
       "fix": "在 {{step}} 中处理"
@@ -911,9 +911,9 @@
     "subModes": "潜艇用手柄按键切换模式，而不是开关。ArduSub 默认值：1 Manual、2 Depth Hold、3 Stabilize。可在 Cockpit 或摇杆设置中更改。",
     "alreadySet": "已在飞控板上设置",
     "tag": {
-      "recommended": "recommended",
-      "unverified": "unverified",
-      "caution": "caution"
+      "recommended": "推荐",
+      "unverified": "未验证",
+      "caution": "注意"
     }
   }
 }

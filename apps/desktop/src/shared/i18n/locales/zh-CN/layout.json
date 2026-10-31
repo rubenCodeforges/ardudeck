@@ -3,16 +3,16 @@
     "about": "关于 ArduDeck",
     "clickToDisconnect": "点击以断开连接",
     "disconnected": "未连接",
-    "fleetCount": "机队 ({{count}})",
+    "fleetCount": "机队 （{{count}}）",
     "fleetTitle": "通过多载具链接连接的机队。点击以打开遥测。",
     "noneSelected": " · 未选择",
     "staleDisconnect": "已 {{seconds}} 秒无数据。点击以断开连接",
     "staleShort": "已 {{seconds}} 秒无数据",
-    "voiceMuted": "语音警示已静音。点击以取消静音",
-    "voiceOn": "语音警示已打开。点击以静音",
+    "voiceMuted": "语音警告已静音。点击以取消静音",
+    "voiceOn": "语音警告已打开。点击以静音",
     "waiting": "等待中...",
     "osBadge": "OS",
-    "osBadgeTitle": "正在 {{osName}} 上执行。载具链接与参数快取由系统提供。"
+    "osBadgeTitle": "正在 {{osName}} 上执行。载具链接与参数缓存由系统提供。"
   },
   "armDisarm": {
     "arm": "解锁",
@@ -27,14 +27,14 @@
     "forceArmTitle": "强制解锁（跳过检查）",
     "mspUnknown": "未知",
     "preArmFailed": "解锁前检查未通过",
-    "title": "{{action}},按右键可打开选项"
+    "title": "{{action}}，按右键可打开选项"
   },
   "quickLaunch": {
     "areaEditorDesc": "绘制任务区域：多区域、挖洞、KML",
     "button": "快速启动",
     "buttonTitle": "快速启动：在独立窗口打开工具",
     "inspectorDesc": "实时查看消息与图表",
-    "simWorldDesc": "在持久的 3D 世界中飞行 SITL:障碍物、围栏、任务",
+    "simWorldDesc": "在持久的 3D 世界中飞行 SITL：障碍物、围栏、任务",
     "telemetryDashboard": "遥测仪表板",
     "telemetryDashboardDesc": "在独立画面显示实时遥测",
     "locusDesc": "打开 ArduDeck Locus:PPK、摄影测量与 LiDAR"

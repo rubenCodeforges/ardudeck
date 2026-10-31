@@ -1,28 +1,28 @@
 {
   "banner": {
-    "title": "ArduDeck Beta 1.2 谨献给 Sir Patrick Stewart，1940 至 2026。",
-    "body": "本版本可启用舰桥主题，以纪念 Picard 舰长。所有界面与仪表照常工作；随时可在“设置 › 主题”切换回来。",
-    "engage": "启动",
-    "engaged": "已启动",
-    "close": "关闭献词",
+    "title": "ArduDeck Beta 1.2 谨献给 Sir Patrick Stewart（1940 至 2026）。",
+    "body": "本版本中，ArduDeck 可穿戴舰桥主题，以纪念 Picard 船长。所有界面与仪表照常工作；随时可在「设置 → 主题」中切回。",
+    "engage": "启用",
+    "engaged": "已启用",
+    "close": "关闭致敬",
     "reopen": "关于本版本",
-    "engageAgain": "再次启动"
+    "engageAgain": "再次启用"
   },
   "plaque": {
     "dedicatedTo": "谨此纪念",
     "name": "SIR PATRICK STEWART",
     "years": "1940 至 2026",
-    "makeItSo": "照办"
+    "makeItSo": "就这么办"
   },
   "moment": {
     "release": "ARDUDECK BETA 1.2",
-    "legacy": "他以 Jean-Luc Picard 舰长一角，让整整一代人看到：最好的舰长以好奇心探索、倾听船员，并在艰难时刻坚守原则。",
-    "thanks": "谢谢您，舰长。",
-    "return": "回到舰桥",
-    "label": "献词"
+    "legacy": "他以 Jean-Luc Picard 船长的身份向一代人证明：最好的船长以好奇心探索，倾听船员，并在艰难时刻坚守原则。",
+    "thanks": "谢谢你，船长。",
+    "return": "返回舰桥",
+    "label": "致敬"
   },
   "theme": {
     "bridge": "舰桥",
-    "bridgeDescription": "本版本的纪念主题。深色，导航栏呈现为主控台区块。"
+    "bridgeDescription": "本版本专属的致敬主题。深色系，导航栏呈控制台模块样式。"
   }
 }

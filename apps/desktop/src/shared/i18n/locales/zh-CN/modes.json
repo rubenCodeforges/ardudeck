@@ -1,6 +1,6 @@
 {
   "auxChannelPicker": {
-    "current": "目前"
+    "current": "当前"
   },
   "auxChannels": {
     "aux1": "通常是 2 段开关",
@@ -37,7 +37,7 @@
     "switch": "开关",
     "testIt": "试试看！拨动开关，看看是否启用：",
     "tryNow": "现在就试！",
-    "whenActivate": "何时应该启用？(PWM 范围）",
+    "whenActivate": "何时应该启用？（PWM 范围）",
     "whichSwitch": "要用哪个开关来启用此模式？"
   },
   "modeFallback": "模式 {{id}}",
@@ -63,7 +63,7 @@
       "description": "飞行记录"
     },
     "failsafe": {
-      "beginner": "紧急：触发 Failsafe 行为（通常是降落或上锁）。信号遗失时通常会自动启用。",
+      "beginner": "紧急：触发 Failsafe 行为（通常是降落或上锁）。信号丢失时通常会自动启用。",
       "description": "紧急降落"
     },
     "flaperon": {
@@ -71,7 +71,7 @@
       "description": "襟翼模式"
     },
     "gcsNav": {
-      "beginner": "允许地面控制站发送导航指令（飞往此处等）。",
+      "beginner": "允许地面站发送导航指令（飞往此处等）。",
       "description": "地面控制"
     },
     "gimbalLevelTilt": {
@@ -79,11 +79,11 @@
       "description": "云台俯仰水平"
     },
     "headingHold": {
-      "beginner": "维持目前的磁航向。适合飞直线。",
+      "beginner": "维持当前的磁航向。适合飞直线。",
       "description": "保持航向"
     },
     "homeReset": {
-      "beginner": "将目前位置设为新的 Home 点。在作业过程中移动位置时使用。",
+      "beginner": "将当前位置设为新的 Home 点。在作业过程中移动位置时使用。",
       "description": "重置 Home 位置"
     },
     "horizon": {
@@ -91,15 +91,15 @@
       "description": "自稳 + 特技"
     },
     "manual": {
-      "beginner": "不经稳定的直接伺服/电机控制。仅供有经验的飞手使用！",
+      "beginner": "不经稳定的直接舵机/电机控制。仅供有经验的飞手使用！",
       "description": "直接控制"
     },
     "navAlthold": {
-      "beginner": "使用气压计/GPS 保持目前高度。油门控制爬升/下降率。",
+      "beginner": "使用气压计/GPS 保持当前高度。油门控制爬升/下降率。",
       "description": "保持高度"
     },
     "navCourseHold": {
-      "beginner": "维持目前航向，同时可控制高度。适合飞直线。",
+      "beginner": "维持当前航向，同时可控制高度。适合飞直线。",
       "description": "保持航线"
     },
     "navCruise": {
@@ -111,7 +111,7 @@
       "description": "自动发射"
     },
     "navPoshold": {
-      "beginner": "GPS 定点保持：飞行器会停留在原地。非常适合空拍，或需要停下来时。",
+      "beginner": "GPS 定点保持：飞行器会停留在原地。非常适合航测，或需要悬停时。",
       "description": "保持位置"
     },
     "navRth": {
@@ -160,7 +160,7 @@
     "stepSave": "保存",
     "stepStyle": "风格",
     "subtitle": "设置你的飞行模式",
-    "title": "模式设置精灵"
+    "title": "模式设置向导"
   },
   "presets": {
     "beginner": {
@@ -171,7 +171,7 @@
     "cinematic": {
       "description": "极致平滑，适合拍摄",
       "name": "电影感",
-      "tip": "NAV RTH 会在信号遗失时带你的飞行器回家（需要 GPS!)。非常适合长距离拍摄。"
+      "tip": "NAV RTH 会在信号丢失时带你的飞行器回家（需要 GPS!）。非常适合长距离拍摄。"
     },
     "fixedWing": {
       "description": "适用于具导航功能的飞机",
@@ -204,7 +204,7 @@
     "mid": "中",
     "start": "开始：",
     "switchPosition": "开关位置",
-    "yourTransmitter": "你的发射机"
+    "yourTransmitter": "你的遥控器"
   },
   "rcChannelBar": {
     "active": "启用",
@@ -231,22 +231,22 @@
     "usingPreset_other": "使用 {{name}} 预设，共 {{count}} 个模式。"
   },
   "transmitterCheckStep": {
-    "armSwitch": "拨动你的解锁开关（通常是 AUX1)",
-    "channelsDetected": "侦测到 {{count}} 个通道！",
-    "confirm": "我可以在上方的视觉化图中看到我的摇杆与开关有反应",
-    "connectedHint": "你的发射机已连接。移动开关以侦测 AUX 通道。",
+    "armSwitch": "拨动你的解锁开关（通常是 AUX1）",
+    "channelsDetected": "检测到 {{count}} 个通道！",
+    "confirm": "我可以在上方的可视化图中看到我的摇杆与开关有反应",
+    "connectedHint": "你的遥控器已连接。移动开关以检测 AUX 通道。",
     "continue": "继续进行模式设置",
     "leftStick": "左摇杆上下与左右移动",
-    "noChannels": "没有侦测到通道？",
+    "noChannels": "没有检测到通道？",
     "otherSwitches": "移动你打算使用的其他任何开关",
     "quickCheck": "快速检查：",
     "rightStick": "右摇杆上下与左右移动",
-    "subtitle": "移动摇杆并拨动开关，确认信号有被接收。每个通道侦测到动作时会亮起绿灯。",
-    "tipBound": "确认你的发射机已开机并与接收机对频",
+    "subtitle": "移动摇杆并拨动开关，确认信号有被接收。每个通道检测到动作时会亮起绿灯。",
+    "tipBound": "确认你的遥控器已开机并与接收机对频",
     "tipProtocol": "确认设置工具中已设置正确的接收机通信协议",
     "tipReceiver": "检查接收机是否已连接到你的飞控",
     "tipReconnect": "试著拔掉并重新连接你的飞控",
-    "title": "检查你的发射机",
+    "title": "检查你的遥控器",
     "waiting": "正在等待通道动作...",
     "waitingHint": "将所有摇杆推到极限位置，以确认连接。"
   },
@@ -264,7 +264,7 @@
     "manualSetupHint": "逐一设置模式（进阶）",
     "newToFpv": "刚接触 FPV?",
     "newToFpvHint": "从<b>初学者</b>预设开始。它会启用 ANGLE 模式，让你的飞行器自动保持水平，非常适合学习！",
-    "subtitle": "选择一个预设，即可依你的风格快速设置必要的飞行模式，或手动设置模式以取得完整控制。",
+    "subtitle": "选择一个预设，即可依你的风格快速设置必要的飞行模式，或手动设置模式以获取完整控制。",
     "title": "选择你的飞行风格"
   }
 }

@@ -6,8 +6,8 @@
     "nameTaken": "该名称已被使用。",
     "optional": "（选填）",
     "replace": "取代",
-    "replaceContents": "以目前画面取代内容",
-    "replaceContentsHint": "目前的面板、驾驶舱仪表、地图分割与视觉模式。",
+    "replaceContents": "以当前画面取代内容",
+    "replaceContentsHint": "当前的面板、驾驶舱仪表、地图分割与视觉模式。",
     "replacesExisting": "已有名为「{{name}}」的布局。保存时会将其取代。",
     "saveTitle": "保存布局"
   },
@@ -19,9 +19,9 @@
     "importNotLayout": "该文件不是 ArduDeck 工作区布局。",
     "importedName": "导入的布局",
     "missionDescription": "地图、航点、高度剖面。",
-    "missionLabel": "Mission",
+    "missionLabel": "任务",
     "pilotDescription": "地图搭配合成视觉分割。",
-    "pilotLabel": "Pilot"
+    "pilotLabel": "飞行"
   },
   "panelHeader": {
     "hideInstrument": "隐藏地图仪表",
@@ -51,7 +51,7 @@
     "shareTip": "分享"
   },
   "sensorHealth": {
-    "unhealthyTitle": "异常：{{sensors}},详情请查看「消息」面板"
+    "unhealthyTitle": "异常：{{sensors}}，详情请查看「消息」面板"
   },
   "share": {
     "copied": "已复制",
@@ -74,7 +74,7 @@
   },
   "workspaceDialog": {
     "addPanel": "新增面板",
-    "builtIn": "内建",
+    "builtIn": "内置",
     "clipboardReadFailed": "无法读取剪贴簿。",
     "fromFile": "从文件…",
     "import": "导入",
@@ -82,12 +82,12 @@
     "map2d": "2D 地图",
     "map3d": "3D 地形",
     "mapView": "地图查看",
-    "offlineHint": "在地图上框选范围，即可快取其瓦片供无网路时飞行使用。",
+    "offlineHint": "在地图上框选范围，即可缓存其瓦片供无网络时飞行使用。",
     "offlineMaps": "离线地图",
     "panelLayout": "面板布局",
-    "pasteFromClipboard": "从剪贴簿贴上",
+    "pasteFromClipboard": "从剪贴簿粘贴",
     "resetToPreset": "重置为预设",
-    "saveCurrentAs": "另存目前布局为…",
+    "saveCurrentAs": "另存当前布局为…",
     "saveOfflineArea": "保存区域供离线使用",
     "saved": "已保存",
     "selectingArea": "选择中… 请在地图上框选范围",

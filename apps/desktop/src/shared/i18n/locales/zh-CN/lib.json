@@ -2,10 +2,10 @@
   "vehicleTemplates": {
     "apply": {
       "armed": "载具已解锁，请先上锁再应用",
-      "expectedFc": "预期为真实飞控，但目前连接的是 SITL",
-      "expectedSitl": "预期为 SITL,但目前连接的是真实飞控",
-      "noParams": "参数尚未加载，请先取得参数",
-      "noTemplate": "此配置文件找不到对应的范本",
+      "expectedFc": "预期为真实飞控，但当前连接的是 SITL",
+      "expectedSitl": "预期为 SITL，但当前连接的是真实飞控",
+      "noParams": "参数尚未加载，请先获取参数",
+      "noTemplate": "此配置文件找不到对应的模板",
       "notConnected": "没有连接的载具",
       "nothingToApply": "载具已符合配置文件，没有需要变更的项目",
       "restoreNote": "从 {{date}} 的快照还原",
@@ -16,18 +16,18 @@
       "airspeedMax": "失速速度 × 2.2 = {{speed}} m/s（安全上限）",
       "airspeedMin": "失速速度 × 1.15 = {{speed}} m/s（高于失速的裕度）",
       "armingCheck": "启用所有解锁前检查",
-      "battMonitor": "类比电压与电流监测",
-      "capacity": "来自配置文件的容量({{capacity}} mAh)",
-      "critVolt": "{{cells}}S × {{volts}}V({{chem}} 临界门槛）",
+      "battMonitor": "模拟电压与电流监测",
+      "capacity": "来自配置文件的容量（{{capacity}} mAh）",
+      "critVolt": "{{cells}}S × {{volts}}V（{{chem}} 临界门槛）",
       "elevonGain": "标准升降副翼混控增益",
       "elevonLeft": "左升降副翼输出（三角翼）",
       "elevonRight": "右升降副翼输出（三角翼）",
-      "lowVolt": "{{cells}}S × {{volts}}V({{chem}} 低电量门槛）",
-      "simCapacity": "模拟容量({{capacity}} mAh)",
+      "lowVolt": "{{cells}}S × {{volts}}V（{{chem}} 低电量门槛）",
+      "simCapacity": "模拟容量（{{capacity}} mAh）",
       "simDrag": "来自配置文件的阻力系数",
       "simEngine": "依推重比 {{ratio}} 缩放（引擎动力倍率）",
-      "simServo": "依 {{speed}}°/s 计算的伺服响应时间",
-      "simVoltage": "模拟满电电压({{cells}}S × 4.20V)",
+      "simServo": "依 {{speed}}°/s 计算的舵机响应时间",
+      "simVoltage": "模拟满电电压（{{cells}}S × 4.20V）",
       "trimAirspeed": "巡航速度 {{speed}} m/s 换算为 cm/s，4.5 以前旧版固件使用的参数名称",
       "vtailGain": "标准 V 尾混控增益",
       "vtailLeft": "V 尾左侧（俯仰+偏航混控）",
@@ -37,12 +37,12 @@
     "reason": {
       "aileron": "副翼",
       "all4MotorsTiltWithWing": "4 颗电机随机翼倾转",
-      "belowThisVTOLMotorsAssistFixed": "低于此值时,VTOL 电机会辅助固定翼",
-      "bicopter2MotorTiltrotor": "双旋翼(2 电机倾转旋翼）",
+      "belowThisVTOLMotorsAssistFixed": "低于此值时，VTOL 电机会辅助固定翼",
+      "bicopter2MotorTiltrotor": "双旋翼（2 电机倾转旋翼）",
       "boat": "船",
       "boatRoverFrameClass": "船（地面车机架类别）",
-      "bodyFrameControlInput": "机体座标系控制输入",
-      "bodyFrameStickInput": "机体座标系摇杆输入",
+      "bodyFrameControlInput": "机体坐标系控制输入",
+      "bodyFrameStickInput": "机体坐标系摇杆输入",
       "continuousTilt": "连续倾转",
       "cruiseSpeed60OfMax": "巡航速度 = 最大速度的 60%",
       "differential": "差动",
@@ -53,10 +53,10 @@
       "elevonRight": "右升降副翼",
       "elevonRightDeltaWing": "右升降副翼（三角翼）",
       "enableTailsitterMode": "启用尾座式模式",
-      "enableTiltServos": "启用倾转伺服",
+      "enableTiltServos": "启用倾转舵机",
       "enableVTOL": "启用 VTOL",
-      "enableVTOLQuadplane": "启用 VTOL（四旋翼 quadplane)",
-      "enableVTOLQuadplaneHex": "启用 VTOL（六旋翼 quadplane)",
+      "enableVTOLQuadplane": "启用 VTOL（四旋翼 quadplane）",
+      "enableVTOLQuadplaneHex": "启用 VTOL（六旋翼 quadplane）",
       "fixedWingAssistThreshold": "固定翼辅助门槛",
       "forwardThrottle": "前进油门",
       "groundSteering": "地面转向",
@@ -89,14 +89,14 @@
       "motors12Tilt": "电机 1+2 倾转",
       "notATailsitter": "不是尾座式",
       "notATiltrotor": "不是倾转旋翼",
-      "octaquadCoaxialX8": "八旋翼共轴（同轴 X8)",
+      "octaquadCoaxialX8": "八旋翼共轴（同轴 X8）",
       "octaquadY6": "八旋翼 / Y6",
       "octocopter": "八旋翼",
       "omniRoverFrame": "全向地面车机架",
       "plusArrangement": "+ 型配置",
       "quadcopter": "四旋翼",
       "quadcopterLiftFrame": "四旋翼升力机架",
-      "r4WheelOmniX": "4 轮全向 (X)",
+      "r4WheelOmniX": "4 轮全向 （X）",
       "roverFrame": "地面车机架",
       "rudder": "方向舵",
       "rudderGroundSteering": "方向舵（地面转向）",
@@ -114,11 +114,11 @@
       "throttleRearRight": "右后油门",
       "throttleRight": "右侧油门",
       "throttleRightHull": "右船体油门",
-      "tiltServoSharedWingTilt": "倾转伺服（共用机翼倾转）",
+      "tiltServoSharedWingTilt": "倾转舵机（共用机翼倾转）",
       "tiltwingWholeWingTilts": "倾转翼（整个机翼倾转）",
-      "transitionDuration5S": "转换时间(5 秒）",
+      "transitionDuration5S": "转换时间（5 秒）",
       "tricopter": "三旋翼",
-      "undefinedAckermannUsesSteering": "未定义(Ackermann 使用转向）",
+      "undefinedAckermannUsesSteering": "未定义（Ackermann 使用转向）",
       "useVTOLForRTLLanding": "返航降落时使用 VTOL",
       "vectored6Frame": "矢量式 6 机架",
       "vectoredThrustHoverGain": "矢量推力悬停增益",
@@ -147,27 +147,27 @@
       },
       "copter-coaxial": {
         "description": "八颗电机组成 4 组共轴对，工业主力机型",
-        "name": "共轴四旋翼 (X8)"
+        "name": "共轴四旋翼 （X8）"
       },
       "copter-hex-plus": {
-        "description": "六颗电机呈 +,经典重载配置",
+        "description": "六颗电机呈 +，经典重载配置",
         "name": "六旋翼 (+)"
       },
       "copter-hex-x": {
         "description": "六颗电机：冗余、重载",
-        "name": "六旋翼 (X)"
+        "name": "六旋翼 （X）"
       },
       "copter-octo-plus": {
-        "description": "八颗电机呈 +,对称重载",
+        "description": "八颗电机呈 +，对称重载",
         "name": "八旋翼 (+)"
       },
       "copter-octo-x": {
         "description": "八颗电机：最大冗余、重型电影机",
-        "name": "八旋翼 (X)"
+        "name": "八旋翼 （X）"
       },
       "copter-quad-h": {
         "description": "四颗电机呈 H 形，适合需要刚性的相机平台",
-        "name": "四旋翼 (H)"
+        "name": "四旋翼 （H）"
       },
       "copter-quad-plus": {
         "description": "四颗电机呈 + 形，电机 1 朝前",
@@ -175,14 +175,14 @@
       },
       "copter-quad-x": {
         "description": "四颗电机呈 X 形，经典多旋翼",
-        "name": "四旋翼 (X)"
+        "name": "四旋翼 （X）"
       },
       "copter-tri": {
-        "description": "三颗电机加偏航伺服，效率高又有个性",
+        "description": "三颗电机加偏航舵机，效率高又有个性",
         "name": "三旋翼"
       },
       "copter-y6": {
-        "description": "三支机臂，每臂两颗电机（共轴）,精巧的冗余设计",
+        "description": "三支机臂，每臂两颗电机（共轴），精巧的冗余设计",
         "name": "Y6（共轴三臂）"
       },
       "plane-flying-wing": {
@@ -202,7 +202,7 @@
         "name": "V 尾飞机"
       },
       "rover-ackermann": {
-        "description": "汽车式：单一油门，转向伺服",
+        "description": "汽车式：单一油门，转向舵机",
         "name": "Ackermann 地面车"
       },
       "rover-omni": {
@@ -210,7 +210,7 @@
         "name": "全向地面车"
       },
       "rover-skid": {
-        "description": "差速驱动：坦克式，无转向伺服",
+        "description": "差速驱动：坦克式，无转向舵机",
         "name": "滑移转向地面车"
       },
       "sub-vectored-6": {
@@ -219,14 +219,14 @@
       },
       "vtol-quadplane-hex": {
         "description": "固定翼飞机搭配 6 个垂直升力电机，重载 VTOL",
-        "name": "六旋翼 quadplane(6 升力）"
+        "name": "六旋翼 quadplane（6 升力）"
       },
       "vtol-quadplane-quad": {
         "description": "固定翼飞机搭配 4 个垂直升力电机",
         "name": "经典 Quadplane（四旋翼升力）"
       },
       "vtol-tailsitter-conventional": {
-        "description": "以尾部著地，倾转后向前飞行，以升降副翼控制悬停",
+        "description": "以尾部着地，倾转后向前飞行，以升降副翼控制悬停",
         "name": "尾座式（传统）"
       },
       "vtol-tailsitter-delta-duo": {
@@ -234,7 +234,7 @@
         "name": "尾座式双电机三角翼"
       },
       "vtol-tiltrotor-dual": {
-        "description": "两颗电机从悬停倾转至巡航,Osprey 式",
+        "description": "两颗电机从悬停倾转至巡航，Osprey 式",
         "name": "倾转旋翼（双）"
       },
       "vtol-tiltwing": {

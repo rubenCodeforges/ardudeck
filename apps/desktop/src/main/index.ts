@@ -412,7 +412,7 @@ app.whenReady().then(() => {
     const resourcesPath = isDev
       ? join(__dirname, '../../resources')
       : join(app.getAppPath(), 'resources');
-    app.dock.setIcon(join(resourcesPath, 'icon.png'));
+    app.dock?.setIcon(join(resourcesPath, 'icon.png'));
   }
 
   // Setup tile cache protocol handler (must be after app.ready)
