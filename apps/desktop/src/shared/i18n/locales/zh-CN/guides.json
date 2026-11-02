@@ -34,10 +34,10 @@
     },
     "crsf": {
       "title": "来自 ExpressLRS Backpack 的遥测",
-      "blurb": "将 ELRS 遥测模式设为 WiFi，加入 backpack 网络，并以 CRSF 协议连接到端口 14550。适用于任何 CRSF 接收机，机上无需任何更改。如需双向链路，请改用 MAVLink 模式。"
+      "blurb": "将 ELRS 遥测模式设为 WiFi，加入 backpack 网络，并以 CRSF 协议连接到端口 14550。适用于任何 CRSF 接收机，机上无需任何更改。如需双向链路，请改用 MAVLink模式。"
     },
     "cargo": {
-      "title": "使用 Cargo 添加功能",
+      "title": "使用模块添加功能",
       "blurb": "Mods 列出可添加的 cargo：逐个安装、更新或移除。已安装的 cargo 会把自身的视图与卡片带入应用。"
     },
     "adjust": {

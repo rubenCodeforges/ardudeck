@@ -105,7 +105,7 @@
       "m7": "调整无头基准"
     },
     "modeN": "模式 {{id}}",
-    "noRules": "找不到 AUX 模式规则。",
+    "noRules": "找不到 AUX模式规则。",
     "switchChannel": "切换通道",
     "title": "飞行模式设置",
     "unknownMode": "未知模式"
@@ -122,14 +122,14 @@
     "ffLabel": "FF - 前馈",
     "iHint": "随时间修正漂移",
     "iLabel": "I - 积分",
-    "infoFixedWing": "<b>旧版 CLI 模式（固定翼）:</b>变更会立即通过 CLI 指令发送。完成后请点击「保存到 EEPROM」以保存变更。",
-    "infoMultirotor": "<b>旧版 CLI 模式（多旋翼）:</b>变更会立即通过 CLI 指令发送。完成后请点击「保存到 EEPROM」以保存变更。",
+    "infoFixedWing": "<b>旧版 CLI模式（固定翼）:</b>变更会立即通过 CLI 指令发送。完成后请点击「保存到 EEPROM」以保存变更。",
+    "infoMultirotor": "<b>旧版 CLI模式（多旋翼）:</b>变更会立即通过 CLI 指令发送。完成后请点击「保存到 EEPROM」以保存变更。",
     "levelDHint": "减少震荡",
     "levelDLabel": "D - 阻尼",
     "levelIHint": "随时间保持水平",
     "levelPHint": "自稳的力道",
     "levelPLabel": "P - 强度",
-    "levelTitle": "水平（Angle 模式）",
+    "levelTitle": "水平（Angle模式）",
     "noData": "未加载任何 PID 数据。请先执行 dump 指令。",
     "pHint": "对摇杆输入的反应灵敏度",
     "pLabel": "P - 比例",
@@ -160,7 +160,7 @@
   "legacyRatesTab": {
     "expoHint": "摇杆中心灵敏度",
     "globalSettings": "全域设置",
-    "info": "<b>旧版 CLI 模式：</b>变更会立即通过 CLI 指令发送。完成后请点击「保存到 EEPROM」以保存变更。",
+    "info": "<b>旧版 CLI模式：</b>变更会立即通过 CLI 指令发送。完成后请点击「保存到 EEPROM」以保存变更。",
     "maxRate": "最大：<v>{{rate}}°/s</v>",
     "noData": "未加载任何速率数据。请先执行 dump 指令。",
     "presets": {

@@ -1,5 +1,5 @@
 {
-  "3dSimWorld": "3D 模拟世界",
+  "3dSimWorld": "3D模拟世界",
   "action": "动作",
   "active": "启用中",
   "add": "新增",
@@ -200,7 +200,7 @@
   "settings": "设置",
   "show": "显示",
   "signal": "信号",
-  "sitlSimulator": "SITL 模拟器",
+  "sitlSimulator": "SITL模拟器",
   "size": "大小",
   "skip": "跳过",
   "source": "来源",

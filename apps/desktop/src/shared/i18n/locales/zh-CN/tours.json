@@ -10,7 +10,7 @@
     "connectOwnToContinue": "请连接你自己的飞控以继续导航。",
     "failedToStartSitl": "SITL 启动失败",
     "goToSitlInstall": "前往 SITL 安装",
-    "intro": "此导航将示范需要实时飞控的功能。你可以启动安全的 <b>{{sitl}}</b> 模拟来试用，或连接你自己的飞控。",
+    "intro": "此导航将示范需要实时飞控的功能。你可以启动安全的 <b>{{sitl}}</b>模拟来试用，或连接你自己的飞控。",
     "launch": "启动 {{sitl}}",
     "needsVehicle": "导航需要载具",
     "notNow": "暂时不要",

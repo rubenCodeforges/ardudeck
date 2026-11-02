@@ -137,7 +137,7 @@
     "longRange": {
       "description": "具 GPS 安全保障的延伸航程",
       "name": "长程",
-      "tip": "保守的 PID 以求效率。GPS 巡航与 RTH 确保安全。ANGLE 模式便于轻松恢复。"
+      "tip": "保守的 PID 以求效率。GPS 巡航与 RTH 确保安全。ANGLE模式便于轻松恢复。"
     },
     "racing": {
       "description": "快速且灵敏，适合速度",

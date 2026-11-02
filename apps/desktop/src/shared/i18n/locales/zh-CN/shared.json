@@ -104,7 +104,7 @@
     "labelPower": "电源",
     "labelVibration": "振动",
     "recurringDetail": "最近 {{total}} 次飞行中有 {{bad}} 次标记为{{label}}。请在下次任务前调查。",
-    "recurringTitle": "反复出现{{label}}问题",
+    "recurringTitle": "反复出现{{label}} 问题",
     "vibrationDetail": "近期峰值振动平均为 {{recent}} m/s2，先前为 {{prior}}。请检查电机/螺旋桨平衡与隔振。",
     "vibrationTitle": "振动呈上升趋势"
   },
@@ -718,7 +718,7 @@
       "noFix": "无定位",
       "noGps": "无 GPS"
     },
-    "planeLandDisabled": "固定翼降落需要含 NAV_LAND 航点的任务（或 AUTOLAND 模式 + DO_LAND_START）"
+    "planeLandDisabled": "固定翼降落需要含 NAV_LAND 航点的任务（或 AUTOLAND模式 + DO_LAND_START）"
   },
   "trafficTypes": {
     "adsbPreset": {

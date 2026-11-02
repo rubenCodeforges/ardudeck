@@ -11,9 +11,9 @@
     "verifying": "正在验证 {{slug}}...",
     "notInstalled": "{{slug}} 未安装",
     "noExecutable": "在 {{slug}} 的安装文件夹中找不到程序",
-    "installingCompanion": "正在加载与之配套的 {{slug}} Cargo...",
-    "installedWithCargo": "{{name}} 已安装。其 Cargo 会在 ArduDeck 重新启动时加载。",
-    "companionFailed": "{{name}} 已安装，但其 Cargo {{slug}} 无法加载：{{msg}}"
+    "installingCompanion": "正在加载与之配套的 {{slug}} 模块...",
+    "installedWithCargo": "{{name}} 已安装。其模块会在 ArduDeck 重新启动时加载。",
+    "companionFailed": "{{name}} 已安装，但其模块{{slug}} 无法加载：{{msg}}"
   },
   "areaEditorWindow": {
     "title": "区域编辑器",
@@ -68,8 +68,8 @@
     "valueNotAccepted": "{{value}} 不是此相机对 {{id}} 接受的值。"
   },
   "cliHandlers": {
-    "enterCliFailed": "进入 CLI 模式失败",
-    "notInCliMode": "不在 CLI 模式",
+    "enterCliFailed": "进入 CLI模式失败",
+    "notInCliMode": "不在 CLI模式",
     "saveOutputTitle": "保存 CLI 输出",
     "transportClosedDuringSetup": "CLI 设置期间传输已关闭",
     "transportNotConnected": "传输未连接"
@@ -93,7 +93,7 @@
   },
   "elrs": {
     "noLinkModeSetting": "此模块没有 Link Mode 设置（固件太旧？）",
-    "noModule": "此端口上没有 ELRS 模块回应",
+    "noModule": "此端口上没有 ELRS模块回应",
     "switchedToMavlink": "模块停止回应 CRSF：其 USB 端口已切换为 MAVLink。"
   },
   "esp32Flasher": {
@@ -179,9 +179,9 @@
     "operationAborted": "烧录作业已中止",
     "readingBoardInfo": "正在读取主板信息...",
     "rebootingBoard": "正在重新启动主板...",
-    "rebootingIntoBootloader": "正在将主板重新启动进入 bootloader 模式...",
-    "rebootingIntoBootloaderMode": "正在重新启动进入 bootloader 模式...",
-    "rebootingIntoDfu": "正在将主板重新启动进入 DFU 模式...",
+    "rebootingIntoBootloader": "正在将主板重新启动进入 bootloader模式...",
+    "rebootingIntoBootloaderMode": "正在重新启动进入 bootloader模式...",
+    "rebootingIntoDfu": "正在将主板重新启动进入 DFU模式...",
     "startingApplication": "正在启动应用程序...",
     "synchronizing": "正在与 bootloader 同步...",
     "tryingBaud": "正在以 {{baud}} 波特率尝试 bootloader...",
@@ -265,8 +265,8 @@
     "reportCollectingMavlink": "正在收集 MAVLink 诊断信息...",
     "reportCollectingStatus": "正在收集状态...",
     "reportEncrypting": "正在加密报告...",
-    "reportEnteringCli": "正在进入 CLI 模式...",
-    "reportExitingCli": "正在离开 CLI 模式（主板将重新启动）...",
+    "reportEnteringCli": "正在进入 CLI模式...",
+    "reportExitingCli": "正在离开 CLI模式（主板将重新启动）...",
     "restartingSitlApply": "正在重新启动 SITL 以应用变更",
     "saveBugReportTitle": "保存错误报告",
     "saveCanceled": "已取消保存",
@@ -385,7 +385,7 @@
     "sendingLevel": "正在发送水平校准指令...",
     "sendingQuick": "正在发送快速校准指令...",
     "sideDetected": "检测到{{side}}，请保持静止",
-    "sideDone": "{{side}}已完成，请旋转到另一面",
+    "sideDone": "{{side}} 已完成，请旋转到另一面",
     "sides": {
       "back": "机头朝上",
       "down": "水平（顶面朝上）",
@@ -472,10 +472,10 @@
     "signatureFailed": "{{slug}} 的软件包签名验证失败",
     "validatingKey": "正在验证授权密钥...",
     "verifying": "正在验证 {{slug}}...",
-    "installingDependency": "正在安装所需的 Cargo {{slug}}...",
-    "dependencyFailed": "已安装，但无法安装所需的 Cargo {{slug}}:{{msg}}",
+    "installingDependency": "正在安装所需的模块{{slug}}...",
+    "dependencyFailed": "已安装，但无法安装所需的模块{{slug}}:{{msg}}",
     "installingApp": "正在安装 {{slug}} 应用程序...",
-    "appFailed": "Cargo 已安装，但其应用程序 {{slug}} 无法安装：{{msg}}"
+    "appFailed": "模块已安装，但其应用程序 {{slug}} 无法安装：{{msg}}"
   },
   "msp": {
     "notConnected": "未连接"
@@ -511,9 +511,9 @@
     "climbRtlDescription": "在飞控切换到 RTL 进行实际返航之前，先让载具原地爬升到安全高度。解决当前高度低于 RTL_ALT 或返家路径被阻挡时「RTL 撞树」的问题。",
     "climbRtlLabel": "爬升 + RTL",
     "heapWhy": "脚本至少需要 64 KiB 的堆空间。",
-    "landAtDescription": "以载具当前的高度飞到点击的经纬度，然后切换到 LAND 模式。通过先重新定位，解决「ArduCopter NAV_LAND 会忽略经纬度而只是原地下降」的问题。",
+    "landAtDescription": "以载具当前的高度飞到点击的经纬度，然后切换到 LAND模式。通过先重新定位，解决「ArduCopter NAV_LAND 会忽略经纬度而只是原地下降」的问题。",
     "landAtLabel": "在该点降落",
-    "orbitDescription": "在 GUIDED 模式中以选定的半径与高度环绕目标经纬度。以实时遥测为锚点，因此链接中断不会使环绕失去同步。可选的圈数：0 = 无限，N = 绕 N 整圈后停下来悬停。",
+    "orbitDescription": "在 GUIDED模式中以选定的半径与高度环绕目标经纬度。以实时遥测为锚点，因此链接中断不会使环绕失去同步。可选的圈数：0 = 无限，N = 绕 N 整圈后停下来悬停。",
     "orbitLabel": "环绕",
     "revealDescription": "电影式拉远：载具沿著远离目标的方位从当前位置后退并同时爬升，偏航全程锁定在点击的目标上。就是「城堡揭幕」镜头。",
     "revealLabel": "扫视",
@@ -587,10 +587,10 @@
     "asciiSummary": "此端口正在输出文字（调试控制台），而不是遥测。",
     "crsfElrsSuggestion": "请将模块切换到 MAVLink 链接模式。ArduDeck 可以在 ELRS 无线电设置卡片中替你完成；模式变更期间接收机必须断电。",
     "crsfElrsSummary": "此设备说的是 CRSF 链接统计，它是处于一般链接模式的 ELRS 无线电模块，而不是 MAVLink。",
-    "crsfSuggestion": "这看起来是 RC 接收机的输出。若要用它传遥测，ELRS 链接的两端都必须处于 MAVLink 模式。",
+    "crsfSuggestion": "这看起来是 RC 接收机的输出。若要用它传遥测，ELRS 链接的两端都必须处于 MAVLink模式。",
     "crsfSummary": "此端口说的是 CRSF（RC 接收机通信协议），而不是 MAVLink。",
     "gpsSuggestion": "请选择另一个串口：这个上面接的是 GPS。",
-    "gpsSummary": "这是 GPS 模块（NMEA/u-blox 输出），不是飞控。",
+    "gpsSummary": "这是 GPS模块（NMEA/u-blox 输出），不是飞控。",
     "mavlinkNoHeartbeatSuggestion": "此视频流可能来自无线电或伴随设备，而不是飞控，或已严重损坏。请确认载具已供电，且其遥测端口已设置为 MAVLink2。",
     "mavlinkNoHeartbeatSummary": "此端口上有 MAVLink 遥测在流动，但没有接受任何载具心跳。",
     "mpegtsSuggestion": "请使用 RTP/UDP 相机来源：媒体引擎可直接捕获 MPEG-TS。",

@@ -293,7 +293,7 @@
     "nounMission": "任务",
     "nounRally": "集结点",
     "openAreaEditorTip": "在独立窗口打开区域编辑器",
-    "openFile": "打开{{mode}}文件",
+    "openFile": "打开{{mode}} 文件",
     "openPanel": "打开 {{title}} 面板",
     "qgcPlan": "QGC Plan (.plan)",
     "rallyLoadTodo": "尚未实现加载集结点文件",
@@ -311,7 +311,7 @@
     "terrainCollision": "地形碰撞",
     "undo": "撤销 (Cmd/Ctrl+Z)",
     "uploadAnyway": "仍要上传",
-    "uploadToFc": "上传{{mode}}到飞控",
+    "uploadToFc": "上传{{mode}} 到飞控",
     "waypointsFile": "航点文件 （.waypoints）",
     "waypointsFileDetail": "QGC WPL · ArduPilot / Mission Planner"
   },

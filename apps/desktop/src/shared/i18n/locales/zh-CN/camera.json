@@ -137,7 +137,7 @@
   },
   "presets": {
     "ardudeckSim": {
-      "label": "ArduDeck 模拟器（FPV 视频）",
+      "label": "ArduDeck模拟器（FPV 视频）",
       "note": "在模拟器启动器中勾选「Stream FPV to ArduDeck」。如果模拟器在别台机器上执行，请换成该机器的地址。端口 8654 是模拟器自己的媒体 hub，与此处的 8554 保持分开。"
     },
     "herelink": {

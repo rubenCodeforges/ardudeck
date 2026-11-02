@@ -435,7 +435,7 @@
     "statesHint": "遥控器在没有屏幕显示时显示的内容，以及需要检查什么。",
     "state": {
       "no-link": "<b>NO LINK</b>：遥控器没有收到接收机的任何信号。检查接收机是否有电且已对频。",
-      "no-mavlink": "<b>NO MAVLINK</b>：链路已建立，但没有遥测帧到达。检查透传设置或 ELRS MAVLink 模式。",
+      "no-mavlink": "<b>NO MAVLINK</b>：链路已建立，但没有遥测帧到达。检查透传设置或 ELRS MAVLink模式。",
       "streams-off": "<b>STREAMS OFF</b>：帧已到达，但飞控发送的内容太少。连接一次 ArduDeck 以设置遥测速率。"
     }
   }

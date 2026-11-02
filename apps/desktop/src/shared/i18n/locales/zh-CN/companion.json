@@ -300,7 +300,7 @@
       "feature4": "低延迟",
       "feature5": "不需要路由器",
       "name": "DroneBridge ESP-NOW 长距离",
-      "requirement1": "2 块 ESP32 主板（空中 + 地面）",
+      "requirement1": "2块ESP32 主板（空中 + 地面）",
       "requirement2": "建议使用外接天线",
       "requirement3": "UART 连接飞控"
     },
@@ -318,7 +318,7 @@
     },
     "esp32MavlinkBridge": {
       "description": "轻量的串口转 WiFi 桥接。以精简固件通过 UDP 进行简单的遥测转发。",
-      "feature1": "WiFi AP 模式",
+      "feature1": "WiFi AP模式",
       "feature2": "串口转 UDP 桥接",
       "feature3": "自动检测波特率",
       "feature4": "资源用量极少",
@@ -329,7 +329,7 @@
     },
     "esp32XbeeNtrip": {
       "description": "在 ESP32 上运行的 NTRIP 服务器、用户端与 caster。可将基站接收机放上网络，或在载具上下载修正数据，野外不需要笔记本电脑。",
-      "feature1": "NTRIP 服务器、用户端与 caster 模式",
+      "feature1": "NTRIP 服务器、用户端与 caster模式",
       "feature2": "WiFi AP + 站台模式",
       "feature3": "UART 转 TCP/UDP 桥接",
       "feature4": "网页设置界面",
@@ -428,7 +428,7 @@
       "feature6": "网页预览",
       "name": "视频 + 遥测",
       "requirement1": "Raspberry Pi 4 或 5",
-      "requirement2": "Pi 相机模块 (v2/v3/HQ)",
+      "requirement2": "Pi 相机模块(v2/v3/HQ)",
       "requirement3": "MicroSD 卡（16GB 以上）",
       "requirement4": "UART 或 USB 连接飞控",
       "requirement5": "5V 3A BEC"

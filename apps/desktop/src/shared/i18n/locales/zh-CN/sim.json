@@ -154,7 +154,7 @@
     },
     "collapseFleet": "折叠机队",
     "collapsePanel": "折叠飞行控制面板",
-    "connectedHint": "载具获取定位后会显示在这里。任何已连接的 SITL 或飞行器都可以。ArduDeck 模拟引擎是选用的。",
+    "connectedHint": "载具获取定位后会显示在这里。任何已连接的 SITL 或飞行器都可以。ArduDeck模拟引擎是选用的。",
     "connectedWaitingFix": "已连接，等待 GPS 定位",
     "connectedWaitingGps": "已连接，等待 GPS",
     "disconnectedHint": "从主窗口连接到 SITL（或载具），它就会出现在这里。",
@@ -229,6 +229,6 @@
     "waitingForSitl": "等待 SITL",
     "waypointsTip": "贴合地形的 3D 航点标记：漂浮在每个航点真实位置与高度的目标准星，并附编号与实时斜距",
     "xray": "X 光",
-    "xrayTip": "物理 X 光：通过重心的力量收支（推力、重量、阻力、合力）、每个电机的箭头、重心标记与 g 负载（仅限 ArduDeck 模拟引擎）"
+    "xrayTip": "物理 X 光：通过重心的力量收支（推力、重量、阻力、合力）、每个电机的箭头、重心标记与 g 负载（仅限 ArduDeck模拟引擎）"
   }
 }

@@ -39,7 +39,7 @@
     "noOutput": "尚无输出。启动 SITL 以查看程序输出。",
     "noUpstreamDefaults": "没有上游默认值，仅有 ArduDeck 基准。",
     "open3dWorld": "打开 3D 世界",
-    "openSimWorldTip": "打开 3D 模拟世界窗口",
+    "openSimWorldTip": "打开 3D模拟世界窗口",
     "opening": "打开中…",
     "or": "或",
     "physicsEngine": "物理引擎",

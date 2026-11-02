@@ -29,7 +29,7 @@
     "assignHint": "按下<b>指派</b>，然后移动你要用在该通道的摇杆或拨动开关。未指派的通道保持 1500。",
     "detailConnected": "{{device}}，已发送 {{frames}} 个 RC 帧",
     "detailOff": "关闭，由下方滑块驱动 RC",
-    "detailWaiting": "等待遥控器：请将 EdgeTX 设为 USB Joystick 模式",
+    "detailWaiting": "等待遥控器：请将 EdgeTX 设为 USB Joystick模式",
     "framesToVehicle": "发送给载具 {{fps}} 帧/秒",
     "gamepadWarning": "，看起来是游戏手柄，不是遥控器",
     "monitorCounts": "{{axes}} 轴，{{buttons}} 按钮",
@@ -44,7 +44,7 @@
       "buttons": "按钮 {{low}}/{{high}}",
       "unassigned": "未指派"
     },
-    "standardLayoutWarning": "浏览器已对此设备应用其标准游戏手柄配置，只保留四个轴并舍弃其余，因此开关信号永远不会送达。请在遥控器已处于 USB Joystick 模式时重新插拔，或改用 USB 描述符不会被识别为游戏控制器的机型。",
+    "standardLayoutWarning": "浏览器已对此设备应用其标准游戏手柄配置，只保留四个轴并舍弃其余，因此开关信号永远不会送达。请在遥控器已处于 USB Joystick模式时重新插拔，或改用 USB 描述符不会被识别为游戏控制器的机型。",
     "title": "使用 USB 遥控器飞行",
     "trainerActive": "Trainer 会话进行中，摇杆由 Trainer 控制",
     "unavailable": "无法使用",
