@@ -1,6 +1,7 @@
 import { Camera, Check, Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TrainerCatalogue, TrainerStatus } from '../../../shared/trainer-types';
+import { ui } from '../ui/ui-hooks';
 
 /**
  * The aircraft, most of which ArduDeck already knows.
@@ -102,6 +103,7 @@ export function TrainerVehicleStep({
                 {spec.lenses.map((fov) => (
                   <button
                     key={fov}
+                    {...ui('chip', { active: camera.lensFovDeg === fov })}
                     onClick={() => onCamera({ ...camera, lensFovDeg: fov })}
                     className={`rounded-lg border px-3 py-1.5 text-xs transition-colors ${
                       camera.lensFovDeg === fov
@@ -164,6 +166,7 @@ function KindCard({
 }): JSX.Element {
   return (
     <button
+      {...ui('option', { active })}
       onClick={onClick}
       className={`card wx-card card-body py-3 text-left ${
         active ? '!border-blue-500/60 ring-1 ring-blue-500/30' : 'hover:border-strong'

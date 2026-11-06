@@ -557,7 +557,13 @@
       "waveHeight": "Wave Height",
       "windFrom": "Wind from {{dir}}"
     },
-    "weight": "Weight"
+    "weight": "Weight",
+    "carto": {
+      "label": "CARTO API key (Dark map style)",
+      "freeAt": "- without one the Dark style uses Esri. Get a key at",
+      "placeholder": "Paste your CARTO API key",
+      "configured": "Key configured: the Dark style uses CARTO"
+    }
   },
   "signingSection": {
     "active": "active",
@@ -762,5 +768,7 @@
     "secondDecimals_other": "Seconds with {{count}} decimals"
   },
   "themeTitle": "Theme",
-  "themeHint": "Changes the colours across every screen."
+  "themeHint": "Changes the colours across every screen.",
+  "themeSettings": "Theme settings",
+  "themeSettingsTitle": "{{name}} settings"
 }

@@ -3,6 +3,7 @@
  */
 import { AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { ui } from '../ui/ui-hooks';
 
 interface ConfirmDialogProps {
   title: string;
@@ -37,13 +38,13 @@ export function ConfirmDialog({
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-subtle">
-          <button
+          <button {...ui('button', { variant: 'ghost' })}
             onClick={onCancel}
             className="px-3 py-1.5 rounded-lg text-xs text-content-secondary hover:text-content hover:bg-surface-raised transition-colors"
           >
             {cancelLabel ?? t('common:cancel')}
           </button>
-          <button
+          <button {...ui('button', { variant: 'primary' })}
             onClick={onConfirm}
             className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 transition-colors"
           >

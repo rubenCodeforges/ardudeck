@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useVehicleMissionStore, groupVehicleState } from '../../stores/vehicle-mission-store';
 import { useMissionStore } from '../../stores/mission-store';
+import { useHazardsStore } from '../../stores/hazards-store';
 import { useSurveyStore } from '../../stores/survey-store';
 import { useSurveyAreaStore } from '../../stores/survey-area-store';
 import { useCargoEnabled, MISSION_LIBRARY_CARGO_SLUG } from '../../modules/capabilities';
@@ -75,6 +76,7 @@ import { useVehicleProfileStore } from '../../stores/vehicle-profile-store';
 import { allowedMissionCommands } from '../../../shared/vehicle-profile';
 import { useCoordinateFormat } from '../../utils/coordinate-format';
 import { PositionInput } from '../ui/PositionInput';
+import { ui } from '../ui/ui-hooks';
 
 // Helper to get GPS state without subscribing (avoids re-renders)
 function getGpsState() {
@@ -1711,7 +1713,7 @@ function GroupHeaderRow({
           />
         </div>
       )}
-      <button
+      <button {...ui('icon-button')}
         onClick={(e) => {
           e.stopPropagation();
           onToggleCollapse();
@@ -1827,7 +1829,7 @@ function GroupHeaderRow({
       </div>
       {showVehiclePicker && (
         <>
-          <button
+          <button {...ui('button', { variant: 'secondary' })}
             ref={vehicleBtnRef}
             onClick={(e) => {
               e.stopPropagation();
@@ -1877,7 +1879,7 @@ function GroupHeaderRow({
         </>
       )}
       {!readOnly && onSync && (
-        <button
+        <button {...ui('icon-button')}
           onClick={(e) => {
             e.stopPropagation();
             if (count > 0) onSync();
@@ -1900,7 +1902,7 @@ function GroupHeaderRow({
         </button>
       )}
       {!readOnly && onEdit && !isEditing && (
-        <button
+        <button {...ui('button', { variant: 'secondary' })}
           onClick={(e) => {
             e.stopPropagation();
             onEdit();
@@ -1913,7 +1915,7 @@ function GroupHeaderRow({
         </button>
       )}
       {!readOnly && onReplay && (
-        <button
+        <button {...ui('icon-button')}
           onClick={(e) => {
             e.stopPropagation();
             onReplay();
@@ -1925,7 +1927,7 @@ function GroupHeaderRow({
         </button>
       )}
       {!readOnly && isStaleSurvey && onRegenerate && (
-        <button
+        <button {...ui('icon-button')}
           onClick={(e) => {
             e.stopPropagation();
             onRegenerate();
@@ -1938,7 +1940,7 @@ function GroupHeaderRow({
       )}
       {!readOnly && (
         <div className="shrink-0">
-          <button
+          <button {...ui('icon-button')}
             ref={menuBtnRef}
             onClick={(e) => {
               e.stopPropagation();
@@ -2453,13 +2455,17 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
     return byIndex;
   }, [showFlownPath, missionItems, surveyConfig, surveySwathWidth, flownPathBankDeg]);
   const coverageGapAt = useCallback((seq: number) => coverageGapBySeq.get(seq), [coverageGapBySeq]);
+  const hazards = useHazardsStore((s) => s.hazards);
+  const missionHome = useMissionStore((s) => s.homePosition);
   const validation = useMemo(
     () => validateMission(missionItems, groups, {
       isAir: true,
       altitudeUnit,
       midMissionReturns: flownSeparately(groups) ? 0 : strandedReturns,
+      hazards,
+      home: missionHome,
     }),
-    [missionItems, groups, altitudeUnit, strandedReturns],
+    [missionItems, groups, altitudeUnit, strandedReturns, hazards, missionHome],
   );
 
   const effectiveFirmware = effectiveMissionFirmware(connectionState, settingsFirmware);
@@ -2889,7 +2895,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                 )}
               </span>
               <div className="flex items-center gap-2">
-                <button
+                <button {...ui('button', { variant: 'ghost' })}
                   onClick={() => setBulkGroupOrder(
                     [...groups].sort((a, b) => a.order - b.order).map((g) => g.id),
                   )}
@@ -2899,7 +2905,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                   {t('mission:waypointTable.list.selectAll')}
                 </button>
                 <span className="text-content-tertiary text-[10px]">|</span>
-                <button
+                <button {...ui('button', { variant: 'ghost' })}
                   onClick={() => setBulkGroupOrder([])}
                   className="text-[10px] text-content-secondary hover:text-content transition-colors"
                   title={t('mission:waypointTable.list.clearGroupSelection')}
@@ -2907,7 +2913,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                   {t('mission:waypointTable.list.clear')}
                 </button>
                 <span className="text-content-tertiary text-[10px]">|</span>
-                <button
+                <button {...ui('button', { variant: 'danger' })}
                   onClick={handleDeleteBulkGroups}
                   className="text-[10px] text-red-400 hover:text-red-300 transition-colors font-medium"
                   title={t('mission:waypointTable.list.deleteGroupsTip', { count: bulkGroups.size })}
@@ -2922,7 +2928,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                 {t('mission:waypointTable.list.selectedOf', { count: multiSelected.size, total: missionItems.length })}
               </span>
               <div className="flex items-center gap-2">
-                <button
+                <button {...ui('button', { variant: 'ghost' })}
                   onClick={handleSelectAll}
                   className="text-[10px] text-content-secondary hover:text-content transition-colors"
                   title={t('mission:waypointTable.list.selectAllWaypoints')}
@@ -2930,7 +2936,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                   {t('mission:waypointTable.list.selectAll')}
                 </button>
                 <span className="text-content-tertiary text-[10px]">|</span>
-                <button
+                <button {...ui('button', { variant: 'ghost' })}
                   onClick={handleClearSelection}
                   className="text-[10px] text-content-secondary hover:text-content transition-colors"
                   title={t('mission:waypointTable.list.clearSelection')}
@@ -2938,7 +2944,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                   {t('mission:waypointTable.list.clear')}
                 </button>
                 <span className="text-content-tertiary text-[10px]">|</span>
-                <button
+                <button {...ui('button', { variant: 'ghost' })}
                   onClick={handleCopyCoords}
                   className="text-[10px] text-content-secondary hover:text-content transition-colors"
                   data-tip={t('mission:waypointTable.list.copySelectedTip')}
@@ -2946,7 +2952,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                   {coordsCopied ? t('mission:waypointTable.list.copied') : t('mission:waypointTable.list.copyCoords')}
                 </button>
                 <span className="text-content-tertiary text-[10px]">|</span>
-                <button
+                <button {...ui('button', { variant: 'ghost' })}
                   onClick={() => openBulkPopover('altitude')}
                   className={`text-[10px] font-medium transition-colors ${
                     bulkPopover === 'altitude' ? 'text-blue-400' : 'text-blue-400/80 hover:text-blue-300'
@@ -2956,7 +2962,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                   {t('common:altitude')}
                 </button>
                 <span className="text-content-tertiary text-[10px]">|</span>
-                <button
+                <button {...ui('button', { variant: 'ghost' })}
                   onClick={() => openBulkPopover('speed')}
                   className={`text-[10px] font-medium transition-colors ${
                     bulkPopover === 'speed' ? 'text-blue-400' : 'text-blue-400/80 hover:text-blue-300'
@@ -2966,7 +2972,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                   {t('common:speed')}
                 </button>
                 <span className="text-content-tertiary text-[10px]">|</span>
-                <button
+                <button {...ui('button', { variant: 'danger' })}
                   onClick={handleDeleteSelected}
                   className="text-[10px] text-red-400 hover:text-red-300 transition-colors font-medium"
                   title={t('mission:waypointTable.list.deleteSelectedTip', { count: multiSelected.size })}
@@ -2981,7 +2987,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                 {bulkNotice ?? t('mission:waypointTable.list.itemCount', { count: missionItems.length })}
               </span>
               <div className="flex items-center gap-2">
-                <button
+                <button {...ui('button', { variant: 'ghost' })}
                   onClick={handleCopyCoords}
                   className="text-[10px] text-content-secondary hover:text-content transition-colors"
                   data-tip={t('mission:waypointTable.list.copyAllTip')}
@@ -2991,7 +2997,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                 {!readOnly && (
                   <>
                     <span className="text-content-tertiary text-[10px]">|</span>
-                    <button
+                    <button {...ui('button', { variant: 'ghost' })}
                       onClick={() => void handlePastePositions()}
                       className="text-[10px] text-content-secondary hover:text-content transition-colors"
                       data-tip={t('mission:waypointTable.list.pastePositionsTip')}
@@ -3003,7 +3009,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                 {interleaved && !readOnly && (
                   <>
                     <span className="text-content-tertiary text-[10px]">|</span>
-                    <button
+                    <button {...ui('button', { variant: 'ghost' })}
                       onClick={() => regroupItems()}
                       className="text-[10px] text-amber-400 hover:text-amber-300 transition-colors"
                       title={t('mission:waypointTable.list.repairOrderTip')}
@@ -3015,7 +3021,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                 {surveyGroupCount >= 2 && !readOnly && (
                   <>
                     <span className="text-content-tertiary text-[10px]">|</span>
-                    <button
+                    <button {...ui('button', { variant: 'ghost' })}
                       onClick={() => { setLinkPicks([]); setLinkMode('connect'); }}
                       disabled={!connectable}
                       className={`text-[10px] transition-colors ${
@@ -3032,7 +3038,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                       {t('mission:waypointTable.list.connect')}
                     </button>
                     <span className="text-content-tertiary text-[10px]">/</span>
-                    <button
+                    <button {...ui('button', { variant: 'ghost' })}
                       onClick={() => { setLinkPicks([]); setLinkMode('disconnect'); }}
                       disabled={detachable === 0}
                       className={`text-[10px] transition-colors ${
@@ -3049,7 +3055,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                   </>
                 )}
                 <span className="text-content-tertiary text-[10px]">|</span>
-                <button
+                <button {...ui('button', { variant: 'ghost' })}
                   onClick={collapseAll}
                   className="text-[10px] text-content-secondary hover:text-content transition-colors"
                   title={t('mission:waypointTable.list.collapseAllTip')}
@@ -3057,7 +3063,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                   {t('mission:waypointTable.list.collapseAll')}
                 </button>
                 <span className="text-content-tertiary text-[10px]">|</span>
-                <button
+                <button {...ui('button', { variant: 'ghost' })}
                   onClick={expandAll}
                   className="text-[10px] text-content-secondary hover:text-content transition-colors"
                   title={t('mission:waypointTable.list.expandAllTip')}
@@ -3069,7 +3075,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                     <span className="text-content-tertiary text-[10px]">|</span>
                     {/* Two-step rather than a modal: destructive, but this bar is
                         transient and a dialog here would be heavier than the action. */}
-                    <button
+                    <button {...ui('button', { variant: 'danger' })}
                       onClick={() => {
                         if (confirmDeleteAll) {
                           clearMission();
@@ -3118,7 +3124,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                   <span className="text-[10px] text-content-secondary shrink-0">
                     {bulkPopover === 'altitude' ? 'm' : 'm/s'}
                   </span>
-                  <button
+                  <button {...ui('button', { variant: 'primary' })}
                     onClick={bulkPopover === 'altitude' ? handleBulkAltitude : handleBulkSpeed}
                     className="shrink-0 px-2.5 py-1 rounded-md text-xs font-medium bg-blue-500/15 text-blue-400 border border-blue-500/30 hover:bg-blue-500/25 transition-colors"
                   >
@@ -3153,7 +3159,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
               : t('mission:waypointTable.list.linkSplitHint')}
           </span>
           {linkMode === 'connect' && (
-            <button
+            <button {...ui('button', { variant: 'primary' })}
               onClick={applyLinkPicks}
               disabled={linkPicks.length < 2}
               className={`shrink-0 px-2 py-0.5 text-[10px] rounded-md transition-colors ${
@@ -3165,7 +3171,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
               {t('mission:waypointTable.list.done')}
             </button>
           )}
-          <button
+          <button {...ui('button', { variant: 'secondary' })}
             onClick={exitLinkMode}
             className="shrink-0 px-2 py-0.5 text-[10px] rounded-md bg-surface-raised text-content-secondary hover:text-content transition-colors"
           >
@@ -3466,7 +3472,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
 
                   {/* Collapse chevron for parent nav items with children */}
                   {!isChild && hasChildren ? (
-                    <button
+                    <button {...ui('icon-button')}
                       onClick={(e) => toggleCollapse(wp.seq, e)}
                       className="w-4 h-4 flex items-center justify-center text-content-secondary hover:text-content transition-colors shrink-0"
                       title={isCollapsed ? t('mission:waypointTable.list.expandItems', { count: childCount }) : t('mission:waypointTable.list.collapse')}
@@ -3565,7 +3571,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
 
                   {/* Focus button - pan/zoom the map to this WP. Located WPs only. */}
                   {!readOnly && commandHasLocation(wp.command) && (
-                    <button
+                    <button {...ui('icon-button')}
                       onClick={(e) => {
                         e.stopPropagation();
                         focusWaypoint(wp.seq);
@@ -3581,7 +3587,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
 
                   {/* Delete button - hidden in readOnly mode */}
                   {!readOnly && (
-                    <button
+                    <button {...ui('icon-button')}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDelete(wp.seq);
@@ -3676,7 +3682,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
             </span>
             <div className="flex items-center gap-2">
               {commandHasLocation(selectedWaypoint.command) && (
-                <button
+                <button {...ui('icon-button')}
                   onClick={() => {
                     navigator.clipboard.writeText(formatPos(selectedWaypoint.latitude, selectedWaypoint.longitude));
                     setWpCoordCopied(true);
@@ -3688,7 +3694,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                   {wpCoordCopied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
               )}
-            <button
+            <button {...ui('icon-button')}
               onClick={() => setSelectedSeq(null)}
               className="text-content-secondary hover:text-content"
             >
@@ -3817,7 +3823,7 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
       {/* Add waypoint button - hidden in readOnly mode */}
       {!readOnly && (
         <div className="p-2 border-t border-subtle">
-          <button
+          <button {...ui('button', { variant: 'secondary' })}
             onClick={handleAddWaypoint}
             className="w-full py-2 text-sm text-content hover:text-content bg-surface-raised hover:bg-surface-raised rounded transition-colors flex items-center justify-center gap-2"
           >

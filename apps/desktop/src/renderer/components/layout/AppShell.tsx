@@ -10,9 +10,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { DebugConsole } from '../debug/DebugConsole';
 import { useConsoleStore } from '../../stores/console-store';
 import { UpdateBanner } from './UpdateBanner';
-import { TributeBanner } from '../tribute/TributeBanner';
-import { WarpOverlay } from '../tribute/WarpOverlay';
-import { DedicationMoment } from '../tribute/DedicationMoment';
+import { BridgeMovedNote, CargoThemeBanners, CargoThemeOverlays, TitleBarItems, useViewAttribute } from './CargoThemeSlots';
 import { ArmDisarmButton } from './ArmDisarmButton';
 import { ScriptHealthBadge } from '../script-installer/ScriptHealthBadge';
 import { QuickLaunchMenu } from './QuickLaunchMenu';
@@ -42,6 +40,7 @@ export function AppShell({ children }: AppShellProps) {
   const fleetConnected = !primaryConnected && fleetCount > 0;
 
   useTheme();
+  useViewAttribute();
 
   useEffect(() => {
     fetchVersion();
@@ -70,14 +69,16 @@ export function AppShell({ children }: AppShellProps) {
     <div className="h-screen flex flex-col bg-surface-base">
       {/* Header */}
       <header className="app-header h-14 border-b border-subtle bg-surface-nav backdrop-blur-sm flex items-center shrink-0 relative z-50">
-        <span className="bridge-header-cap" aria-hidden="true" />
+        <span className="app-header-cap" aria-hidden="true" />
         {/* Logo sits in a nav-rail-width slot so it lines up with the sidebar icons */}
         <div className="app-header-logo w-14 flex items-center justify-center shrink-0">
           <img src={iconImage} alt={t('common:ardudeck')} className="h-8 w-8 rounded-md object-cover" />
         </div>
-        <h1 className="text-lg font-semibold text-content">{t('common:ardudeck')}</h1>
+        <h1 className="text-lg font-semibold text-content shrink-0">{t('common:ardudeck')}</h1>
 
-        <div className="ml-auto flex items-center gap-4 pr-6">
+        <TitleBarItems />
+
+        <div className="ml-auto flex items-center gap-4 pr-6 shrink-0">
           {/* Voice alerts mute */}
           <button
             onClick={() => setVoiceAlertsMuted(!voiceAlertsMuted)}
@@ -183,8 +184,8 @@ export function AppShell({ children }: AppShellProps) {
       {/* Update notification banner */}
       <UpdateBanner />
 
-      {/* v0.1.2 dedication, shown once per release. */}
-      <TributeBanner />
+      <BridgeMovedNote />
+      <CargoThemeBanners />
 
       {/* Main content, with the console beside it when docked to an edge. */}
       <div className={`flex-1 overflow-hidden flex min-h-0 ${consoleDock === 'left' ? 'flex-row' : consoleDock === 'right' ? 'flex-row-reverse' : 'flex-col'}`}>
@@ -192,12 +193,11 @@ export function AppShell({ children }: AppShellProps) {
         <div className="relative flex-1 min-w-0 min-h-0 overflow-hidden">
           {children}
           {/* Over the content only, so the rail and top bar never flash. */}
-          <WarpOverlay />
+          <CargoThemeOverlays />
         </div>
         {consoleDock === 'bottom' && <DebugConsole />}
       </div>
 
-      <DedicationMoment />
     </div>
   );
 }

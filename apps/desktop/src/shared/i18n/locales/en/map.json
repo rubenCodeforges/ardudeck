@@ -192,7 +192,8 @@
     "rangefinder": "Rangefinder",
     "proximity": "Proximity",
     "ekf": "EKF health",
-    "flightTimer": "Flight timer"
+    "flightTimer": "Flight timer",
+    "mavlinkFields": "MAVLink fields"
   },
   "instrumentsCatalog": {
     "arrange": "Arrange",
@@ -374,7 +375,7 @@
     "button": "Layers",
     "buttonCount": "Layers ({{count}})",
     "height": "Height",
-    "modules": "Modules",
+    "modules": "Cargo",
     "overlays": "Overlays",
     "tip": "Map layers & overlays"
   },
@@ -607,5 +608,15 @@
     "hint": "Everything inside the green frame is downloaded. Zoom out for a bigger area.",
     "vehicle": "Vehicle",
     "useThisArea": "Use this area"
+  },
+  "mavlinkFieldInstrument": {
+    "title": "MAVLink fields",
+    "empty": "Pick fields in this instrument's settings.",
+    "noData": "no data",
+    "pickMessage": "Message",
+    "pickField": "Field",
+    "add": "Add",
+    "limit": "Up to {{max}} fields, from the messages the vehicle is sending now.",
+    "noMessages": "No messages yet: connect a vehicle first."
   }
 }

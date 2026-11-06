@@ -1,7 +1,9 @@
 import { useTranslation } from 'react-i18next';
+import { ui } from '../ui/ui-hooks';
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents, Circle } from 'react-leaflet';
-import { Starfield } from '../tribute/Starfield';
+import { useActiveCargoTheme } from '../../hooks/useTheme';
+import { CargoThemeMapBackground } from '../layout/CargoThemeSlots';
 import { ModuleMapLayers, ModulePolygonPick, ModulePolygonPickBar } from './ModuleMapLayers';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -60,7 +62,8 @@ import { ElevationLegend } from '../map/ElevationLegend';
 import { CachedAreaOverlay } from '../map/CachedAreaOverlay';
 
 // Shared map layer definitions (centralized)
-import { MAP_LAYERS, mapLayerName, type LayerKey, type MapLayer } from '../../../shared/map-layers';
+import { MAP_LAYERS, DARK_LABELS_LAYER, ESRI_CANVAS_MAX_NATIVE_ZOOM, layerAttribution, mapLayerName, type LayerKey, type MapLayer } from '../../../shared/map-layers';
+import { useMapKeysStore } from '../../stores/map-keys-store';
 
 // Map overlays (weather radar, aviation, airspace zones)
 import { WeatherRadarOverlay } from '../map/overlays/WeatherRadarOverlay';
@@ -69,6 +72,7 @@ import { DipulOverlay } from '../map/overlays/DipulOverlay';
 import { AirspaceOverlay } from '../map/overlays/AirspaceOverlay';
 import { AirspaceLegend } from '../map/overlays/AirspaceLegend';
 import { MapLayersControl } from '../map/overlays/MapLayersControl';
+import { UserModelsLeafletLayer } from '../models/UserModelsLeafletLayer';
 import { InstrumentsLayer, SingleMapInstrument } from '../map/instruments/InstrumentsLayer';
 import { PRESET_INSTRUMENT_LAYOUTS } from '../map/instruments/preset-layouts';
 import { InstrumentsMenu } from '../map/instruments/InstrumentsMenu';
@@ -1057,6 +1061,7 @@ function SplitControl() {
           the plain sibling buttons; icon-left/label-after (no justify-center) so
           the whole column shares one left-aligned icon-then-text layout. */}
       <button
+        {...ui('chip', { active: !!target })}
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full px-2 py-1 text-xs rounded shadow-lg transition-colors flex items-center gap-1.5 ${
           target ? 'bg-blue-600 text-white' : 'bg-surface text-content hover:bg-surface-raised'
@@ -2214,6 +2219,8 @@ function LiveCommandLayer(props: Omit<React.ComponentProps<typeof CommandLayer>,
 // ─── 2D Telemetry Map ────────────────────────────────────────────────────────
 
 const TelemetryMap2D = React.memo(function TelemetryMap2D() {
+  const cargoTheme = useActiveCargoTheme();
+  const MapBackground = cargoTheme?.value.mapBackground;
   const { t } = useTranslation();
   // Low-rate primitive selections only. This component renders the entire
   // Leaflet tree, so it must never re-render at telemetry rate; every
@@ -2719,6 +2726,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
   }, [setSplitRatio]);
 
   const layer = TELEMETRY_LAYERS[currentLayer];
+  const cartoKey = useMapKeysStore((s) => s.carto);
 
   return (
     <div ref={containerRef} data-tour="telemetry-map" className="h-full w-full flex flex-col bg-surface-base relative">
@@ -2762,7 +2770,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
 
       {/* Instruments menu (top-left counterpart of the Layers menu) */}
       {/* Above the instruments (z-1000): a docked group must never cover its own catalogue button. */}
-      <div data-arrange-chrome className="absolute top-2 left-2 z-[1100]">
+      <div data-arrange-chrome data-overlay-reserve className="absolute top-2 left-2 z-[1100]">
         <InstrumentsMenu />
       </div>
 
@@ -2817,18 +2825,20 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
           className="relative h-full min-w-0"
           style={{ flexGrow: splitTarget ? effectiveRatio : 1, flexBasis: 0 }}
         >
-      <div className="map-starfield pointer-events-none absolute inset-0 z-0 overflow-hidden">
-        <Starfield count={90} driftSeconds={40} />
-      </div>
+      {MapBackground && cargoTheme && (
+        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+          <CargoThemeMapBackground component={MapBackground} slug={cargoTheme.slug} />
+        </div>
+      )}
       <MapContainer
         center={initialCenter}
         zoom={17}
         zoomSnap={0}
         className="h-full w-full"
         zoomControl={false}
-        attributionControl={false}
       >
         <MapRefBridge mapRef={leafletMapRef} />
+        <UserModelsLeafletLayer />
         <SmoothWheelZoom />
         <MapFocusLayer onFocus={() => setFollowVehicle(false)} />
         <TelemetryViewportSync />
@@ -2836,9 +2846,18 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
         <TileLayer
           key={currentLayer}
           url={`tile-cache://${currentLayer}/{z}/{x}/{y}.png`}
+          attribution={layerAttribution(currentLayer, cartoKey)}
           maxZoom={layer.maxZoom}
           maxNativeZoom={(layer as MapLayer).maxNativeZoom ?? layer.maxZoom}
         />
+        {currentLayer === 'dark' && !cartoKey && (
+          <TileLayer
+            url={`tile-cache://${DARK_LABELS_LAYER}/{z}/{x}/{y}.png`}
+            maxZoom={layer.maxZoom}
+            maxNativeZoom={ESRI_CANVAS_MAX_NATIVE_ZOOM}
+            zIndex={2}
+          />
+        )}
 
         {/* Terrain elevation heatmap overlay */}
         {showTerrain && (
@@ -2993,10 +3012,11 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
           </svg>
         </button>
       ) : (
-      <div data-tour="telemetry-map-overlays" data-arrange-chrome className="absolute top-2 right-2 z-[1100] flex flex-col gap-1">
+      <div data-tour="telemetry-map-overlays" data-arrange-chrome data-overlay-reserve="left" className="absolute top-2 right-2 z-[1100] flex flex-col gap-1">
         {/* Clean-screen toggle: hides this whole column, leaving the map and
             the flight instruments. Sits at the top of the stack as its handle. */}
         <button
+          {...ui('icon-button')}
           onClick={() => setControlsHidden(true)}
           data-tip={t('panels:mapPanel.hideControls')}
           className="self-end p-1.5 rounded bg-surface text-content-secondary hover:text-content hover:bg-surface-raised shadow-lg transition-colors"
@@ -3015,6 +3035,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
         />
         <SplitControl />
         <button
+          {...ui('chip', { active: followVehicle })}
           onClick={() => setFollowVehicle(!followVehicle)}
           className={`px-2 py-1 text-xs rounded shadow-lg transition-colors flex items-center gap-1.5 ${
             followVehicle
@@ -3033,6 +3054,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
           {followVehicle ? t('panels:mapPanel.following') : t('panels:mapPanel.free')}
         </button>
         <button
+          {...ui('chip', { active: showHeadingLine })}
           onClick={() => setShowHeadingLine(!showHeadingLine)}
           className={`px-2 py-1 text-xs rounded shadow-lg transition-colors flex items-center gap-1.5 ${
             showHeadingLine
@@ -3047,6 +3069,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
           {t('panels:mapPanel.hdgLine')}
         </button>
         <button
+          {...ui('chip', { active: headingInstrumentVisible })}
           onClick={() => toggleInstrument('heading')}
           className={`px-2 py-1 text-xs rounded shadow-lg transition-colors flex items-center gap-1.5 ${
             headingInstrumentVisible
@@ -3062,6 +3085,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
           {t('panels:mapPanel.compass')}
         </button>
         <button
+          {...ui('chip', { active: attitudeVisible })}
           onClick={() => toggleInstrument('attitude')}
           className={`px-2 py-1 text-xs rounded shadow-lg transition-colors flex items-center gap-1.5 ${
             attitudeVisible
@@ -3078,6 +3102,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
           {t('panels:mapPanel.attitude')}
         </button>
         <button
+          {...ui('button', { variant: 'secondary' })}
           onClick={clearTrail}
           className="px-2 py-1 text-xs rounded bg-surface text-content hover:bg-surface-raised shadow-lg transition-colors flex items-center gap-1.5"
           title={t('panels:mapPanel.clearTrailTitle')}
@@ -3088,6 +3113,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
           {t('panels:mapPanel.clearTrail')}
         </button>
         <button
+          {...ui('button', { variant: 'secondary' })}
           onClick={setHome}
           disabled={!hasValidGps}
           className="px-2 py-1 text-xs rounded bg-surface text-content hover:bg-surface-raised shadow-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
@@ -3099,6 +3125,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
           {t('common:setHome')}
         </button>
         <button
+          {...ui('chip', { active: showMission })}
           onClick={() => setShowMission(!showMission)}
           className={`px-2 py-1 text-xs rounded shadow-lg transition-colors flex items-center gap-1.5 ${
             showMission

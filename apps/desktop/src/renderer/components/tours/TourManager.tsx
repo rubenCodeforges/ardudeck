@@ -4,7 +4,7 @@ import { useConnectionStore } from '../../stores/connection-store';
 import { useToursStore, isTourEligible } from '../../stores/tours-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { useGuidesStore } from '../../stores/guides-store';
-import { useTributeStore } from '../../stores/tribute-store';
+import { themeRegistry } from '../../modules/module-theme-registry';
 import { useTelemetryLayoutStore } from '../../stores/telemetry-layout-store';
 import { getToursForView, getTourById } from '../../feature-tours';
 import type { FeatureTour } from '../../feature-tours';
@@ -66,10 +66,9 @@ export function TourManager() {
     if (!next) return;
     if (state.activeTourId || state.gateTourId || state.panelGateTourId) return;
     // A guide on screen goes first; the tour is offered on the next visit instead of on top of it.
-    // The release dedication is the same kind of claim on the first launch, so it goes before both.
+    // A cargo theme's banner or switch-in animation is the same kind of claim, so it goes first too.
     const timer = setTimeout(() => {
-      const tribute = useTributeStore.getState();
-      if (tribute.bannerOpen || tribute.warping || tribute.momentOpen) return;
+      if (themeRegistry.list().some((e) => e.value.claimsAttention?.())) return;
       if (useGuidesStore.getState().queue.length === 0) showPrompt(next.id);
     }, PROMPT_DELAY_MS);
     return () => clearTimeout(timer);

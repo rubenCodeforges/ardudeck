@@ -14,6 +14,8 @@ export interface MapLayer {
   maxNativeZoom?: number;
   /** Extra headers to send when fetching tiles (e.g. Referer for Google) */
   headers?: Record<string, string>;
+  /** Credit the tile provider requires, shown in the map's attribution corner. */
+  attribution?: string;
 }
 
 export const MAP_LAYERS = {
@@ -22,12 +24,14 @@ export const MAP_LAYERS = {
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     subdomains: ['a', 'b', 'c'],
     maxZoom: 19,
+    attribution: '© OpenStreetMap contributors', // i18n-exempt
   },
   satellite: {
     name: 'Satellite',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     subdomains: [],
     maxZoom: 18,
+    attribution: 'Esri, Vantor, Earthstar Geographics, and the GIS User Community', // i18n-exempt
   },
   googleSat: {
     name: 'Google Sat', // i18n-exempt
@@ -36,6 +40,7 @@ export const MAP_LAYERS = {
     maxZoom: 22,
     maxNativeZoom: 20,
     headers: { Referer: 'https://www.google.com/' },
+    attribution: 'Imagery © Google', // i18n-exempt
   },
   googleHybrid: {
     name: 'Hybrid',
@@ -44,6 +49,7 @@ export const MAP_LAYERS = {
     maxZoom: 22,
     maxNativeZoom: 20,
     headers: { Referer: 'https://www.google.com/' },
+    attribution: 'Imagery © Google', // i18n-exempt
   },
   // Bing aerial via the classic keyless quadkey endpoints (the same ones
   // Mission Planner ships). Offered because Google tiles are unreachable in
@@ -56,6 +62,7 @@ export const MAP_LAYERS = {
     subdomains: ['0', '1', '2', '3'],
     maxZoom: 21,
     maxNativeZoom: 19,
+    attribution: '© Microsoft', // i18n-exempt
   },
   bingHybrid: {
     name: 'Bing Hybrid', // i18n-exempt
@@ -63,18 +70,23 @@ export const MAP_LAYERS = {
     subdomains: ['0', '1', '2', '3'],
     maxZoom: 21,
     maxNativeZoom: 19,
+    attribution: '© Microsoft', // i18n-exempt
   },
   terrain: {
     name: 'Terrain',
     url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
     subdomains: ['a', 'b', 'c'],
     maxZoom: 17,
+    attribution: '© OpenStreetMap contributors, SRTM | © OpenTopoMap (CC-BY-SA)', // i18n-exempt
   },
+  // Keyless Esri Canvas by default; with a Carto key from Settings > Maps the tile cache serves Carto dark_all instead.
   dark: {
     name: 'Dark',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-    subdomains: ['a', 'b', 'c'],
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    subdomains: [],
     maxZoom: 20,
+    maxNativeZoom: 16,
+    attribution: 'Esri, HERE, Garmin, © OpenStreetMap contributors, and the GIS user community', // i18n-exempt
   },
   dem: {
     name: 'DEM',
@@ -154,4 +166,20 @@ export function getMapLibreTileUrl(layerKey: LayerKey): string {
     url = url.replace('{s}', layer.subdomains[0]!);
   }
   return url.replace('{q}', '{quadkey}');
+}
+
+/** API key service name for Carto basemaps, as stored by Settings > Maps (same name on mobile). */
+export const CARTO_KEY_SERVICE = 'carto';
+/** Carto's documented keyed raster URL; without a valid key it serves an "API KEY REQUIRED" tile. */
+export const CARTO_DARK_URL = 'https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key={key}';
+export const CARTO_ATTRIBUTION = '© OpenStreetMap contributors © CARTO'; // i18n-exempt
+/** Label overlay drawn over the keyless dark base; transparent while Carto (which has its own labels) is in use. */
+export const DARK_LABELS_LAYER = 'dark-labels';
+export const ESRI_DARK_LABELS_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}';
+export const ESRI_CANVAS_MAX_NATIVE_ZOOM = 16;
+
+/** The credit to show for a base layer; the dark style credits CARTO while a Carto key serves it. */
+export function layerAttribution(key: string, cartoKey: boolean): string | undefined {
+  if (key === 'dark' && cartoKey) return CARTO_ATTRIBUTION;
+  return (MAP_LAYERS as Record<string, MapLayer>)[key]?.attribution;
 }

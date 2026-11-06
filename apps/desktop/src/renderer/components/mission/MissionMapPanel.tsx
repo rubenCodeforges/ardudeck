@@ -59,12 +59,16 @@ import { DipulOverlay } from '../map/overlays/DipulOverlay';
 import { AirspaceOverlay } from '../map/overlays/AirspaceOverlay';
 import { AirspaceLegend } from '../map/overlays/AirspaceLegend';
 import { MapLayersControl } from '../map/overlays/MapLayersControl';
+import { UserModelsLeafletLayer } from '../models/UserModelsLeafletLayer';
 import { WindParticleOverlay } from '../map/overlays/WindParticleOverlay';
 import { TrafficOverlay } from '../map/overlays/TrafficOverlay';
 import { TrafficAltitudeFilter } from '../map/overlays/TrafficAltitudeFilter';
 import { ZoneAlertBanner } from '../map/overlays/ZoneAlertBanner';
 import { WindControls } from '../map/overlays/WindControls';
 import { WindRoseCard } from '../map/overlays/WindRoseCard';
+import { useLayerWindAt } from '../map/wind/useLayerWindAt';
+import { WindLegsOverlay, LEG_WIND_COLORS, type LegWindKind } from './WindLegsOverlay';
+import { HazardsOverlay } from './HazardsOverlay';
 import { ApiKeyDialog } from '../map/overlays/ApiKeyDialog';
 import { useOverlayStore } from '../../stores/overlay-store';
 
@@ -72,7 +76,8 @@ import { buildSegmentedPath } from './mission-path';
 import { computeCameraTriggerPoints, photographedSeqs } from './camera-triggers';
 
 // Shared map layer definitions (centralized)
-import { MAP_LAYERS, type LayerKey, type MapLayer } from '../../../shared/map-layers';
+import { MAP_LAYERS, DARK_LABELS_LAYER, ESRI_CANVAS_MAX_NATIVE_ZOOM, layerAttribution, type LayerKey, type MapLayer } from '../../../shared/map-layers';
+import { useMapKeysStore } from '../../stores/map-keys-store';
 import { MapSearchControl } from '../map/MapSearchControl';
 import { EnginePlanLegend } from '../survey/EnginePlanLegend';
 import {
@@ -81,6 +86,7 @@ import {
   ModulePolygonPickBar,
 } from '../panels/ModuleMapLayers';
 import { MapPicking } from '../../hooks/useMapPicking';
+import { ui } from '../ui/ui-hooks';
 
 // Default center fallback (London) - will be overridden by IP geolocation
 const FALLBACK_CENTER: [number, number] = [51.505, -0.09];
@@ -953,6 +959,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
   }, [readOnly, selectedSeq, waypoints]);
 
   const layer = MAP_LAYERS[activeLayer];
+  const cartoKey = useMapKeysStore((s) => s.carto);
 
   // Build colored path segments from visible mission items (includes DO_* state
   // changes). Hidden groups are excluded so their legs vanish with their WPs.
@@ -975,6 +982,8 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
   // corner, so at a sharp corridor bend the camera can miss the ground the
   // plan says it covers; this shows that before the flight, not after it.
   const showFlownPath = useSettingsStore((s) => s.missionDefaults.showFlownPath);
+  const showLegWind = useSettingsStore((s) => s.missionDefaults.showLegWind);
+  const { windAt: layerWindAt } = useLayerWindAt();
   const flownPathBankDeg = useSettingsStore((s) => s.missionDefaults.flownPathBankDeg);
   const legendCollapsed = useSettingsStore((s) => s.missionDefaults.mapLegendCollapsed);
   const showLineOrder = useSettingsStore((s) => s.missionDefaults.showLineOrder);
@@ -1076,6 +1085,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
         <SmoothWheelZoom />
         <ViewportSync />
         <MapFocusLayer />
+        <UserModelsLeafletLayer />
         {/* Cargo layers under the mission's own drawing, and the polygon
             picker a cargo can ask the pilot for. */}
         <MapPicking
@@ -1106,14 +1116,25 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
         <CenterOnIpOnce location={ipLocation} enabled={mountedOnFallback} />
         <MapSearchControl />
         <EnginePlanLegend />
+        <HazardsOverlay />
+        {activeMode === 'mission' && showLegWind && layerWindAt && <WindLegsOverlay windAt={layerWindAt} />}
         <CenterOnVehicle trigger={centerOnVehicleTrigger} />
 
         <TileLayer
           key={activeLayer}
           url={`tile-cache://${activeLayer}/{z}/{x}/{y}.png`}
+          attribution={layerAttribution(activeLayer, cartoKey)}
           maxZoom={layer.maxZoom}
           maxNativeZoom={(layer as MapLayer).maxNativeZoom ?? layer.maxZoom}
         />
+        {activeLayer === 'dark' && !cartoKey && (
+          <TileLayer
+            url={`tile-cache://${DARK_LABELS_LAYER}/{z}/{x}/{y}.png`}
+            maxZoom={layer.maxZoom}
+            maxNativeZoom={ESRI_CANVAS_MAX_NATIVE_ZOOM}
+            zIndex={2}
+          />
+        )}
 
         {/* Terrain elevation heatmap overlay */}
         {showTerrain && (
@@ -1389,7 +1410,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
 
             {/* Add WP button - hidden in readOnly mode */}
             {!readOnly && (
-              <button
+              <button {...ui('button', { variant: 'secondary', active: isAddingWaypoint })}
                 onClick={() => {
                   setIsAddingWaypoint(!isAddingWaypoint);
                   setIsSettingHome(false); // Exit home mode if entering add mode
@@ -1416,7 +1437,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
             )}
 
             {waypoints.length > 0 && (
-              <button
+              <button {...ui('button', { variant: 'secondary' })}
                 onClick={() => setFitTrigger(n => n + 1)}
                 className="px-2.5 py-1.5 rounded text-xs font-medium bg-surface border border-subtle text-content hover:bg-surface-raised shadow-sm transition-colors flex items-center gap-1.5"
                 title={t('mission:missionMapPanel.fitTip')}
@@ -1429,7 +1450,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
             )}
 
             {/* Center on Vehicle button */}
-            <button
+            <button {...ui('button', { variant: 'secondary' })}
               onClick={() => setCenterOnVehicleTrigger(n => n + 1)}
               className="px-2.5 py-1.5 rounded text-xs font-medium bg-surface border border-subtle text-content hover:bg-surface-raised shadow-sm transition-colors flex items-center gap-1.5"
               title={t('mission:missionMapPanel.centerTip')}
@@ -1443,7 +1464,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
 
             {/* Set Home button - hidden in readOnly mode */}
             {!readOnly && (
-              <button
+              <button {...ui('button', { variant: 'secondary', active: isSettingHome })}
                 onClick={handleToggleSetHome}
                 className={`px-2.5 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
                   isSettingHome
@@ -1462,7 +1483,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
             )}
 
             {/* Flight preview: kinematic playback of the planned mission. */}
-            <button
+            <button {...ui('button', { variant: 'secondary' })}
               onClick={() => {
                 const fp = useFlightPreviewStore.getState();
                 if (fp.isActive) fp.close();
@@ -1503,7 +1524,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                       </span>
                     )}
                     {surveyDrawMode === 'none' && !surveyPolygon && (
-                      <button
+                      <button {...ui('button', { variant: 'primary' })}
                         onClick={startSurveyDrawing}
                         className="px-2.5 py-1.5 rounded text-xs font-medium bg-purple-600/80 text-white transition-colors flex items-center gap-1.5"
                         title={surveyPattern === 'corridor' ? t('mission:missionMapPanel.drawCenterlineTip') : t('mission:missionMapPanel.drawBoundaryTip')}
@@ -1514,7 +1535,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
                         {surveyPattern === 'corridor' ? t('mission:missionMapPanel.drawCenterline') : t('mission:missionMapPanel.drawBoundary')}
                       </button>
                     )}
-                    <button
+                    <button {...ui('button', { variant: 'danger' })}
                       onClick={deactivateSurvey}
                       className="px-2.5 py-1.5 rounded text-xs font-medium bg-surface-solid border border-red-400 shadow-sm text-red-400 hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1.5"
                       title={t('mission:missionMapPanel.exitSurveyTip')}
@@ -1535,8 +1556,8 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
         {activeMode === 'geofence' && !readOnly && (
           <>
             {/* Include/Exclude toggle */}
-            <div className="flex items-center bg-surface-solid border border-subtle shadow-sm rounded overflow-hidden">
-              <button
+            <div {...ui('segmented')} className="flex items-center bg-surface-solid border border-subtle shadow-sm rounded overflow-hidden">
+              <button {...ui('segment', { active: fenceInclusionMode })}
                 onClick={() => setFenceInclusionMode(true)}
                 className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
                   fenceInclusionMode
@@ -1547,7 +1568,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
               >
                 {t('mission:missionMapPanel.include')}
               </button>
-              <button
+              <button {...ui('segment', { active: !fenceInclusionMode })}
                 onClick={() => setFenceInclusionMode(false)}
                 className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
                   !fenceInclusionMode
@@ -1566,7 +1587,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
               const isPolygonActive = fenceDrawMode === polygonMode;
               const activeColor = fenceInclusionMode ? 'bg-green-600' : 'bg-red-600';
               return (
-                <button
+                <button {...ui('button', { variant: 'secondary', active: isPolygonActive })}
                   onClick={() => setFenceDrawMode(isPolygonActive ? 'none' : polygonMode)}
                   className={`px-2.5 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
                     isPolygonActive
@@ -1589,7 +1610,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
               const isCircleActive = fenceDrawMode === circleMode;
               const activeColor = fenceInclusionMode ? 'bg-green-600' : 'bg-red-600';
               return (
-                <button
+                <button {...ui('button', { variant: 'secondary', active: isCircleActive })}
                   onClick={() => setFenceDrawMode(isCircleActive ? 'none' : circleMode)}
                   className={`px-2.5 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
                     isCircleActive
@@ -1607,7 +1628,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
             })()}
 
             {/* Return point button */}
-            <button
+            <button {...ui('button', { variant: 'secondary', active: fenceDrawMode === 'return-point' })}
               onClick={() => setFenceDrawMode(fenceDrawMode === 'return-point' ? 'none' : 'return-point')}
               className={`px-2.5 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
                 fenceDrawMode === 'return-point'
@@ -1640,7 +1661,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
         {/* === RALLY MODE TOOLS === */}
         {activeMode === 'rally' && !readOnly && (
           <>
-            <button
+            <button {...ui('button', { variant: 'secondary', active: rallyAddMode })}
               onClick={() => setRallyAddMode(!rallyAddMode)}
               className={`px-2.5 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
                 rallyAddMode
@@ -1692,7 +1713,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
       {activeMode === 'mission' && waypoints.length > 1 && (
         <div className="absolute bottom-3 right-3 z-[1000]">
           {legendCollapsed ? (
-            <button
+            <button {...ui('button', { variant: 'secondary' })}
               onClick={() => updateMissionDefaults({ mapLegendCollapsed: false })}
               className="bg-surface-solid border border-subtle shadow-sm rounded-lg px-2 py-1.5 text-xs text-content-secondary hover:text-content transition-colors flex items-center gap-1.5"
               title={t('mission:missionMapPanel.showLegendTip')}
@@ -1706,7 +1727,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
           <div className="bg-surface-solid border border-subtle shadow-sm rounded-lg overflow-hidden text-xs max-w-[280px]">
             <div className="flex items-center justify-between pl-2.5 pr-1 py-1 border-b border-subtle">
               <span className="text-[10px] uppercase tracking-wider text-content-tertiary">{t('mission:missionMapPanel.legend')}</span>
-              <button
+              <button {...ui('icon-button')}
                 onClick={() => updateMissionDefaults({ mapLegendCollapsed: true })}
                 className="p-1 rounded text-content-tertiary hover:text-content hover:bg-surface-raised transition-colors"
                 title={t('mission:missionMapPanel.hideLegendTip')}
@@ -1763,6 +1784,37 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
               </div>
               <span className="text-content font-medium">{t('mission:missionMapPanel.predictedTurns')}</span>
             </button>
+            {layerWindAt && (
+              <>
+                <button
+                  onClick={() => updateMissionDefaults({ showLegWind: !showLegWind })}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 w-full hover:bg-surface-raised transition-colors border-t border-subtle"
+                >
+                  <div className={`w-3 h-3 rounded-sm border transition-colors ${
+                    showLegWind ? 'bg-amber-500 border-amber-400' : 'bg-transparent border-content-secondary'
+                  }`}>
+                    {showLegWind && (
+                      <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M2 6l3 3 5-5" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-content font-medium">{t('mission:windLegs.toggle')}</span>
+                </button>
+                {showLegWind && (
+                  <div className="px-2.5 pb-2 pt-0.5 grid grid-cols-2 gap-x-3 gap-y-0.5">
+                    {(['tail', 'cross', 'head', 'blocked'] as LegWindKind[]).map((k) => (
+                      <div key={k} className={`flex items-center gap-1.5 text-content-secondary ${k === 'blocked' ? 'col-span-2' : ''}`}>
+                        <svg width="16" height="6" aria-hidden="true">
+                          <line x1="1" y1="3" x2="15" y2="3" stroke={LEG_WIND_COLORS[k]} strokeWidth="3" strokeLinecap="round" strokeDasharray={k === 'blocked' ? '4 3' : undefined} />
+                        </svg>
+                        <span>{t(`mission:windLegs.${k}`)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
             {flown && (
               <div className="px-2.5 pb-2 pt-0.5 text-[11px] leading-snug">
                 <div className="text-content-secondary">

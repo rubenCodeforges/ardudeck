@@ -4,12 +4,14 @@ import { useFirmwareStore, type BoardInfo } from '../../stores/firmware-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import type { FirmwareVehicleType, FirmwareSource } from '../../../shared/firmware-types';
 import { FIRMWARE_SOURCE_NAMES, KNOWN_BOARDS, firmwareSourceName } from '../../../shared/firmware-types';
+import { flashRoute, fullEraseMode, type FullEraseMode } from '../../../shared/flash-route';
 import { firmwareSourceRegistry } from '../../modules/module-extension-registries';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { BoardPicker } from './BoardPicker';
 import { BootPadWizard } from './BootPadWizard';
 import { RadioSdView } from './RadioSdView';
 import { formatPortDisplayName } from '../../utils/usb-device-names';
+import { ui } from '../ui/ui-hooks';
 
 /**
  * Get suggested boards based on detected MCU type
@@ -147,7 +149,7 @@ function SerialPortPicker({
     <div className="mb-4 p-3 bg-surface-raised rounded-lg border border">
       <div className="flex items-center justify-between mb-3">
         <span className="text-content-secondary text-sm font-medium">{t('common:serialPorts')}</span>
-        <button
+        <button {...ui('button', { variant: 'secondary' })}
           onClick={onRefresh}
           disabled={isLoading || disabled}
           className="px-2 py-1 text-xs text-content-secondary hover:text-content bg-surface-raised hover:bg-surface-raised rounded transition-colors disabled:opacity-50"
@@ -170,7 +172,7 @@ function SerialPortPicker({
               <div className="flex-1 min-w-0">
                 <div className="text-content text-sm font-medium truncate">{formatPortDisplayName(port)}</div>
               </div>
-              <button
+              <button {...ui('button', { variant: 'primary' })}
                 onClick={() => onProbe(port.path)}
                 disabled={isProbing || disabled}
                 className="ml-2 px-2.5 py-1.5 text-xs bg-purple-600 hover:bg-purple-500 disabled:bg-surface-raised disabled:text-content-secondary text-white rounded transition-colors flex items-center gap-1.5"
@@ -283,7 +285,7 @@ function BootloaderChecklist({
         </div>
       </div>
 
-      <button
+      <button {...ui('button', { variant: 'primary' })}
         onClick={onReady}
         disabled={!canFlash || !allChecked}
         className={`
@@ -322,6 +324,13 @@ const VEHICLE_ICONS: Record<FirmwareVehicleType, React.ReactNode> = {
       <path d="M7,30A5,5,0,0,1,7,20v2a3,3,0,1,0,3,3h2A5.0055,5.0055,0,0,1,7,30Z" />
       <path d="M25,30a5.0055,5.0055,0,0,1-5-5h2a3,3,0,1,0,3-3V20a5,5,0,0,1,0,10Z" />
       <path d="M20,18.5859V13.4141L25.707,7.707a1,1,0,1,0-1.414-1.414l-4.4995,4.5a3.9729,3.9729,0,0,0-7.587,0L7.707,6.293a.9994.9994,0,0,0-1.414,0h0a.9994.9994,0,0,0,0,1.414L12,13.4141v5.1718L6.293,24.293a.9994.9994,0,0,0,0,1.414h0a.9994.9994,0,0,0,1.414,0l4.5-4.5a3.9729,3.9729,0,0,0,7.587,0l4.4995,4.5a1,1,0,0,0,1.414-1.414ZM18,20a2,2,0,0,1-4,0V12a2,2,0,0,1,4,0Z" />
+    </svg>
+  ),
+  heli: (
+    <svg viewBox="0 0 32 32" className="w-full h-full" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7h26M16 7v4" />
+      <path d="M10 11h9a6 6 0 0 1 6 6v1a3 3 0 0 1-3 3H12a5 5 0 0 1-5-5v0a5 5 0 0 1 3-5Z" />
+      <path d="M7 16H2M2 13v6M12 21l-2 4M21 21l2 4M8 25h18" />
     </svg>
   ),
   plane: (
@@ -368,6 +377,7 @@ const VEHICLE_ICONS: Record<FirmwareVehicleType, React.ReactNode> = {
 
 const VEHICLE_TYPE_KEYS: Record<FirmwareVehicleType, string> = {
   copter: 'common:copter',
+  heli: 'firmware:firmwareFlashView.heli',
   plane: 'common:plane',
   vtol: 'firmware:firmwareFlashView.vtol',
   rover: 'common:rover',
@@ -378,11 +388,11 @@ const VEHICLE_TYPE_KEYS: Record<FirmwareVehicleType, string> = {
 // Supported vehicle types per firmware source
 // This filters what vehicle types are available when selecting firmware
 const FIRMWARE_SUPPORTED_VEHICLES: Record<FirmwareSource, FirmwareVehicleType[]> = {
-  ardupilot: ['copter', 'plane', 'vtol', 'rover', 'boat', 'sub'],  // Full support
+  ardupilot: ['copter', 'heli', 'plane', 'vtol', 'rover', 'boat', 'sub'],  // Full support
   px4: ['copter', 'plane', 'vtol', 'rover', 'boat', 'sub'],        // Full support
   betaflight: ['copter'],                                           // Racing/freestyle multirotors only
   inav: ['copter', 'plane', 'rover', 'boat'],                      // Navigation firmware, no VTOL/sub
-  custom: ['copter', 'plane', 'vtol', 'rover', 'boat', 'sub'],     // User uploads, any type
+  custom: ['copter', 'heli', 'plane', 'vtol', 'rover', 'boat', 'sub'],     // User uploads, any type
 };
 
 // Get vehicle types available for a firmware source
@@ -394,6 +404,13 @@ function getAvailableVehicleTypes(source: FirmwareSource): FirmwareVehicleType[]
 function isVehicleTypeSupported(type: FirmwareVehicleType, source: FirmwareSource): boolean {
   return FIRMWARE_SUPPORTED_VEHICLES[source]?.includes(type) ?? false;
 }
+
+const ERASE_HINT_KEYS: Record<FullEraseMode, string> = {
+  unavailable: 'firmware:firmwareFlashView.fullChipEraseUnavailable',
+  always: 'firmware:firmwareFlashView.fullChipEraseAlways',
+  optional: 'firmware:firmwareFlashView.fullChipEraseOptional',
+  'needs-bl-image': 'firmware:firmwareFlashView.fullChipEraseNeedsBl',
+};
 
 export function FirmwareFlashView() {
   const moduleSources = firmwareSourceRegistry.useEntries();
@@ -642,6 +659,13 @@ export function FirmwareFlashView() {
   }, [visibleVersionGroups, selectedVersionGroup, setSelectedVersionGroup]);
 
   // Can only flash after clicking Connect (which sets detectedBoard with port info)
+  const flashImage = (selectedSource === 'custom' ? customFirmwarePath : selectedVersion?.downloadUrl) ?? '';
+  const eraseMode: FullEraseMode = detectedBoard ? fullEraseMode(flashRoute(detectedBoard, flashImage), flashImage) : 'unavailable';
+  // A choice made for another board or image must not ride along to one that cannot honour it.
+  useEffect(() => {
+    if (eraseMode !== 'optional' && fullChipErase) setFullChipErase(false);
+  }, [eraseMode, fullChipErase, setFullChipErase]);
+
   const canFlash =
     (selectedSource === 'custom' ? !!customFirmwarePath : !!selectedVersion) &&
     !!detectedBoard &&
@@ -668,14 +692,14 @@ export function FirmwareFlashView() {
               />
             </svg>
             <h1 className="text-xl font-semibold text-content">{t('common:firmwareFlash')}</h1>
-            <div className="flex items-center bg-surface-raised border border-subtle rounded-lg p-0.5 ml-2">
-              <button
+            <div {...ui('tabs')} className="flex items-center bg-surface-raised border border-subtle rounded-lg p-0.5 ml-2">
+              <button {...ui('tab', { active: activeTab === 'fc' })}
                 onClick={() => setActiveTab('fc')}
                 className={`px-3 py-1 text-xs rounded-md transition-colors ${activeTab === 'fc' ? 'bg-surface-input text-content' : 'text-content-secondary hover:text-content'}`}
               >
                 {t('firmware:firmwareFlashView.tabFlightController')}
               </button>
-              <button
+              <button {...ui('tab', { active: activeTab === 'radio' })}
                 onClick={() => setActiveTab('radio')}
                 className={`px-3 py-1 text-xs rounded-md transition-colors ${activeTab === 'radio' ? 'bg-surface-input text-content' : 'text-content-secondary hover:text-content'}`}
               >
@@ -694,7 +718,7 @@ export function FirmwareFlashView() {
               />
               {t('common:advanced')}
             </label>
-            <button
+            <button {...ui('button', { variant: 'ghost' })}
               onClick={reset}
               className="px-3 py-1.5 text-sm text-content-secondary hover:text-content hover:bg-surface-raised rounded-lg transition-colors"
             >
@@ -733,7 +757,7 @@ export function FirmwareFlashView() {
                       t('firmware:firmwareFlashView.autoDetectedFromConnection')
                     )}
                   </p>
-                  <button
+                  <button {...ui('button', { variant: 'secondary' })}
                     onClick={() => { void disconnect(); }}
                     className="mt-3 px-3 py-1.5 text-sm font-medium bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 rounded-lg transition-colors"
                   >
@@ -829,7 +853,7 @@ export function FirmwareFlashView() {
                   - Board manually selected but not connected: Connect
                   - Already connected: hide button */}
               {!detectedBoard && (
-                <button
+                <button {...ui('button', { variant: 'secondary' })}
                   onClick={detectBoard}
                   disabled={isDetecting || isFlashing}
                   title={selectedBoard ? t('firmware:firmwareFlashView.connectToBoard') : t('firmware:firmwareFlashView.autoDetectBoard')}
@@ -888,7 +912,7 @@ export function FirmwareFlashView() {
             <div className="flex flex-wrap gap-2">
               {(['ardupilot', 'px4', 'betaflight', 'inav', 'custom'] as const).map(
                 (source) => (
-                  <button
+                  <button {...ui('chip', { active: selectedSource === source && !activeModuleSource })}
                     key={source}
                     onClick={() => { setModuleSourceKey(null); setSelectedSource(source); }}
                     disabled={isFlashing}
@@ -906,7 +930,7 @@ export function FirmwareFlashView() {
                 )
               )}
               {moduleSources.map(({ slug, id, value }) => (
-                <button
+                <button {...ui('chip', { active: activeModuleSource?.slug === slug && activeModuleSource.id === id })}
                   key={`${slug}:${id}`}
                   onClick={() => { setModuleSourceKey(`${slug}:${id}`); setSelectedSource('custom'); }}
                   disabled={isFlashing}
@@ -957,7 +981,7 @@ export function FirmwareFlashView() {
                     <p className="text-xs text-content-secondary mt-2">
                       {t('firmware:firmwareFlashView.sameNameIdentical')}
                     </p>
-                    <button
+                    <button {...ui('button', { variant: 'ghost' })}
                       onClick={clearUnmatchedBoardWarning}
                       className="mt-2 text-xs text-content-secondary hover:text-content underline"
                     >
@@ -991,7 +1015,7 @@ export function FirmwareFlashView() {
                 const isDisabled = isFlashing || !isAvailable;
 
                 return (
-                  <button
+                  <button {...ui('chip', { active: isSelected })}
                     key={type}
                     onClick={() => isAvailable && setSelectedVehicleType(type)}
                     disabled={isDisabled}
@@ -1068,7 +1092,7 @@ export function FirmwareFlashView() {
                   {visibleVersionGroups.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                       {visibleVersionGroups.slice(0, 4).map((group) => (
-                        <button
+                        <button {...ui('chip', { active: selectedVersionGroup?.major === group.major })}
                           key={group.major}
                           onClick={() => setSelectedVersionGroup(group)}
                           disabled={isFlashing}
@@ -1144,7 +1168,7 @@ export function FirmwareFlashView() {
               <label className="block text-sm font-medium text-content-secondary mb-3">
                 {t('firmware:firmwareFlashView.firmwareFile')}
               </label>
-              <button
+              <button {...ui('button', { variant: 'secondary' })}
                 onClick={selectCustomFirmware}
                 disabled={isFlashing}
                 className="w-full px-4 py-4 bg-surface-raised border border border-dashed rounded-lg text-content-secondary hover:border hover:text-content transition-colors"
@@ -1287,7 +1311,7 @@ export function FirmwareFlashView() {
                     <p className="text-content text-sm mb-4">
                       <Trans i18nKey="firmware:firmwareFlashView.usbSerialChip" values={{ board: selectedBoard.name }} components={{ b: <span className="text-content font-medium" /> }} />
                     </p>
-                    <button
+                    <button {...ui('button', { variant: 'primary' })}
                       onClick={openBootPadWizard}
                       className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
                     >
@@ -1338,15 +1362,16 @@ export function FirmwareFlashView() {
                   {t('firmware:firmwareFlashView.noRebootSequence')}
                   <span className="text-xs text-content-secondary">{t('firmware:firmwareFlashView.alreadyInBootloader')}</span>
                 </label>
-                <label className="flex items-center gap-2 text-sm text-content-secondary cursor-pointer">
+                <label className={`flex items-center gap-2 text-sm text-content-secondary ${eraseMode === 'optional' ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
                   <input
                     type="checkbox"
-                    checked={fullChipErase}
+                    checked={eraseMode === 'always' || (eraseMode === 'optional' && fullChipErase)}
                     onChange={(e) => setFullChipErase(e.target.checked)}
-                    disabled={isFlashing}
-                    className="rounded border bg-surface-raised text-blue-500 focus:ring-blue-500"
+                    disabled={isFlashing || eraseMode !== 'optional'}
+                    className="rounded border bg-surface-raised text-blue-500 focus:ring-blue-500 disabled:opacity-50"
                   />
                   {t('firmware:firmwareFlashView.fullChipErase')}
+                  <span className="text-xs text-content-tertiary">{t(ERASE_HINT_KEYS[eraseMode])}</span>
                 </label>
               </div>
             )}
@@ -1363,7 +1388,7 @@ export function FirmwareFlashView() {
 
               return (
                 <div className="flex gap-3">
-                  <button
+                  <button {...ui('button', { variant: 'primary' })}
                     onClick={startFlash}
                     disabled={!canFlash}
                     className={`
@@ -1392,7 +1417,7 @@ export function FirmwareFlashView() {
                   </button>
 
                   {isFlashing && (
-                    <button
+                    <button {...ui('button', { variant: 'danger' })}
                       onClick={abortFlash}
                       className="px-4 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
                     >

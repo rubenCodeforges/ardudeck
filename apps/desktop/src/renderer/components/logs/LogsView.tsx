@@ -7,6 +7,7 @@ import { AiAnalysisPanel } from './AiAnalysisPanel';
 import { FleetForensicsPanel } from './FleetForensicsPanel';
 import { ADVISOR_CARGO_SLUG, useCargoEnabled } from '../../modules/capabilities';
 import { useTranslation } from 'react-i18next';
+import { ui } from '../ui/ui-hooks';
 
 export function LogsView() {
   const { t } = useTranslation();
@@ -29,7 +30,7 @@ export function LogsView() {
   return (
     <div className="flex flex-col h-full">
       {/* Tab bar */}
-      <div className="flex items-center gap-1 px-4 pt-3 pb-2 border-b border-subtle">
+      <div {...ui('tabs')} className="flex items-center gap-1 px-4 pt-3 pb-2 border-b border-subtle">
         <h2 className="text-lg font-semibold text-content mr-4">{t('common:flightLogs')}</h2>
         {currentLog && (
           <span
@@ -42,6 +43,7 @@ export function LogsView() {
         {tabs.map((tab) => (
           <button
             key={tab.id}
+            {...ui('tab', { active: activeTab === tab.id })}
             onClick={() => !tab.disabled && setActiveTab(tab.id)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               activeTab === tab.id

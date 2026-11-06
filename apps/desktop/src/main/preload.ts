@@ -6,7 +6,8 @@
 import type { OsIntegrationInfo, OsLinksState, OsDiscoveredVehicle } from '../shared/ardudeck-os-types.js';
 import type { CameraStartPhase } from '../shared/camera-types.js';
 import type { GpsDiagEvent } from '../shared/gps-diagnostics-types.js';
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
+import type { UserModel, UserModelsApi } from '../shared/scene-models/user-models.js';
 import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlStartedData, type ArduPilotFlightGearConfig, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotFrameCatalog, type ArduPilotVehicleType, type ArduPilotReleaseTrack, type Px4SitlConfig, type Px4SitlStatus, type Px4SitlExitData, type Px4SitlStartedData, type Px4SitlDownloadProgress, type Px4SitlBinaryInfo, type Px4ReleaseTrack, type SwarmSitlConfig, type SwarmSitlStatus, type SwarmInstanceStatus, type SwarmSitlLogLine, type AppUpdateInfo, type SigningStatus, type TelemetrySpeed, type LegacyStreamConsentRequest, type StatusMessage, type TileCacheStats, type TileCacheDownloadProgress, type TileCacheSettings, type TileCacheDownloadRegion, type CompanionConnectOptions, type CompanionConnectionIpcState, type CompanionDiscoveryResult, type TransportInfoIpc, type VehicleInfoIpc, type SetActiveSelectionPayload, type VehicleCommand, type MissionVehicleProgress, type OrchestrationIntentIpc, type OrchestrationStatusIpc, type OrchestratorSource, type OrchestratorStatus, type CameraSourceConfig, type CameraStartResult, type CameraMediaActionResult, type CameraMediaItem, type MediaEngineStatus, type GimbalCommand, type CameraCommand, type VideoStreamInfoIpc, type GimbalAttitudeIpc, type GimbalInfoIpc, type FrameBlueprintResult, type FrameBlueprintRequest } from '../shared/ipc-channels.js';
 import type { SigningAuditSnapshot } from '../shared/signing-audit-types.js';
 import type { LanguageState } from './i18n-main.js';
@@ -295,6 +296,9 @@ const api = {
 
   mavlinkReboot: (): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_REBOOT),
+
+  mavlinkResetParams: (): Promise<{ success: boolean; method?: 'preflight-storage' | 'format-version'; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_RESET_PARAMS),
 
   mavlinkArmDisarm: (arm: boolean, force?: boolean): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.MAVLINK_ARM_DISARM, arm, force),
@@ -796,7 +800,7 @@ const api = {
   },
 
   // Parameter file operations
-  writeParamsToFlash: (): Promise<{ success: boolean; error?: string }> =>
+  writeParamsToFlash: (): Promise<{ success: boolean; unconfirmed?: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.PARAM_WRITE_FLASH),
 
   saveParamsToFile: (params: Array<{ id: string; value: number }>, vehicleType?: string): Promise<{ success: boolean; error?: string; filePath?: string }> =>
@@ -845,6 +849,45 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_LIST_MISSION_DOCS, site),
   fleetRepoReadMissionDoc: (path: string): Promise<StoredMission | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_READ_MISSION_DOC, path),
+  fleetRepoShareIdentity: (): Promise<import('../shared/mission-share-types').ShareIdentity> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_SHARE_IDENTITY),
+  fleetRepoShareMission: (site: string, pkg: import('../shared/mission-share-types').MissionPackage): Promise<{ success: boolean; changed?: boolean; path?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_SHARE_MISSION, site, pkg),
+  fleetRepoPendingShares: (): Promise<import('../shared/mission-share-types').IncomingShare[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_PENDING_SHARES),
+  fleetRepoDismissShare: (path: string, sharedAt: number): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_DISMISS_SHARE, path, sharedAt),
+  onFleetRepoSynced: (callback: () => void): (() => void) => {
+    const handler = () => callback();
+    ipcRenderer.on(IPC_CHANNELS.FLEET_REPO_SYNCED, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.FLEET_REPO_SYNCED, handler);
+  },
+  missionPackageSave: (pkg: import('../shared/mission-share-types').MissionPackage): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MISSION_PACKAGE_SAVE, pkg),
+  hazardsList: (): Promise<import('../shared/hazard-types').Hazard[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.HAZARDS_LIST),
+  hazardsStatus: (): Promise<import('../shared/hazard-types').HazardsStatus> =>
+    ipcRenderer.invoke(IPC_CHANNELS.HAZARDS_STATUS),
+  hazardsSetPin: (pin: string): Promise<import('./hazards/hazard-store').HazardResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.HAZARDS_SET_PIN, pin),
+  hazardsUnlock: (pin: string): Promise<import('./hazards/hazard-store').HazardResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.HAZARDS_UNLOCK, pin),
+  hazardsRelock: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.HAZARDS_RELOCK),
+  hazardsAdd: (hazard: import('../shared/hazard-types').Hazard): Promise<import('./hazards/hazard-store').HazardResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.HAZARDS_ADD, hazard),
+  hazardsRemove: (id: string): Promise<import('./hazards/hazard-store').HazardResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.HAZARDS_REMOVE, id),
+  hazardsOverride: (entry: { hazardIds: string[]; mission: string }): Promise<import('./hazards/hazard-store').HazardResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.HAZARDS_OVERRIDE, entry),
+  hazardsExport: (): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.HAZARDS_EXPORT),
+  hazardsImport: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.HAZARDS_IMPORT),
+  onHazardsChanged: (callback: () => void): (() => void) => {
+    const handler = () => callback();
+    ipcRenderer.on(IPC_CHANNELS.HAZARDS_CHANGED, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.HAZARDS_CHANGED, handler);
+  },
   fleetRepoHistory: (limit?: number): Promise<import('../shared/ipc-channels').FleetRepoHistoryEntry[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.FLEET_REPO_HISTORY, limit),
   fleetRepoReadFile: (filepath: string, oid?: string): Promise<string | null> =>
@@ -954,7 +997,7 @@ const api = {
   saveMissionToFile: (items: MissionItem[], format?: 'waypoints' | 'plan' | 'kmz'): Promise<{ success: boolean; filePath?: string; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.MISSION_SAVE_FILE, items, format),
 
-  loadMissionFromFile: (): Promise<{ success: boolean; items?: MissionItem[]; error?: string }> =>
+  loadMissionFromFile: (): Promise<{ success: boolean; items?: MissionItem[]; pkg?: import('../shared/mission-share-types').MissionPackage; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.MISSION_LOAD_FILE),
 
   importSurveyArea: (): Promise<{ success: boolean; error?: string; format?: 'kml' | 'geojson'; content?: string; fileName?: string }> =>
@@ -2908,6 +2951,21 @@ const api = {
     ipcRenderer.on(IPC_CHANNELS.SCENE_MESHES_CHANGED, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.SCENE_MESHES_CHANGED, handler);
   },
+  userModels: {
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.USER_MODELS_LIST),
+    import: (req) => ipcRenderer.invoke(IPC_CHANNELS.USER_MODELS_IMPORT, req),
+    update: (id, patch) => ipcRenderer.invoke(IPC_CHANNELS.USER_MODELS_UPDATE, id, patch),
+    remove: (id) => ipcRenderer.invoke(IPC_CHANNELS.USER_MODELS_REMOVE, id),
+    listWatched: () => ipcRenderer.invoke(IPC_CHANNELS.USER_MODELS_WATCH_LIST),
+    addWatched: (dir) => ipcRenderer.invoke(IPC_CHANNELS.USER_MODELS_WATCH_ADD, dir),
+    removeWatched: (dir) => ipcRenderer.invoke(IPC_CHANNELS.USER_MODELS_WATCH_REMOVE, dir),
+    onChanged: (cb) => {
+      const handler = (_: unknown, models: UserModel[]) => cb(models);
+      ipcRenderer.on(IPC_CHANNELS.USER_MODELS_CHANGED, handler);
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.USER_MODELS_CHANGED, handler);
+    },
+    pathForFile: (file) => webUtils.getPathForFile(file),
+  } satisfies UserModelsApi,
 
   // ─── ArduDeck Trainer ───
   trainerStatus: (): Promise<TrainerStatus> => ipcRenderer.invoke(IPC_CHANNELS.TRAINER_STATUS),

@@ -1,5 +1,6 @@
 import { useRef, useCallback, useMemo, useState } from 'react';
-import { useSettingsStore } from '../../stores/settings-store';
+import { useThemePalette } from '../../hooks/useTheme';
+import { themedTrackColour } from '../../modules/module-theme-registry';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 
 export interface DraggableSliderProps {
@@ -16,7 +17,7 @@ export interface DraggableSliderProps {
   /** Slider track color */
   color?: string;
   /** Position in a related run of sliders, so Bridge can cycle its palette. */
-  bridgeIndex?: number;
+  paletteIndex?: number;
   /** Label text */
   label?: string;
   /** Hint text below label */
@@ -96,21 +97,10 @@ function useSliderDrag(
   };
 }
 
-/**
- * Bridge paints its own console palette, and a caller's hex cannot be reached
- * by CSS because it lands inline. Semantic colours are passed through: a green
- * or red track means something and keeps meaning it.
- */
-const BRIDGE_TRACK = ['#f5a524', '#7dd3fc', '#b4a7f5', '#f6b38a'];
-const SEMANTIC = new Set(['#10B981', '#10b981', '#EF4444', '#ef4444', '#F59E0B', '#f59e0b']);
-
 function useTrackColor(color: string, disabled: boolean, index?: number): string {
-  const onBridge = useSettingsStore((st) => st.theme === 'bridge');
+  const palette = useThemePalette();
   if (disabled) return '#52525b';
-  if (!onBridge) return color;
-  // A caller that passes an index has chosen the palette; only unindexed semantic tracks keep their hex.
-  if (index !== undefined) return BRIDGE_TRACK[index % BRIDGE_TRACK.length]!;
-  return SEMANTIC.has(color) ? color : BRIDGE_TRACK[0]!;
+  return themedTrackColour(color, palette, index);
 }
 
 export function DraggableSlider({
@@ -126,10 +116,10 @@ export function DraggableSlider({
   height = 12,
   showThumb = true,
   disabled = false,
-  bridgeIndex,
+  paletteIndex,
 }: DraggableSliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
-  const effectiveColor = useTrackColor(color, disabled, bridgeIndex);
+  const effectiveColor = useTrackColor(color, disabled, paletteIndex);
 
   // Round to step precision so 48 + 0.01 doesn't yield 48.00999983...
   // The number of decimals comes from the step itself: step=0.01 → 2 decimals.

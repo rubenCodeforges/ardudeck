@@ -139,13 +139,16 @@
     "kmzArchive": "KMZ-Archiv",
     "luaScript": "Lua-Skript",
     "missionFiles": "Missionsdateien",
+    "models3d": "3D-Modelle",
     "parameterFiles": "Parameterdateien",
+    "pointClouds": "Punktwolken",
     "postureReport": "Sicherheitsbericht (Markdown)",
     "rallyFiles": "Rally-Dateien",
     "textFiles": "Textdateien",
     "waypoints": "Wegpunkte",
     "workspaceLayout": "ArduDeck-Arbeitsbereich-Layout",
-    "xplaneExecutable": "X-Plane-Programmdatei"
+    "xplaneExecutable": "X-Plane-Programmdatei",
+    "zipArchive": "Zip-Archiv"
   },
   "firmwareDownloader": {
     "aborted": "Download abgebrochen",
@@ -190,7 +193,8 @@
     "waitingDfu": "Warten auf DFU-Gerät...",
     "writingFirmware": "Firmware wird geschrieben...",
     "writingProgress": "Firmware wird geschrieben... {{percent}}%",
-    "writingProgressKb": "Firmware wird geschrieben... {{percent}}% ({{done}}/{{total}} KB)"
+    "writingProgressKb": "Firmware wird geschrieben... {{percent}}% ({{done}}/{{total}} KB)",
+    "fullEraseNeedsBootloaderImage": "Ein vollständiges Löschen über DFU braucht ein *_with_bl.hex-Image: Das Löschen entfernt den Bootloader, und dieses Image stellt ihn nicht wieder her."
   },
   "fleetRepo": {
     "adoptFailed": "Repository konnte nicht übernommen werden",
@@ -310,7 +314,10 @@
     "writeProbeNoResponse": "Der FC hat nicht innerhalb von 1,5 s auf einen Schreibtest geantwortet. Der MAVLink-FTP-Server ist möglicherweise deaktiviert oder der FC hat kein beschreibbares Dateisystem (keine SD-Karte?).",
     "writeProbeRejected": "Der FC hat den Schreibtest abgelehnt: {{error}}",
     "inavNoParams": "Dieser Flugcontroller hat keine MAVLink-Parameter (INAV). Über MSP konfigurieren.",
-    "pickFolderTitle": "Ordner wählen"
+    "pickFolderTitle": "Ordner wählen",
+    "resetParamsArduPilotOnly": "Das Zurücksetzen aller Parameter ist nur für ArduPilot verfügbar.",
+    "resetParamsDisarmFirst": "Das Fahrzeug muss disarmt sein, bevor du seine Parameter zurücksetzt.",
+    "resetParamsFailed": "Der Flugcontroller hat das Zurücksetzen der Parameter nicht angenommen."
   },
   "licenseValidator": {
     "invalidKeyFormat": "Ungültiges Schlüsselformat",
@@ -461,8 +468,8 @@
     "title": "{{name}} möchte ein Programm starten"
   },
   "moduleManager": {
-    "activated_one": "{{count}} Modul aktiviert",
-    "activated_other": "{{count}} Module aktiviert",
+    "activated_one": "{{count}} Cargo aktiviert",
+    "activated_other": "{{count}} Cargo aktiviert",
     "activating": "Aktivierung beim Server...",
     "activationFailed": "Aktivierung fehlgeschlagen: {{msg}}",
     "activationRejected": "Aktivierung abgelehnt",
@@ -681,5 +688,34 @@
     "uploadFailed": "Hochladen fehlgeschlagen.",
     "noReconnect": "Der Flugcontroller kam nach dem Neustart nicht zurück.",
     "notStarted": "Das Skript ist nicht gestartet. Im Meldungsbereich nach einem Lua-Fehler sehen, etwa \"Insufficent memory\"."
+  },
+  "userModels": {
+    "importTitle": "3D-Modelle importieren",
+    "watchFolderTitle": "Ordner mit 3D-Modellen beobachten",
+    "readFailed": "Diese Datei konnte nicht gelesen werden: {{reason}}",
+    "fileNotFound": "Die Datei wurde nicht gefunden.",
+    "notJson": "Die Datei ist kein gültiges JSON.",
+    "unknownJson": "Diese JSON-Datei ist weder ein 3D-Tiles-Tileset noch CityJSON.",
+    "unsupportedFile": "Nicht unterstützter Dateityp. Verwende .glb, .gltf, .kmz, .kml, ein 3D-Tiles-tileset.json, CityJSON, eine .las-, .laz- oder .ply-Punktwolke oder ein .zip mit einer dieser Dateien.",
+    "missingResource": "Eine Datei, die das Modell braucht, fehlt: {{file}}",
+    "badArchive": "Das Archiv konnte nicht geöffnet werden.",
+    "noKmlInKmz": "Die KMZ enthält kein KML-Dokument.",
+    "noModelsInKml": "Die KML enthält kein 3D-Modell mit lokaler Datei.",
+    "remoteHref": "Das Modell verweist auf eine Webadresse. Nur Dateien in der KMZ oder neben der KML können geladen werden.",
+    "tilesetNoPosition": "Das Tileset hat keine Position: Seine Wurzel hat weder eine Transformation noch ein nutzbares Begrenzungsvolumen.",
+    "cityJsonFailed": "Die CityJSON-Datei konnte nicht umgewandelt werden.",
+    "zipEmpty": "Das Zip enthält kein glTF-, KML-, KMZ-, 3D-Tiles-, CityJSON- oder Punktwolkenmodell.",
+    "folderNotFound": "Der Ordner wurde nicht gefunden.",
+    "noPlacementTable": "Der Ordner braucht eine Platzierungstabelle: models.json, eine .csv- oder eine .geojson-Datei.",
+    "tableUnreadable": "{{file}} konnte nicht gelesen werden: {{reason}}",
+    "pointCloudNotLas": "Die Datei ist keine LAS- oder LAZ-Punktwolke.",
+    "pointCloudVersion": "Nicht unterstützte LAS-Version. Lesbar sind LAS 1.0 bis 1.4.",
+    "pointCloudFormat": "Nicht unterstütztes LAS-Punktformat oder nicht unterstützte LAZ-Komprimierung.",
+    "pointCloudTruncated": "Die Punktwolkendatei ist unvollständig.",
+    "pointCloudNoCrs": "Die Punktwolke hat kein Koordinatenreferenzsystem: Sie enthält weder GeoTIFF-Schlüssel noch einen WKT-Eintrag.",
+    "pointCloudUnknownCrs": "Das Referenzsystem der Punktwolke ({{crs}}) ist nicht bekannt.",
+    "pointCloudEmpty": "Die Punktwolke enthält keine verwendbaren Punkte.",
+    "plyInvalid": "Die Datei ist keine lesbare PLY-Punktwolke.",
+    "unverifiedCrs": "Mit EPSG:{{epsg}} von epsg.io platziert. Dessen 7-Parameter-Datumsverschiebung ist nicht mit PROJ geprüft und kann um Meter danebenliegen; prüfen Sie die Position auf der Karte."
   }
 }

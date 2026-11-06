@@ -2,6 +2,7 @@
  * Template selection dialog — lets users pick a pre-built graph template.
  * Rich visual design with category colors, per-template icons, and stat badges.
  */
+import { ui } from '../ui/ui-hooks';
 import { useCallback, useState } from 'react';
 import {
   X,
@@ -178,6 +179,7 @@ export function TemplateDialog({ onClose }: TemplateDialogProps) {
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-content-secondary" />
               <input
+                {...ui('input')}
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}

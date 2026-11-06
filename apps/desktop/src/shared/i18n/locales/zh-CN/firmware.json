@@ -121,7 +121,12 @@
     "unplugReconnect": "请拔除并重新连接你的主板，以开始使用新固件。",
     "usbSerialChip": "你的 <b>{{board}}</b> 使用 USB 序列晶片，无法通过软件进入 bootloader。别担心，精灵会引导你完成！",
     "vehicleNotSupported": "{{source}} 不支援 {{vehicle}}",
-    "vtol": "VTOL"
+    "vtol": "VTOL",
+    "heli": "传统直升机",
+    "fullChipEraseUnavailable": "此飞控无法执行：ArduPilot 引导程序会保留参数存储区。请在参数页面使用“重置所有参数”。",
+    "fullChipEraseAlways": "此处始终开启：该引导程序会擦除整个芯片，包括参数。",
+    "fullChipEraseOptional": "同时清除引导程序和所有参数；此固件会恢复引导程序。",
+    "fullChipEraseNeedsBl": "需要 *_with_bl.hex 固件：全片擦除会移除引导程序。"
   },
   "radioSdView": {
     "afterInstallNote": "安装后：退出 SD 磁碟区、拔掉 USB,然后在遥控器上将小工具加入型号画面（长按 TELE,全屏幕小工具）。套件会在安装时从其官方保存库下载。",

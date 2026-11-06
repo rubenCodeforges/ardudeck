@@ -746,5 +746,19 @@
   "vtolTransition": {
     "toHover": "ZUM SCHWEBEN",
     "toWing": "ZUM FLÄCHENFLUG"
+  },
+  "userModelParsers": {
+    "badLatLng": "Breiten- oder Längengrad fehlt oder liegt außerhalb des gültigen Bereichs",
+    "badNumber": "{{field}} ist keine gültige Zahl",
+    "emptyTable": "Die Platzierungstabelle enthält keine Zeilen.",
+    "invalidJson": "Die Platzierungstabelle ist kein gültiges JSON ({{detail}})",
+    "missingFile": "die Zeile nennt keine Modelldatei",
+    "noCrs": "Diese CityJSON-Datei nennt kein Koordinatenreferenzsystem (metadata.referenceSystem) und kann deshalb nicht platziert werden.",
+    "noGeometry": "Diese CityJSON-Datei enthält keine darstellbaren Flächen.",
+    "noValidRows": "Kein Modell aus der Platzierungstabelle konnte platziert werden. Zeile {{row}}: {{problem}}.",
+    "notCityJson": "Diese Datei ist kein CityJSON.",
+    "notFeatureCollection": "Die GeoJSON-Tabelle muss eine FeatureCollection aus Point-Features sein.",
+    "notModelList": "models.json muss eine Liste von Modellen sein oder ein Objekt mit einer Liste \"models\".",
+    "unknownCrs": "Unbekanntes Koordinatenreferenzsystem EPSG:{{epsg}}. Diese CityJSON-Datei kann nicht platziert werden."
   }
 }

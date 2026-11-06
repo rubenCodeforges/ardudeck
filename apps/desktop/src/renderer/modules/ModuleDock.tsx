@@ -34,6 +34,25 @@ function loadPos(): { x: number; y: number } | null {
   return null;
 }
 
+const DEFAULT_RIGHT = 16;
+const DEFAULT_BOTTOM = 52;
+const DOCK_GAP = 12;
+
+type Rect = { left: number; top: number; right: number; bottom: number };
+
+/** Left edge for the launcher at `base`, stepped left of any panel it would cover. */
+export function dockLeftClearOf(base: { left: number; top: number }, size: { w: number; h: number }, avoid: Rect[]): number {
+  let left = base.left;
+  const top = base.top, bottom = base.top + size.h;
+  // Re-check after each step: moving left can meet the next panel.
+  for (let pass = 0; pass < avoid.length; pass++) {
+    const hit = avoid.find((r) => r.left < left + size.w && r.right > left && r.top < bottom && r.bottom > top);
+    if (!hit) break;
+    left = hit.left - size.w - DOCK_GAP;
+  }
+  return Math.max(8, left);
+}
+
 export function ModuleDock() {
   const { t } = useTranslation();
   const panels = useSyncExternalStore(subscribeModulePanels, listModulePanels);
@@ -42,6 +61,26 @@ export function ModuleDock() {
   const [windowKey, setWindowKey] = useState<string | null>(null);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(loadPos);
   const btnRef = useRef<HTMLButtonElement>(null);
+  // A panel parked where the launcher sits (Fleet Ops seeds the same corner) pushes it left, unpersisted.
+  const [clearLeft, setClearLeft] = useState<number | null>(null);
+  useEffect(() => {
+    const place = () => {
+      const bw = btnRef.current?.offsetWidth ?? 120;
+      const bh = btnRef.current?.offsetHeight ?? 40;
+      const base = pos ? { left: pos.x, top: pos.y } : { left: window.innerWidth - DEFAULT_RIGHT - bw, top: window.innerHeight - DEFAULT_BOTTOM - bh };
+      const avoid = Array.from(document.querySelectorAll<HTMLElement>('[data-dock-avoid]'), (el) => el.getBoundingClientRect());
+      const left = dockLeftClearOf(base, { w: bw, h: bh }, avoid);
+      setClearLeft(left === base.left ? null : left);
+    };
+    place();
+    // The avoided panels are draggable and appear with the fleet; a light poll keeps up without observers on each.
+    const id = window.setInterval(place, 1000);
+    window.addEventListener('resize', place);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener('resize', place);
+    };
+  }, [pos]);
   const drag = useRef<{ sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null);
 
   // Drop a selection whose module unregistered (unload/reload).
@@ -112,11 +151,13 @@ export function ModuleDock() {
   };
 
   // Default clears the bottom status strips (mission "Ready to upload" bar,
-  // console line); user drags override via pos.
-  const anchor = pos ? { left: pos.x, top: pos.y } : { right: 16, bottom: 52 };
+  // console line) and steps left of any floating panel parked in that corner; user drags override via pos.
+  const anchor = clearLeft !== null
+    ? { left: clearLeft, ...(pos ? { top: pos.y } : { bottom: DEFAULT_BOTTOM }) }
+    : pos ? { left: pos.x, top: pos.y } : { right: DEFAULT_RIGHT, bottom: DEFAULT_BOTTOM };
   // Keep the popover on-screen: align to the button's left edge when the button
   // sits near the left of the viewport, otherwise to its right edge.
-  const alignLeft = pos != null && pos.x < 320;
+  const alignLeft = (clearLeft ?? pos?.x ?? Infinity) < 320;
 
   return (
     <>
@@ -197,6 +238,8 @@ export function ModuleDock() {
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
+          // Keyboard activation (and other synthetic clicks) carry no pointer events.
+          onClick={(e) => { if (e.detail === 0) { if (menuOpen) collapse(); else setMenuOpen(true); } }}
           style={{ touchAction: 'none', cursor: 'grab' }}
           data-tip={t('modules:moduleDock.dragToMove')}
           className={

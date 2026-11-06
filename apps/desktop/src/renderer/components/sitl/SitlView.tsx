@@ -15,6 +15,7 @@ import { useSettingsStore } from '../../stores/settings-store';
 import ArduPilotSitlTab from './ArduPilotSitlTab';
 import Px4SitlTab from './Px4SitlTab';
 import type { VirtualRCState } from '../../../shared/ipc-channels';
+import { ui } from '../ui/ui-hooks';
 
 type SitlTab = 'inav' | 'ardupilot' | 'px4';
 
@@ -219,8 +220,8 @@ export default function SitlView() {
         {/* Tab switcher. A tab locks while a DIFFERENT sim is running (they share
             MAVLink/MSP ports and would collide), so you must stop the running one
             before switching. */}
-        <div className="flex items-center gap-1 bg-surface-input border border-subtle rounded-lg p-1">
-            <button
+        <div {...ui('segmented')} className="flex items-center gap-1 bg-surface-input border border-subtle rounded-lg p-1">
+            <button {...ui('segment', { active: activeTab === 'inav' })}
               onClick={() => setActiveTab('inav')}
               disabled={anyRunning && activeRunningTab !== 'inav'}
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
@@ -232,7 +233,7 @@ export default function SitlView() {
             >
               iNav (MSP)
             </button>
-            <button
+            <button {...ui('segment', { active: activeTab === 'ardupilot' })}
               onClick={() => setActiveTab('ardupilot')}
               disabled={anyRunning && activeRunningTab !== 'ardupilot'}
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
@@ -244,7 +245,7 @@ export default function SitlView() {
             >
               ArduPilot (MAVLink)
             </button>
-            <button
+            <button {...ui('segment', { active: activeTab === 'px4' })}
               onClick={() => setActiveTab('px4')}
               disabled={anyRunning && activeRunningTab !== 'px4'}
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
@@ -307,7 +308,7 @@ export default function SitlView() {
                 </select>
 
                 {/* New profile button */}
-                <button
+                <button {...ui('icon-button')}
                   onClick={() => setShowNewProfile(true)}
                   disabled={isRunning || isStarting}
                   className="px-2 py-1.5 text-xs font-medium text-content bg-surface-raised hover:bg-surface-raised border border rounded-lg transition-colors disabled:opacity-50"
@@ -320,7 +321,7 @@ export default function SitlView() {
 
                 {/* Delete profile button */}
                 {canDelete && (
-                  <button
+                  <button {...ui('icon-button')}
                     onClick={() => setShowDeleteConfirm(true)}
                     disabled={isRunning || isStarting}
                     className="px-2 py-1.5 text-xs font-medium text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg transition-colors disabled:opacity-50"
@@ -349,7 +350,7 @@ export default function SitlView() {
             {/* Start/Stop buttons */}
             <div className="flex flex-col gap-2">
               {!isRunning ? (
-                <button
+                <button {...ui('button', { variant: 'primary' })}
                   onClick={launchWithSimulator}
                   disabled={!isStatusChecked || isStarting || isFlightGearStarting || connectionState.isConnected}
                   className="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
@@ -381,7 +382,7 @@ export default function SitlView() {
                   )}
                 </button>
               ) : (
-                <button
+                <button {...ui('button', { variant: 'danger' })}
                   onClick={stopWithSimulator}
                   disabled={isStopping}
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
@@ -465,11 +466,11 @@ export default function SitlView() {
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button onClick={browseXPlane} disabled={isRunning} className="px-2 py-1 text-xs text-content bg-surface-raised hover:bg-surface-raised border border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <button {...ui('button', { variant: 'secondary' })} onClick={browseXPlane} disabled={isRunning} className="px-2 py-1 text-xs text-content bg-surface-raised hover:bg-surface-raised border border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                           {t('sitl:view.browse')}
                         </button>
                         {customXPlanePath && (
-                          <button onClick={() => setCustomXPlanePath(null)} disabled={isRunning} className="px-2 py-1 text-xs text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                          <button {...ui('button', { variant: 'danger' })} onClick={() => setCustomXPlanePath(null)} disabled={isRunning} className="px-2 py-1 text-xs text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                             {t('common:clear')}
                           </button>
                         )}
@@ -529,11 +530,11 @@ export default function SitlView() {
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button onClick={browseFlightGear} disabled={isRunning} className="px-2 py-1 text-xs text-content bg-surface-raised hover:bg-surface-raised border border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <button {...ui('button', { variant: 'secondary' })} onClick={browseFlightGear} disabled={isRunning} className="px-2 py-1 text-xs text-content bg-surface-raised hover:bg-surface-raised border border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                           {t('sitl:view.browse')}
                         </button>
                         {customFlightGearPath && (
-                          <button onClick={() => setCustomFlightGearPath(null)} disabled={isRunning} className="px-2 py-1 text-xs text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                          <button {...ui('button', { variant: 'danger' })} onClick={() => setCustomFlightGearPath(null)} disabled={isRunning} className="px-2 py-1 text-xs text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                             {t('common:clear')}
                           </button>
                         )}
@@ -631,7 +632,7 @@ export default function SitlView() {
                 </svg>
                 <h3 className="text-sm font-medium text-content">{t('sitl:view.virtualRc')}</h3>
               </div>
-              <button
+              <button {...ui('button', { variant: 'secondary' })}
                 onClick={resetVirtualRC}
                 className="px-2 py-1 text-xs text-content-secondary hover:text-content bg-surface-raised hover:bg-surface-raised rounded transition-colors"
               >
@@ -773,7 +774,7 @@ export default function SitlView() {
 
             {/* Quick ARM button */}
             <div className="mt-3 pt-3 border-t border-subtle">
-              <button
+              <button {...ui('button', { variant: 'secondary' })}
                 onClick={() => {
                   // Set AUX4 to high (1900 PWM = 0.8 normalized)
                   // Also set throttle to minimum for safety
@@ -853,7 +854,7 @@ export default function SitlView() {
                   {lastCommand.split('/').pop()}
                 </span>
               )}
-              <button
+              <button {...ui('button', { variant: 'ghost' })}
                 onClick={clearOutput}
                 disabled={output.length === 0}
                 className="px-2 py-1 text-xs text-content-secondary hover:text-content transition-colors disabled:opacity-50"
@@ -916,7 +917,7 @@ export default function SitlView() {
             <div className="space-y-3">
               <div>
                 <label className="block text-sm text-content-secondary mb-1">{t('sitl:view.profileName')}</label>
-                <input
+                <input {...ui('input')}
                   type="text"
                   value={newProfileName}
                   onChange={(e) => setNewProfileName(e.target.value)}
@@ -932,7 +933,7 @@ export default function SitlView() {
 
               <div>
                 <label className="block text-sm text-content-secondary mb-1">{t('sitl:view.descriptionOptional')}</label>
-                <input
+                <input {...ui('input')}
                   type="text"
                   value={newProfileDesc}
                   onChange={(e) => setNewProfileDesc(e.target.value)}
@@ -947,7 +948,7 @@ export default function SitlView() {
             </div>
 
             <div className="flex justify-end gap-2 mt-6">
-              <button
+              <button {...ui('button', { variant: 'ghost' })}
                 onClick={() => {
                   setShowNewProfile(false);
                   setNewProfileName('');
@@ -957,7 +958,7 @@ export default function SitlView() {
               >
                 {t('common:cancel')}
               </button>
-              <button
+              <button {...ui('button', { variant: 'primary' })}
                 onClick={handleCreateProfile}
                 disabled={!newProfileName.trim()}
                 className="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-500 rounded-lg transition-colors disabled:opacity-50"
@@ -978,13 +979,13 @@ export default function SitlView() {
               <Trans i18nKey="sitl:view.deleteProfileConfirm" values={{ name: currentProfile.name }} components={{ name: <span className="text-content" /> }} />
             </p>
             <div className="flex justify-end gap-2">
-              <button
+              <button {...ui('button', { variant: 'ghost' })}
                 onClick={() => setShowDeleteConfirm(false)}
                 className="px-4 py-2 text-sm text-content-secondary hover:text-content transition-colors"
               >
                 {t('common:cancel')}
               </button>
-              <button
+              <button {...ui('button', { variant: 'danger' })}
                 onClick={handleDeleteProfile}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
               >

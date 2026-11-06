@@ -46,5 +46,9 @@
     "ready": "<b>ArduDeck {{version}}</b> 已可安装",
     "restartToUpdate": "重新启动以更新",
     "viewRelease": "查看发布说明"
+  },
+  "bridgeMoved": {
+    "text": "纪念 Sir Patrick Stewart 的舰桥主题现已成为 Hangar 中的 Cargo。",
+    "open": "在 Hangar 中打开"
   }
 }

@@ -12,6 +12,7 @@
  * detached-window system — this component only fills its container.
  */
 
+import { ui } from '../ui/ui-hooks';
 import { useEffect, useMemo, useState } from 'react';
 import { SvtImageryPicker, SvtBuildingsPicker } from './svt/SvtImageryPicker';
 import { Camera, Circle, Film, Layers, RotateCw, SlidersHorizontal } from 'lucide-react';
@@ -160,9 +161,10 @@ export function CameraPanel() {
         {targetVehicle && <span className="text-[11px] text-content-secondary">· {targetVehicle.label}</span>}
 
         {/* Live feed / Synthetic vision toggle */}
-        <div className="ml-1 flex overflow-hidden rounded-md border border-subtle">
+        <div {...ui('segmented')} className="ml-1 flex overflow-hidden rounded-md border border-subtle">
           {(['live', 'synthetic'] as const).map((m) => (
             <button
+              {...ui('segment', { active: renderMode === m })}
               key={m}
               onClick={() => store.setRenderMode(m)}
               className={`px-2 py-0.5 text-[11px] transition-colors ${renderMode === m ? 'bg-surface-raised text-content' : 'text-content-secondary hover:bg-surface-raised'}`}
@@ -175,9 +177,10 @@ export function CameraPanel() {
 
         {/* Follow / Grid toggle */}
         {fleet.length > 1 && (
-          <div className="ml-1 flex overflow-hidden rounded-md border border-subtle">
+          <div {...ui('segmented')} className="ml-1 flex overflow-hidden rounded-md border border-subtle">
             {(['follow', 'grid'] as const).map((m) => (
               <button
+                {...ui('segment', { active: viewMode === m })}
                 key={m}
                 onClick={() => store.setViewMode(m)}
                 className={`px-2 py-0.5 text-[11px] capitalize transition-colors ${viewMode === m ? 'bg-surface-raised text-content' : 'text-content-secondary hover:bg-surface-raised'}`}
@@ -189,6 +192,7 @@ export function CameraPanel() {
         {/* Lock to vehicle (follow mode) */}
         {viewMode === 'follow' && (
           <button
+            {...ui('chip', { active: !!lockedVehicleKey })}
             onClick={() => store.setLockedVehicle(lockedVehicleKey ? null : activeVehicleKey)}
             className={`rounded px-1.5 py-0.5 text-[11px] ${lockedVehicleKey ? 'bg-blue-500/20 text-blue-300' : 'text-content-secondary hover:bg-surface-raised'}`}
             title={lockedVehicleKey ? t('camera:panel.lockedTip') : t('camera:panel.lockTip')}
@@ -212,6 +216,7 @@ export function CameraPanel() {
         {renderMode === 'live' && (
           <>
             <button
+              {...ui('icon-button')}
               onClick={() => { if (liveSourceId) store.requestReconnect(liveSourceId); }}
               disabled={!liveSourceId}
               className={ICON_BTN}
@@ -219,10 +224,11 @@ export function CameraPanel() {
             >
               <RotateCw className="h-3.5 w-3.5" />
             </button>
-            <button onClick={handleSnapshot} disabled={!liveSourceId} className={ICON_BTN} data-tip={t('camera:panel.snapshot')}>
+            <button {...ui('icon-button')} onClick={handleSnapshot} disabled={!liveSourceId} className={ICON_BTN} data-tip={t('camera:panel.snapshot')}>
               <Camera className="h-3.5 w-3.5" />
             </button>
             <button
+              {...ui('icon-button', { active: !!recordingSourceId })}
               onClick={handleRecord}
               disabled={!liveSourceId}
               className={`${ICON_BTN} ${recordingSourceId ? 'bg-red-500/20 text-red-300' : ''}`}
@@ -234,6 +240,7 @@ export function CameraPanel() {
         )}
 
         <button
+          {...ui('icon-button')}
           onClick={() => setShowGallery(true)}
           className={`${ICON_BTN} relative`}
           data-tip={t('camera:gallery.openTip')}
@@ -251,6 +258,7 @@ export function CameraPanel() {
         {/* What is drawn over the feed */}
         <div className="relative flex items-center">
           <button
+            {...ui('icon-button', { active: showOsdMenu })}
             onClick={() => setShowOsdMenu((v) => !v)}
             className={`${ICON_BTN} ${store.showStats ? 'text-emerald-300' : ''}`}
             data-tip={t('camera:panel.overlaysTip')}
@@ -298,9 +306,10 @@ export function CameraPanel() {
                     <SvtImageryPicker disabled={!store.svtSatellite} />
                     <SvtBuildingsPicker />
                     <div className="px-1.5 pb-1 text-[10px] uppercase tracking-wide text-content-tertiary">{t('camera:panel.terrainDetail')}</div>
-                    <div className="flex overflow-hidden rounded-md border border-subtle">
+                    <div {...ui('segmented')} className="flex overflow-hidden rounded-md border border-subtle">
                       {(['low', 'medium', 'high'] as const).map((q) => (
                         <button
+                          {...ui('segment', { active: store.svtQuality === q })}
                           key={q}
                           onClick={() => store.setSvtQuality(q)}
                           className={`flex-1 px-1.5 py-0.5 text-[11px] capitalize transition-colors ${store.svtQuality === q ? 'bg-surface-raised text-content' : 'text-content-secondary hover:bg-surface-raised'}`}
@@ -321,6 +330,7 @@ export function CameraPanel() {
         {/* Setup and support */}
         <div className="relative flex items-center">
           <button
+            {...ui('icon-button', { active: showMoreMenu })}
             onClick={() => setShowMoreMenu((v) => !v)}
             className={ICON_BTN}
             data-tip={t('camera:panel.feedsDiagTip')}
@@ -388,6 +398,7 @@ export function CameraPanel() {
         <div className="flex shrink-0 items-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-300">
           <span className="flex-1">{installing ? (installLog ?? t('camera:panel.installingEngine')) : engine.detail}</span>
           <button
+            {...ui('button', { variant: 'secondary' })}
             onClick={handleInstallEngine}
             disabled={installing}
             className="shrink-0 rounded bg-amber-500/20 px-2 py-0.5 font-medium text-amber-200 hover:bg-amber-500/30 disabled:opacity-50"

@@ -10,6 +10,7 @@
  * follow-up).
  */
 
+import { ui } from '../ui/ui-hooks';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Radio, PencilRuler, Cpu, MonitorPlay, ChevronRight, Download, type LucideIcon } from 'lucide-react';
@@ -59,6 +60,7 @@ export function RubyOsdDestinationBar() {
 
       {/* Export today; direct push is the device-gated next step. */}
       <button
+        {...ui('button', { variant: 'primary' })}
         onClick={exportLayout}
         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-600/80 hover:bg-rose-500/80 text-white"
         data-tip={t('osd:rubyOsdDestinationBar.exportTip')}
@@ -75,6 +77,7 @@ export function RubyOsdDestinationBar() {
 function FlowNode({ icon: Icon, label, active }: { icon: LucideIcon; label: string; active?: boolean }) {
   return (
     <div
+      {...ui('chip', { active })}
       className={`flex items-center gap-1.5 px-2 py-1 rounded-md ${
         active ? 'bg-rose-500/15 text-content' : 'bg-surface-raised text-content-secondary'
       }`}

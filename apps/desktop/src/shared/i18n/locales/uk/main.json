@@ -139,13 +139,16 @@
     "kmzArchive": "Архів KMZ",
     "luaScript": "Lua-скрипт",
     "missionFiles": "Файли місій",
+    "models3d": "3D-моделі",
     "parameterFiles": "Файли параметрів",
+    "pointClouds": "Хмари точок",
     "postureReport": "Звіт про стан захисту (Markdown)",
     "rallyFiles": "Файли точок збору",
     "textFiles": "Текстові файли",
     "waypoints": "Точки маршруту",
     "workspaceLayout": "Макет робочого простору ArduDeck",
-    "xplaneExecutable": "Виконуваний файл X-Plane"
+    "xplaneExecutable": "Виконуваний файл X-Plane",
+    "zipArchive": "Zip-архів"
   },
   "firmwareDownloader": {
     "aborted": "Завантаження перервано",
@@ -190,7 +193,8 @@
     "waitingDfu": "Очікування DFU-пристрою...",
     "writingFirmware": "Запис прошивки...",
     "writingProgress": "Запис прошивки... {{percent}}%",
-    "writingProgressKb": "Запис прошивки... {{percent}}% ({{done}}/{{total}} KB)"
+    "writingProgressKb": "Запис прошивки... {{percent}}% ({{done}}/{{total}} KB)",
+    "fullEraseNeedsBootloaderImage": "Повне стирання через DFU потребує образу *_with_bl.hex: стирання видаляє завантажувач, а цей образ його не повертає."
   },
   "fleetRepo": {
     "adoptFailed": "Не вдалося підключити репозиторій",
@@ -310,7 +314,10 @@
     "writeProbeNoResponse": "FC не відповів на пробний запис протягом 1,5 с. Можливо, сервер MAVLink FTP вимкнено або FC не має файлової системи для запису (немає SD-картки?).",
     "writeProbeRejected": "FC відхилив пробний запис: {{error}}",
     "inavNoParams": "Цей польотний контролер не має MAVLink-параметрів (INAV). Налаштовуйте його через MSP.",
-    "pickFolderTitle": "Виберіть папку"
+    "pickFolderTitle": "Виберіть папку",
+    "resetParamsArduPilotOnly": "Скидання всіх параметрів доступне лише для ArduPilot.",
+    "resetParamsDisarmFirst": "Апарат має бути дизармлений перед скиданням параметрів.",
+    "resetParamsFailed": "Польотний контролер не прийняв скидання параметрів."
   },
   "licenseValidator": {
     "invalidKeyFormat": "Некоректний формат ключа",
@@ -461,10 +468,10 @@
     "title": "{{name}} хоче запустити програму"
   },
   "moduleManager": {
-    "activated_one": "Активовано {{count}} модуль",
-    "activated_few": "Активовано {{count}} модулі",
-    "activated_many": "Активовано {{count}} модулів",
-    "activated_other": "Активовано {{count}} модуля",
+    "activated_one": "Активовано карго: {{count}}",
+    "activated_few": "Активовано карго: {{count}}",
+    "activated_many": "Активовано карго: {{count}}",
+    "activated_other": "Активовано карго: {{count}}",
     "activating": "Активація на сервері...",
     "activationFailed": "Помилка активації: {{msg}}",
     "activationRejected": "Активацію відхилено",
@@ -685,5 +692,34 @@
     "uploadFailed": "Помилка вивантаження.",
     "noReconnect": "Польотний контролер не повернувся після перезавантаження.",
     "notStarted": "Скрипт не запустився. Перевірте панель «Повідомлення» на помилку Lua, наприклад «Insufficent memory»."
+  },
+  "userModels": {
+    "importTitle": "Імпорт 3D-моделей",
+    "watchFolderTitle": "Стежити за папкою з 3D-моделями",
+    "readFailed": "Не вдалося прочитати цей файл: {{reason}}",
+    "fileNotFound": "Файл не знайдено.",
+    "notJson": "Файл не є коректним JSON.",
+    "unknownJson": "Цей JSON-файл не є ні набором тайлів 3D Tiles, ні CityJSON.",
+    "unsupportedFile": "Непідтримуваний тип файлу. Використовуйте .glb, .gltf, .kmz, .kml, tileset.json 3D Tiles, CityJSON, хмару точок .las, .laz чи .ply або .zip з одним із них.",
+    "missingResource": "Бракує файлу, потрібного моделі: {{file}}",
+    "badArchive": "Не вдалося відкрити архів.",
+    "noKmlInKmz": "KMZ не містить документа KML.",
+    "noModelsInKml": "KML не містить 3D-моделі з локальним файлом.",
+    "remoteHref": "Модель посилається на вебадресу. Завантажити можна лише файли всередині KMZ або поруч із KML.",
+    "tilesetNoPosition": "Набір тайлів не має позиції: його корінь не має ні трансформації, ні придатного обмежувального об’єму.",
+    "cityJsonFailed": "Не вдалося перетворити файл CityJSON.",
+    "zipEmpty": "Zip не містить моделі glTF, KML, KMZ, 3D Tiles, CityJSON чи хмари точок.",
+    "folderNotFound": "Папку не знайдено.",
+    "noPlacementTable": "Папці потрібна таблиця розміщення: models.json, файл .csv або .geojson.",
+    "tableUnreadable": "Не вдалося прочитати {{file}}: {{reason}}",
+    "pointCloudNotLas": "Файл не є хмарою точок LAS чи LAZ.",
+    "pointCloudVersion": "Непідтримувана версія LAS. Читаються LAS 1.0–1.4.",
+    "pointCloudFormat": "Непідтримуваний формат точок LAS або стиснення LAZ.",
+    "pointCloudTruncated": "Файл хмари точок обрізаний.",
+    "pointCloudNoCrs": "Хмара точок не має системи координат: у ній немає ні ключів GeoTIFF, ні запису WKT.",
+    "pointCloudUnknownCrs": "Система координат хмари точок ({{crs}}) невідома.",
+    "pointCloudEmpty": "Хмара точок не містить придатних точок.",
+    "plyInvalid": "Файл не є придатною для читання хмарою точок PLY.",
+    "unverifiedCrs": "Розміщено з EPSG:{{epsg}} з epsg.io. Його 7-параметричне перетворення датуму не перевірене за PROJ і може зміщувати на метри; перевірте положення на мапі."
   }
 }

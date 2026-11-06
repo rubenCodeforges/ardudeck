@@ -46,5 +46,9 @@
     "ready": "<b>ArduDeck {{version}}</b> 已可安裝",
     "restartToUpdate": "重新啟動以更新",
     "viewRelease": "檢視發行說明"
+  },
+  "bridgeMoved": {
+    "text": "紀念 Sir Patrick Stewart 的艦橋主題現已成為 Hangar 中的 Cargo。",
+    "open": "在 Hangar 中開啟"
   }
 }

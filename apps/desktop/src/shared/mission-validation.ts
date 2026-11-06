@@ -15,6 +15,8 @@ import {
   type AltitudeUnit,
 } from './user-units';
 import { t } from './i18n/index.js';
+import { crossingLegs } from './hazard-geometry.js';
+import type { Hazard } from './hazard-types.js';
 
 export type ValidationSeverity = 'error' | 'warn';
 
@@ -43,6 +45,33 @@ export interface ValidateMissionOptions {
   altitudeUnit?: AltitudeUnit;
   /** How many surveys end with a return that something else flies after. */
   midMissionReturns?: number;
+  /** Admin-locked exclusion zones no leg may cross. */
+  hazards?: readonly Hazard[];
+  /** Home, so the leg out to the first waypoint is checked too. */
+  home?: { lat: number; lon: number } | null;
+}
+
+export interface ZoneCrossing {
+  zone: Hazard;
+  /** Mission seq of the leg's ends; null for home. */
+  fromSeq: number | null;
+  toSeq: number;
+}
+
+/** Legs of the mission (home first) that cross a locked zone or its buffer. */
+export function hazardCrossings(
+  items: readonly MissionItem[],
+  zones: readonly Hazard[],
+  home?: { lat: number; lon: number } | null,
+): ZoneCrossing[] {
+  if (zones.length === 0) return [];
+  const stops: Array<{ seq: number | null; lat: number; lon: number }> = [
+    ...(home ? [{ seq: null, lat: home.lat, lon: home.lon }] : []),
+    ...items
+      .filter((it) => commandHasLocation(it.command) && hasValidCoordinates(it.latitude, it.longitude))
+      .map((it) => ({ seq: it.seq, lat: it.latitude, lon: it.longitude })),
+  ];
+  return crossingLegs(stops, zones).map(({ leg, zone }) => ({ zone, fromSeq: stops[leg]!.seq, toSeq: stops[leg + 1]!.seq! }));
 }
 
 const DEFAULT_CEILING = 724;
@@ -132,6 +161,17 @@ export function validateMission(
       severity: 'warn',
       message: t('shared:missionValidation.midMissionReturn', { count: n }),
       action: 'connect-surveys',
+    });
+  }
+
+  // 7. Legs through an admin-locked exclusion zone: upload is blocked until rerouted or overridden.
+  for (const c of hazardCrossings(items, opts.hazards ?? [], opts.home)) {
+    checks.push({
+      id: `hazard:${c.zone.id}:${c.toSeq}`,
+      severity: 'error',
+      message: c.fromSeq === null
+        ? t('shared:missionValidation.hazardFromHome', { to: c.toSeq + 1, zone: c.zone.name })
+        : t('shared:missionValidation.hazard', { from: c.fromSeq + 1, to: c.toSeq + 1, zone: c.zone.name }),
     });
   }
 

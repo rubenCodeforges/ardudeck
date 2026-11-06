@@ -1,3 +1,4 @@
+import { ui } from '../ui/ui-hooks';
 import { useTranslation } from 'react-i18next';
 import { MousePointerClick, Plus, Trash2 } from 'lucide-react';
 import { TILE_META, TILES_FIRST, type HudVehicleKind, type TileDef } from './hud-model';
@@ -57,7 +58,7 @@ export function TileInspector({ tile, kind, unplaced, onVariant, onRemove, onAdd
                 <span className="text-[11px] uppercase tracking-wide text-content-tertiary">{t(`${k}.style`)}</span>
                 <div className="grid grid-cols-2 gap-1.5">
                   {meta.variants.map((v) => (
-                    <button key={v} type="button" onClick={() => onVariant(v)}
+                    <button key={v} {...ui('chip', { active: v === tile.variant })} type="button" onClick={() => onVariant(v)}
                       className={`rounded-lg border px-2 py-1.5 text-xs transition-colors ${
                         v === tile.variant ? 'border-teal-500/40 bg-teal-500/10 text-teal-300' : 'border-subtle bg-surface-input text-content-secondary hover:text-content'
                       }`}>

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ShieldCheck, ShieldAlert, FileDown, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
 import { useSigningStore } from '../../stores/signing-store';
 import type { SigningAuditEntry, SigningAuditEvent, ChainVerification } from '../../../shared/signing-audit-types';
+import { ui } from '../ui/ui-hooks';
 
 const EVENT_LABEL_KEYS: Record<SigningAuditEvent, string> = {
   'key-set': 'settings:secureLinkCompliance.event.keySet',
@@ -96,6 +97,7 @@ export function SecureLinkCompliance() {
           </div>
         </div>
         <button
+          {...ui('button', { variant: 'primary' })}
           onClick={handleExport}
           disabled={exporting}
           className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-700/70 hover:bg-cyan-600 disabled:opacity-50 text-white text-[11px] rounded-lg transition-colors shrink-0"
@@ -116,6 +118,7 @@ export function SecureLinkCompliance() {
 
       <div>
         <button
+          {...ui('button', { variant: 'ghost' })}
           type="button"
           onClick={() => setOpen((v) => !v)}
           className="flex items-center gap-1.5 text-[11px] text-content-secondary hover:text-content transition-colors"

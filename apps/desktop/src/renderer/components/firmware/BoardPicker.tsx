@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { BoardInfo } from '../../stores/firmware-store';
+import { ui } from '../ui/ui-hooks';
 
 interface BoardPickerProps {
   boards: BoardInfo[];
@@ -188,7 +189,7 @@ export function BoardPicker({
   return (
     <div ref={dropdownRef} className="relative">
       {/* Trigger button */}
-      <button
+      <button {...ui('input')}
         type="button"
         onClick={handleToggleOpen}
         onKeyDown={handleKeyDown}
@@ -248,7 +249,7 @@ export function BoardPicker({
                   d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                 />
               </svg>
-              <input
+              <input {...ui('input')}
                 ref={inputRef}
                 type="text"
                 value={searchQuery}
@@ -310,7 +311,7 @@ export function BoardPicker({
 
                 {/* Show all boards toggle (only when not searching) */}
                 {!searchQuery && !showAllBoards && (
-                  <button
+                  <button {...ui('button', { variant: 'ghost' })}
                     type="button"
                     onClick={() => setShowAllBoards(true)}
                     className="w-full px-3 py-2 text-left text-sm text-blue-400 hover:bg-surface-raised border-t border flex items-center gap-2"

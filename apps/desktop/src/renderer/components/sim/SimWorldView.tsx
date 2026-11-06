@@ -12,6 +12,7 @@ import { SvtImageryPicker } from '../camera/svt/SvtImageryPicker';
 import { useTranslation } from 'react-i18next';
 import { useSimStateStore, type SimStateMessage } from '../../stores/sim-state-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
+import { meshesFor, useSceneMeshStore } from '../../stores/scene-mesh-store';
 import { createSimWorldScene, type SimWorldScene, type SimCameraMode, type SimVehicleFrame, type SimObstacle, type SimWaypoint } from './sim-world-scene';
 import { FlightControlPanel } from '../panels/FlightControlPanel';
 import ObstaclePanel from './ObstaclePanel';
@@ -726,6 +727,16 @@ export default function SimWorldView() {
       cancelled = true;
     };
   }, [showTerrain, fixSignal, quality, originRev]);
+
+  const meshVersion = useSceneMeshStore((s) => s.version);
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    const origin = geoOriginRef.current;
+    const p = useTelemetryStore.getState().position;
+    const homeElevMsl = p.lat !== 0 || p.lon !== 0 ? p.alt - p.relativeAlt : null;
+    scene.setMeshes(meshesFor('sim'), origin ? { origin, grid: showTerrain ? simGrid : null, homeElevMsl } : null);
+  }, [meshVersion, simGrid, showTerrain, fixSignal, originRev]);
 
   // Satellite drape over the sim terrain: same rings the synthetic-vision view
   // builds, centred on the sim's own origin (the world is local metres about

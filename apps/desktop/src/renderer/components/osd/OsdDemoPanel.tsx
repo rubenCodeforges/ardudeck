@@ -5,6 +5,7 @@
  * Shows grouped telemetry value sliders organized by category.
  */
 
+import { ui } from '../ui/ui-hooks';
 import { useTranslation } from 'react-i18next';
 import { useOsdStore } from '../../stores/osd-store';
 import { DraggableSlider } from '../ui/DraggableSlider';
@@ -20,6 +21,7 @@ export function OsdDemoPanel() {
       <div className="flex items-center justify-between px-3 py-2 border-b border-subtle">
         <h3 className="text-xs font-medium text-content">{t('osd:osdDemoPanel.demoValues')}</h3>
         <button
+          {...ui('button', { variant: 'ghost' })}
           onClick={resetDemoValues}
           className="text-[10px] text-blue-400 hover:text-blue-300"
         >

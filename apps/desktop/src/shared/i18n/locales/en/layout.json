@@ -46,5 +46,9 @@
     "ready": "<b>ArduDeck {{version}}</b> is ready to install",
     "restartToUpdate": "Restart to Update",
     "viewRelease": "View Release"
+  },
+  "bridgeMoved": {
+    "text": "Bridge, the theme in memory of Sir Patrick Stewart, is now a cargo in the Hangar.",
+    "open": "Open in the Hangar"
   }
 }

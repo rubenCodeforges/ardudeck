@@ -40,6 +40,7 @@ import { MetricTile, type TrackConfig } from './MetricTile';
 import { type TrackZone } from './ThresholdTrack';
 import { useReducedMotion, useCountUp } from './weather-motion';
 import { useTranslation } from 'react-i18next';
+import { ui } from '../ui/ui-hooks';
 
 // Re-query on a calm cadence while the panel is open. Conditions move slowly and
 // the fetch is cheap-cached; this just keeps a long-lived briefing from going stale.
@@ -203,6 +204,7 @@ export function WeatherBriefingView() {
             <LocationPicker />
           </div>
           <button
+            {...ui('button', { variant: 'secondary' })}
             onClick={() => { void refresh(); }}
             disabled={loading}
             className="px-2.5 py-1.5 text-xs rounded-md bg-surface border border-subtle text-content-secondary hover:bg-surface-raised hover:text-content transition-colors flex items-center gap-1.5 disabled:opacity-50"
@@ -231,6 +233,7 @@ export function WeatherBriefingView() {
               <p className="text-sm font-medium mb-1 text-content">{t('weather:briefing.unavailable')}</p>
               <p className="text-xs text-content-tertiary max-w-xs mb-4">{error}</p>
               <button
+                {...ui('button', { variant: 'secondary' })}
                 onClick={() => { void refresh(); }}
                 className="px-3 py-1.5 text-xs rounded-md bg-surface border border-subtle text-content-secondary hover:bg-surface-raised hover:text-content transition-colors"
               >
@@ -257,7 +260,7 @@ export function WeatherBriefingView() {
                   {/* Hero verdict band: the ONLY state-washed surface. Everything
                       below sits on the normal app background with solid tiles, so
                       severity reads through value colour and tracks, not a page tint. */}
-                  <div className="rounded-2xl border p-5 sm:p-6 space-y-4" style={washStyle(color)}>
+                  <div {...ui('card', { status: status === 'go' ? 'pass' : status === 'caution' ? 'warn' : 'fail' })} className="rounded-2xl border p-5 sm:p-6 space-y-4" style={washStyle(color)}>
                   {/* Verdict header: temperature + condition left, state pill right. */}
                   <div className="flex items-start justify-between gap-4 wx-rise">
                     <div className="flex items-center gap-3 min-w-0">
@@ -275,6 +278,7 @@ export function WeatherBriefingView() {
                         {t('weather:briefing.flightConditions')}
                       </div>
                       <span
+                        {...ui('chip', { status: status === 'go' ? 'pass' : status === 'caution' ? 'warn' : 'fail' })}
                         className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-lg font-bold tracking-wide"
                         style={pillStyle(color)}
                       >
@@ -429,6 +433,7 @@ export function WeatherBriefingView() {
                     if (reasonLines.length === 0) return null;
                     return (
                       <div
+                        {...ui('card', { status: status === 'caution' ? 'warn' : 'fail' })}
                         className="rounded-xl border p-3 flex items-start gap-2.5 wx-rise"
                         style={{ ...tintStyle(color, 10, 26), animationDelay: '300ms' }}
                       >

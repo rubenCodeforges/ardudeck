@@ -750,5 +750,19 @@
   "vtolTransition": {
     "toHover": "У ВИСІННЯ",
     "toWing": "НА КРИЛО"
+  },
+  "userModelParsers": {
+    "badLatLng": "широта або довгота відсутня чи поза допустимим діапазоном",
+    "badNumber": "{{field}} не є коректним числом",
+    "emptyTable": "Таблиця розміщення не містить рядків.",
+    "invalidJson": "Таблиця розміщення не є коректним JSON ({{detail}})",
+    "missingFile": "у рядку не вказано файл моделі",
+    "noCrs": "У цьому файлі CityJSON не вказано систему координат (metadata.referenceSystem), тому його неможливо розмістити.",
+    "noGeometry": "У цьому файлі CityJSON немає поверхонь, які можна відобразити.",
+    "noValidRows": "Жодну модель із таблиці розміщення не вдалося розмістити. Рядок {{row}}: {{problem}}.",
+    "notCityJson": "Цей файл не є CityJSON.",
+    "notFeatureCollection": "Таблиця GeoJSON має бути FeatureCollection з об’єктів Point.",
+    "notModelList": "models.json має бути списком моделей або об’єктом зі списком \"models\".",
+    "unknownCrs": "Невідома система координат EPSG:{{epsg}}. Цей файл CityJSON неможливо розмістити."
   }
 }

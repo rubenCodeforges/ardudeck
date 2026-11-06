@@ -24,6 +24,7 @@ import {
   toMetersFromAltitudeUnit,
   UNIT_LABELS,
 } from '../../../shared/user-units.js';
+import { ui } from '../ui/ui-hooks';
 
 // Inline SVG paths (24x24) so the tiles render identically to the ArduPilot tab.
 // Copter/plane/rover reuse the ArduPilot tab's exact paths; VTOL uses a
@@ -220,7 +221,7 @@ export default function Px4SitlTab() {
         </div>
         <div className="grid grid-cols-4 gap-2">
           {VEHICLE_TYPE_OPTIONS.map((opt) => (
-            <button
+            <button {...ui('option', { active: vehicleType === opt.value })}
               key={opt.value}
               onClick={() => setVehicleType(opt.value)}
               disabled={isRunning || isStarting}
@@ -262,7 +263,7 @@ export default function Px4SitlTab() {
               <label className="block text-xs text-content-secondary mb-1">{t('sitl:px4.simulatorBackend')}</label>
               <div className="grid grid-cols-1 gap-1">
                 {SIMULATOR_OPTIONS.map((opt) => (
-                  <button
+                  <button {...ui('option', { active: simulator === opt.value })}
                     key={opt.value}
                     onClick={() => setSimulator(opt.value)}
                     disabled={isRunning || isStarting}
@@ -292,9 +293,9 @@ export default function Px4SitlTab() {
             {/* Release Track */}
             <div>
               <label className="block text-xs text-content-secondary mb-1">{t('sitl:tab.releaseTrack')}</label>
-              <div className="grid grid-cols-3 gap-1">
+              <div {...ui('segmented')} className="grid grid-cols-3 gap-1">
                 {RELEASE_TRACK_OPTIONS.map((opt) => (
-                  <button
+                  <button {...ui('segment', { active: releaseTrack === opt.value })}
                     key={opt.value}
                     onClick={() => setReleaseTrack(opt.value)}
                     disabled={isRunning || isStarting}
@@ -336,7 +337,7 @@ export default function Px4SitlTab() {
                 const active =
                   Math.abs(homeLocation.lat - p.lat) < 1e-4 && Math.abs(homeLocation.lng - p.lng) < 1e-4;
                 return (
-                  <button
+                  <button {...ui('chip', { active })}
                     key={p.name}
                     onClick={() => setHomeLocation({ lat: p.lat, lng: p.lng, alt: p.alt, heading: p.heading })}
                     disabled={isRunning || isStarting}
@@ -365,7 +366,7 @@ export default function Px4SitlTab() {
             <div>
               <label className="block text-xs text-content-secondary mb-1">{t('common:altitude')}</label>
               <div className="relative">
-                <input
+                <input {...ui('input')}
                   type="number"
                   value={homeAltitudeDraft}
                   onFocus={() => setHomeAltitudeFocused(true)}
@@ -411,7 +412,7 @@ export default function Px4SitlTab() {
           <div className="mt-3 flex items-center justify-between gap-2">
             <p className="text-xs text-content-tertiary">{t('sitl:tab.defaultCmac')}</p>
             <div className="flex items-center gap-2">
-              <button
+              <button {...ui('button', { variant: 'secondary' })}
                 onClick={() => void matchTerrainElevation()}
                 disabled={isRunning || isStarting || isMatchingTerrain}
                 data-tip={t('sitl:px4.matchTerrainTip')}
@@ -434,7 +435,7 @@ export default function Px4SitlTab() {
                   </>
                 )}
               </button>
-              <button
+              <button {...ui('button', { variant: 'secondary' })}
                 onClick={getCurrentLocation}
                 disabled={isRunning || isStarting || isGettingLocation}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -535,7 +536,7 @@ export default function Px4SitlTab() {
 
           <div className="flex items-center gap-2">
             {!binaryInfo?.exists && !isDownloading && (
-              <button
+              <button {...ui('button', { variant: 'primary' })}
                 onClick={download}
                 className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
               >
@@ -558,7 +559,7 @@ export default function Px4SitlTab() {
             {/* Start/Stop */}
             {binaryInfo?.exists && (
               !isRunning ? (
-                <button
+                <button {...ui('button', { variant: 'primary' })}
                   onClick={start}
                   disabled={isStarting || platformBlocked || connectionState.isConnected}
                   data-tip={platformBlocked ? platform?.error : undefined}
@@ -582,7 +583,7 @@ export default function Px4SitlTab() {
                   )}
                 </button>
               ) : (
-                <button
+                <button {...ui('button', { variant: 'danger' })}
                   onClick={stop}
                   disabled={isStopping}
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"

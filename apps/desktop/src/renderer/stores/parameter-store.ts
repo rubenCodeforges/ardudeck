@@ -130,6 +130,8 @@ interface ParameterStore {
   hasOfficialDescription: (paramId: string) => boolean;
   validateParameter: (paramId: string, value: number) => ValidationResult;
   getParameterMetadata: (paramId: string) => { range?: { min: number; max: number }; increment?: number; values?: Record<number, string>; units?: string; bitmask?: Record<number, string>; rebootRequired?: boolean; volatile?: boolean } | null;
+  /** Reboot-required parameters written since this connection began: the board runs the old values until it reboots. */
+  rebootPending: string[];
   isRebootRequired: (paramId: string) => boolean;
   isFavourite: (paramId: string) => boolean;
 
@@ -222,6 +224,13 @@ export function resetParameterFetchBackoff(): void {
   paramFetchCooldownUntil = 0;
 }
 
+/** Remembers a written reboot-required parameter until the next connection. */
+function markRebootPending(paramId: string): void {
+  const st = useParameterStore.getState();
+  if (!st.isRebootRequired(paramId) || st.rebootPending.includes(paramId)) return;
+  useParameterStore.setState({ rebootPending: [...st.rebootPending, paramId] });
+}
+
 export const useParameterStore = create<ParameterStore>((set, get) => ({
   parameters: new Map(),
   paramCount: 0,
@@ -239,6 +248,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
   showOnlyNonDefault: false,
   showOnlyFavourites: false,
   favourites: loadFavourites(),
+  rebootPending: [],
   sortColumn: 'name' as SortColumn,
   sortDirection: 'asc' as SortDirection,
 
@@ -572,6 +582,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
 
     // Track that this param was user-initiated (so updateParameter preserves originalValue)
     userModifiedParams.add(paramId);
+    markRebootPending(paramId);
 
     // Update local state optimistically
     set(state => {
@@ -608,6 +619,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     for (const p of modified) {
       const result = await window.electronAPI?.setParameter(p.id, p.value, p.type ?? 9);
       if (result?.success) {
+        markRebootPending(p.id);
         stagedParams.delete(p.id);
         // Preserve the modified baseline until the caller marks all as saved,
         // so a partial failure leaves the unwritten rows still flagged.
@@ -1218,6 +1230,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
   },
 
   reset: () => { userModifiedParams.clear(); stagedParams.clear(); set({
+    rebootPending: [],
     parameters: new Map(),
     paramCount: 0,
     downloadState: 'idle',

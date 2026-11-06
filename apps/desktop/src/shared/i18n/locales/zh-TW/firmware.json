@@ -121,7 +121,12 @@
     "unplugReconnect": "請拔除並重新連接你的機板,以開始使用新韌體。",
     "usbSerialChip": "你的 <b>{{board}}</b> 使用 USB 序列晶片,無法透過軟體進入 bootloader。別擔心,精靈會引導你完成!",
     "vehicleNotSupported": "{{source}} 不支援 {{vehicle}}",
-    "vtol": "VTOL"
+    "vtol": "VTOL",
+    "heli": "傳統直升機",
+    "fullChipEraseUnavailable": "此飛控無法執行：ArduPilot 開機程式會保留參數儲存區。請在參數頁面使用「重設所有參數」。",
+    "fullChipEraseAlways": "此處始終開啟：該開機程式會抹除整個晶片，包括參數。",
+    "fullChipEraseOptional": "同時清除開機程式和所有參數；此韌體會恢復開機程式。",
+    "fullChipEraseNeedsBl": "需要 *_with_bl.hex 韌體：全片抹除會移除開機程式。"
   },
   "radioSdView": {
     "afterInstallNote": "安裝後:退出 SD 磁碟區、拔掉 USB,然後在遙控器上將小工具加入型號畫面(長按 TELE,全螢幕小工具)。套件會在安裝時從其官方儲存庫下載。",

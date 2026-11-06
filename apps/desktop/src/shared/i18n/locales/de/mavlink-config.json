@@ -2480,5 +2480,19 @@
       "notCopter": "Die Filterkarte ist für Multikopter und QuadPlanes.",
       "openInLogs": "In Logs öffnen"
     }
+  },
+  "resetParams": {
+    "button": "Alle zurücksetzen",
+    "buttonTip": "Alle Parameter auf die Firmware-Standardwerte zurücksetzen",
+    "title": "Alle Parameter auf Standardwerte zurücksetzen?",
+    "body": "Jeder Parameter kehrt zu seinem Firmware-Standardwert zurück, und der Flugcontroller startet neu.",
+    "calibrationWarning": "Dabei werden auch die Kalibrierung von Beschleunigungssensor, Kompass und Funk, die Rahmeneinrichtung und das gesamte Tuning gelöscht. Richte das Fahrzeug vor dem nächsten Flug neu ein und kalibriere es.",
+    "saveFirst": "Speichere zuerst eine Parameterdatei, damit du Benötigtes danach wiederherstellen kannst.",
+    "saveFile": "Parameterdatei speichern",
+    "saved": "Parameterdatei gespeichert",
+    "confirm": "Zurücksetzen und neu starten",
+    "disarmFirst": "Das Fahrzeug muss zuerst disarmt sein.",
+    "erased": "Parameter gelöscht. Neustart lädt die Standardwerte.",
+    "failed": "Das Zurücksetzen der Parameter ist nicht durchgegangen."
   }
 }

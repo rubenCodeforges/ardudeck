@@ -28,6 +28,24 @@ export interface LogMetadata {
   gitHash: string;
 }
 
+/** One message type as columns: a typed array per numeric field, strings as arrays. */
+export interface MessageColumns {
+  count: number;
+  timeUs: Float64Array;
+  num: Record<string, Float64Array>;
+  txt: Record<string, string[]>;
+}
+
+export interface DataFlashParserOptions {
+  /**
+   * Store every message type as columns while parsing instead of one object per
+   * record. A big log is millions of records, and one object each is gigabytes of heap.
+   */
+  columnar?: boolean;
+  /** With `columnar`: the types that also keep row objects in `messages` (what health checks and summaries read). */
+  keepRows?: ReadonlySet<string>;
+}
+
 /** Complete parsed log */
 export interface DataFlashLog {
   /** Which parser produced this log. 'dataflash' for ArduPilot .bin (this
@@ -44,6 +62,8 @@ export interface DataFlashLog {
   unitLabels: Map<string, string>;
   /** Multiplier char → numeric multiplier. Sourced from MULT records. */
   multValues: Map<string, number>;
+  /** Every message type as columns; only when parsed with `columnar`, and then `messages` holds just the `keepRows` types. */
+  columns?: Map<string, MessageColumns>;
 }
 
 /** Streaming parser interface */

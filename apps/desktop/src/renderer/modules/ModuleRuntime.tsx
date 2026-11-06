@@ -14,6 +14,7 @@ import { unregisterModuleOsdElements } from './module-osd-registry';
 import { unregisterModuleHudInstruments } from './module-hud-registry';
 import { unregisterModuleMapInstrumentsForSlug } from './module-map-instruments';
 import { unregisterModuleWorkspacePanelsForSlug } from './module-workspace-panels';
+import { settleCargoTheme } from './module-theme-registry';
 
 interface MountEntry {
   slug: string;
@@ -111,6 +112,7 @@ export function ModuleRuntime({ children }: { children: ReactNode }) {
       const loaded = (await window.electronAPI.moduleHostListLoaded()) as LoadedModuleInfo[];
       console.log(`[ModuleRuntime] ${loaded.length} loaded module(s) reported by host`);
       for (const rec of loaded) await loadOne(rec);
+      settleCargoTheme();
 
       const reload = async (slug: string): Promise<void> => {
         const rec = loaded.find((r) => r.slug === slug);

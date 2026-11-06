@@ -13,8 +13,8 @@
 import * as THREE from 'three';
 import type { DrapeRing } from './svt-satellite';
 import type { SceneMeshEntry } from '../../../../shared/tile-source-types';
-import { loadGltfScene, releaseGltf } from '../../../three/gltf-cache';
-import { useConsoleStore } from '../../../stores/console-store';
+import { initGltfDecoders } from '../../../three/gltf-cache';
+import { createSceneModelSet, type SceneModelHandle } from '../../../three/scene-model-set';
 import { attachDrape } from './drape-material';
 import {
   type ElevationGrid,
@@ -65,8 +65,10 @@ export interface SvtScene {
   resize: (width: number, height: number) => void;
   /** Swap in a freshly built terrain mesh; disposes the previous one. */
   setTerrain: (geometry: THREE.BufferGeometry, grid: ElevationGrid) => void;
-  /** Module GLB meshes placed in the terrain grid's frame; entries not listed are removed. */
+  /** Scene models placed in the terrain grid's frame; entries not listed are removed. */
   setMeshes: (entries: SceneMeshEntry[]) => void;
+  /** A loaded model's horizontal radius about its origin, metres. */
+  modelRadius: (key: string) => number | undefined;
   /** Drape satellite imagery over the terrain; null returns to the elevation
       ramp. Disposes the textures of any previous rings. */
   setDrape: (rings: DrapeRing[] | null) => void;
@@ -88,8 +90,16 @@ export interface SvtScene {
   dispose: () => void;
 }
 
-export function createSvtScene(canvas: HTMLCanvasElement): SvtScene {
+export interface SvtSceneOptions {
+  /** Something changed that needs a new frame (a model or tile loaded). */
+  onDirty?: () => void;
+  /** A model finished loading, so its footprint radius is known. */
+  onModelsLoaded?: () => void;
+}
+
+export function createSvtScene(canvas: HTMLCanvasElement, opts: SvtSceneOptions = {}): SvtScene {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  initGltfDecoders(renderer);
   // Without preventDefault a lost context is fatal to the whole renderer
   // process; swallowing it leaves a frozen view that recovers on restore.
   let contextLost = false;
@@ -196,53 +206,26 @@ export function createSvtScene(canvas: HTMLCanvasElement): SvtScene {
       );
   });
   let grid: ElevationGrid | null = null;
-  const meshGroups = new Map<string, THREE.Group>();
-  const meshUrls = new Map<string, { url: string; version: number }>();
-  let lastMeshes: SceneMeshEntry[] = [];
-  // A cargo mesh that fails to load says so once in the in-app console.
-  const loggedFailures = new Set<string>();
-  const placeMeshes = (entries: SceneMeshEntry[]) => {
-    lastMeshes = entries;
-    const wanted = new Set(entries.map((e) => `${e.key}@${e.version ?? 0}`));
-    for (const [k, g] of meshGroups) {
-      if (!wanted.has(k)) {
-        scene.remove(g);
-        meshGroups.delete(k);
-        const gone = meshUrls.get(k);
-        meshUrls.delete(k);
-        if (gone) void releaseGltf(gone.url, gone.version);
-      }
-    }
-    for (const e of entries) meshUrls.set(`${e.key}@${e.version ?? 0}`, { url: e.url, version: e.version ?? 0 });
-    if (!grid) return;
-    for (const e of entries) {
-      const k = `${e.key}@${e.version ?? 0}`;
-      const place = (g: THREE.Group) => {
-        const { x, z } = lonLatToLocal(grid!, e.origin.lat, e.origin.lng);
-        g.position.set(x, e.origin.altMsl, z);
-        g.rotation.y = -((e.yawDeg ?? 0) * Math.PI) / 180;
-      };
-      const existing = meshGroups.get(k);
-      if (existing) {
-        place(existing);
-        continue;
-      }
-      void loadGltfScene(e.url, e.version ?? 0)
-        .then((g) => {
-          if (!wanted.has(k) || meshGroups.has(k) || !grid) return;
-          place(g);
-          meshGroups.set(k, g);
-          scene.add(g);
-        })
-        .catch((err: unknown) => {
-          // A bad file is the module's problem; the scene stays usable, but say why.
-          if (loggedFailures.has(k)) return;
-          loggedFailures.add(k);
-          const reason = err instanceof Error ? err.message : String(err);
-          useConsoleStore.getState().addLog({ id: Date.now(), timestamp: Date.now(), level: 'warn', message: `[SceneMesh] could not load ${e.url}: ${reason}` }); // i18n-exempt: diagnostic log
-        });
-    }
+  const placeModel = (h: SceneModelHandle) => {
+    if (!grid || !h.loaded) return;
+    const g = grid;
+    const { x, z } = lonLatToLocal(g, h.entry.origin.lat, h.entry.origin.lng);
+    h.holder.position.set(x, models.place(h, (lat, lng) => sampleElevation(g, lat, lng)), z);
+    h.holder.visible = true;
   };
+  const models = createSceneModelSet({
+    parent: scene,
+    onLoaded: (h) => {
+      placeModel(h);
+      opts.onModelsLoaded?.();
+    },
+    onChange: () => opts.onDirty?.(),
+  });
+  const placeMeshes = () => {
+    for (const h of models.handles()) placeModel(h);
+    opts.onDirty?.();
+  };
+  const bufferSize = new THREE.Vector2();
 
   // ─── Terrain-draped reference grid ────────────────────────────────────────
   // Rebuilt from each ElevationGrid in setTerrain so the grid lines ride the
@@ -280,11 +263,16 @@ export function createSvtScene(canvas: HTMLCanvasElement): SvtScene {
       terrainGrid.frustumCulled = false;
       terrainGrid.renderOrder = 1;
       scene.add(terrainGrid);
-      placeMeshes(lastMeshes);
+      placeMeshes();
     },
 
     setMeshes(entries: SceneMeshEntry[]) {
-      placeMeshes(entries);
+      models.setEntries(entries);
+      placeMeshes();
+    },
+
+    modelRadius(key: string) {
+      return models.radiusOf(key);
     },
 
     setBuildings(geometry: THREE.BufferGeometry | null) {
@@ -330,6 +318,9 @@ export function createSvtScene(canvas: HTMLCanvasElement): SvtScene {
 
     render() {
       if (contextLost) return;
+      camera.updateMatrixWorld();
+      renderer.getDrawingBufferSize(bufferSize);
+      models.update(camera, bufferSize.x, bufferSize.y);
       renderer.render(scene, camera);
     },
 
@@ -337,6 +328,7 @@ export function createSvtScene(canvas: HTMLCanvasElement): SvtScene {
       canvas.removeEventListener('webglcontextlost', onLost);
       canvas.removeEventListener('webglcontextrestored', onRestored);
       drape.dispose();
+      models.dispose();
       if (terrainMesh) {
         terrainMesh.geometry.dispose();
         terrainMesh = null;

@@ -109,7 +109,35 @@ Everything registered through these is removed when the module unloads or reload
 - `host.production` - production line station (requires the `production` permission; records go to the Fleet Vault, so pair it with `vault` and `requires: ["com.ardudeck.vault"]`). Every USB autopilot becomes a **bay** with its own MAVLink link, so boards are worked in parallel: `startBays()`/`stopBays()`/`isStationRunning()`, `getBays()`/`subscribeBays()`, `addSimulatorBay(endpoint)`, `removeBay(id, ignore?)`, `setBayModel()`/`setModelForAllBays()`; models via `listModels()`, `captureGolden({ bayId } | 'connected', name)`, `updateRules()`, `attachFirmware()`; per bay `prepare()` (flash if the firmware differs, wipe to defaults, write the golden through reboots until it matches), `flash()`, `resetToDefaults()`, `reboot()`, `startCalibration()`/`confirmCalibrationPosition()`/`cancelCalibration()`, `runQa()`, `submit()`; `armModel()` approves a golden for the session (required for `autoPrepare`); `listRuns()`, `onRecordsChanged()`, `openHostView()`. The host writes a golden only behind its own consent dialog (never calibration, sensor ids or runtime counters), judges QA itself and writes the birth certificate on a pass, so a module drives the flow but cannot forge a result. QA checks carry stable `code` values (`calNeedsReboot`, `configDiffers`, ...) for the module to translate.
 
 - `host.tiles` (main side) - `register({ id, name, kind: 'dem' | 'raster', footprint, tileRoot, minZoom, maxZoom, priority?, version? })` serves `{z}/{x}/{y}.png` from your folder. A `dem` source (Terrarium PNG, MSL metres) overrides the host elevation inside the footprint everywhere the host reads terrain: synthetic vision, the 3D mission view, the terrain overlay, the altitude profile and terrain-following. A `raster` source is drawn by a map layer whose `tiles.sourceId` names it. Bump `version` after rewriting tiles so caches refresh.
-- `host.scene` (main side) - `registerMesh({ id, name, glb, origin: { lat, lng, altMsl }, yawDeg?, scenes? })` shows a textured binary glTF (x east, y up, z south, metres) in synthetic vision and the 3D mission view.
+- `host.scene` (main side) - `registerMesh(reg)` places a 3D model on the map; it shows in synthetic vision, the 3D mission view, the Sim World and the Log Explorer 3D map. Give exactly one of:
+  - `glb`: a glTF (`.glb`, or `.gltf` with its buffers and textures beside it, or `.dae`); x east, y up, z south, metres. Draco, KTX2 and Meshopt compression load.
+  - `tileset`: a 3D Tiles `tileset.json`, streamed with level of detail and placed by its own root transform (ECEF); `origin` is then only its nominal centre.
+  - `pointCloud`: a binary `.ply` of points in the same local frame (float x, y, z plus optional uchar red, green, blue), drawn at `pointSizePx` (default 2).
+
+  Files beside the registered one are served too, so relative references resolve.
+
+  Placement:
+  - `origin: { lat, lng, altMsl }`: altMsl is EGM96 metres.
+  - `yawDeg` (clockwise from north), then `pitchDeg` (nose up), then `rollDeg` (right side down), and a uniform `scale`.
+  - `altitudeMode`: `'amsl'` (default) uses `altMsl` as given, `'agl'` reads it as metres above the ground under the model, `'clamp'` sits the model on the ground.
+  - A mesh never sinks below the ground under its footprint. A point cloud is only lifted when its highest point is below the ground, and `'clamp'` rests its lowest point on it.
+  - `footprints` (WGS84 outer rings) hide the procedural OSM buildings the model covers. Without them, its bounding radius is used.
+  - `scenes` limits where it shows (`'svt' | 'mission3d' | 'sim' | 'logs'`; default all).
+  - Bump `version` after rewriting the files so caches refresh.
+
+  Pilots add their own models the same way through the 3D Models library (glTF, KMZ, 3D Tiles, CityJSON, LAS/LAZ and PLY, positioned from the data), so a cargo's models and theirs behave alike.
+- `host.theme` - `register({ id, label, base: 'dark' | 'light', className, css, palette?, icon?, ... })` adds a theme next to Dark and Light in Settings and on the rail toggle.
+  - The host adds `className` to `<html>` and injects `css`; scope every rule under it.
+  - Optional slots: `frame`, `welcomeBackground`, `mapBackground`, `settings`, `banner`, `overlay`, `railUtility`, `aboutCard`.
+  - `banner` and `overlay` are hidden while any vehicle is armed.
+  - `update(id, patch)` changes a registered theme (for example its CSS after a setting changed); `isActive`, `activate` and `subscribe` follow the pilot's choice.
+  - If the cargo is removed or disabled, the app falls back to Dark.
+- `ui(part, { active?, variant?, status? })` (exported from this package) - spread onto your own buttons, tabs, chips, cards and inputs so a theme can restyle them like the host's.
+  - Parts: `tabs`/`tab`, `segmented`/`segment`, `button` (`variant`: primary, secondary, ghost, danger), `icon-button`, `chip`, `option`, `card` (`status`: pass, warn, fail, info), `input`.
+  - The host never styles these attributes itself, so Dark and Light look the same with or without them.
+- `host.titleBar` - `register({ id, component, order? })` puts a quiet item in the top bar between the title and the status chips.
+  - It shows in every theme and stays while armed. The component gets `{ anyVehicleArmed }` and should measure its own width to shorten or hide.
+  - The slot clips before the status chips ever move.
 - `host.map.registerLayer({ ..., tiles: { sourceId, opacity? } })` draws one of your raster tile sources under the layer's features.
 - `host.vehicle.proposeFence` takes `inclusion?` and/or `exclusions?` (named polygons appended to the zones the pilot holds); `host.vehicle.fenceBudget()` returns the vehicle's fence storage in bytes and what the held fence uses (8 bytes per vertex, 2 per polygon), so you can cut a proposal to fit before asking.
 - `host.scripts` (main side, requires the `scripts` permission) - put a Lua script on the connected ArduPilot: `install({ filename, source, minHeap?, expectParam? }, onProgress?)` turns scripting on, raises `SCR_HEAP_SIZE` to `minHeap`, uploads to `/APM/scripts/`, reboots (SITL is restarted by the host) and, with `expectParam`, waits until a parameter the script adds at boot appears. It refuses while armed and resolves to `installed`, `manual` (the board takes no files over the link; offer `saveCopy(filename, source)` so the user copies it to the SD card) or `error`. Ship the script inside your cargo (esbuild `loader: { '.lua': 'text' }`) so users install the version you tested.

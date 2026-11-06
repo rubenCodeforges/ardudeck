@@ -10,6 +10,8 @@ import { initPseudoTx } from './stores/pseudo-tx-store';
 import { initVehicleProfiles } from './stores/vehicle-profile-store';
 import { initVehicleCalibration } from './stores/vehicle-calibration-store';
 import { initRendererI18n, I18nRoot } from './i18n';
+import { installNumberWheelGuard } from './utils/number-wheel-guard';
+import { initHazards } from './stores/hazards-store';
 import './styles/globals.css';
 
 // Pop-out windows share this same renderer bundle/entry. The main window opens
@@ -30,6 +32,8 @@ const isSurface = params.get('surface') === '1';
 // Every window, main and pop-out alike: the handset has to follow you into the popped-out
 // 3D view, and only whichever window has focus gets to drive (see the store).
 initPseudoTx();
+installNumberWheelGuard();
+initHazards();
 
 void initRendererI18n().then(() => {
   ReactDOM.createRoot(document.getElementById('root')!).render(

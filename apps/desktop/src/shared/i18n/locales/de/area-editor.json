@@ -116,8 +116,7 @@
     "theme": {
       "dark": "Design: Dunkel (klicken für Hell)",
       "light": "Design: Hell (klicken für System)",
-      "system": "Design: System (klicken für Dunkel)",
-      "bridge": "Bridge"
+      "system": "Design: System (klicken für Dunkel)"
     },
     "tool": {
       "branch": "Abzweig: Korridor auswählen, Abzweigung davon zeichnen (Doppelklick zum Beenden)",

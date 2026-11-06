@@ -21,6 +21,7 @@ import {
   type TrafficConfig,
 } from '../../../shared/traffic-types';
 import { useTrafficStore } from '../../stores/traffic-store';
+import { ui } from '../ui/ui-hooks';
 
 const inputCls =
   'px-3 py-1.5 bg-surface-input border border-border rounded-lg text-sm text-content placeholder-content-tertiary focus:outline-none focus:border-blue-500';
@@ -319,7 +320,7 @@ export function TrafficSettingsCard() {
           </div>
         </div>
 
-        <button onClick={() => void save()} className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors">
+        <button {...ui('button', { variant: 'primary' })} onClick={() => void save()} className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors">
           {saved ? t('common:saved') : t('settings:trafficSettingsCard.saveSettings')}
         </button>
       </div>
@@ -359,6 +360,7 @@ function AlertZonesSection({ zones, onChange }: { zones: AlertZone[]; onChange: 
       <div className="flex items-center justify-between">
         <div className="text-sm text-content font-medium">{t('settings:trafficSettingsCard.zones')}</div>
         <button
+          {...ui('button', { variant: 'primary' })}
           onClick={addZone}
           className="px-2 py-1 text-[11px] bg-amber-600 hover:bg-amber-500 text-white rounded-md transition-colors"
         >
@@ -381,7 +383,7 @@ function AlertZonesSection({ zones, onChange }: { zones: AlertZone[]; onChange: 
                   value={z.name}
                   onChange={(e) => update(z.id, { name: e.target.value })}
                 />
-                <button onClick={() => remove(z.id)} className="text-content-tertiary hover:text-red-400 text-xs px-1" title={t('settings:trafficSettingsCard.deleteZone')}>
+                <button {...ui('button', { variant: 'ghost' })} onClick={() => remove(z.id)} className="text-content-tertiary hover:text-red-400 text-xs px-1" title={t('settings:trafficSettingsCard.deleteZone')}>
                   {t('common:remove')}
                 </button>
               </div>

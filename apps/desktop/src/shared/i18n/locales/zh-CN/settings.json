@@ -762,5 +762,7 @@
     "secondDecimals_other": "秒，含 {{count}} 位小数"
   },
   "themeTitle": "主题",
-  "themeHint": "更改所有界面的配色。"
+  "themeHint": "更改所有界面的配色。",
+  "themeSettings": "主题设置",
+  "themeSettingsTitle": "{{name}} 设置"
 }

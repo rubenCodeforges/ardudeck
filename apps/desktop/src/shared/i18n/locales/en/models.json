@@ -1,0 +1,88 @@
+{
+  "layersEntry": {
+    "label": "3D Models",
+    "tip": "Add your own 3D models (glTF, KMZ, 3D Tiles, CityJSON, LAS/LAZ point clouds) to every 3D view"
+  },
+  "dialog": {
+    "title": "3D Models",
+    "subtitle": "Your own models, shown in every 3D view",
+    "import": "Import",
+    "importing": "Importing...",
+    "importTip": "Pick glTF/GLB, KMZ, a 3D Tiles tileset.json, CityJSON, or LAS, LAZ and PLY point cloud files",
+    "failedTitle_one": "{{count}} file could not be imported",
+    "failedTitle_other": "{{count}} files could not be imported",
+    "dismiss": "Dismiss",
+    "needsPlacementHint_one": "{{count}} model has no position in its data. It was placed where you dropped it (or at the map centre). Expand it to set its position.",
+    "needsPlacementHint_other": "{{count}} models have no position in their data. They were placed where you dropped them (or at the map centre). Expand them to set their position.",
+    "emptyTitle": "No 3D models yet",
+    "emptyHint": "Import files, drop them onto a map, or watch a folder.",
+    "warningsTitle_one": "{{count}} import to check",
+    "warningsTitle_other": "{{count}} imports to check"
+  },
+  "row": {
+    "collapse": "Collapse",
+    "editPlacement": "Edit position",
+    "placedByData": "Placed by data",
+    "placedByHand": "Placed by hand",
+    "fromFolder": "From folder",
+    "needsPosition": "Needs position",
+    "hide": "Hide in 3D views",
+    "show": "Show in 3D views",
+    "remove": "Remove model",
+    "confirmRemove": "Remove",
+    "removeWatchedTip": "This model comes from a watched folder. Remove the folder or edit its table instead.",
+    "points_one": "{{formatted}} point",
+    "points_other": "{{formatted}} points",
+    "pointsThinned": "{{shown}} of {{total}} points",
+    "pointsThinnedTip": "Large clouds are thinned evenly to keep every 3D view smooth"
+  },
+  "editor": {
+    "lat": "Latitude",
+    "lng": "Longitude",
+    "alt": "Altitude (m)",
+    "altMode": "Altitude mode",
+    "altModes": {
+      "amsl": "Above sea level",
+      "agl": "Above ground",
+      "clamp": "On the ground"
+    },
+    "yaw": "Yaw (deg)",
+    "pitch": "Pitch (deg)",
+    "roll": "Roll (deg)",
+    "scale": "Scale",
+    "readOnlyNote": "This model comes from a watched folder. Its table (models.json, CSV or GeoJSON) controls the position; edit the table to move it.",
+    "placeAtCentre": "Place at map centre",
+    "placeAtCentreTip": "Move the model to the centre of the map you last used",
+    "adjustOnMap": "Adjust on map",
+    "adjustOnMapTip": "Drag the model origin on the 2D map and turn its heading handle"
+  },
+  "watch": {
+    "title": "Watched folders",
+    "add": "Add folder",
+    "remove": "Stop watching",
+    "explain": "Put models in a folder with a models.json, CSV or GeoJSON table next to them: the table places each model. Edits to the folder or the table reload live.",
+    "none": "No folders watched."
+  },
+  "toast": {
+    "imported_one": "{{count}} model imported",
+    "imported_other": "{{count}} models imported",
+    "failed_one": "{{count}} failed",
+    "failed_other": "{{count}} failed",
+    "needsPlacement_one": "{{count}} needs a position",
+    "needsPlacement_other": "{{count}} need a position",
+    "details": "Details",
+    "warnings_one": "{{count}} warning",
+    "warnings_other": "{{count}} warnings"
+  },
+  "adjust": {
+    "hint": "Adjusting {{name}}: drag the dot to move it, the handle to turn it",
+    "edit": "Edit values",
+    "done": "Done"
+  },
+  "drop": {
+    "overlay": "Drop to add 3D model"
+  },
+  "format": {
+    "pointCloud": "Point cloud"
+  }
+}

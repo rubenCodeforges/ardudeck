@@ -5,6 +5,7 @@
  * live to both the designer preview and the video overlay.
  */
 
+import { ui } from '../ui/ui-hooks';
 import { useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -95,10 +96,11 @@ export function HudPanel() {
       {/* Vehicle profile: two independent arrangements, one HUD */}
       <Section title={t('osd:hudPanel.vehicleProfile')} icon={designGround ? Car : Plane}>
         <div className="px-2 pb-1">
-          <div className="inline-flex w-full items-center rounded-lg border border-subtle overflow-hidden bg-surface">
+          <div {...ui('segmented')} className="inline-flex w-full items-center rounded-lg border border-subtle overflow-hidden bg-surface">
             {([['air', t('osd:hudPanel.aircraft'), Plane], ['ground', t('osd:hudPanel.ground'), Car]] as const).map(([key, label, Icon]) => (
               <button
                 key={key}
+                {...ui('segment', { active: (key === 'ground') === designGround })}
                 onClick={() => setDesignGround(key === 'ground')}
                 className={`flex flex-1 items-center justify-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
                   (key === 'ground') === designGround ? 'bg-blue-600/80 text-white' : 'text-content-secondary hover:text-content hover:bg-surface-raised'
@@ -231,9 +233,9 @@ export function HudPanel() {
           {t('osd:hudPanel.holographicGlow')}
         </label>
         <Row label={t('osd:hudPanel.units')}>
-          <div className="inline-flex items-center rounded-lg border border-subtle overflow-hidden bg-surface">
+          <div {...ui('segmented')} className="inline-flex items-center rounded-lg border border-subtle overflow-hidden bg-surface">
             {(['metric', 'imperial'] as const).map((un) => (
-              <button key={un} onClick={() => setUnits(un)}
+              <button key={un} {...ui('segment', { active: config.units === un })} onClick={() => setUnits(un)}
                 className={`px-2.5 py-1 text-[10px] font-medium capitalize transition-colors ${config.units === un ? 'bg-blue-600/80 text-white' : 'text-content-secondary hover:text-content hover:bg-surface-raised'}`}>
                 {un === 'metric' ? t('osd:hudPanel.metric') : t('osd:hudPanel.imperial')}
               </button>
@@ -245,11 +247,11 @@ export function HudPanel() {
       {/* Presets */}
       <Section title={t('osd:hudPanel.hudPresets')} icon={Bookmark}>
         <div className="flex gap-1.5 mb-2">
-          <input value={presetName} onChange={(e) => setPresetName(e.target.value)}
+          <input {...ui('input')} value={presetName} onChange={(e) => setPresetName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && presetName.trim()) { savePreset(presetName); setPresetName(''); } }}
             placeholder={t('osd:hudPanel.saveAs')}
             className="min-w-0 flex-1 bg-surface-input text-content text-xs rounded-lg px-2.5 py-1.5 border border-subtle focus:border-blue-500 focus:outline-none placeholder-content-tertiary" />
-          <button onClick={() => { if (presetName.trim()) { savePreset(presetName); setPresetName(''); } }}
+          <button {...ui('button', { variant: 'primary' })} onClick={() => { if (presetName.trim()) { savePreset(presetName); setPresetName(''); } }}
             disabled={!presetName.trim()} className="shrink-0 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-blue-600/80 hover:bg-blue-500/80 text-white disabled:opacity-40">{t('common:save')}</button>
         </div>
         {presetNames.length === 0 ? (

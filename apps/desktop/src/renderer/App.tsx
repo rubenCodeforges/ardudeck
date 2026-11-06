@@ -12,8 +12,7 @@ import { OsLinkPanel } from './components/connection/OsLinkPanel';
 import { useOsIntegrationStore } from './stores/os-integration-store';
 import { TelemetryDashboard } from './components/telemetry/TelemetryDashboard';
 import { NavigationRail } from './components/navigation/NavigationRail';
-import { BridgeElbow, useBridge } from './components/bridge/BridgeFrame';
-import { WarpStarfield } from './components/tribute/WarpStarfield';
+import { useActiveCargoTheme } from './hooks/useTheme';
 import { ParametersView } from './components/parameters/ParametersView';
 import { DeepLinkInstallPrompt } from './components/modules/DeepLinkInstallPrompt';
 import { MissionPlanningView } from './components/mission';
@@ -79,6 +78,8 @@ import { clearTargetsForSysid } from './stores/command-target-store';
 import { useTerrainStatusStore } from './stores/terrain-status-store';
 import { useTileSourceStore } from './stores/tile-source-store';
 import { useSceneMeshStore } from './stores/scene-mesh-store';
+import { useUserModelsStore } from './stores/user-models-store';
+import { UserModelsHost } from './components/models/UserModelsHost';
 import { useSigningStore } from './stores/signing-store';
 import { useBoardProfileAssociation } from './hooks/useBoardProfileAssociation';
 import { SitlAutoApplyWatcher } from './components/settings/vehicle-profile/SitlAutoApplyWatcher';
@@ -352,7 +353,10 @@ function CollapsedSidebar({ onExpand }: { onExpand: () => void }) {
 }
 
 function App() {
-  const bridge = useBridge();
+  const cargoTheme = useActiveCargoTheme();
+  const FrameTop = cargoTheme?.value.frame?.top;
+  const FrameBottom = cargoTheme?.value.frame?.bottom;
+  const WelcomeBackground = cargoTheme?.value.welcomeBackground;
   const { t } = useTranslation();
   // Mirror the main-process connection registry into the active-vehicle store
   // (vehicle discovery/loss, active selection). Single-vehicle behavior is
@@ -476,6 +480,7 @@ function App() {
   // Module tile sources and scene meshes live in main; mirror them for every terrain consumer.
   useEffect(() => useTileSourceStore.getState().start(), []);
   useEffect(() => useSceneMeshStore.getState().start(), []);
+  useEffect(() => useUserModelsStore.getState().start(), []);
 
   useEffect(() => {
     const off = window.electronAPI?.onLegacyStreamConsentRequest?.((request) => {
@@ -1162,7 +1167,7 @@ function App() {
       // Default welcome screen for telemetry
       return (
         <div className="welcome-wrap relative min-h-full flex items-center justify-center p-8">
-          {bridge && <div className="absolute inset-0 overflow-hidden pointer-events-none"><WarpStarfield /></div>}
+          {WelcomeBackground && <div className="absolute inset-0 overflow-hidden pointer-events-none"><ErrorBoundary label={cargoTheme!.slug} fallback={() => null}><WelcomeBackground /></ErrorBoundary></div>}
           <div className="welcome-hero relative text-center max-w-2xl">
             {/* Logo */}
             <div className="welcome-logo mx-auto w-48 h-48 mb-6 rounded-3xl overflow-hidden">
@@ -1277,8 +1282,8 @@ function App() {
       <ProfileApplyOverlay />
       <ParameterCompareModalRoot />
       <WiringCheckPrompt />
-      <div className={bridge ? 'bridge-frame' : 'flex h-full'}>
-        {bridge && <BridgeElbow position="top" />}
+      <div className={cargoTheme?.value.frame ? 'theme-frame' : 'flex h-full'}>
+        {FrameTop && <ErrorBoundary label={cargoTheme!.slug} fallback={() => null}><FrameTop /></ErrorBoundary>}
         {/* Navigation Rail */}
         <NavigationRail onViewChange={handleViewChange} />
 
@@ -1313,7 +1318,7 @@ function App() {
             {renderMainContent()}
           </ErrorBoundary>
         </main>
-        {bridge && <BridgeElbow position="bottom" />}
+        {FrameBottom && <ErrorBoundary label={cargoTheme!.slug} fallback={() => null}><FrameBottom /></ErrorBoundary>}
       </div>
 
       {/* Deep-link module install prompt (ardudeck://install) */}
@@ -1338,6 +1343,8 @@ function App() {
           onDecline={() => void answerLegacyStreamConsent(false)}
         />
       )}
+
+      <UserModelsHost />
 
       {/* Experience level dialog */}
       {showExperienceDialog && (

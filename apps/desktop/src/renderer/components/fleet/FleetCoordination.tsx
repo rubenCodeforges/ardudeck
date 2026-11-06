@@ -7,6 +7,7 @@
  * engine advertises no group actions.
  */
 
+import { ui } from '../ui/ui-hooks';
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
@@ -57,6 +58,7 @@ export function FleetCoordination() {
       {canTakeoff && (
         <div className="flex items-center gap-1.5">
           <button
+            {...ui('button', { variant: 'primary' })}
             onClick={() => takeOffAll(alt)}
             disabled={busy}
             data-tip={t('fleet:fleetCoordination.takeOffAllTip', { alt })}
@@ -67,6 +69,7 @@ export function FleetCoordination() {
           <label className="flex items-center gap-1 text-[9px] uppercase tracking-wide text-content-tertiary" data-tip={t('fleet:fleetCoordination.altitudeTip')}>
             {t('fleet:fleetCoordination.alt')}
             <DraftNumberInput
+              {...ui('input')}
               min={1} max={120} integer value={alt}
               onCommit={setAlt}
               className="w-11 px-1 py-1 text-[11px] text-center rounded bg-surface-input border border-subtle text-content"
@@ -93,6 +96,7 @@ export function FleetCoordination() {
 
       {assignedCount >= 2 && (
         <button
+          {...ui('button', { variant: 'primary' })}
           onClick={() => { void startAssignedMissions(); }}
           disabled={busy}
           data-tip={t('fleet:fleetCoordination.startMissionsTip', { count: assignedCount })}
@@ -111,6 +115,7 @@ export function FleetCoordination() {
             {/* One-line fleet header: chevron, label +N, quick take off. */}
             <div className="flex items-center gap-1.5 text-[10px]">
               <button
+                {...ui('icon-button', { active: expanded })}
                 type="button"
                 onClick={() => toggleFleet(g.leader.key, expanded)}
                 className="shrink-0 w-4 grid place-items-center text-content-tertiary hover:text-content"
@@ -123,6 +128,7 @@ export function FleetCoordination() {
               <span className="font-mono text-content-tertiary truncate max-w-[64px]" data-tip={t('fleet:fleetCoordination.leaderModeTip', { label: g.leader.label })}>{g.leader.mode}</span>
               {canTakeoff && (
                 <button
+                  {...ui('button', { variant: 'primary' })}
                   onClick={() => { void takeOffFleet(g.leader.key, alt); }}
                   disabled={busy}
                   data-tip={t('fleet:fleetCoordination.takeOffFleetTip', { label: g.leader.label, alt })}
@@ -144,6 +150,7 @@ export function FleetCoordination() {
                       const lit = configFor(g.leader.key).shape === o.value;
                       return (
                         <button
+                          {...ui('option', { active: lit })}
                           key={o.value}
                           type="button"
                           disabled={busy || lit}
@@ -158,6 +165,7 @@ export function FleetCoordination() {
                   </div>
                 )}
                 <button
+                  {...ui('button', { variant: 'secondary' })}
                   onClick={() => { void startLeaderMission(g.leader.key); }}
                   disabled={busy}
                   data-tip={t('fleet:fleetCoordination.startMissionTip', { label: g.leader.label })}

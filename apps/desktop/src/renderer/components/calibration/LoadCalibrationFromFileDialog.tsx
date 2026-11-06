@@ -30,6 +30,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { AlertTriangle, CheckCircle, FileText, RotateCw, ShieldCheck, ShieldAlert, XCircle } from 'lucide-react';
 import { useCalibrationStore, type LoadedCalParam, type CategoryValidation } from '../../stores/calibration-store';
+import { ui } from '../ui/ui-hooks';
 import {
   type CalibrationCategory,
 } from '../../../shared/calibration-param-groups';
@@ -232,14 +233,14 @@ export function LoadCalibrationFromFileDialog({ onClose }: Props) {
             )}
 
             <div className="px-6 py-4 border-t border-subtle flex justify-end gap-3">
-              <button
+              <button {...ui('button', { variant: 'ghost' })}
                 onClick={handleClose}
                 disabled={isApplying}
                 className="px-4 py-2 text-sm text-content-secondary hover:text-content disabled:text-content-tertiary transition-colors"
               >
                 {t('common:cancel')}
               </button>
-              <button
+              <button {...ui('button', { variant: 'primary' })}
                 onClick={handleApply}
                 disabled={isApplying || totalSelected === 0 || !loadedCalibration}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-surface-raised text-white disabled:text-content-tertiary rounded-lg text-sm font-medium transition-colors"
@@ -297,7 +298,7 @@ function CategoryCard({
           </div>
         </div>
         {totalCount > 0 && (
-          <button
+          <button {...ui('button', { variant: 'ghost' })}
             onClick={() => setExpanded(v => !v)}
             className="text-xs text-content-secondary hover:text-content transition-colors"
           >
@@ -461,7 +462,7 @@ function ResultView({ result, onDone }: ResultViewProps) {
         )}
       </div>
       <div className="px-6 py-4 border-t border-subtle flex justify-end gap-3">
-        <button
+        <button {...ui('button', { variant: 'ghost' })}
           onClick={onDone}
           disabled={isRebooting}
           className="px-4 py-2 text-sm text-content-secondary hover:text-content disabled:text-content-tertiary transition-colors"
@@ -469,7 +470,7 @@ function ResultView({ result, onDone }: ResultViewProps) {
           {t('common:done')}
         </button>
         {rebootRecommended && (
-          <button
+          <button {...ui('button', { variant: 'primary' })}
             onClick={handleReboot}
             disabled={isRebooting}
             className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-surface-raised disabled:text-content-tertiary text-white rounded-lg text-sm font-medium transition-colors"

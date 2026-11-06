@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { armStandInChannels, DEFAULT_STICK_MAP, hasLiveRcInput, overrideChannels, overrideFields, RC_OVERRIDE_IGNORE as X, releaseChannels, stickMapFrom } from './rc-map';
+import { applyReversal, armStandInChannels, throttleLowPwm, DEFAULT_STICK_MAP, hasLiveRcInput, overrideChannels, overrideFields, RC_OVERRIDE_IGNORE as X, releaseChannels, reversedAxes, stickMapFrom } from './rc-map';
 
 const reader = (p: Record<string, number>) => (n: string) => p[n];
 const sticks = { roll: 1100, pitch: 1200, throttle: 1000, yaw: 1400 };
@@ -60,17 +60,45 @@ describe('armStandInChannels (#152)', () => {
 
   it('sends nothing while the vehicle reports a live transmitter', () => {
     expect(hasLiveRcInput(benchRc)).toBe(true);
-    expect(armStandInChannels(DEFAULT_STICK_MAP, benchRc)).toBeNull();
+    expect(armStandInChannels(DEFAULT_STICK_MAP, benchRc, 1100)).toBeNull();
   });
-  it('stands in with idle throttle when no transmitter is reporting', () => {
+  it('stands in with the throttle at its zero pulse when no transmitter is reporting', () => {
     expect(hasLiveRcInput([])).toBe(false);
     expect(hasLiveRcInput([0, 0, 0, 0])).toBe(false);
     expect(hasLiveRcInput([65535, 65535])).toBe(false);
-    const out = armStandInChannels({ roll: 2, pitch: 3, throttle: 1, yaw: 4 }, [])!;
-    expect(out.slice(0, 5)).toEqual([1000, 1500, 1500, 1500, X]);
+    const out = armStandInChannels({ roll: 2, pitch: 3, throttle: 1, yaw: 4 }, [], 1100)!;
+    expect(out.slice(0, 5)).toEqual([1100, 1500, 1500, 1500, X]);
   });
   it('sends nothing while the vehicle RCMAP is not known yet', () => {
-    expect(armStandInChannels(null, [])).toBeNull();
+    expect(armStandInChannels(null, [], 1100)).toBeNull();
+  });
+  it('sends nothing when the vehicle streams no RC_CHANNELS, since a transmitter cannot be ruled out', () => {
+    expect(armStandInChannels(DEFAULT_STICK_MAP, null, 1100)).toBeNull();
+  });
+  it('sends nothing while the throttle channel range or reversal is unknown', () => {
+    expect(armStandInChannels(DEFAULT_STICK_MAP, [], null)).toBeNull();
+  });
+});
+
+describe('throttleLowPwm', () => {
+  it('is RCn_MIN normally and RCn_MAX when reversed', () => {
+    expect(throttleLowPwm(reader({ RC3_MIN: 1100, RC3_MAX: 1900, RC3_REVERSED: 0 }), 3)).toBe(1100);
+    expect(throttleLowPwm(reader({ RC1_MIN: 988, RC1_MAX: 2012, RC1_REVERSED: 1 }), 1)).toBe(2012);
+  });
+  it('is null while any of MIN, MAX or REVERSED is unknown', () => {
+    expect(throttleLowPwm(reader({ RC3_MIN: 1100, RC3_MAX: 1900 }), 3)).toBeNull();
+    expect(throttleLowPwm(reader({ RC3_MAX: 1900, RC3_REVERSED: 0 }), 3)).toBeNull();
+  });
+});
+
+describe('reversedAxes / applyReversal', () => {
+  it('reads RCn_REVERSED on each axis channel', () => {
+    const map = { roll: 2, pitch: 3, throttle: 1, yaw: 4 };
+    expect([...reversedAxes(map, reader({ RC1_REVERSED: 1, RC3_REVERSED: 0, RC4_REVERSED: 1 }))].sort()).toEqual(['throttle', 'yaw']);
+  });
+  it('mirrors reversed axes around 1500 and leaves ignore alone', () => {
+    expect(applyReversal({ roll: 1100, pitch: X, throttle: 1000, yaw: 1500 }, new Set(['roll', 'pitch', 'throttle'])))
+      .toEqual({ roll: 1900, pitch: X, throttle: 2000, yaw: 1500 });
   });
 });
 

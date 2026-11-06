@@ -12,6 +12,7 @@
  * value is a colour the user explicitly picked and wins over the feed.
  */
 
+import { ui } from '../ui/ui-hooks';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Video } from 'lucide-react';
@@ -55,6 +56,7 @@ export function OsdVideoBackdrop({ backgroundColor, className = '' }: OsdVideoBa
           pointer-events-none on the wrapper keeps the rest of the stage editable. */}
       <div className="pointer-events-none absolute inset-0 z-30 flex items-end justify-center pb-3">
         <button
+          {...ui('button', { variant: 'secondary' })}
           onClick={() => setShowConfig(true)}
           className="pointer-events-auto flex items-center gap-1.5 rounded-md border border-white/25 bg-black/40 px-3 py-1.5 text-[11px] font-medium text-white/90 backdrop-blur-sm transition-colors hover:bg-black/60"
           data-tip={t('osd:osdVideoBackdrop.configureTip')}

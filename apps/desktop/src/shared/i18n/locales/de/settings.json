@@ -762,5 +762,7 @@
     "secondDecimals_other": "Sekunden mit {{count}} Nachkommastellen"
   },
   "themeTitle": "Thema",
-  "themeHint": "Ändert die Farben in allen Ansichten."
+  "themeHint": "Ändert die Farben in allen Ansichten.",
+  "themeSettings": "Thema-Einstellungen",
+  "themeSettingsTitle": "Einstellungen für {{name}}"
 }

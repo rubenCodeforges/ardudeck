@@ -143,6 +143,8 @@ import {
   LED_CONTROL_CRC_EXTRA,
   serializeLedControl,
 } from '../shared/led-control.js';
+import { flashRoute } from '../shared/flash-route.js';
+import { eraseAllParameters, type ResetMethod } from './params/reset-defaults.js';
 import { IPC_CHANNELS, SEVERITY_LABELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type LayoutStoreSchema, type SettingsStoreSchema, type SigningStatus, type TelemetrySpeed, type LegacyStreamConsentRequest, type TransportInfoIpc, type VehicleInfoIpc, type SetActiveSelectionPayload, type VehicleCommand, type MissionVehicleProgress, type OrchestrationIntentIpc, type OrchestrationStatusIpc, type OrchestratorSource, type OrchestratorStatus, type CameraSourceConfig, type GimbalCommand, type CameraCommand, type FrameBlueprintResult, type FrameBlueprintRequest } from '../shared/ipc-channels.js';
 import { DEFAULT_USER_UNIT_PREFERENCES } from '../shared/user-units.js';
 import { initAutoUpdater, checkForUpdates, downloadUpdate, installUpdate } from './updater.js';
@@ -176,6 +178,7 @@ import type { EdgeTxScanResult, InstalledPackageRecord, TelemetryScreenSummary }
 import { registerMspHandlers, tryMspDetection, startMspTelemetry, stopMspTelemetry, cleanupMspConnection, exitCliModeIfActive, autoConfigureSitlPlatform, getMspVehicleType, resetSitlAutoConfig } from './msp/index.js';
 import { initCalibrationHandlers, cleanupCalibrationHandlers, handleCalibrationStatusText, handleCalibrationCommandAck, handleIncomingCommandLong, handleMagCalProgress, handleMagCalReport, isMavlinkCalibrationActive, cancelCalibration, type MavlinkCalibrationDeps } from './calibration/index.js';
 import { initMissionLibraryHandlers, cleanupMissionLibraryHandlers } from './mission-library/index.js';
+import { initUserModelsHandlers } from './user-models/user-models-handlers.js';
 import { nextTxSeq } from './tx-sequence.js';
 import { GpsPassthrough } from './gps/gps-passthrough.js';
 import { telemetryKeyFor } from './telemetry-routing.js';
@@ -276,7 +279,10 @@ import { detectFlightGear } from './simulators/simulator-detector.js';
 import type { SitlConfig, SitlStatus, ArduPilotSitlConfig, ArduPilotSitlStatus, ArduPilotVehicleType, ArduPilotReleaseTrack, ArduPilotSitlBinaryInfo, SwarmSitlConfig, SwarmSitlStatus, ArduPilotFlightGearConfig, Px4SitlConfig, Px4SitlStatus, Px4SitlBinaryInfo, Px4ReleaseTrack } from '../shared/ipc-channels.js';
 import { openAreaEditorWindow, setMainMapViewport } from './area-editor-window.js';
 import { t } from '../shared/i18n/index.js';
-import { armStandInChannels, DEFAULT_STICK_MAP, overrideChannels, overrideFields, releaseChannels, stickMapFrom, type StickChannelMap } from '../shared/rc-map.js';
+import { isMissionPackage, MISSION_PACKAGE_EXT, type MissionPackage } from '../shared/mission-share-types.js';
+import { HAZARDS_FILE_EXTENSION } from '../shared/hazard-types.js';
+import { HazardStore, type HazardResult } from './hazards/hazard-store.js';
+import { applyReversal, armStandInChannels, DEFAULT_STICK_MAP, overrideChannels, overrideFields, releaseChannels, reversedAxes, stickMapFrom, throttleLowPwm, type StickAxis, type StickChannelMap } from '../shared/rc-map.js';
 
 // =============================================================================
 // Legacy Board Detection
@@ -1296,10 +1302,10 @@ function emitMergedRcChannels(mainWindow: BrowserWindow): void {
 // Latest RC input per sysid, so arming can tell whether a real transmitter is driving the vehicle.
 const rcInputBySysid = new Map<number, { channels: number[]; at: number }>();
 
-/** RC channels the vehicle reported in the last 3 s, or [] when none. */
-function recentRcInput(sysid: number): number[] {
+/** RC channels the vehicle reported in the last 3 s, or null when it sent none (RC_CHANNELS not streamed). */
+function recentRcInput(sysid: number): number[] | null {
   const rc = rcInputBySysid.get(sysid);
-  return rc && Date.now() - rc.at < 3000 ? rc.channels : [];
+  return rc && Date.now() - rc.at < 3000 ? rc.channels : null;
 }
 
 function resetRcChannelState(): void {
@@ -1730,6 +1736,7 @@ function resetParameterSession(): void {
   receivedParamIndices.clear();
   expectedParamCount = 0;
   pendingParamReads.clear();
+  paramEchoWaiters.clear();
   ftpClient = null;
 }
 
@@ -2247,6 +2254,11 @@ function stickMapFor(sysid: number): StickChannelMap {
 function knownStickMapFor(sysid: number): StickChannelMap | null {
   return focusedVehicle()?.sysid === sysid && receivedParams.has('RCMAP_THROTTLE') ? stickMapFor(sysid) : null;
 }
+
+/** Axes the vehicle reads reversed, from its cached RCn_REVERSED. */
+function reversedAxesFor(map: StickChannelMap): Set<StickAxis> {
+  return reversedAxes(map, (n) => receivedParams.get(n)?.paramValue);
+}
 let paramDownloadTimeout: NodeJS.Timeout | null = null;
 let paramDownloadActive = false; // True only during bulk PARAM_REQUEST_LIST download
 let paramDownloadStartTime = 0; // Timestamp for measuring download duration
@@ -2332,6 +2344,29 @@ let logDownloadManager: LogDownloadManager | null = null;
 // post-calibration verification reads where we need a fresh value (the
 // receivedParams cache might still hold the pre-cal value).
 const pendingParamReads = new Map<string, (value: number, type: number) => void>();
+
+const PARAM_SET_ATTEMPTS = 3;
+const PARAM_ECHO_TIMEOUT_MS = 1500;
+const FLASH_WRITE_ACK_TIMEOUT_MS = 3000;
+
+// One-shot waiters for the PARAM_VALUE a vehicle echoes after a PARAM_SET, keyed by paramId.
+const paramEchoWaiters = new Map<string, Set<(value: number) => void>>();
+
+function awaitParamEcho(paramId: string, timeoutMs: number): Promise<number | null> {
+  return new Promise((resolve) => {
+    let waiters = paramEchoWaiters.get(paramId);
+    if (!waiters) paramEchoWaiters.set(paramId, waiters = new Set());
+    const done = (value: number | null) => {
+      clearTimeout(timer);
+      waiters!.delete(onEcho);
+      if (waiters!.size === 0) paramEchoWaiters.delete(paramId);
+      resolve(value);
+    };
+    const onEcho = (value: number) => done(value);
+    const timer = setTimeout(() => done(null), timeoutMs);
+    waiters.add(onEcho);
+  });
+}
 
 // STATUSTEXT chunk reassembly buffer (for multi-chunk messages >50 chars)
 const statustextChunkBuffer = new Map<number, { severity: number; chunks: string[]; timer: NodeJS.Timeout | null }>();
@@ -2841,6 +2876,24 @@ const MSG_VFR_HUD = 74;
 const MSG_EXTENDED_SYS_STATE = 245;
 const MSG_POSITION_TARGET_GLOBAL_INT = 87;
 const MSG_COMMAND_ACK = 77;
+
+// One-shot waiters for a COMMAND_ACK from the primary vehicle, keyed by command id.
+const commandAckWaiters = new Map<number, Set<(result: number) => void>>();
+
+function awaitCommandAck(command: number, timeoutMs: number): Promise<number | null> {
+  return new Promise((resolve) => {
+    let waiters = commandAckWaiters.get(command);
+    if (!waiters) commandAckWaiters.set(command, waiters = new Set());
+    const done = (result: number | null) => {
+      clearTimeout(timer);
+      waiters!.delete(onAck);
+      resolve(result);
+    };
+    const onAck = (result: number) => done(result);
+    const timer = setTimeout(() => done(null), timeoutMs);
+    waiters.add(onAck);
+  });
+}
 const MSG_TERRAIN_REPORT = 136;
 const MSG_TERRAIN_REQUEST = 133;
 const MSG_WIND = 168;
@@ -3099,6 +3152,7 @@ function handleParamValuePacket(mainWindow: BrowserWindow, packet: MAVLinkPacket
   // skip every subsequent packet in the same chunk, including the
   // COMMAND_ACK that completes a level/gyro calibration.
   try {
+    for (const waiter of [...(paramEchoWaiters.get(param.paramId) ?? [])]) waiter(param.paramValue);
     const pendingRead = pendingParamReads.get(param.paramId);
     if (pendingRead) {
       pendingParamReads.delete(param.paramId);
@@ -3974,6 +4028,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       const ackCommand = readUint16(payload, 0);
       const ackResult = payload[2] ?? 0;
       if (ackCommand === MAV_CMD_CAN_FORWARD) droneCan?.handleForwardAck(ackResult);
+      for (const waiter of [...(commandAckWaiters.get(ackCommand) ?? [])]) waiter(ackResult);
       // MAV_RESULT: 0=ACCEPTED, 1=TEMPORARILY_REJECTED, 2=DENIED, 3=UNSUPPORTED, 4=FAILED, 5=IN_PROGRESS
       const MAV_RESULT_NAMES = ['ACCEPTED', 'TEMPORARILY_REJECTED', 'DENIED', 'UNSUPPORTED', 'FAILED', 'IN_PROGRESS'];
       const resultName = MAV_RESULT_NAMES[ackResult] ?? `UNKNOWN(${ackResult})`;
@@ -8170,10 +8225,24 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         encodePx4ParamSetValue(payload, value, setType);
       }
 
-      // Use detected MAVLink version for compatibility (with signing if enabled)
-      await sendToFocusedVehicle(focus, PARAM_SET_ID, payload, PARAM_SET_CRC_EXTRA);
+      // The vehicle answers every PARAM_SET with a PARAM_VALUE carrying the value it kept.
+      // Resend on silence, and only report success once that echo matches.
+      let echoed: number | null = null;
+      for (let attempt = 0; attempt < PARAM_SET_ATTEMPTS && echoed === null; attempt++) {
+        const echo = awaitParamEcho(paramId, PARAM_ECHO_TIMEOUT_MS);
+        await sendToFocusedVehicle(focus, PARAM_SET_ID, payload, PARAM_SET_CRC_EXTRA);
+        echoed = await echo;
+      }
+      if (echoed === null) {
+        sendLog(mainWindow, 'warn', `No confirmation for ${paramId} = ${value}`);
+        return { success: false, error: t('main:ipc.paramNoEcho', { param: paramId }) };
+      }
+      if (Math.fround(echoed) !== Math.fround(value)) {
+        sendLog(mainWindow, 'warn', `${paramId}: vehicle kept ${echoed}, not ${value}`);
+        return { success: false, error: t('main:ipc.paramRejected', { param: paramId, value: echoed }) };
+      }
 
-      sendLog(mainWindow, 'info', `Setting parameter ${paramId} = ${value}`);
+      sendLog(mainWindow, 'info', `Set parameter ${paramId} = ${value}`);
 
       return { success: true };
     } catch (error) {
@@ -8574,7 +8643,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Write parameters to flash (persistent storage)
   // Sends MAV_CMD_PREFLIGHT_STORAGE (245) with param1=1 (write all)
-  ipcMain.handle(IPC_CHANNELS.PARAM_WRITE_FLASH, async (): Promise<{ success: boolean; error?: string }> => {
+  ipcMain.handle(IPC_CHANNELS.PARAM_WRITE_FLASH, async (): Promise<{ success: boolean; unconfirmed?: boolean; error?: string }> => {
     const focus = focusedVehicle();
     if (!focus) {
       return { success: false, error: t('main:ipc.notConnected') };
@@ -8597,9 +8666,24 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         param7: 0,
       });
 
+      // ArduPilot saves each parameter as it takes the PARAM_SET (the echo the write waits for) and
+      // answers this command DENIED for anything but a reset (GCS_Common.cpp), so its ACK says nothing.
+      if (focus.firmware === 'ardupilot') {
+        await sendToFocusedVehicle(focus, COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
+        return { success: true };
+      }
+      const ack = awaitCommandAck(245, FLASH_WRITE_ACK_TIMEOUT_MS);
       await sendToFocusedVehicle(focus, COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
-
       sendLog(mainWindow, 'info', 'Writing parameters to flash...');
+      const result = await ack;
+      if (result === null) {
+        // Not every firmware ACKs the storage command, so silence is a warning, not a failure.
+        sendLog(mainWindow, 'warn', 'No COMMAND_ACK for the flash write');
+        return { success: true, unconfirmed: true };
+      }
+      if (result !== 0) {
+        return { success: false, error: t('main:ipc.flashWriteRejected', { result }) };
+      }
       return { success: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : t('common:unknownError');
@@ -8614,6 +8698,41 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // does NOT respawn itself. So for SITL we skip the MAVLink command entirely
   // and just restart the child process; the new SITL boots from the just-saved
   // eeprom.bin so any prior PARAM_SET / PREFLIGHT_STORAGE work persists.
+  // Erase every stored parameter on the primary ArduPilot vehicle; the renderer reboots it next.
+  ipcMain.handle(IPC_CHANNELS.MAVLINK_RESET_PARAMS, async (): Promise<{ success: boolean; method?: ResetMethod; error?: string }> => {
+    const focus = focusedVehicle();
+    if (!focus || !focus.isPrimaryVehicle || !isMavlinkFocus(focus)) return { success: false, error: t('main:ipc.notConnected') };
+    if (focus.firmware !== 'ardupilot') return { success: false, error: t('main:ipc.resetParamsArduPilotOnly') };
+    if (isVehicleArmed(focus.transport, focus.sysid)) return { success: false, error: t('main:ipc.resetParamsDisarmFirst') };
+    try {
+      const result = await eraseAllParameters({
+        awaitAck: awaitCommandAck,
+        sendCommand: async (command, param1) => {
+          const payload = serializeCommandLong({
+            targetSystem: focus.sysid, targetComponent: 1, command, confirmation: 0,
+            param1, param2: 0, param3: 0, param4: 0, param5: 0, param6: 0, param7: 0,
+          });
+          await sendToFocusedVehicle(focus, COMMAND_LONG_ID, payload, COMMAND_LONG_CRC_EXTRA);
+        },
+        setParam: async (paramId, value) => {
+          const payload = serializeParamSet({
+            targetSystem: focus.sysid, targetComponent: 1, paramId, paramValue: value,
+            paramType: resolveParamSetType(receivedParams.get(paramId)?.paramType ?? 4),
+          });
+          await sendToFocusedVehicle(focus, PARAM_SET_ID, payload, PARAM_SET_CRC_EXTRA);
+          return true;
+        },
+      });
+      if (!result.ok) return { success: false, error: t('main:ipc.resetParamsFailed') };
+      sendLog(mainWindow, 'warn', `All parameters erased (${result.method}); reboot to load the defaults`);
+      return { success: true, method: result.method };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t('common:unknownError');
+      sendLog(mainWindow, 'error', 'Parameter reset failed', message);
+      return { success: false, error: message };
+    }
+  });
+
   ipcMain.handle(IPC_CHANNELS.MAVLINK_REBOOT, async (): Promise<boolean> => {
     const focus = focusedVehicle();
     if (!focus) {
@@ -8703,8 +8822,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       // right as we arm (this bit rovers, whose FLTMODE_CH commonly sits in 5-8).
       // Only stand in for a missing transmitter. With a handset actually driving RC, this
       // override would OUTRANK it and freeze the sticks at centre/idle the moment we armed.
-      const standIn = arm && !ardupilotRcSender.hasExternalSource
-        ? armStandInChannels(knownStickMapFor(target.sysid), recentRcInput(target.sysid))
+      const standInMap = arm && !ardupilotRcSender.hasExternalSource ? knownStickMapFor(target.sysid) : null;
+      const standIn = standInMap
+        ? armStandInChannels(standInMap, recentRcInput(target.sysid), throttleLowPwm((n) => receivedParams.get(n)?.paramValue, standInMap.throttle))
         : null;
       if (standIn) {
         const rcPayload = serializeRcChannelsOverride({
@@ -10147,11 +10267,17 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       if (request.modeChannel && request.modePwm && request.modeChannel >= 5 && request.modeChannel <= 18) {
         pins[request.modeChannel] = request.modePwm;
       }
-      const sticks = { roll: request.roll, pitch: request.pitch, throttle: request.throttle, yaw: request.yaw };
+      // Without the real RCMAP a stick value could land on the throttle channel, so refuse.
+      // SITL runs on the default layout and is exempt.
+      const map = knownStickMapFor(focus.sysid) ?? (ardupilotSitlProcess.isRunning ? DEFAULT_STICK_MAP : null);
+      if (!map) {
+        return { success: false, error: t('main:ipc.rcMapUnknown') };
+      }
+      const sticks = applyReversal({ roll: request.roll, pitch: request.pitch, throttle: request.throttle, yaw: request.yaw }, reversedAxesFor(map));
       const payload = serializeRcChannelsOverride({
         targetSystem: focus.sysid,
         targetComponent: 1,
-        ...overrideFields(overrideChannels(sticks, stickMapFor(focus.sysid), pins)),
+        ...overrideFields(overrideChannels(sticks, map, pins)),
       });
       await sendToFocusedVehicle(focus, RC_CHANNELS_OVERRIDE_ID, payload, RC_CHANNELS_OVERRIDE_CRC_EXTRA);
       return { success: true };
@@ -10832,6 +10958,91 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.FLEET_REPO_GH_USE_EXISTING, async (_, fullName: string) =>
     (await vault()).githubUseExistingRepo(fullName));
 
+
+  ipcMain.handle(IPC_CHANNELS.FLEET_REPO_SHARE_IDENTITY, async () => (await vault()).shareIdentity());
+
+  ipcMain.handle(IPC_CHANNELS.FLEET_REPO_SHARE_MISSION, async (_, site: string, pkg: unknown) => {
+    if (!isMissionPackage(pkg)) return { success: false, error: t('main:missionShare.invalidPackage') };
+    try {
+      const result = await (await vault()).shareMission(site, pkg);
+      return { success: true, ...result };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.FLEET_REPO_PENDING_SHARES, async () => {
+    try {
+      return await (await vault()).pendingShares();
+    } catch {
+      return [];
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.FLEET_REPO_DISMISS_SHARE, async (_, path: string, sharedAt: number) =>
+    (await vault()).dismissShare(path, sharedAt));
+
+  ipcMain.handle(IPC_CHANNELS.MISSION_PACKAGE_SAVE, async (_, pkg: unknown): Promise<{ success: boolean; filePath?: string; error?: string }> => {
+    if (!isMissionPackage(pkg)) return { success: false, error: t('main:missionShare.invalidPackage') };
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: t('main:missionShare.saveTitle'),
+      defaultPath: `${pkg.name.replace(/[^a-zA-Z0-9._ -]/g, '_').trim() || 'mission'}.${MISSION_PACKAGE_EXT}`,
+      filters: [{ name: t('main:missionShare.fileFilter'), extensions: [MISSION_PACKAGE_EXT] }],
+    });
+    if (result.canceled || !result.filePath) return { success: false, error: 'Cancelled' };
+    try {
+      const fsp = await import('fs/promises');
+      await fsp.writeFile(result.filePath, JSON.stringify(pkg, null, 2), 'utf-8');
+      return { success: true, filePath: result.filePath };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  const hazardStore = new HazardStore(join(app.getPath('userData'), 'hazards'));
+  const hazardsChanged = () => {
+    for (const w of BrowserWindow.getAllWindows()) {
+      if (!w.isDestroyed()) w.webContents.send(IPC_CHANNELS.HAZARDS_CHANGED);
+    }
+  };
+  void vault().then((v) => v.onSynced(() => safeSend(mainWindow, IPC_CHANNELS.FLEET_REPO_SYNCED, null)));
+
+  const changed = (result: HazardResult): HazardResult => {
+    if (result.success) hazardsChanged();
+    return result;
+  };
+  ipcMain.handle(IPC_CHANNELS.HAZARDS_LIST, () => hazardStore.list());
+  ipcMain.handle(IPC_CHANNELS.HAZARDS_STATUS, () => hazardStore.status());
+  ipcMain.handle(IPC_CHANNELS.HAZARDS_SET_PIN, async (_, pin: unknown) => changed(await hazardStore.setPin(pin)));
+  ipcMain.handle(IPC_CHANNELS.HAZARDS_UNLOCK, async (_, pin: unknown) => changed(await hazardStore.unlock(pin)));
+  ipcMain.handle(IPC_CHANNELS.HAZARDS_RELOCK, () => {
+    hazardStore.relock();
+    hazardsChanged();
+  });
+  ipcMain.handle(IPC_CHANNELS.HAZARDS_ADD, async (_, hazard: unknown) => changed(await hazardStore.add(hazard)));
+  ipcMain.handle(IPC_CHANNELS.HAZARDS_REMOVE, async (_, id: string) => changed(await hazardStore.remove(id)));
+  ipcMain.handle(IPC_CHANNELS.HAZARDS_OVERRIDE, (_, entry: { hazardIds: string[]; mission: string }) => hazardStore.logOverride(entry));
+  ipcMain.handle(IPC_CHANNELS.HAZARDS_EXPORT, async () => {
+    const result = await dialog.showSaveDialog({
+      title: 'Export hazards',
+      defaultPath: 'hazards.ardudeck-hazards',
+      filters: [{ name: 'ArduDeck hazards', extensions: [HAZARDS_FILE_EXTENSION] }],
+    });
+    if (result.canceled || !result.filePath) return { success: false, error: 'Cancelled' };
+    const done = await hazardStore.exportTo(result.filePath);
+    return done.success ? { success: true, filePath: result.filePath } : { success: false, error: done.error };
+  });
+  ipcMain.handle(IPC_CHANNELS.HAZARDS_IMPORT, async () => {
+    const result = await dialog.showOpenDialog({
+      title: 'Import hazards',
+      filters: [{ name: 'ArduDeck hazards', extensions: [HAZARDS_FILE_EXTENSION] }],
+      properties: ['openFile'],
+    });
+    if (result.canceled || !result.filePaths[0]) return { success: false, error: 'Cancelled' };
+    const done = changed(await hazardStore.importFrom(result.filePaths[0]));
+    return done.success ? { success: true } : { success: false, error: done.error };
+  });
+
   ipcMain.handle(IPC_CHANNELS.FLEET_REPO_GH_SYNC, async () => {
     const result = await (await vault()).githubSync();
     if (result.success) sendLog(mainWindow, 'info', 'Vault: synced with GitHub');
@@ -11231,12 +11442,12 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   });
 
   // Load mission from file
-  ipcMain.handle(IPC_CHANNELS.MISSION_LOAD_FILE, async (): Promise<{ success: boolean; items?: MissionItem[]; error?: string }> => {
+  ipcMain.handle(IPC_CHANNELS.MISSION_LOAD_FILE, async (): Promise<{ success: boolean; items?: MissionItem[]; pkg?: MissionPackage; error?: string }> => {
     try {
       const result = await dialog.showOpenDialog(mainWindow, {
         title: t('main:ipc.loadMissionTitle'),
         filters: [
-          { name: t('main:fileFilters.missionFiles'), extensions: ['waypoints', 'txt', 'plan', 'kmz'] },
+          { name: t('main:fileFilters.missionFiles'), extensions: ['waypoints', 'txt', 'plan', 'kmz', MISSION_PACKAGE_EXT] },
           { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ],
         properties: ['openFile'],
@@ -11250,6 +11461,16 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const fs = await import('fs/promises');
       const path = await import('path');
       const ext = path.extname(filePath).toLowerCase();
+
+      if (ext === `.${MISSION_PACKAGE_EXT}`) {
+        try {
+          const raw: unknown = JSON.parse(await fs.readFile(filePath, 'utf-8'));
+          if (isMissionPackage(raw)) return { success: true, pkg: raw };
+        } catch {
+          // reported below
+        }
+        return { success: false, error: t('main:missionShare.invalidPackage') };
+      }
 
       let items: MissionItem[];
       if (ext === '.kmz') {
@@ -12180,78 +12401,47 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
       let result: FlashResult;
 
-      // ArduPilot boards with a serial port use the ArduPilot bootloader protocol.
-      // Only boards confirmed as ArduPilot (by VID/PID or MAVLink) use this path.
-      // .apj hint only applies to unidentified boards (vid-pid) — NOT MSP boards,
-      // since iNav/Betaflight don't have the ArduPilot bootloader.
-      const isApjFile = firmwarePath.toLowerCase().endsWith('.apj');
-      const isArduPilotBoard = board.flasher === 'ardupilot' || board.detectionMethod === 'mavlink';
-      const apjOnUnidentifiedBoard = isApjFile && board.detectionMethod !== 'msp';
-      const useArduPilotFlasher = board.port && (isArduPilotBoard || apjOnUnidentifiedBoard);
+      const route = flashRoute(board, firmwarePath);
+      sendLog(mainWindow, 'info', `Routing decision: ${route}, hasPort=${!!board.port}, vid=${board.usbVid?.toString(16) ?? 'none'}`);
+      if (options?.fullChipErase && route === 'ardupilot') {
+        sendLog(mainWindow, 'warn', 'Full chip erase is not possible over the ArduPilot bootloader; parameters are kept');
+      }
 
-      sendLog(mainWindow, 'info', `Routing decision: isApj=${isApjFile}, isArduPilotBoard=${isArduPilotBoard}, apjOnUnidentified=${apjOnUnidentifiedBoard}, useArduPilot=${!!useArduPilotFlasher}, hasPort=${!!board.port}`);
-
-      if (useArduPilotFlasher) {
-        sendLog(mainWindow, 'info', `Using ArduPilot bootloader flasher (${isApjFile ? '.apj file' : 'board type'})...`);
+      if (route === 'ardupilot') {
+        sendLog(mainWindow, 'info', 'Using ArduPilot bootloader flasher...');
         result = await flashWithArduPilotBootloader(firmwarePath, board, mainWindow, firmwareAbortController, options);
-      } else {
-        // For non-ArduPilot boards, use VID-based routing
-        // CP2102/FTDI (10c4, 0403, 1a86) = Serial bootloader, STM32 native (0483) = DFU
-        const hasSerialPort = board.port && (board.detectionMethod === 'msp' || board.detectionMethod === 'bootloader');
-
-        if (hasSerialPort) {
-          const vid = board.usbVid;
-          const isNativeUsb = vid === 0x0483; // STM32 native USB
-          const isUsbSerial = vid === 0x10c4 || vid === 0x0403 || vid === 0x1a86; // CP2102, FTDI, CH340
-
-          if (isNativeUsb && board.detectionMethod === 'msp') {
-            // MSP board with native USB: CLI 'dfu' reboots into DFU mode (USB DFU device).
-            // The board re-enumerates as VID 0x0483/PID 0xDF11 — no serial port.
-            sendLog(mainWindow, 'info', 'MSP board with native USB - using DFU via CLI reboot...');
-            result = await flashWithDfu(firmwarePath, board, mainWindow, firmwareAbortController);
-          } else if (isNativeUsb) {
-            sendLog(mainWindow, 'info', 'Board with native USB - using DFU...');
-            result = await flashWithDfu(firmwarePath, board, mainWindow, firmwareAbortController);
-          } else if (isUsbSerial || board.detectionMethod === 'bootloader') {
-            // USB-serial adapters OR boards already in bootloader mode -> use serial bootloader
-            sendLog(mainWindow, 'info', 'Board with USB-serial adapter - using serial bootloader...');
-            // If already detected via bootloader, skip reboot sequence
-            const flashOptions = board.detectionMethod === 'bootloader'
-              ? { ...options, noRebootSequence: true }
-              : options;
-            if (!flashOptions?.noRebootSequence && board.detectionMethod === 'msp') {
-              sendLog(mainWindow, 'info', 'Will send MSP reboot to bootloader first...');
-            }
-            result = await flashWithSerialBootloader(firmwarePath, board, mainWindow, firmwareAbortController, flashOptions);
-          } else {
-            // Unknown VID, try DFU first
-            sendLog(mainWindow, 'info', `Board with unknown VID ${vid?.toString(16)} - trying DFU...`);
-            result = await flashWithDfu(firmwarePath, board, mainWindow, firmwareAbortController);
-          }
-        } else if (board.flasher === 'dfu' || board.flasher === 'ardupilot') {
-          // ArduPilot boards without a port (e.g. in DFU mode) fall through to DFU
-          sendLog(mainWindow, 'info', 'Using DFU flasher...');
-          result = await flashWithDfu(firmwarePath, board, mainWindow, firmwareAbortController);
-        } else if (board.flasher === 'avrdude') {
-          sendLog(mainWindow, 'info', 'Using AVRdude flasher...');
-          result = await flashWithAvrdude(firmwarePath, board, mainWindow, firmwareAbortController);
-        } else if (board.flasher === 'serial' && board.port) {
-          // USB-serial boards (CP2102/FTDI) use STM32 UART bootloader
-          // Note: This requires boot pads to be shorted for bootloader entry
-          sendLog(mainWindow, 'info', 'Using STM32 serial bootloader...');
-          if (!options?.noRebootSequence) {
-            sendLog(mainWindow, 'warn', 'Serial bootloader may require BOOT pads to be shorted!');
-          }
-          try {
-            result = await flashWithSerialBootloader(firmwarePath, board, mainWindow, firmwareAbortController, options);
-          } catch (flashError) {
-            const errMsg = flashError instanceof Error ? flashError.message : String(flashError);
-            sendLog(mainWindow, 'error', `Serial flasher error: ${errMsg}`);
-            return { success: false, error: `Serial flash failed: ${errMsg}` };
-          }
+      } else if (route === 'dfu') {
+        if (board.detectionMethod === 'msp' && board.usbVid === 0x0483) {
+          // MSP board with native USB: CLI 'dfu' reboots into DFU mode (USB DFU device).
+          sendLog(mainWindow, 'info', 'MSP board with native USB - using DFU via CLI reboot...');
         } else {
-          return { success: false, error: `Unsupported flasher type: ${board.flasher}` };
+          sendLog(mainWindow, 'info', 'Using DFU flasher...');
         }
+        result = await flashWithDfu(firmwarePath, board, mainWindow, firmwareAbortController, options);
+      } else if (route === 'serial') {
+        // The STM32 ROM bootloader mass-erases on every flash, so fullChipErase is always true here.
+        const viaBootloader = board.detectionMethod === 'bootloader';
+        const flashOptions = viaBootloader ? { ...options, noRebootSequence: true } : options;
+        if (!flashOptions?.noRebootSequence && board.detectionMethod === 'msp') {
+          sendLog(mainWindow, 'info', 'Will send MSP reboot to bootloader first...');
+        }
+        const viaMspOrBootloader = board.detectionMethod === 'msp' || viaBootloader;
+        if (!viaMspOrBootloader && !options?.noRebootSequence) {
+          sendLog(mainWindow, 'warn', 'Serial bootloader may require BOOT pads to be shorted!');
+        }
+        sendLog(mainWindow, 'info', 'Using STM32 serial bootloader...');
+        try {
+          result = await flashWithSerialBootloader(firmwarePath, board, mainWindow, firmwareAbortController, flashOptions);
+        } catch (flashError) {
+          const errMsg = flashError instanceof Error ? flashError.message : String(flashError);
+          sendLog(mainWindow, 'error', `Serial flasher error: ${errMsg}`);
+          return { success: false, error: `Serial flash failed: ${errMsg}` };
+        }
+      } else if (route === 'avrdude') {
+        sendLog(mainWindow, 'info', 'Using AVRdude flasher...');
+        result = await flashWithAvrdude(firmwarePath, board, mainWindow, firmwareAbortController);
+      } else {
+        return { success: false, error: `Unsupported flasher type: ${board.flasher}` };
       }
 
       // Clear abort controller
@@ -12949,6 +13139,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Register Mission Library handlers
   initMissionLibraryHandlers();
+  initUserModelsHandlers();
 
   // ============================================================================
   // Driver utilities
@@ -14063,6 +14254,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
    * many seconds; on the main thread that freezes every window, the IPC queue
    * and the MAVLink link with it, so nothing in main decodes logs itself.
    */
+  const LOG_WORKER_HEAP_MB = 3072;
+
   async function parseLogInWorker(
     filePath: string,
     fileName: string,
@@ -14075,9 +14268,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       // import.meta.dirname (what __dirname compiles to) is Node 20.11+; this works on any runtime
       const worker = new Worker(join(dirname(fileURLToPath(import.meta.url)), 'log-worker.js'), {
         workerData: { type: 'parse', filePath, fileName },
-        // Headroom a big log needs; failing with a clear message beats an
-        // opaque worker crash.
-        resourceLimits: { maxOldGenerationSizeMb: 8192 },
+        // Below V8's 4 GB pointer-compression cap: past the cap a big log is a fatal
+        // OOM that can take the app down; under it the worker fails cleanly.
+        resourceLimits: { maxOldGenerationSizeMb: LOG_WORKER_HEAP_MB },
       });
       const finish = (fn: () => void) => {
         if (settled) return;
@@ -14096,7 +14289,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         }
         if (msg.type === 'error') finish(() => reject(new Error(String(msg.error))));
       });
-      worker.on('error', (err) => finish(() => reject(new Error(`Log parse failed: ${err.message}`))));
+      worker.on('error', (err: Error & { code?: string }) => finish(() => reject(new Error(
+        err.code === 'ERR_WORKER_OUT_OF_MEMORY'
+          ? `Log parse ran out of memory (${fileName} is ${Math.round(totalBytes / 1e6)} MB)`
+          : `Log parse failed: ${err.message}`,
+      ))));
       worker.on('exit', (code) => {
         // Code 1 with no message is how an out-of-memory worker dies.
         finish(() => reject(new Error(

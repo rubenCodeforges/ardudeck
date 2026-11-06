@@ -490,7 +490,9 @@
     "emptyGroup": "Group \"{{name}}\" has no waypoints.",
     "midMissionReturn_one": "{{count}} survey returns home before the mission ends. Connect them to fly straight on.",
     "midMissionReturn_other": "{{count}} surveys return home before the mission ends. Connect them to fly straight on.",
-    "noTakeoff": "No takeoff command - the vehicle will fly to the first waypoint from its current state."
+    "noTakeoff": "No takeoff command - the vehicle will fly to the first waypoint from its current state.",
+    "hazard": "Leg {{from}} to {{to}} crosses the hazard \"{{zone}}\"",
+    "hazardFromHome": "Leg from home to {{to}} crosses the hazard \"{{zone}}\""
   },
   "parameterGroups": {
     "all": {
@@ -742,6 +744,20 @@
     },
     "frameUnknownId": "Frame {{frame}}",
     "unidentified": "Unidentified vehicle"
+  },
+  "userModelParsers": {
+    "badLatLng": "latitude or longitude is missing or out of range",
+    "badNumber": "{{field}} is not a valid number",
+    "emptyTable": "The placement table has no rows.",
+    "invalidJson": "The placement table is not valid JSON ({{detail}})",
+    "missingFile": "the row names no model file",
+    "noCrs": "This CityJSON file names no coordinate reference system (metadata.referenceSystem), so it cannot be placed.",
+    "noGeometry": "This CityJSON file has no surfaces that can be drawn.",
+    "noValidRows": "No model in the placement table could be placed. Row {{row}}: {{problem}}.",
+    "notCityJson": "This file is not CityJSON.",
+    "notFeatureCollection": "The GeoJSON table must be a FeatureCollection of Point features.",
+    "notModelList": "models.json must be a list of models, or an object with a \"models\" list.",
+    "unknownCrs": "Unknown coordinate reference system EPSG:{{epsg}}. This CityJSON file cannot be placed."
   },
   "vtolTransition": {
     "toHover": "TO HOVER",

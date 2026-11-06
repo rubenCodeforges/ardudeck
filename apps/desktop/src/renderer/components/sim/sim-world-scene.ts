@@ -28,6 +28,11 @@ import { attachDrape } from '../camera/svt/drape-material';
 import type { DrapeRing } from '../camera/svt/svt-satellite';
 import { buildTemplateFromBlueprint } from './sim-frame-builder';
 import type { FrameBlueprintProfile } from '../../../shared/ipc-channels';
+import type { SceneMeshEntry } from '../../../shared/tile-source-types';
+import { type ElevationGrid, lonLatToLocal, sampleElevation, M_PER_DEG_LAT } from '../camera/svt/svt-terrain';
+import { initGltfDecoders } from '../../three/gltf-cache';
+import { createSceneModelSet, type SceneModelHandle } from '../../three/scene-model-set';
+import type { GroundAt } from '../../three/scene-model-placement';
 
 /** The real-build context used to generate frames: the active launched SITL
     custom frame (for disc area / mass / motor count) and the selected vehicle
@@ -143,8 +148,18 @@ export interface SimWorldUpdate {
   showDiagnostics?: boolean;
 }
 
+/** Where scene models go: the world's geo origin, the terrain grid when terrain is on, else a flat world at the home elevation. */
+export interface SimMeshFrame {
+  origin: { lat: number; lon: number };
+  grid: ElevationGrid | null;
+  /** Home elevation MSL for the flat world; null when unknown (models then sit on the flat ground). */
+  homeElevMsl: number | null;
+}
+
 export interface SimWorldScene {
   resize: (width: number, height: number) => void;
+  /** Scene models; entries not listed are removed. */
+  setMeshes: (entries: SceneMeshEntry[], frame: SimMeshFrame | null) => void;
   update: (data: SimWorldUpdate) => void;
   render: () => void;
   setCameraMode: (mode: SimCameraMode) => void;
@@ -331,6 +346,7 @@ export function createSimWorldScene(canvas: HTMLCanvasElement): SimWorldScene {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  initGltfDecoders(renderer);
 
   const scene = new THREE.Scene();
   const HORIZON = new THREE.Color(0xbcd4ec);
@@ -411,6 +427,37 @@ export function createSimWorldScene(canvas: HTMLCanvasElement): SimWorldScene {
     gridEnabled = on;
     grid.visible = on;
   }
+
+  // ─── Scene models (cargo and user 3D models) ─────────────────────────────
+  let meshFrame: SimMeshFrame | null = null;
+  const placeModel = (h: SceneModelHandle) => {
+    const f = meshFrame;
+    if (!f || !h.loaded) {
+      h.holder.visible = false;
+      return;
+    }
+    const { lat, lng } = h.entry.origin;
+    let x: number;
+    let z: number;
+    let groundAt: GroundAt;
+    let homeElev: number | null;
+    if (f.grid) {
+      const g = f.grid;
+      ({ x, z } = lonLatToLocal(g, lat, lng));
+      groundAt = (la, ln) => sampleElevation(g, la, ln);
+      homeElev = sampleElevation(g, f.origin.lat, f.origin.lon);
+    } else {
+      x = (lng - f.origin.lon) * M_PER_DEG_LAT * Math.cos((f.origin.lat * Math.PI) / 180);
+      z = -(lat - f.origin.lat) * M_PER_DEG_LAT;
+      groundAt = () => f.homeElevMsl;
+      homeElev = f.homeElevMsl;
+    }
+    const altMsl = models.place(h, groundAt);
+    h.holder.position.set(x, homeElev == null ? 0 : altMsl - homeElev, z);
+    h.holder.visible = true;
+  };
+  const models = createSceneModelSet({ parent: scene, onLoaded: placeModel, onChange: () => {} });
+  const modelBuffer = new THREE.Vector2();
 
   // ─── Optional synthetic-vision terrain (replaces the flat ground) ─────────
   const DEFAULT_FOG_FAR = (scene.fog as THREE.Fog).far;
@@ -1449,7 +1496,16 @@ export function createSimWorldScene(canvas: HTMLCanvasElement): SimWorldScene {
         v.labelSprite.scale.set(s, s * 0.5, 1);
         v.labelSprite.position.y = v.labelBaseY + v.labelIndex * s * 0.28;
       }
+      camera.updateMatrixWorld();
+      renderer.getDrawingBufferSize(modelBuffer);
+      models.update(camera, modelBuffer.x, modelBuffer.y);
       renderer.render(scene, camera);
+    },
+
+    setMeshes(entries: SceneMeshEntry[], frame: SimMeshFrame | null) {
+      meshFrame = frame;
+      models.setEntries(entries);
+      for (const h of models.handles()) placeModel(h);
     },
 
     setCameraMode(mode: SimCameraMode) {
@@ -1513,6 +1569,7 @@ export function createSimWorldScene(canvas: HTMLCanvasElement): SimWorldScene {
     },
 
     dispose() {
+      models.dispose();
       if (terrainMesh) terrainMesh.geometry.dispose();
       drape.dispose();
       terrainMat.dispose();

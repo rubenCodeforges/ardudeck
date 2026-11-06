@@ -13,6 +13,7 @@ import { OrientationScene } from './shared/OrientationScene';
 import { AD_CAL_REQ, type VehicleCalibration, type VehicleProfile } from '../../../shared/vehicle-profile';
 import { useVehicleCalibrationStore } from '../../stores/vehicle-calibration-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
+import { ui } from '../ui/ui-hooks';
 
 const REQUIREMENT_TEXT: [number, string][] = [
   [AD_CAL_REQ.MOTORS_LIVE, 'calibration:vehicleCalibrationPanel.reqMotorsLive'],
@@ -75,7 +76,7 @@ export function VehicleCalibrationPanel({ profile }: { profile: VehicleProfile }
           {profile.calibrations.map((cal) => {
             const localOnly = (cal.requirements & AD_CAL_REQ.LOCAL_ONLY) !== 0;
             return (
-              <button
+              <button {...ui('option', { active: selected?.id === cal.id })}
                 key={cal.id}
                 onClick={() => setSelected(cal)}
                 disabled={localOnly}

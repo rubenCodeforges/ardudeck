@@ -67,6 +67,13 @@ export interface BriefingInput {
   windSpeedUnit?: WindSpeedUnit;
   /** Legal AGL ceiling in metres. Defaults to 120 (EASA / 400ft). */
   ceilingM?: number;
+  /**
+   * Wind at a point from the map's wind layer (its altitude and hour), used per leg instead of
+   * the surface forecast. Null outside the layer's area, which falls back to the forecast.
+   */
+  windAt?: WindAt | null;
+  /** Height of `windAt`'s wind, metres above ground, for the briefing text. */
+  windAltitudeM?: number;
 }
 
 export interface DaylightWindow {
@@ -83,7 +90,16 @@ export interface MissionBriefing {
   empty: boolean;
   distanceM: number;
   maxFromHomeM: number;
+  /** Into the forecast wind when the weather has one, else at cruise speed in still air. */
   flightTimeSec: number;
+  /** At cruise speed with no wind. */
+  stillAirFlightTimeSec: number;
+  /** True when `flightTimeSec` accounts for wind. */
+  windAdjusted: boolean;
+  /** Where that wind came from: the map's wind layer at an altitude, or the surface forecast. */
+  windSource: 'layer' | 'surface' | null;
+  /** Legs where the wind is at or above cruise speed against the track: the aircraft cannot hold them. */
+  windBlockedLegs: number;
   enduranceSec: number;
   batteryCount: number;
   /** Reserve left on the final battery, 0-100, or null if unknown. */
@@ -115,6 +131,83 @@ function timeIsoToMinutes(iso: string | null): number | null {
 }
 
 const EARTH_RADIUS_M = 6_371_000;
+
+/** Initial great-circle bearing from a to b, degrees from north. */
+function bearingDeg(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const p1 = (aLat * Math.PI) / 180;
+  const p2 = (bLat * Math.PI) / 180;
+  const dl = ((bLng - aLng) * Math.PI) / 180;
+  const y = Math.sin(dl) * Math.cos(p2);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+/**
+ * Ground speed along a track flown at airspeed `airspeedMs` in a wind of `windMs` blowing FROM
+ * `windFromDeg` (the wind triangle ArduPilot's plane-wind-fs.lua uses). Null when the wind is too
+ * strong to hold the track.
+ */
+export function groundSpeedAlongTrack(airspeedMs: number, trackDeg: number, windMs: number, windFromDeg: number): number | null {
+  const rel = ((windFromDeg - trackDeg) * Math.PI) / 180;
+  const head = windMs * Math.cos(rel);
+  const cross = windMs * Math.sin(rel);
+  if (Math.abs(cross) >= airspeedMs) return null;
+  const gs = Math.sqrt(airspeedMs * airspeedMs - cross * cross) - head;
+  return gs > 0.1 ? gs : null;
+}
+
+export type WindAt = (lat: number, lng: number) => { speedMs: number; fromDeg: number } | null;
+
+export interface LegWind {
+  from: { lat: number; lng: number };
+  to: { lat: number; lng: number };
+  mid: { lat: number; lng: number };
+  lengthM: number;
+  trackDeg: number;
+  windMs: number;
+  windFromDeg: number;
+  /** Wind component against the track, m/s: positive is a headwind, negative a tailwind. */
+  headwindMs: number;
+  /** Ground speed along the track at cruise airspeed; null when the wind is too strong to hold it. */
+  groundSpeedMs: number | null;
+}
+
+/** Wind on each leg: `windAt` at the leg's midpoint, else the surface wind; null for a leg with no wind at all. */
+export function legWinds(
+  located: readonly { lat: number; lng: number }[],
+  cruiseSpeedMs: number,
+  windAt: WindAt | null | undefined,
+  surface: { speedMs: number; fromDeg: number } | null,
+): Array<(LegWind & { source: 'layer' | 'surface' }) | null> {
+  const out: Array<(LegWind & { source: 'layer' | 'surface' }) | null> = [];
+  for (let i = 1; i < located.length; i++) {
+    const a = located[i - 1]!;
+    const b = located[i]!;
+    const lengthM = haversineM(a.lat, a.lng, b.lat, b.lng);
+    const mid = { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
+    const layer = windAt?.(mid.lat, mid.lng) ?? null;
+    const wind = layer ?? surface;
+    if (!wind || lengthM === 0 || cruiseSpeedMs <= 0) {
+      out.push(null);
+      continue;
+    }
+    const trackDeg = bearingDeg(a.lat, a.lng, b.lat, b.lng);
+    const headwindMs = wind.speedMs * Math.cos(((wind.fromDeg - trackDeg) * Math.PI) / 180);
+    out.push({
+      from: { lat: a.lat, lng: a.lng },
+      to: { lat: b.lat, lng: b.lng },
+      mid,
+      lengthM,
+      trackDeg,
+      windMs: wind.speedMs,
+      windFromDeg: wind.fromDeg,
+      headwindMs,
+      groundSpeedMs: wind.speedMs > 0 ? groundSpeedAlongTrack(cruiseSpeedMs, trackDeg, wind.speedMs, wind.fromDeg) : cruiseSpeedMs,
+      source: layer ? 'layer' : 'surface',
+    });
+  }
+  return out;
+}
 
 function haversineM(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const dLat = ((bLat - aLat) * Math.PI) / 180;
@@ -166,6 +259,10 @@ export function computeMissionBriefing(input: BriefingInput): MissionBriefing {
       distanceM: 0,
       maxFromHomeM: 0,
       flightTimeSec: 0,
+      stillAirFlightTimeSec: 0,
+      windAdjusted: false,
+      windSource: null,
+      windBlockedLegs: 0,
       enduranceSec,
       batteryCount: 0,
       reservePct: null,
@@ -216,7 +313,36 @@ export function computeMissionBriefing(input: BriefingInput): MissionBriefing {
     }
   }
 
-  const flightTimeSec = cruiseSpeedMs > 0 ? distanceM / cruiseSpeedMs : 0;
+  const stillAirFlightTimeSec = cruiseSpeedMs > 0 ? distanceM / cruiseSpeedMs : 0;
+
+  // Into the forecast wind, leg by leg: a headwind leg takes longer than the tailwind leg
+  // saves, so a round trip always costs more than in still air. A leg the wind
+  // blocks is counted at still-air time and reported, not dropped.
+  // The map's wind layer, sampled at each leg's midpoint, beats the surface forecast: it is
+  // the wind at flying height that the pilot is looking at.
+  const surfaceWind = weather && weather.windSpeedMs > 0 ? { speedMs: weather.windSpeedMs, fromDeg: weather.windDirDeg } : null;
+  let flightTimeSec = stillAirFlightTimeSec;
+  let windBlockedLegs = 0;
+  let usedLayer = false;
+  let usedSurface = false;
+  const legs = legWinds(located, cruiseSpeedMs, input.windAt, surfaceWind);
+  if (legs.some((l) => l !== null)) {
+    flightTimeSec = 0;
+    legs.forEach((leg, i) => {
+      if (!leg) {
+        const a = located[i]!;
+        const b = located[i + 1]!;
+        flightTimeSec += cruiseSpeedMs > 0 ? haversineM(a.lat, a.lng, b.lat, b.lng) / cruiseSpeedMs : 0;
+        return;
+      }
+      if (leg.source === 'layer') usedLayer = true;
+      else usedSurface = true;
+      if (leg.groundSpeedMs === null) windBlockedLegs++;
+      flightTimeSec += leg.lengthM / (leg.groundSpeedMs ?? cruiseSpeedMs);
+    });
+  }
+  const windSource = usedLayer ? 'layer' : usedSurface ? 'surface' : null;
+  const windAdjusted = windSource !== null;
   const batteryCount = estimateBatteryCount(flightTimeSec, enduranceSec / 60);
 
   let reservePct: number | null = null;
@@ -242,6 +368,11 @@ export function computeMissionBriefing(input: BriefingInput): MissionBriefing {
     maxFromHomeM,
     hasHome: !!home,
     flightTimeSec,
+    stillAirFlightTimeSec,
+    windAdjusted,
+    windSource,
+    windAltitudeM: input.windAltitudeM,
+    windBlockedLegs,
     enduranceSec,
     batteryCount,
     reservePct,
@@ -258,6 +389,10 @@ export function computeMissionBriefing(input: BriefingInput): MissionBriefing {
     distanceM,
     maxFromHomeM,
     flightTimeSec,
+    stillAirFlightTimeSec,
+    windAdjusted,
+    windSource,
+    windBlockedLegs,
     enduranceSec,
     batteryCount,
     reservePct,
@@ -278,6 +413,11 @@ interface CheckContext {
   maxFromHomeM: number;
   hasHome: boolean;
   flightTimeSec: number;
+  stillAirFlightTimeSec: number;
+  windAdjusted: boolean;
+  windSource: 'layer' | 'surface' | null;
+  windAltitudeM?: number;
+  windBlockedLegs: number;
   enduranceSec: number;
   batteryCount: number;
   reservePct: number | null;
@@ -302,7 +442,11 @@ function buildChecks(ctx: CheckContext): BriefingCheck[] {
       label: t('utils:flightBriefing.flightTime'),
       value: formatDurationSec(ctx.flightTimeSec),
       severity: PASSIVE,
-      detail: t('utils:flightBriefing.flightTimeDetail'),
+      detail: ctx.windSource === 'layer'
+        ? t('utils:flightBriefing.flightTimeLayerWindDetail', { duration: formatDurationSec(ctx.stillAirFlightTimeSec), altitude: formatAltitudeM(ctx.windAltitudeM ?? 0, ctx.altitudeUnit) })
+        : ctx.windSource === 'surface'
+          ? t('utils:flightBriefing.flightTimeWindDetail', { duration: formatDurationSec(ctx.stillAirFlightTimeSec) })
+          : t('utils:flightBriefing.flightTimeDetail'),
     },
     {
       id: 'batteries',
@@ -345,6 +489,16 @@ function buildChecks(ctx: CheckContext): BriefingCheck[] {
       label: t('utils:flightBriefing.maxFromHome'),
       value: formatDistanceM(ctx.maxFromHomeM, ctx.distanceUnit),
       severity: PASSIVE,
+    });
+  }
+
+  if (ctx.windBlockedLegs > 0) {
+    checks.push({
+      id: 'windBlocked',
+      label: t('utils:flightBriefing.windBlocked'),
+      value: `${ctx.windBlockedLegs}`,
+      severity: PASSIVE,
+      detail: t('utils:flightBriefing.windBlockedDetail'),
     });
   }
 

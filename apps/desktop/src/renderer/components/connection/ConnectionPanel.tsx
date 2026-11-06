@@ -6,6 +6,7 @@ import { useConnectionStore } from '../../stores/connection-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useSettingsStore, type DefaultSitlType } from '../../stores/settings-store';
 import { useSitlStore } from '../../stores/sitl-store';
+import { ui } from '../ui/ui-hooks';
 import { useArduPilotSitlStore } from '../../stores/ardupilot-sitl-store';
 import { usePx4SitlStore } from '../../stores/px4-sitl-store';
 import { useSigningStore, initSigningListener } from '../../stores/signing-store';
@@ -787,8 +788,9 @@ export function ConnectionPanel() {
 
             {/* SITL Type Selector - show when not running */}
             {!anySitlRunning && !anySitlStarting && !anySitlDownloading && (
-              <div className="flex items-center justify-center gap-1.5 pt-2">
+              <div {...ui('segmented')} className="flex items-center justify-center gap-1.5 pt-2">
                 <button
+                  {...ui('segment', { active: defaultSitlType === 'inav' })}
                   onClick={() => setDefaultSitlType('inav')}
                   className={`px-2.5 py-1 text-[10px] rounded-md transition-colors ${
                     defaultSitlType === 'inav'
@@ -799,6 +801,7 @@ export function ConnectionPanel() {
                   iNav
                 </button>
                 <button
+                  {...ui('segment', { active: defaultSitlType === 'ardupilot' })}
                   onClick={() => setDefaultSitlType('ardupilot')}
                   className={`px-2.5 py-1 text-[10px] rounded-md transition-colors ${
                     defaultSitlType === 'ardupilot'
@@ -809,6 +812,7 @@ export function ConnectionPanel() {
                   ArduPilot
                 </button>
                 <button
+                  {...ui('segment', { active: defaultSitlType === 'px4' })}
                   onClick={() => setDefaultSitlType('px4')}
                   className={`px-2.5 py-1 text-[10px] rounded-md transition-colors ${
                     defaultSitlType === 'px4'

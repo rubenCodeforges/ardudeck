@@ -24,6 +24,7 @@ import { MAP_LAYERS, type LayerKey, type MapLayer } from '../../../shared/map-la
 import { SmoothWheelZoom } from '../map/SmoothWheelZoom';
 import { searchLocations, type GeocodeResult } from '../../utils/weather-api';
 import { useTranslation } from 'react-i18next';
+import { ui } from '../ui/ui-hooks';
 
 // Fallback view when there is no resolved position yet (matches the app's own
 // no-GPS fallback). London, wide zoom, so the operator can still pan and pick.
@@ -216,6 +217,7 @@ export function LocationPickerDialog({ onClose }: { onClose: () => void }): JSX.
             <p className="text-[11px] text-content-tertiary">{t('weather:locationDialog.subtitle')}</p>
           </div>
           <button
+            {...ui('icon-button')}
             onClick={onClose}
             className="w-7 h-7 rounded-md flex items-center justify-center text-content-tertiary hover:text-content hover:bg-surface-raised transition-colors"
             data-tip={t('common:close')}
@@ -232,6 +234,7 @@ export function LocationPickerDialog({ onClose }: { onClose: () => void }): JSX.
               <Loader2 className="w-4 h-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-content-tertiary animate-spin" />
             )}
             <input
+              {...ui('input')}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -321,6 +324,7 @@ export function LocationPickerDialog({ onClose }: { onClose: () => void }): JSX.
               )}
             </div>
             <button
+              {...ui('button', { variant: 'ghost' })}
               onClick={() => setShowManual((v) => !v)}
               className="flex items-center gap-1 text-[11px] text-content-tertiary hover:text-content-secondary transition-colors shrink-0"
               data-tip={t('weather:locationDialog.typeCoordsTip')}
@@ -334,6 +338,7 @@ export function LocationPickerDialog({ onClose }: { onClose: () => void }): JSX.
             <div className="mt-2 flex items-center gap-1.5">
               <input
                 type="number"
+                {...ui('input')}
                 value={manualLat}
                 onChange={(e) => setManualLat(e.target.value)}
                 placeholder={t('common:lat')}
@@ -347,6 +352,7 @@ export function LocationPickerDialog({ onClose }: { onClose: () => void }): JSX.
                 className="w-0 flex-1 min-w-0 px-2 py-1.5 bg-surface-input border border-border rounded-md text-xs text-content tabular-nums focus:outline-none focus:border-blue-500"
               />
               <button
+                {...ui('button', { variant: 'secondary' })}
                 onClick={applyManual}
                 className="px-2.5 py-1.5 text-xs rounded-md bg-surface border border-subtle text-content-secondary hover:bg-surface-raised hover:text-content transition-colors shrink-0"
               >
@@ -359,6 +365,7 @@ export function LocationPickerDialog({ onClose }: { onClose: () => void }): JSX.
         {/* Actions */}
         <div className="flex items-center justify-between gap-2 px-4 py-3 mt-3 border-t border-subtle">
           <button
+            {...ui('button', { variant: 'ghost' })}
             onClick={resetAuto}
             disabled={!override}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg text-content-secondary hover:text-content hover:bg-surface-raised transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
@@ -369,12 +376,14 @@ export function LocationPickerDialog({ onClose }: { onClose: () => void }): JSX.
           </button>
           <div className="flex items-center gap-2">
             <button
+              {...ui('button', { variant: 'ghost' })}
               onClick={onClose}
               className="px-3 py-1.5 text-xs rounded-lg text-content-secondary hover:text-content hover:bg-surface-raised transition-colors"
             >
               {t('common:cancel')}
             </button>
             <button
+              {...ui('button', { variant: 'primary' })}
               onClick={confirm}
               disabled={!selected}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-500 transition-colors disabled:opacity-40 disabled:hover:bg-blue-600"

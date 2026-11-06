@@ -6,6 +6,7 @@
  * connected; self-gates to nothing otherwise.
  */
 
+import { ui } from '../ui/ui-hooks';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useRef } from 'react';
 import { useDraggableSnap } from '../../hooks/useDraggableSnap';
@@ -66,6 +67,8 @@ export function DraggableFleetActions(): JSX.Element | null {
   return (
     <div
       ref={panelRef}
+      {...ui('card')}
+      data-dock-avoid
       className="fixed z-[60] w-60 rounded-xl border border-subtle shadow-2xl overflow-hidden bg-surface-solid flex flex-col"
       style={{ left: x ?? -9999, top: y ?? -9999 }}
     >
@@ -79,6 +82,7 @@ export function DraggableFleetActions(): JSX.Element | null {
         </svg>
         <span className="text-[10px] font-medium text-content-tertiary uppercase tracking-wide">{t('fleet:draggableFleetActions.title')}</span>
         <button
+          {...ui('icon-button', { active: !collapsed })}
           type="button"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={toggleCollapsed}

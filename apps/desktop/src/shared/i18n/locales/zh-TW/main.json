@@ -139,13 +139,16 @@
     "kmzArchive": "KMZ 壓縮檔",
     "luaScript": "Lua 腳本",
     "missionFiles": "任務檔案",
+    "models3d": "3D 模型",
     "parameterFiles": "參數檔案",
+    "pointClouds": "點雲",
     "postureReport": "態勢報告 (Markdown)",
     "rallyFiles": "集結點檔案",
     "textFiles": "文字檔案",
     "waypoints": "航點",
     "workspaceLayout": "ArduDeck 工作區版面",
-    "xplaneExecutable": "X-Plane 執行檔"
+    "xplaneExecutable": "X-Plane 執行檔",
+    "zipArchive": "Zip 壓縮檔"
   },
   "firmwareDownloader": {
     "aborted": "下載已中止",
@@ -190,7 +193,8 @@
     "waitingDfu": "正在等待 DFU 裝置...",
     "writingFirmware": "正在寫入韌體...",
     "writingProgress": "正在寫入韌體... {{percent}}%",
-    "writingProgressKb": "正在寫入韌體... {{percent}}%({{done}}/{{total}} KB)"
+    "writingProgressKb": "正在寫入韌體... {{percent}}%({{done}}/{{total}} KB)",
+    "fullEraseNeedsBootloaderImage": "透過 DFU 全片抹除需要 *_with_bl.hex 韌體：抹除會移除開機程式，而此韌體不會恢復它。"
   },
   "fleetRepo": {
     "adoptFailed": "無法接管儲存庫",
@@ -310,7 +314,10 @@
     "writeProbeNoResponse": "飛控在 1.5 秒內沒有回應寫入探測。MAVLink FTP 伺服器可能已停用,或飛控沒有可寫入的檔案系統(沒有 SD 卡?)。",
     "writeProbeRejected": "飛控拒絕了寫入探測:{{error}}",
     "inavNoParams": "此飛控沒有 MAVLink 參數 (INAV)。請透過 MSP 設定。",
-    "pickFolderTitle": "Choose a folder"
+    "pickFolderTitle": "Choose a folder",
+    "resetParamsArduPilotOnly": "僅 ArduPilot 支援重設所有參數。",
+    "resetParamsDisarmFirst": "重設參數前載具必須處於上鎖狀態。",
+    "resetParamsFailed": "飛控未接受參數重設。"
   },
   "licenseValidator": {
     "invalidKeyFormat": "金鑰格式無效",
@@ -454,8 +461,8 @@
     "unsupportedFrame": "不支援的框架"
   },
   "moduleManager": {
-    "activated_one": "Activated {{count}} module(s)",
-    "activated_other": "已啟用 {{count}} 個模組",
+    "activated_one": "已啟用 {{count}} 個 Cargo",
+    "activated_other": "已啟用 {{count}} 個 Cargo",
     "activating": "正在向伺服器啟用...",
     "activationFailed": "啟用失敗:{{msg}}",
     "activationRejected": "啟用被拒絕",
@@ -678,8 +685,37 @@
   "moduleProcess": {
     "allowAlways": "總是允許",
     "allowOnce": "僅允許一次",
-    "declined": "已拒絕執行模組程序",
+    "declined": "已拒絕執行 Cargo 程序",
     "message": "{{name}}：{{reason}}",
     "title": "{{name}} 想要啟動外部程式"
+  },
+  "userModels": {
+    "importTitle": "匯入 3D 模型",
+    "watchFolderTitle": "監看 3D 模型資料夾",
+    "readFailed": "無法讀取此檔案：{{reason}}",
+    "fileNotFound": "找不到該檔案。",
+    "notJson": "該檔案不是有效的 JSON。",
+    "unknownJson": "此 JSON 檔案既不是 3D Tiles 圖磚集，也不是 CityJSON。",
+    "unsupportedFile": "不支援的檔案類型。請使用 .glb、.gltf、.kmz、.kml、3D Tiles 的 tileset.json、CityJSON、.las、.laz 或 .ply 點雲，或包含上述檔案之一的 .zip。",
+    "missingResource": "模型所需的檔案遺失：{{file}}",
+    "badArchive": "無法開啟該壓縮檔。",
+    "noKmlInKmz": "該 KMZ 中沒有 KML 文件。",
+    "noModelsInKml": "該 KML 中沒有帶本機檔案的 3D 模型。",
+    "remoteHref": "該模型指向網路位址。只能載入 KMZ 內或 KML 旁邊的檔案。",
+    "tilesetNoPosition": "該圖磚集沒有位置：其根節點既沒有轉換，也沒有可用的邊界體。",
+    "cityJsonFailed": "無法轉換該 CityJSON 檔案。",
+    "zipEmpty": "該 zip 中沒有 glTF、KML、KMZ、3D Tiles、CityJSON 或點雲模型。",
+    "folderNotFound": "找不到該資料夾。",
+    "noPlacementTable": "該資料夾需要一個放置表：models.json、.csv 或 .geojson 檔案。",
+    "tableUnreadable": "無法讀取 {{file}}：{{reason}}",
+    "pointCloudNotLas": "該檔案不是 LAS 或 LAZ 點雲。",
+    "pointCloudVersion": "不支援的 LAS 版本。可讀取 LAS 1.0 至 1.4。",
+    "pointCloudFormat": "不支援的 LAS 點格式或 LAZ 壓縮方式。",
+    "pointCloudTruncated": "點雲檔案不完整。",
+    "pointCloudNoCrs": "該點雲沒有座標參考系統：既沒有 GeoTIFF 鍵，也沒有 WKT 記錄。",
+    "pointCloudUnknownCrs": "點雲的參考系統（{{crs}}）未知。",
+    "pointCloudEmpty": "該點雲沒有可用的點。",
+    "plyInvalid": "該檔案不是可讀取的 PLY 點雲。",
+    "unverifiedCrs": "已使用來自 epsg.io 的 EPSG:{{epsg}} 放置。其七參數基準轉換未經 PROJ 驗證，可能偏差數公尺；請對照地圖檢查位置。"
   }
 }

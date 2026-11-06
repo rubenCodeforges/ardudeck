@@ -1,9 +1,9 @@
 import { parentPort, workerData } from 'node:worker_threads';
 import { readFileSync, statSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { createDataFlashParser, runHealthChecks } from '@ardudeck/dataflash-parser';
+import { createDataFlashParser, HEALTH_CHECK_TYPES, runHealthChecks } from '@ardudeck/dataflash-parser';
 import { createUlogParser, runPx4HealthChecks } from '@ardudeck/ulog-parser';
-import { extractFlightSummary, type LogLike, type HealthLike } from './logs/fleet-log-summary.js';
+import { extractFlightSummary, SUMMARY_LOG_TYPES, type LogLike, type HealthLike } from './logs/fleet-log-summary.js';
 
 if (!parentPort) {
   throw new Error('log-worker must be run as a worker thread');
@@ -72,7 +72,11 @@ function handleParse(msg: ParseRequest): void {
       const buffer = msg.filePath ? new Uint8Array(readFileSync(msg.filePath)) : new Uint8Array(msg.data ?? []);
       const totalBytes = buffer.length;
       const logFormat = detectLogFormat(buffer);
-      const parser = logFormat === 'ulog' ? createUlogParser() : createDataFlashParser();
+      // Dataflash builds columns while parsing: one object per record for a whole
+      // flight runs into V8's 4 GB heap cap. Rows stay only for what the checks and summary read.
+      const parser = logFormat === 'ulog'
+        ? createUlogParser()
+        : createDataFlashParser({ columnar: true, keepRows: new Set([...HEALTH_CHECK_TYPES, ...SUMMARY_LOG_TYPES]) });
 
       // Feed in chunks to report progress
       const CHUNK_SIZE = 256 * 1024;
@@ -95,8 +99,9 @@ function handleParse(msg: ParseRequest): void {
       // each is gigabytes of heap that the renderer then stalls on cloning.
       const messages: Record<string, Columns> = {};
       const transfer: ArrayBuffer[] = [];
-      for (const [k, v] of log.messages) {
-        const cols = toColumns(v);
+      const built = 'columns' in log && log.columns instanceof Map ? log.columns : null;
+      for (const [k, v] of built ?? log.messages) {
+        const cols = built ? (v as Columns) : toColumns(v as Parameters<typeof toColumns>[0]);
         messages[k] = cols;
         transfer.push(cols.timeUs.buffer as ArrayBuffer);
         for (const col of Object.values(cols.num)) transfer.push(col.buffer as ArrayBuffer);

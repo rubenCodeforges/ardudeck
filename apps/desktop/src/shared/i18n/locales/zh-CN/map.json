@@ -374,7 +374,7 @@
     "button": "图层",
     "buttonCount": "图层 ({{count}})",
     "height": "高度",
-    "modules": "模组",
+    "modules": "Cargo",
     "overlays": "叠加层",
     "tip": "地图图层与叠加层"
   },

@@ -8,6 +8,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { useFirmwareStore } from '../../stores/firmware-store';
+import { ui } from '../ui/ui-hooks';
 
 type WizardStep = 'intro' | 'disconnect' | 'waiting' | 'ready' | 'flashing' | 'success' | 'error';
 
@@ -128,7 +129,7 @@ export function BootPadWizard({
                 <p className="text-sm text-content-secondary">{boardName}</p>
               </div>
             </div>
-            <button
+            <button {...ui('icon-button')}
               onClick={handleClose}
               className="text-content-secondary hover:text-content p-1 rounded-lg hover:bg-surface-raised transition-colors"
             >
@@ -193,7 +194,7 @@ export function BootPadWizard({
                 </ol>
               </div>
 
-              <button
+              <button {...ui('button', { variant: 'primary' })}
                 onClick={() => setStep('disconnect')}
                 className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
               >
@@ -247,13 +248,13 @@ export function BootPadWizard({
               </label>
 
               <div className="flex gap-3">
-                <button
+                <button {...ui('button', { variant: 'ghost' })}
                   onClick={() => setStep('intro')}
                   className="px-4 py-2.5 text-content-secondary hover:text-content hover:bg-surface-raised rounded-lg transition-colors"
                 >
                   {t('common:back')}
                 </button>
-                <button
+                <button {...ui('button', { variant: 'primary' })}
                   onClick={() => setStep('waiting')}
                   disabled={!jumperConfirmed}
                   className={`flex-1 py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2
@@ -286,7 +287,7 @@ export function BootPadWizard({
                 </p>
               </div>
 
-              <button
+              <button {...ui('button', { variant: 'ghost' })}
                 onClick={() => setStep('disconnect')}
                 className="w-full py-2.5 text-content-secondary hover:text-content hover:bg-surface-raised rounded-lg transition-colors"
               >
@@ -365,7 +366,7 @@ export function BootPadWizard({
                 </label>
               </div>
 
-              <button
+              <button {...ui('button', { variant: 'primary' })}
                 onClick={handleStartFlash}
                 disabled={!jumperRemoved || !riskAccepted}
                 className={`w-full py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2
@@ -433,7 +434,7 @@ export function BootPadWizard({
                 </p>
               </div>
 
-              <button
+              <button {...ui('button', { variant: 'primary' })}
                 onClick={handleClose}
                 className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors"
               >
@@ -464,13 +465,13 @@ export function BootPadWizard({
               )}
 
               <div className="flex gap-3">
-                <button
+                <button {...ui('button', { variant: 'secondary' })}
                   onClick={() => setStep('disconnect')}
                   className="flex-1 py-2.5 bg-surface-raised hover:bg-surface-raised text-content rounded-lg font-medium transition-colors"
                 >
                   {t('firmware:bootPadWizard.tryAgain')}
                 </button>
-                <button
+                <button {...ui('button', { variant: 'danger' })}
                   onClick={handleClose}
                   className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-lg font-medium transition-colors"
                 >

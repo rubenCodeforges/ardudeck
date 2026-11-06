@@ -192,17 +192,44 @@ export interface TileSourceRegistration {
   version?: number;
 }
 
+/** How a scene model's origin altitude is read. */
+export type SceneAltitudeMode = 'amsl' | 'agl' | 'clamp';
+
+export type SceneName = 'svt' | 'mission3d' | 'sim' | 'logs';
+
 export interface SceneMeshRegistration {
   id: string;
   name: string;
-  /** Absolute path of a binary glTF whose axes are x east, y up, z south, metres. */
-  glb: string;
-  /** Where the GLB origin sits. */
+  /**
+   * Absolute path of a glTF (.glb, or .gltf with its files beside it) whose axes are x east,
+   * y up, z south, metres. Draco, KTX2 and Meshopt compression load. Exactly one of glb, tileset or pointCloud.
+   */
+  glb?: string;
+  /** Absolute path of a 3D Tiles tileset.json, streamed with LOD and placed by its own root transform. */
+  tileset?: string;
+  /**
+   * Absolute path of a .ply point cloud in the same local frame as glb (x east, y up, z south, metres
+   * about origin), with optional uchar red/green/blue vertex colours.
+   */
+  pointCloud?: string;
+  /** Point size in screen pixels for a point cloud. Default 2. */
+  pointSizePx?: number;
+  /** Where the model origin sits; altMsl is EGM96 metres. A tileset uses it only as its nominal centre. */
   origin: { lat: number; lng: number; altMsl: number };
   /** Rotation about the vertical axis, degrees clockwise from north. Default 0. */
   yawDeg?: number;
-  /** Which scenes show it. Default both. */
-  scenes?: Array<'svt' | 'mission3d'>;
+  /** Nose up about the east axis after yaw, degrees. Default 0. */
+  pitchDeg?: number;
+  /** Right side down about the north axis after pitch, degrees. Default 0. */
+  rollDeg?: number;
+  /** Uniform scale. Default 1. */
+  scale?: number;
+  /** 'amsl' (default) uses altMsl as is, 'agl' adds altMsl to the ground under the origin, 'clamp' sits on the ground. Never below the ground in any mode. */
+  altitudeMode?: SceneAltitudeMode;
+  /** WGS84 outer rings the model covers: procedural OSM buildings inside them are hidden. Without them, the model's bounding radius is used. */
+  footprints?: Array<Array<{ lat: number; lng: number }>>;
+  /** Which scenes show it. Default all. */
+  scenes?: SceneName[];
   version?: number;
 }
 
@@ -1093,6 +1120,84 @@ export interface VehicleTemplateRegistration {
   simParams?(profile: unknown): Array<{ name: string; value: number; reason: string }>;
 }
 
+export interface TitleBarItemProps {
+  /** Any vehicle armed: anything that opens an overlay should stay inert meanwhile. */
+  anyVehicleArmed: boolean;
+}
+
+/**
+ * A quiet item in the top bar, in the free space between the app title and the status chips
+ * (host.titleBar). It stays visible in every theme and while armed, so keep it calm and small.
+ * The slot shrinks first and clips, never pushing the chips: measure your own width to shorten or hide.
+ */
+export interface TitleBarItemRegistration {
+  id: string;
+  component: ComponentType<TitleBarItemProps>;
+  /** Lower sits closer to the title. Default 0. */
+  order?: number;
+}
+
+/**
+ * A theme a cargo adds next to the built-in dark and light (host.theme).
+ *
+ * The host adds `className` to <html> while the theme is active, on top of the
+ * built-in token set named by `base`, and injects `css`. Scope every rule in
+ * `css` under `.${className}` so nothing reaches the other themes. Bundle fonts
+ * as data: URLs inside `css`; a cargo has no other path for asset files.
+ *
+ * Hooks the host exposes to theme CSS:
+ * - `html[data-view='<viewId>']` for per-view treatments (telemetry, parameters, ...).
+ * - `.nav-rail-short`: a caption inside every rail button, hidden unless a theme shows it.
+ * - `.app-header-cap`: an empty block at the start of the top bar, hidden unless a theme shows it.
+ * - `.theme-frame` on the work-area grid while `frame` is set (rail, aside and main are its children).
+ * - `.app-tooltip`, `.app-console`, `.app-toast`: the hover tooltip, the message console and the activity toast.
+ * - Primitive hooks on controls across every screen, unstyled by core:
+ *   `[data-ui='tabs'] > [data-ui='tab']`, `[data-ui='segmented'] > [data-ui='segment']`,
+ *   `[data-ui='button'][data-variant='primary|secondary|ghost|danger']`, `[data-ui='icon-button']`,
+ *   `[data-ui='chip']`, `[data-ui='option']` (large selectable cards), `[data-ui='input']`, and
+ *   `[data-ui='card'][data-status='pass|warn|fail|info']`. The selected one carries `[data-active='true']`.
+ */
+export interface ThemeRegistration {
+  /** Unique within this cargo. */
+  id: string;
+  /** Key in this cargo's i18n resources: the name in Settings > Theme. */
+  label: string;
+  /** Key in this cargo's i18n resources: the hint under the picker while active. */
+  description?: string;
+  /** The built-in token set underneath. Callers that pick dark or light assets get this. */
+  base: 'dark' | 'light';
+  /** Added to <html> while active. */
+  className: string;
+  /** Injected while active, removed when another theme is chosen. */
+  css: string;
+  /**
+   * Accent colours, in order. Controls whose colour arrives as an inline hex
+   * (slider tracks with a paletteIndex) take these instead, so CSS need not reach them.
+   * Semantic colours (green, red, amber) are never remapped.
+   */
+  palette?: string[];
+  /** Icon for the theme toggle on the rail. */
+  icon?: ComponentType<{ className?: string }>;
+  /** Frame around the work area while active: bars above and below rail, sidebar and view. */
+  frame?: { top?: ComponentType; bottom?: ComponentType };
+  /** Behind the welcome page while active, sized to it. */
+  welcomeBackground?: ComponentType;
+  /** Behind the map tiles while active, sized to the map. */
+  mapBackground?: ComponentType;
+  /** Opened from Settings > Theme in a floating dialog. */
+  settings?: ComponentType;
+  /** Mounted under the top bar while the cargo is loaded, whichever theme is active (an introduction, a dedication). Hidden while any vehicle is armed. */
+  banner?: ComponentType;
+  /** Mounted over the view area while the cargo is loaded, whichever theme is active (a switch-in animation). Unmounted while any vehicle is armed. */
+  overlay?: ComponentType;
+  /** A rail utility button while the cargo is loaded. Give the button the `nav-rail-util` class. */
+  railUtility?: ComponentType;
+  /** Shown in Settings > About while the cargo is loaded. */
+  aboutCard?: ComponentType;
+  /** True while the banner or overlay holds the pilot's attention; the host holds tour prompts back. */
+  claimsAttention?: () => boolean;
+}
+
 export interface RendererHostApi {
   moduleSlug: string;
   telemetry: {
@@ -1106,6 +1211,8 @@ export interface RendererHostApi {
   view: {
     getCurrent(): string;
     subscribe(listener: (v: string) => void): () => void;
+    /** The host's short name for a view in the pilot's language (the rail caption); the current view when omitted. */
+    label(viewId?: string): string;
   };
   params: {
     getAll(): Promise<unknown[]>;
@@ -1469,6 +1576,27 @@ export interface RendererHostApi {
     t(key: string, vars?: Record<string, unknown>): string;
     /** Active app language code, e.g. 'en' or 'de'. */
     language(): string;
+    /** Called after the pilot switched language, so rendered text can follow. */
+    subscribe(listener: () => void): () => void;
+  };
+  /** Themes next to the built-in dark and light. Unloading the cargo falls the pilot back to dark. */
+  /** Items in the top bar between the title and the status chips. */
+  titleBar: {
+    register(reg: TitleBarItemRegistration): void;
+    /** Remove an item this cargo registered. Other cargos' ids are ignored. */
+    unregister(id: string): void;
+  };
+  theme: {
+    register(reg: ThemeRegistration): void;
+    unregister(id: string): void;
+    /** Replace parts of a registered theme, e.g. regenerated `css` after a setting changed. */
+    update(id: string, patch: Partial<Omit<ThemeRegistration, 'id'>>): void;
+    /** Whether one of this cargo's themes is the active one. */
+    isActive(id: string): boolean;
+    /** Make one of this cargo's themes the active one. */
+    activate(id: string): void;
+    /** Called whenever the active theme changes. */
+    subscribe(listener: () => void): () => void;
   };
   /** Positions in other notations: what you register appears in the host's coordinate format setting. */
   coordinates: {

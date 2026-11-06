@@ -2,14 +2,13 @@ import { useTranslation } from 'react-i18next';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { Mountain, AlertTriangle, Check, ChevronDown, ChevronRight, Sparkles, ExternalLink } from 'lucide-react';
-import { getElevations } from '../../utils/elevation-api';
+import { getElevations, sampleLeg } from '../../utils/elevation-api';
 import { useSettingsStore } from '../../stores/settings-store';
 import { formatAltitudeFromMeters } from '../../../shared/user-units.js';
 import { openLocusListing, useLocusListed, useLocusTerrain } from './locus-terrain';
 import {
   planTerrainFollow,
   planTerrainSafeAltitudes,
-  haversine,
   type PlannerWaypoint,
   type TerrainLookup,
   type PlanResult,
@@ -30,26 +29,8 @@ interface TerrainSample {
   elev: number;
 }
 
-const MAX_SAMPLES_PER_SEGMENT = 400;
-
-function sampleSegment(
-  a: PlannerWaypoint,
-  b: PlannerWaypoint,
-  stepMeters: number,
-): Array<{ lat: number; lon: number }> {
-  const dist = haversine(a.latitude, a.longitude, b.latitude, b.longitude);
-  const rawCount = Math.max(4, Math.ceil(dist / stepMeters));
-  const count = Math.min(rawCount, MAX_SAMPLES_PER_SEGMENT);
-  const out: Array<{ lat: number; lon: number }> = [];
-  for (let i = 0; i <= count; i++) {
-    const t = i / count;
-    out.push({
-      lat: a.latitude + (b.latitude - a.latitude) * t,
-      lon: a.longitude + (b.longitude - a.longitude) * t,
-    });
-  }
-  return out;
-}
+// A route inside a Locus survey reads the local DEM, so it may sample finer than the network cap.
+const MAX_LOCAL_SAMPLES_PER_LEG = 400;
 
 const BUCKET_DEG = 2e-4;
 
@@ -132,7 +113,13 @@ export function AutoAdjustAltitudeDialog({
 
     const denseStep = following ? Math.max(2, step) : Math.max(5, step / 2);
     for (let i = 0; i < waypoints.length - 1; i++) {
-      const segSamples = sampleSegment(waypoints[i]!, waypoints[i + 1]!, denseStep);
+      const a = waypoints[i]!, b = waypoints[i + 1]!;
+      const segSamples = sampleLeg(
+        { lat: a.latitude, lon: a.longitude },
+        { lat: b.latitude, lon: b.longitude },
+        denseStep,
+        following ? { minSamples: 4, maxSamples: MAX_LOCAL_SAMPLES_PER_LEG } : { minSamples: 4 },
+      );
       samplePoints.push(...segSamples);
     }
 

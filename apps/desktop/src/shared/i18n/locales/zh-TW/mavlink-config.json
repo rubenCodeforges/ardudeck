@@ -2480,5 +2480,19 @@
       "notCopter": "The filter card is for multirotors and QuadPlanes.",
       "openInLogs": "Open in Logs"
     }
+  },
+  "resetParams": {
+    "button": "全部重設",
+    "buttonTip": "將所有參數重設為韌體預設值",
+    "title": "將所有參數重設為預設值？",
+    "body": "所有參數將恢復為韌體預設值，飛控隨後重新啟動。",
+    "calibrationWarning": "這也會清除加速度計、羅盤和遙控校準、機架設定以及所有調參。飛行前請重新設定並校準飛行器。",
+    "saveFirst": "請先儲存參數檔，以便之後恢復需要的內容。",
+    "saveFile": "儲存參數檔",
+    "saved": "參數檔已儲存",
+    "confirm": "重設並重新啟動",
+    "disarmFirst": "載具必須先處於上鎖狀態。",
+    "erased": "參數已清除。正在重新啟動以載入預設值。",
+    "failed": "參數重設未成功。"
   }
 }

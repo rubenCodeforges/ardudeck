@@ -11,6 +11,7 @@ import { NewRegionDialog } from './NewRegionDialog';
 import { TrainerRegionStep } from './TrainerRegionStep';
 import { TrainerConditionsStep } from './TrainerConditionsStep';
 import { TrainerVehicleStep, type CameraChoice } from './TrainerVehicleStep';
+import { ui } from '../ui/ui-hooks';
 
 /**
  * Choosing a flight and starting it, without leaving ArduDeck.
@@ -151,13 +152,14 @@ export function TrainerView(): JSX.Element {
 
   return (
     <div className="flex h-full overflow-hidden">
-      <nav className="w-56 shrink-0 space-y-1.5 border-r border-subtle p-4">
+      <nav {...ui('tabs')} className="w-56 shrink-0 space-y-1.5 border-r border-subtle p-4">
         {STEPS.map((s, i) => {
           const active = step === s.id;
           const done = i === 0 && region !== null;
           return (
             <button
               key={s.id}
+              {...ui('tab', { active })}
               onClick={() => setStep(s.id)}
               className={`flex w-full items-start gap-2.5 rounded-lg border px-3 py-2 text-left transition-colors ${
                 active
@@ -199,6 +201,7 @@ export function TrainerView(): JSX.Element {
             </span>
           </div>
           <button
+            {...ui('button', { variant: 'primary' })}
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 px-3 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-500/20 transition-all hover:from-blue-500 hover:to-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={busy || !ready}
             onClick={() => void fly()}

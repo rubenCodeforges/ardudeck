@@ -5,6 +5,7 @@
  * Shows position editor with alignment buttons and nudge controls.
  */
 
+import { ui } from '../ui/ui-hooks';
 import { useTranslation } from 'react-i18next';
 import { useOsdStore, DEFAULT_ELEMENT_POSITIONS, type OsdElementId, type OsdElementKey } from '../../stores/osd-store';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
@@ -89,11 +90,11 @@ export function OsdEditPanel({ selectedElement, onDone }: Props) {
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-medium text-content">{formatName(selectedElement)}</h3>
           <div className="flex items-center gap-2">
-            <button onClick={handleReset} className="text-[10px] text-blue-400 hover:text-blue-300">
+            <button {...ui('button', { variant: 'ghost' })} onClick={handleReset} className="text-[10px] text-blue-400 hover:text-blue-300">
               {t('common:reset')}
             </button>
             {onDone && (
-              <button onClick={onDone} className="text-[10px] text-content-secondary hover:text-content">
+              <button {...ui('button', { variant: 'ghost' })} onClick={onDone} className="text-[10px] text-content-secondary hover:text-content">
                 {t('common:done')}
               </button>
             )}
@@ -166,12 +167,14 @@ export function OsdEditPanel({ selectedElement, onDone }: Props) {
           <p className="text-[10px] text-content-secondary mb-1.5">{t('osd:osdEditPanel.align')}</p>
           <div className="flex gap-1.5">
             <button
+              {...ui('button', { variant: 'secondary' })}
               onClick={centerH}
               className="flex-1 px-2 py-1 text-[10px] bg-surface-raised hover:bg-surface-raised text-content-secondary rounded border border-subtle"
             >
               {t('osd:osdEditPanel.centerH')}
             </button>
             <button
+              {...ui('button', { variant: 'secondary' })}
               onClick={centerV}
               className="flex-1 px-2 py-1 text-[10px] bg-surface-raised hover:bg-surface-raised text-content-secondary rounded border border-subtle"
             >
@@ -180,12 +183,14 @@ export function OsdEditPanel({ selectedElement, onDone }: Props) {
           </div>
           <div className="flex gap-1.5 mt-1.5">
             <button
+              {...ui('button', { variant: 'secondary' })}
               onClick={() => setPos(0, pos.y)}
               className="flex-1 px-2 py-1 text-[10px] bg-surface-raised hover:bg-surface-raised text-content-secondary rounded border border-subtle"
             >
               {t('osd:osdEditPanel.left')}
             </button>
             <button
+              {...ui('button', { variant: 'secondary' })}
               onClick={() => setPos(maxX, pos.y)}
               className="flex-1 px-2 py-1 text-[10px] bg-surface-raised hover:bg-surface-raised text-content-secondary rounded border border-subtle"
             >
@@ -194,12 +199,14 @@ export function OsdEditPanel({ selectedElement, onDone }: Props) {
           </div>
           <div className="flex gap-1.5 mt-1.5">
             <button
+              {...ui('button', { variant: 'secondary' })}
               onClick={() => setPos(pos.x, 0)}
               className="flex-1 px-2 py-1 text-[10px] bg-surface-raised hover:bg-surface-raised text-content-secondary rounded border border-subtle"
             >
               {t('osd:osdEditPanel.top')}
             </button>
             <button
+              {...ui('button', { variant: 'secondary' })}
               onClick={() => setPos(pos.x, maxY)}
               className="flex-1 px-2 py-1 text-[10px] bg-surface-raised hover:bg-surface-raised text-content-secondary rounded border border-subtle"
             >
@@ -215,6 +222,7 @@ export function OsdEditPanel({ selectedElement, onDone }: Props) {
 function NudgeBtn({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button
+      {...ui('button', { variant: 'secondary' })}
       onClick={onClick}
       className="w-7 h-7 flex items-center justify-center bg-surface-raised hover:bg-surface-raised text-content-secondary text-xs rounded border border-subtle"
     >

@@ -746,5 +746,19 @@
   "vtolTransition": {
     "toHover": "转悬停",
     "toWing": "转翼飞"
+  },
+  "userModelParsers": {
+    "badLatLng": "纬度或经度缺失或超出范围",
+    "badNumber": "{{field}} 不是有效数字",
+    "emptyTable": "放置表中没有行。",
+    "invalidJson": "放置表不是有效的 JSON（{{detail}}）",
+    "missingFile": "该行未指定模型文件",
+    "noCrs": "此 CityJSON 文件未指定坐标参考系（metadata.referenceSystem），无法放置。",
+    "noGeometry": "此 CityJSON 文件没有可绘制的面。",
+    "noValidRows": "放置表中的模型都无法放置。第 {{row}} 行：{{problem}}。",
+    "notCityJson": "此文件不是 CityJSON。",
+    "notFeatureCollection": "GeoJSON 表必须是由 Point 要素组成的 FeatureCollection。",
+    "notModelList": "models.json 必须是模型列表，或包含 \"models\" 列表的对象。",
+    "unknownCrs": "未知的坐标参考系 EPSG:{{epsg}}。此 CityJSON 文件无法放置。"
   }
 }

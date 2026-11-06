@@ -2,6 +2,7 @@
  * Right sidebar — Inspector for the selected node's properties.
  * Shows node info, editable inputs, and configurable properties.
  */
+import { ui } from '../ui/ui-hooks';
 import { useMemo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
@@ -45,6 +46,7 @@ export function InspectorPanel() {
             <div>
               <label className="text-[10px] text-content-secondary block mb-0.5">{t('common:name')}</label>
               <input
+                {...ui('input')}
                 type="text"
                 value={graphName}
                 onChange={(e) => setGraphName(e.target.value)}
@@ -54,6 +56,7 @@ export function InspectorPanel() {
             <div>
               <label className="text-[10px] text-content-secondary block mb-0.5">{t('common:description')}</label>
               <textarea
+                {...ui('input')}
                 value={graphDescription}
                 onChange={(e) => setGraphDescription(e.target.value)}
                 rows={2}
@@ -90,6 +93,7 @@ export function InspectorPanel() {
             {[200, 500, 1000, 2000].map((ms) => (
               <button
                 key={ms}
+                {...ui('chip', { active: runIntervalMs === ms })}
                 onClick={() => setRunIntervalMs(ms)}
                 className={`px-2 py-0.5 rounded text-[10px] transition-colors ${
                   runIntervalMs === ms

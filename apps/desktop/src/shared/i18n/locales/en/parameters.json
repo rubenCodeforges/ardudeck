@@ -743,6 +743,7 @@
     "savedCountToFile_other": "Saved {{count}} parameters to file",
     "savedToFile": "Parameters saved to file",
     "savedToFlash": "Parameters saved to flash successfully",
+    "savedUnconfirmed": "Parameters sent and confirmed, but the flight controller did not acknowledge the flash write. Reboot and check the values before flying.",
     "searchPlaceholder": "Search parameters... (regex supported)",
     "selectedCount": "{{selected}} of {{total}} selected",
     "showAllParameters": "Show all parameters",
@@ -1024,5 +1025,9 @@
   "paramsValidBitmask": "Bitmask value must be a non-negative integer",
   "paramsValidUnknownValue": "Value {{value}} is not in the known values list",
   "paramsValidRange": "Value must be between {{min}} and {{max}}{{units}}",
-  "paramsValidIncrement": "Value should be a multiple of {{increment}}"
+  "paramsValidIncrement": "Value should be a multiple of {{increment}}",
+  "defaultColumn": {
+    "header": "Default",
+    "reset": "Reset to default ({{value}}). Write to flash to keep it."
+  }
 }

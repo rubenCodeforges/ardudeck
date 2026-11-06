@@ -30,7 +30,7 @@
     "line": "Line {{value}}×",
     "liveOverlayUses": "Live overlay uses",
     "metric": "metric",
-    "module": "module",
+    "module": "cargo",
     "noSavedHuds": "No saved HUDs yet.",
     "profileAir": "Always aircraft",
     "profileAuto": "Auto (match vehicle)",

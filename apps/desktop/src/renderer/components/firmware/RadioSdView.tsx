@@ -3,6 +3,7 @@ import { useTranslation, Trans } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { BwGuide } from '../radio-hud/BwGuide';
 import type { EdgeTxScanResult, EdgeTxSdCard, EdgeTxPackageInfo, InstallProgress, InstalledPackageRecord, TelemetryScreenSummary } from '../../../shared/edgetx-types';
+import { ui } from '../ui/ui-hooks';
 
 /**
  * Radio (EdgeTX) tab: installs curated SD-card packages (Yaapu telemetry,
@@ -87,7 +88,7 @@ export function RadioSdView() {
         <div className="bg-surface-raised border border-subtle rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-content">{t('firmware:radioSdView.title')}</h3>
-            <button
+            <button {...ui('button', { variant: 'secondary' })}
               onClick={rescan}
               disabled={isScanning}
               className="px-2.5 py-1 text-xs text-content-secondary hover:text-content bg-surface-input hover:bg-surface-raised border border-subtle rounded transition-colors disabled:opacity-50"
@@ -188,7 +189,7 @@ export function RadioSdView() {
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <button
+                    <button {...ui('button', { variant: 'primary' })}
                       onClick={() => handleInstall(pkg)}
                       disabled={!card || busy || !variantSupported}
                       data-tip={!variantSupported
@@ -199,7 +200,7 @@ export function RadioSdView() {
                       {busy ? t('firmware:radioSdView.working') : record ? t('firmware:radioSdView.update') : t('common:install')}
                     </button>
                     {record && !busy && (
-                      <button
+                      <button {...ui('button', { variant: 'danger' })}
                         onClick={() => handleRemove(pkg)}
                         data-tip={t('firmware:radioSdView.removeTip')}
                         className="px-3 py-1 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"

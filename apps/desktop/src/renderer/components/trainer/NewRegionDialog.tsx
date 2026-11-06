@@ -7,6 +7,7 @@ import type {
   TrainerBakeRequest,
   TrainerLocusSurvey,
 } from '../../../shared/trainer-types';
+import { ui } from '../ui/ui-hooks';
 
 /**
  * Building a new region from anywhere on Earth.
@@ -161,6 +162,7 @@ export function NewRegionDialog({
           </div>
           {!busy && (
             <button
+              {...ui('icon-button')}
               onClick={onClose}
               className="text-content-tertiary transition-colors hover:text-content"
             >
@@ -211,10 +213,11 @@ export function NewRegionDialog({
             </Field>
 
             <Field label={t('trainer:newRegionDialog.source')}>
-              <div className="flex gap-1 rounded-lg border border-subtle bg-surface p-1">
+              <div {...ui('segmented')} className="flex gap-1 rounded-lg border border-subtle bg-surface p-1">
                 {(['place', 'locus'] as const).map((id) => (
                   <button
                     key={id}
+                    {...ui('segment', { active: source === id })}
                     type="button"
                     onClick={() => { setSource(id); if (id === 'place') setSurvey(null); }}
                     className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${source === id ? 'bg-blue-500/15 text-blue-400' : 'text-content-secondary hover:bg-surface-raised'}`}
@@ -237,6 +240,7 @@ export function NewRegionDialog({
                     {surveys.map((sv) => (
                       <li key={sv.output}>
                         <button
+                          {...ui('option', { active: survey?.output === sv.output })}
                           type="button"
                           onClick={() => pickSurvey(sv)}
                           className={`flex w-full items-start gap-2 rounded-lg border px-2.5 py-1.5 text-left text-xs transition-colors ${survey?.output === sv.output ? 'border-blue-500/50 bg-blue-500/10' : 'border-subtle hover:bg-surface-raised'}`}
@@ -335,6 +339,7 @@ export function NewRegionDialog({
                 {catalogue.details.map((d) => (
                   <button
                     key={d.id}
+                    {...ui('chip', { active: detail === d.id })}
                     onClick={() => setDetail(d.id)}
                     data-tip={d.hint}
                     className={`rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${

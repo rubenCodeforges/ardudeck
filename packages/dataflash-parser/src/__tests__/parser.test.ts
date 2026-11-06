@@ -150,3 +150,86 @@ describe('parseDataFlashLog', () => {
     expect(log.messageTypes).toContain('GPS');
   });
 });
+
+describe('columnar parse (#145)', () => {
+  // GPS (kept as rows for health checks) and IMU (columns only), 3000 records each so the builders grow.
+  function bigLog(): Uint8Array {
+    const parts: Uint8Array[] = [
+      buildFmtMessage(128, 89, 'FMT', 'BBnNZ', 'Type,Length,Name,Format,Columns'),
+      buildFmtMessage(2, 16, 'GPS', 'QBf', 'TimeUS,Status,Alt'),
+      buildFmtMessage(3, 15, 'IMU', 'Qf', 'TimeUS,AccX'),
+      buildFmtMessage(4, 75, 'MSG', 'QZ', 'TimeUS,Message'),
+    ];
+    for (let i = 0; i < 3000; i++) {
+      const gps = new Uint8Array(13);
+      const g = new DataView(gps.buffer);
+      g.setUint32(0, 1000 * i, true);
+      gps[8] = 3;
+      g.setFloat32(9, i, true);
+      parts.push(buildDataMessage(2, gps));
+      const imu = new Uint8Array(12);
+      const m = new DataView(imu.buffer);
+      m.setUint32(0, 1000 * i + 500, true);
+      m.setFloat32(8, -i, true);
+      parts.push(buildDataMessage(3, imu));
+    }
+    const msg = new Uint8Array(72);
+    new DataView(msg.buffer).setUint32(0, 42, true);
+    msg.set(new TextEncoder().encode('ArduPlane V4.7.0'), 8);
+    parts.push(buildDataMessage(4, msg));
+    const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+    let o = 0;
+    for (const p of parts) { out.set(p, o); o += p.length; }
+    return out;
+  }
+
+  it('builds the same values as the row parse, and keeps rows only for keepRows types', () => {
+    const rows = createDataFlashParser();
+    rows.feed(bigLog());
+    const r = rows.finalize();
+
+    const cols = createDataFlashParser({ columnar: true, keepRows: new Set(['GPS']) });
+    cols.feed(bigLog());
+    const c = cols.finalize();
+
+    expect([...c.messages.keys()]).toEqual(['GPS']);
+    expect(c.messages.get('GPS')).toEqual(r.messages.get('GPS'));
+    expect(c.messageTypes).toEqual(r.messageTypes);
+    expect(c.timeRange).toEqual(r.timeRange);
+    expect(c.metadata).toEqual(r.metadata);
+
+    const imu = c.columns!.get('IMU')!;
+    expect(imu.count).toBe(3000);
+    expect(imu.timeUs.length).toBe(3000);
+    expect(Array.from(imu.num['AccX']!)).toEqual(r.messages.get('IMU')!.map((m) => m.fields['AccX']));
+    expect(c.columns!.get('MSG')!.txt['Message']).toEqual(['ArduPlane V4.7.0']);
+  });
+
+  it('leaves the default parse unchanged (no columns)', () => {
+    const p = createDataFlashParser();
+    p.feed(bigLog());
+    expect(p.finalize().columns).toBeUndefined();
+  });
+});
+
+describe('chunk boundaries', () => {
+  it('loses no record when a chunk ends inside a header', () => {
+    const fmtFmt = buildFmtMessage(128, 89, 'FMT', 'BBnNZ', 'Type,Length,Name,Format,Columns');
+    const imuFmt = buildFmtMessage(3, 15, 'IMU', 'Qf', 'TimeUS,AccX');
+    const recs: Uint8Array[] = [];
+    for (let i = 0; i < 50; i++) {
+      const p = new Uint8Array(12);
+      new DataView(p.buffer).setUint32(0, i + 1, true);
+      recs.push(buildDataMessage(3, p));
+    }
+    const all = new Uint8Array(fmtFmt.length + imuFmt.length + recs.length * 15);
+    let o = 0;
+    for (const part of [fmtFmt, imuFmt, ...recs]) { all.set(part, o); o += part.length; }
+    // Every split point, including right after the first header byte of a record.
+    for (const chunk of [1, 2, 7, 16, 31]) {
+      const parser = createDataFlashParser();
+      for (let off = 0; off < all.length; off += chunk) parser.feed(all.subarray(off, Math.min(off + chunk, all.length)));
+      expect(parser.finalize().messages.get('IMU')?.length).toBe(50);
+    }
+  });
+});

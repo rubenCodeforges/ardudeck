@@ -29,6 +29,7 @@ import {
 } from '../../../shared/user-units.js';
 import { TrainerQuickAction } from '../trainer/TrainerQuickAction';
 import { SitlHomePosition } from './SitlHomePosition';
+import { ui } from '../ui/ui-hooks';
 
 const VEHICLE_TYPE_OPTIONS: Array<{ value: ArduPilotVehicleType; labelKey: string; icon: string }> = [
   { value: 'copter', labelKey: 'common:copter', icon: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5' },
@@ -428,14 +429,14 @@ export default function ArduPilotSitlTab() {
                     <Trans i18nKey="sitl:ardupilot.crashSwitchTrack" values={{ failedTrack: crashRecovery.failedTrack, model: crashRecovery.model, suggestedTrack: crashRecovery.suggestedTrack }} components={{ mono: <span className="font-mono text-content" /> }} />
                   </p>
                   <div className="mt-3 flex items-center gap-2">
-                    <button
+                    <button {...ui('button', { variant: 'primary' })}
                       onClick={() => { void acceptCrashRecovery(); }}
                       disabled={isStarting || isDownloading}
                       className="px-3 py-1.5 text-xs font-medium text-white bg-amber-600 hover:bg-amber-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {t('sitl:ardupilot.switchRetry', { target: crashRecovery.suggestedTrack })}
                     </button>
-                    <button
+                    <button {...ui('button', { variant: 'ghost' })}
                       onClick={dismissCrashRecovery}
                       className="px-3 py-1.5 text-xs font-medium text-content-secondary hover:text-content rounded-lg transition-colors"
                     >
@@ -449,14 +450,14 @@ export default function ArduPilotSitlTab() {
                     <Trans i18nKey="sitl:ardupilot.crashSwitchFrame" values={{ failedModel: crashRecovery.failedModel, suggestedModel: crashRecovery.suggestedModel }} components={{ mono: <span className="font-mono text-content" /> }} />
                   </p>
                   <div className="mt-3 flex items-center gap-2">
-                    <button
+                    <button {...ui('button', { variant: 'primary' })}
                       onClick={() => { void acceptCrashRecovery(); }}
                       disabled={isStarting || isDownloading}
                       className="px-3 py-1.5 text-xs font-medium text-white bg-amber-600 hover:bg-amber-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {t('sitl:ardupilot.switchRetry', { target: crashRecovery.suggestedModel })}
                     </button>
-                    <button
+                    <button {...ui('button', { variant: 'ghost' })}
                       onClick={dismissCrashRecovery}
                       className="px-3 py-1.5 text-xs font-medium text-content-secondary hover:text-content rounded-lg transition-colors"
                     >
@@ -485,7 +486,7 @@ export default function ArduPilotSitlTab() {
         </div>
         <div className="grid grid-cols-4 gap-2">
           {VEHICLE_TYPE_OPTIONS.map((opt) => (
-            <button
+            <button {...ui('option', { active: vehicleType === opt.value })}
               key={opt.value}
               onClick={() => setVehicleType(opt.value)}
               disabled={isRunning || isStarting}
@@ -632,9 +633,9 @@ export default function ArduPilotSitlTab() {
             {/* Release Track */}
             <div>
               <label className="block text-xs text-content-secondary mb-1">{t('sitl:tab.releaseTrack')}</label>
-              <div className="grid grid-cols-3 gap-1">
+              <div {...ui('segmented')} className="grid grid-cols-3 gap-1">
                 {RELEASE_TRACK_OPTIONS.map((opt) => (
-                  <button
+                  <button {...ui('segment', { active: releaseTrack === opt.value })}
                     key={opt.value}
                     onClick={() => setReleaseTrack(opt.value)}
                     disabled={isRunning || isStarting}
@@ -660,7 +661,7 @@ export default function ArduPilotSitlTab() {
               <p className="text-[11px] text-content-secondary mt-1 leading-snug">
                 {t('sitl:ardupilot.simWorldDesc')}
               </p>
-              <button
+              <button {...ui('button', { variant: 'primary' })}
                 onClick={launchSim}
                 disabled={isStarting}
                 data-tip={isRunning || swarmRunning ? t('sitl:ardupilot.openSimWorldTip') : t('sitl:ardupilot.startSimWorldTip')}
@@ -688,7 +689,7 @@ export default function ArduPilotSitlTab() {
                     <div className="h-px flex-1 bg-subtle" />
                   </div>
                   {flightGearRunning ? (
-                    <button
+                    <button {...ui('button', { variant: 'secondary' })}
                       onClick={() => { void stopFlightGear(); }}
                       data-tip={t('sitl:ardupilot.closeFlightGearTip')}
                       className="mt-2 w-full py-2 text-sm font-medium text-sky-200 bg-sky-600/20 hover:bg-sky-600/30 border border-sky-500/40 rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -699,7 +700,7 @@ export default function ArduPilotSitlTab() {
                       {t('sitl:ardupilot.closeFlightGear')}
                     </button>
                   ) : flightGearInstalled === false ? (
-                    <button
+                    <button {...ui('button', { variant: 'secondary' })}
                       onClick={() => { void browseFlightGear(); }}
                       data-tip={t('sitl:ardupilot.flightGearNotDetected')}
                       className="mt-2 w-full py-2 text-sm font-medium text-content-secondary bg-surface-input hover:bg-surface-raised border border-subtle rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -710,7 +711,7 @@ export default function ArduPilotSitlTab() {
                       {t('sitl:ardupilot.locateFlightGear')}
                     </button>
                   ) : (
-                    <button
+                    <button {...ui('button', { variant: 'primary' })}
                       onClick={() => { void launchFlightGear(); }}
                       disabled={flightGearStarting || !isRunning}
                       data-tip={isRunning ? t('sitl:ardupilot.viewFlightGearTip') : t('sitl:ardupilot.viewFlightGearStartFirstTip')}
@@ -745,7 +746,7 @@ export default function ArduPilotSitlTab() {
               <h3 className="text-sm font-semibold text-content">{t('sitl:tab.homeScenarios')}</h3>
               <p className="text-xs text-content-secondary">{t('sitl:tab.homeScenariosDesc')}</p>
             </div>
-            <button
+            <button {...ui('button', { variant: 'secondary' })}
               onClick={() => setShowMapPicker(true)}
               disabled={isRunning || isStarting}
               data-tip={t('sitl:ardupilot.pickOnMapTip')}
@@ -783,7 +784,7 @@ export default function ArduPilotSitlTab() {
                 const active =
                   Math.abs(homeLocation.lat - p.lat) < 1e-4 && Math.abs(homeLocation.lng - p.lng) < 1e-4;
                 return (
-                  <button
+                  <button {...ui('chip', { active })}
                     key={p.name}
                     onClick={() => setHomeLocation({ lat: p.lat, lng: p.lng, alt: p.alt, heading: p.heading })}
                     disabled={isRunning || isStarting}
@@ -812,7 +813,7 @@ export default function ArduPilotSitlTab() {
             <div>
               <label className="block text-xs text-content-secondary mb-1">{t('common:altitude')}</label>
               <div className="relative">
-                <input
+                <input {...ui('input')}
                   type="number"
                   value={homeAltitudeDraft}
                   onFocus={() => setHomeAltitudeFocused(true)}
@@ -858,7 +859,7 @@ export default function ArduPilotSitlTab() {
           <div className="mt-3 flex items-center justify-between gap-2">
             <p className="text-xs text-content-tertiary">{t('sitl:tab.defaultCmac')}</p>
             <div className="flex items-center gap-2">
-              <button
+              <button {...ui('button', { variant: 'secondary' })}
                 onClick={() => void matchTerrainElevation()}
                 disabled={isRunning || isStarting || isMatchingTerrain}
                 data-tip={t('sitl:ardupilot.matchTerrainTip')}
@@ -881,7 +882,7 @@ export default function ArduPilotSitlTab() {
                   </>
                 )}
               </button>
-              <button
+              <button {...ui('button', { variant: 'secondary' })}
                 onClick={getCurrentLocation}
                 disabled={isRunning || isStarting || isGettingLocation}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -931,9 +932,9 @@ export default function ArduPilotSitlTab() {
           </div>
 
           {/* Single / Swarm mode toggle */}
-          <div className="inline-flex rounded-lg border border-subtle bg-surface p-0.5">
+          <div {...ui('segmented')} className="inline-flex rounded-lg border border-subtle bg-surface p-0.5">
             {(['single', 'swarm'] as const).map((m) => (
-              <button
+              <button {...ui('segment', { active: runMode === m })}
                 key={m}
                 onClick={() => setRunMode(m)}
                 disabled={isRunning || isStarting || swarmRunning || swarmStarting}
@@ -988,7 +989,7 @@ export default function ArduPilotSitlTab() {
             <>
               <div className="w-24">
                 <label className="block text-xs text-content-secondary mb-1">{t('sitl:ardupilot.vehicles')}</label>
-                <input
+                <input {...ui('input')}
                   type="number"
                   min={2}
                   max={20}
@@ -1007,7 +1008,7 @@ export default function ArduPilotSitlTab() {
               </div>
               <div className="w-24">
                 <label className="block text-xs text-content-secondary mb-1">{t('sitl:ardupilot.spacing')}</label>
-                <input
+                <input {...ui('input')}
                   type="number"
                   min={1}
                   value={swarmSpacingDraft}
@@ -1027,7 +1028,7 @@ export default function ArduPilotSitlTab() {
                 <label className="block text-xs text-content-secondary mb-1">{t('sitl:ardupilot.formation')}</label>
                 <div className="grid grid-cols-3 gap-1">
                   {SWARM_FORMATIONS.map((f) => (
-                    <button
+                    <button {...ui('chip', { active: swarmFormation === f.value })}
                       key={f.value}
                       onClick={() => setSwarmFormation(f.value)}
                       disabled={swarmRunning || swarmStarting}
@@ -1066,7 +1067,7 @@ export default function ArduPilotSitlTab() {
 
           <div className="flex items-center gap-2">
             {!binaryInfo?.exists && !isDownloading && (
-              <button
+              <button {...ui('button', { variant: 'primary' })}
                 onClick={download}
                 className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
               >
@@ -1089,7 +1090,7 @@ export default function ArduPilotSitlTab() {
             {/* Action button — single Start/Stop or swarm Launch/Stop */}
             {runMode === 'single' ? (
               !isRunning ? (
-                <button
+                <button {...ui('button', { variant: 'primary' })}
                   onClick={start}
                   disabled={!isStatusChecked || isStarting || !binaryInfo?.exists || connectionState.isConnected}
                   className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
@@ -1112,7 +1113,7 @@ export default function ArduPilotSitlTab() {
                   )}
                 </button>
               ) : (
-                <button
+                <button {...ui('button', { variant: 'danger' })}
                   onClick={stop}
                   disabled={isStopping}
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
@@ -1137,7 +1138,7 @@ export default function ArduPilotSitlTab() {
                 </button>
               )
             ) : !swarmRunning ? (
-              <button
+              <button {...ui('button', { variant: 'primary' })}
                 onClick={() => { void startSwarm(); }}
                 disabled={swarmStarting || !binaryInfo?.exists || connectionState.isConnected}
                 className="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
@@ -1155,7 +1156,7 @@ export default function ArduPilotSitlTab() {
                 )}
               </button>
             ) : (
-              <button
+              <button {...ui('button', { variant: 'danger' })}
                 onClick={() => { void stopSwarm(); }}
                 disabled={swarmStopping}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
@@ -1237,7 +1238,7 @@ export default function ArduPilotSitlTab() {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <button {...ui('button', { variant: 'secondary' })}
                 onClick={isRcSending ? stopRcSender : startRcSender}
                 className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
                   isRcSending
@@ -1247,7 +1248,7 @@ export default function ArduPilotSitlTab() {
               >
                 {isRcSending ? t('sitl:ardupilot.stopRc') : t('sitl:ardupilot.startRc')}
               </button>
-              <button
+              <button {...ui('button', { variant: 'secondary' })}
                 onClick={resetRcState}
                 className="px-2 py-1 text-xs text-content-secondary hover:text-content bg-surface-raised hover:bg-surface-raised rounded transition-colors"
               >
@@ -1375,7 +1376,7 @@ export default function ArduPilotSitlTab() {
                 {lastCommand.split('/').pop()?.slice(0, 50)}
               </span>
             )}
-            <button
+            <button {...ui('button', { variant: 'ghost' })}
               onClick={clearOutput}
               disabled={output.length === 0}
               className="px-2 py-1 text-xs text-content-secondary hover:text-content transition-colors disabled:opacity-50"
@@ -1458,7 +1459,7 @@ function FrameCatalogStatus({
         <span className={`w-1.5 h-1.5 rounded-full ${variant.dot}`} />
         {variant.label}
       </span>
-      <button
+      <button {...ui('icon-button')}
         type="button"
         onClick={onRefresh}
         disabled={loading}

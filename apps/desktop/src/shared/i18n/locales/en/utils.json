@@ -13,7 +13,11 @@
     "setProfile": "set a vehicle profile for endurance",
     "unknown": "unknown",
     "usableEach": "~{{duration}} usable each",
-    "wind": "Wind"
+    "wind": "Wind",
+    "flightTimeWindDetail": "into the forecast surface wind ({{duration}} in still air); wind at altitude is usually stronger",
+    "windBlocked": "Legs against the wind",
+    "windBlockedDetail": "the forecast wind is at or above cruise speed on these legs, so the aircraft cannot hold them",
+    "flightTimeLayerWindDetail": "into the wind layer's wind at {{altitude}} ({{duration}} in still air)"
   },
   "joystickSafety": {
     "assign": "Assign {{names}} first",

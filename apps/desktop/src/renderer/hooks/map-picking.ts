@@ -18,3 +18,8 @@ export function acquirePicking(el: HTMLElement): () => void {
     if (left <= 0) el.classList.remove(PICKING_CLASS);
   };
 }
+
+/** True while some tool on this map owns clicks (placing a waypoint, home, a fence or survey point). */
+export function isPicking(el: HTMLElement): boolean {
+  return (depth.get(el) ?? 0) > 0;
+}

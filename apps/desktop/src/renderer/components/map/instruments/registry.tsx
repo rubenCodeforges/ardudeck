@@ -43,6 +43,7 @@ const USED_TRACK_R = 33;
 import { InstrumentShell } from './InstrumentShell';
 import { InstrumentStrip } from './InstrumentStrip';
 import { MessagesInstrument } from './MessagesInstrument';
+import { MavlinkFieldInstrument, MavlinkFieldSettings } from './MavlinkFieldInstrument';
 import { FlightControlInstrument } from './FlightControlInstrument';
 import { InFlightAdjustInstrument } from './InFlightAdjustInstrument';
 import { SticksInstrument } from './SticksInstrument';
@@ -1333,6 +1334,7 @@ export const MAP_INSTRUMENTS: MapInstrumentDef[] = [
   { id: 'mission', labelKey: 'map:instrumentRegistry.mission', defaultClassName: 'absolute left-[124px] top-[192px] z-[1000]', defaultVisible: false, Component: MissionInstrument },
   { id: 'annunciator', labelKey: 'map:instrumentRegistry.annunciator', defaultClassName: 'absolute left-[124px] top-[268px] z-[1000]', defaultVisible: false, Component: AnnunciatorInstrument },
   { id: 'rtk', labelKey: 'map:instrumentRegistry.rtk', defaultClassName: 'absolute left-[124px] top-[600px] z-[1000]', defaultVisible: false, Component: RtkInstrument },
+  { id: 'mavlink-fields', labelKey: 'map:instrumentRegistry.mavlinkFields', defaultClassName: 'absolute right-3 top-64 z-[1000]', defaultVisible: false, Component: MavlinkFieldInstrument, Settings: MavlinkFieldSettings, settingsWidth: 460 },
   { id: 'messages', labelKey: 'map:instrumentRegistry.messages', defaultClassName: 'absolute right-3 top-28 z-[1000]', defaultVisible: false, Component: MessagesInstrument, variants: [
     { id: 'latest', labelKey: 'map:instrumentDisplay.latest', Component: () => <MessagesInstrument variant="latest" /> },
   ] },

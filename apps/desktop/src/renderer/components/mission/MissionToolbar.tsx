@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { GuidesButton } from './GuidesButton';
 import { Fragment, useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { FileCode, Globe, Library, ListOrdered } from 'lucide-react';
+import { FileCode, Globe, Library, ListOrdered, Share2 } from 'lucide-react';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useMissionStore } from '../../stores/mission-store';
 import { useSurveyStore } from '../../stores/survey-store';
@@ -17,6 +17,13 @@ import { useEditModeStore, type EditMode, type MapMode } from '../../stores/edit
 import { useSettingsStore, type MissionFirmware } from '../../stores/settings-store';
 import { effectiveMissionFirmware } from '../../utils/mission-firmware';
 import { SaveMissionModal } from '../mission-library/SaveMissionModal';
+import { ShareMissionDialog } from './share/ShareMissionDialog';
+import { IncomingShareCard } from './share/IncomingShareCard';
+import { HazardConflict } from './HazardConflict';
+import { useHazardsStore } from '../../stores/hazards-store';
+import { hazardCrossings, type ZoneCrossing } from '../../../shared/mission-validation';
+import { useMissionShareStore } from '../../stores/mission-share-store';
+import { useMissionLibraryStore } from '../../stores/mission-library-store';
 import { UploadPreviewModal } from './UploadPreviewModal';
 import { AutoAdjustAltitudeDialog } from './AutoAdjustAltitudeDialog';
 import { bulkUploadBlocked } from './mission-end';
@@ -28,6 +35,7 @@ import { useCargoEnabled, MISSION_LIBRARY_CARGO_SLUG } from '../../modules/capab
 import { useFleetVehicles } from '../../hooks/useFleet';
 import { useVehicleAppearanceStore, resolveVehicleColor } from '../../stores/vehicle-appearance-store';
 import { buildArduPilotWireMission } from '../../../shared/mission-wire';
+import { ui } from '../ui/ui-hooks';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -60,7 +68,7 @@ function ModeButton({
   };
 
   return (
-    <button
+    <button {...ui('segment', { active: isActive })}
       onClick={onClick}
       className={`px-3 py-1.5 text-xs font-medium transition-colors relative ${colorClasses[color]}`}
     >
@@ -104,8 +112,8 @@ function MissionModeControls() {
       <VaultSyncBadge />
       {/* Simple / Advanced toggle - only relevant for ArduPilot (iNav has only 8 commands) */}
       {!isInav && (
-        <div className="flex items-center rounded-lg overflow-hidden border border-subtle">
-          <button
+        <div {...ui('segmented')} className="flex items-center rounded-lg overflow-hidden border border-subtle">
+          <button {...ui('segment', { active: !advancedLabels })}
             onClick={() => updateMissionDefaults({ advancedMissionLabels: false })}
             className={`p-1.5 transition-colors ${
               !advancedLabels
@@ -121,7 +129,7 @@ function MissionModeControls() {
             </svg>
           </button>
           <div className="w-px h-5 bg-subtle" />
-          <button
+          <button {...ui('segment', { active: advancedLabels })}
             onClick={() => updateMissionDefaults({ advancedMissionLabels: true })}
             className={`p-1.5 transition-colors ${
               advancedLabels
@@ -143,11 +151,11 @@ function MissionModeControls() {
           Class names are spelled out in full: Tailwind scans source
           statically, so an interpolated `bg-${color}-600` is purged. */}
       {!isConnected && (
-        <div className={`flex items-center rounded-lg overflow-hidden border transition-colors ${MISSION_FIRMWARE_ACCENT[effectiveFirmware].border}`}>
+        <div {...ui('segmented')} className={`flex items-center rounded-lg overflow-hidden border transition-colors ${MISSION_FIRMWARE_ACCENT[effectiveFirmware].border}`}>
           {MISSION_FIRMWARE_OPTIONS.map((option, i) => (
             <Fragment key={option.id}>
               {i > 0 && <div className={`w-px h-5 transition-colors ${MISSION_FIRMWARE_ACCENT[effectiveFirmware].divider}`} />}
-              <button
+              <button {...ui('segment', { active: effectiveFirmware === option.id })}
                 onClick={() => updateMissionDefaults({ missionFirmware: option.id })}
                 className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
                   effectiveFirmware === option.id
@@ -205,7 +213,7 @@ function SaveMenu({
 
   return (
     <div data-tour="mission-export" className="relative">
-      <button
+      <button {...ui('icon-button')}
         ref={btnRef}
         onClick={toggle}
         disabled={!enabled}
@@ -446,6 +454,14 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
 
   // Save to Library modal state
   const [showSaveLibraryModal, setShowSaveLibraryModal] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [zoneConflict, setZoneConflict] = useState<ZoneCrossing[] | null>(null);
+
+  // Shared versions from teammates wait in the vault until reviewed here; every sync can bring more.
+  useEffect(() => {
+    void useMissionShareStore.getState().refresh();
+    return window.electronAPI?.onFleetRepoSynced?.(() => void useMissionShareStore.getState().refresh());
+  }, []);
   const libraryEnabled = useCargoEnabled(MISSION_LIBRARY_CARGO_SLUG);
 
   // Mode-aware handlers
@@ -461,6 +477,11 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
 
   const handleUpload = async () => {
     if (activeMode === 'mission') {
+      const crossings = hazardCrossings(missionStore.missionItems, useHazardsStore.getState().hazards, missionStore.homePosition);
+      if (crossings.length > 0) {
+        setZoneConflict(crossings);
+        return;
+      }
       // Check for terrain collisions before upload
       if (missionStore.hasTerrainCollisions) {
         setShowCollisionWarning(true);
@@ -555,7 +576,9 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
   const handleLoadFile = async () => {
     if (activeMode === 'mission') {
       const result = await window.electronAPI?.loadMissionFromFile();
-      if (result?.success && result.items) {
+      if (result?.success && result.pkg) {
+        useMissionShareStore.setState({ opened: result.pkg });
+      } else if (result?.success && result.items) {
         missionStore.setMissionItemsFromFile(result.items);
         showToast?.(t('mission:missionToolbar.loaded', { count: result.items.length }), 'success');
       } else if (result?.error && result.error !== 'Cancelled') {
@@ -582,7 +605,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1.5 bg-surface border-b border-subtle shrink-0">
       {/* Mode Selector - Segmented Control */}
-      <div className="flex items-center rounded-lg overflow-hidden border border-subtle shrink-0">
+      <div {...ui('segmented')} className="flex items-center rounded-lg overflow-hidden border border-subtle shrink-0">
         <ModeButton
           mode="mission"
           label={t('common:mission')}
@@ -622,7 +645,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
 
       {/* FC Operations */}
       <div className="flex items-center gap-0.5 shrink-0">
-        <button
+        <button {...ui('icon-button')}
           onClick={handleDownload}
           disabled={!isConnected || isLoading || fcOpsDisabledForMsp}
           className={`p-1.5 rounded-l transition-colors ${
@@ -643,7 +666,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
             </svg>
           )}
         </button>
-        <button
+        <button {...ui('icon-button')}
           onClick={handleUpload}
           disabled={!isConnected || isLoading || !hasItems || fcOpsDisabledForMsp || multipleGroups}
           className={`p-1.5 transition-colors ${
@@ -664,7 +687,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
             </svg>
           )}
         </button>
-        <button
+        <button {...ui('icon-button')}
           onClick={handleClearFC}
           disabled={!isConnected || isLoading || fcOpsDisabledForMsp}
           className={`p-1.5 rounded-r transition-colors ${
@@ -687,7 +710,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
       <div className="flex items-center gap-1 shrink-0">
         {activeMode === 'mission' && (
           <>
-            <button
+            <button {...ui('icon-button')}
               data-tour="mission-history"
               onClick={() => missionStore.undo()}
               disabled={!canUndo}
@@ -700,7 +723,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a5 5 0 015 5v1m-15-6l4-4m-4 4l4 4" />
               </svg>
             </button>
-            <button
+            <button {...ui('icon-button')}
               onClick={() => missionStore.redo()}
               disabled={!canRedo}
               className={`p-1.5 rounded bg-surface-raised transition-colors ${
@@ -714,7 +737,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
             </button>
           </>
         )}
-        <button
+        <button {...ui('icon-button')}
           onClick={handleNew}
           disabled={isLoading || !hasItems}
           className={`p-1.5 rounded bg-surface-raised transition-colors ${
@@ -742,11 +765,23 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
             onExport={(fmt) => { void handleSaveFile(fmt); }}
           />
         )}
+        {activeMode === 'mission' && (
+          <button {...ui('icon-button')}
+            type="button"
+            onClick={() => setShowShareDialog(true)}
+            disabled={!missionHasItems}
+            className={`px-2 py-1.5 rounded bg-surface-raised transition-colors ${missionHasItems ? 'text-content hover:brightness-125' : 'text-content-tertiary cursor-not-allowed'}`}
+            data-tip={missionHasItems ? t('mission:missionShare.shareButton') : t('mission:missionToolbar.addWaypointsFirst')}
+            aria-label={t('mission:missionShare.shareButton')}
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
+        )}
         {/* Open from file - folder glyph, distinct from the FC download arrow.
             Fence/rally file load is still a stub (handleLoadFile TODO
             branches); the button returns for those modes once implemented. */}
         {activeMode === 'mission' && (
-          <button
+          <button {...ui('icon-button')}
             onClick={handleLoadFile}
             className="p-1.5 rounded bg-surface-raised text-content hover:brightness-125 transition-colors"
             data-tip={t('mission:missionToolbar.openFile', { mode: getModeLabel() })}
@@ -776,7 +811,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
           </div>
         )}
         {activeMode === 'mission' && distributeTarget && (
-          <button
+          <button {...ui('button', { variant: 'primary' })}
             onClick={handleDistribute}
             className="px-2.5 py-1.5 rounded flex items-center gap-1.5 text-xs font-semibold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 shadow-[0_0_10px_rgba(34,211,238,0.35)] transition-all"
             data-tip={t('mission:missionToolbar.splitTip', { name: distributeTarget.name, count: fleetVehiclesLive.length })}
@@ -794,7 +829,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
           </button>
         )}
         {activeMode === 'mission' && (
-          <button
+          <button {...ui('icon-button')}
             onClick={() => { window.electronAPI?.openAreaEditor?.().catch(() => undefined); }}
             className="p-1.5 rounded bg-surface-raised text-content hover:brightness-125 transition-colors"
             data-tip={t('mission:missionToolbar.openAreaEditorTip')}
@@ -817,7 +852,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
       {/* Collision warning indicator (mission mode only). Clickable: opens the
           auto-adjust altitude dialog to fix it. */}
       {activeMode === 'mission' && missionStore.hasTerrainCollisions && (
-        <button
+        <button {...ui('chip', { status: 'warn' })}
           onClick={() => setShowAltitudeAdjust(true)}
           className="px-2 py-1 rounded text-xs bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 hover:text-red-300 transition-colors flex items-center gap-1.5 shrink-0"
           data-tip={t('mission:missionToolbar.collisionTip')}
@@ -834,8 +869,8 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
 
       {/* 2D/3D Map Toggle - dev-only until 3D is reworked */}
       {import.meta.env.DEV && (
-        <div className="flex items-center rounded-lg overflow-hidden border border-subtle shrink-0">
-          <button
+        <div {...ui('segmented')} className="flex items-center rounded-lg overflow-hidden border border-subtle shrink-0">
+          <button {...ui('segment', { active: mapMode === '2d' })}
             onClick={() => setMapMode('2d')}
             className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
               mapMode === '2d'
@@ -847,7 +882,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
             2D
           </button>
           <div className="w-px h-5 bg-subtle" />
-          <button
+          <button {...ui('segment', { active: mapMode === '3d' })}
             onClick={() => setMapMode('3d')}
             className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
               mapMode === '3d'
@@ -862,7 +897,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
       )}
 
       {/* Layout controls */}
-      <button
+      <button {...ui('button', { variant: 'secondary' })}
         onClick={onResetLayout}
         className="px-2 py-1 bg-surface-raised hover:bg-surface border border-subtle text-content-secondary text-xs rounded transition-colors shrink-0"
         title={t('mission:missionToolbar.resetLayoutTip')}
@@ -891,19 +926,19 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-4">
-              <button
+              <button {...ui('button', { variant: 'secondary' })}
                 onClick={() => setShowCollisionWarning(false)}
                 className="px-4 py-2 rounded text-sm font-medium bg-surface-raised hover:bg-surface border border-subtle text-content transition-colors"
               >
                 {t('common:cancel')}
               </button>
-              <button
+              <button {...ui('button', { variant: 'primary' })}
                 onClick={() => { setShowCollisionWarning(false); setShowAltitudeAdjust(true); }}
                 className="px-4 py-2 rounded text-sm font-medium bg-purple-600 hover:bg-purple-500 text-white transition-colors"
               >
                 {t('mission:missionToolbar.fixAltitudes')}
               </button>
-              <button
+              <button {...ui('button', { variant: 'danger' })}
                 onClick={handleConfirmUpload}
                 className="px-4 py-2 rounded text-sm font-medium bg-red-600/80 hover:bg-red-500/80 text-white transition-colors"
               >
@@ -923,13 +958,13 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
               {t('mission:missionToolbar.clearBody', { count: missionStore.missionItems.length })}
             </p>
             <div className="flex justify-end gap-3">
-              <button
+              <button {...ui('button', { variant: 'secondary' })}
                 onClick={() => setShowNewConfirm(false)}
                 className="px-4 py-2 rounded text-sm font-medium bg-surface-raised hover:bg-surface border border-subtle text-content transition-colors"
               >
                 {t('common:cancel')}
               </button>
-              <button
+              <button {...ui('button', { variant: 'danger' })}
                 onClick={doClearMission}
                 className="px-4 py-2 rounded text-sm font-medium bg-red-600/80 hover:bg-red-500/80 text-white transition-colors"
               >
@@ -949,6 +984,26 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
           homeElevationMeters={missionStore.homePosition?.alt}
           onApply={handleApplyAltitudePlan}
           onClose={() => setShowAltitudeAdjust(false)}
+        />
+      )}
+
+      {showShareDialog && (
+        <ShareMissionDialog
+          onClose={() => setShowShareDialog(false)}
+          onShared={(message) => showToast?.(message, 'success')}
+        />
+      )}
+      <IncomingShareCard />
+      {zoneConflict && (
+        <HazardConflict
+          crossings={zoneConflict}
+          missionName={useMissionLibraryStore.getState().selectedMission?.name ?? t('mission:missionShare.defaultName')}
+          onClose={() => setZoneConflict(null)}
+          onContinue={() => {
+            setZoneConflict(null);
+            if (useMissionStore.getState().hasTerrainCollisions) setShowCollisionWarning(true);
+            else setShowUploadPreview(true);
+          }}
         />
       )}
 
@@ -986,7 +1041,7 @@ function ModulePanelButtons(): JSX.Element | null {
   return (
     <div className="flex items-center gap-1 shrink-0">
       {panels.map((p) => (
-        <button
+        <button {...ui('button', { variant: 'secondary' })}
           key={p.key}
           type="button"
           onClick={() => openModuleMissionPanel(p.slug, p.id)}

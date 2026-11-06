@@ -11,6 +11,7 @@ import { t as translate } from '../../../shared/i18n/index.js';
 import { useFleetRepoStore } from '../../stores/fleet-repo-store';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { useCargoEnabled, VAULT_CARGO_SLUG } from '../../modules/capabilities';
+import { ui } from '../ui/ui-hooks';
 
 function timeAgo(ts: number): string {
   const s = Math.floor((Date.now() - ts) / 1000);
@@ -77,7 +78,7 @@ export function VaultSyncBadge({ variant = 'icon' }: VaultSyncBadgeProps) {
   return (
     <>
       {variant === 'button' ? (
-        <button
+        <button {...ui('chip', { status: connected ? 'pass' : 'info' })}
           ref={btnRef}
           onClick={toggle}
           data-tip={tip}
@@ -87,7 +88,7 @@ export function VaultSyncBadge({ variant = 'icon' }: VaultSyncBadgeProps) {
           {connected ? t('vault:vaultSyncBadge.backupOn') : t('vault:vaultSyncBadge.setUp')}
         </button>
       ) : (
-        <button
+        <button {...ui('chip', { status: connected ? 'pass' : 'info' })}
           ref={btnRef}
           onClick={toggle}
           data-tip={tip}

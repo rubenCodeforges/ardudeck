@@ -35,6 +35,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      3d-tiles-renderer:
+        specifier: 0.5.3
+        version: 0.5.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.170.0)
       '@ardudeck/comms':
         specifier: workspace:*
         version: link:../../packages/comms
@@ -110,6 +113,9 @@ importers:
       isomorphic-git:
         specifier: ^1.40.4
         version: 1.40.4
+      laz-perf:
+        specifier: 0.0.7
+        version: 0.0.7
       leaflet:
         specifier: ^1.9.4
         version: 1.9.4
@@ -134,6 +140,9 @@ importers:
       polygon-clipping:
         specifier: 0.15.7
         version: 0.15.7
+      proj4:
+        specifier: 2.22.0
+        version: 2.22.0
       react-i18next:
         specifier: ^17.0.15
         version: 17.0.15(i18next@26.4.2(typescript@5.9.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
@@ -504,6 +513,29 @@ importers:
         version: 5.9.3
 
 packages:
+
+  3d-tiles-renderer@0.5.3:
+    resolution: {integrity: sha512-i2TEtsboVa7C5pCpNKO3ctAopK0NlIReRb/CJKpvXDrwjWYL1M2oaKRZddvGDHE5udx7OyGN04glotqNruQYmQ==}
+    peerDependencies:
+      '@babylonjs/core': '>=8.0.0'
+      '@babylonjs/loaders': '>=8.0.0'
+      '@react-three/fiber': ^8.17.9 || ^9.0.0
+      react: ^18.3.1 || ^19.0.0
+      react-dom: ^18.3.1 || ^19.0.0
+      three: '>=0.167.0'
+    peerDependenciesMeta:
+      '@babylonjs/core':
+        optional: true
+      '@babylonjs/loaders':
+        optional: true
+      '@react-three/fiber':
+        optional: true
+      react:
+        optional: true
+      react-dom:
+        optional: true
+      three:
+        optional: true
 
   7zip-bin@5.2.0:
     resolution: {integrity: sha512-ukTPVhqG4jNzMro2qA9HSCSSVJN3aN7tlb+hfqYCt3ER0yWroeA2VR38MNrOHLQ/cVj+DaIMad0kFCtWWowh/A==}
@@ -3300,6 +3332,9 @@ packages:
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
 
+  laz-perf@0.0.7:
+    resolution: {integrity: sha512-2xRqm/f/2UqDS5qqkjOyDb6uVIjkVw6SGmQlMoTQliVWkZhPfIbUJTubUl3mTloaWqKcjlS/urmP1CYoxelsEg==}
+
   lazy-val@1.0.5:
     resolution: {integrity: sha512-0/BnGCCfyUMkBpeDgWihanIAF9JmZhHBgUhEqzvf+adhNGLoP6TaiI5oF8oyb3I45P+PcnrqihSf01M0l0G5+Q==}
 
@@ -3454,6 +3489,9 @@ packages:
   methods@1.1.2:
     resolution: {integrity: sha512-iclAHeNqNm68zFtnZ0e+1L2yUIdvzNoauKU4WBA3VvH/vPFieF7qfRlwUZU+DA9P9bPXIS90ulxoUoCH23sV2w==}
     engines: {node: '>= 0.6'}
+
+  mgrs@1.0.0:
+    resolution: {integrity: sha512-awNbTOqCxK1DBGjalK3xqWIstBZgN6fxsMSiXLs9/spqWkF2pAhb2rrYCFSsr1/tT7PhcDGjZndG8SWYn0byYA==}
 
   micromatch@4.0.8:
     resolution: {integrity: sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA==}
@@ -3945,6 +3983,14 @@ packages:
   progress@2.0.3:
     resolution: {integrity: sha512-7PiHtLll5LdnKIMw100I+8xJXR5gW2QwWYkT6iJva0bXitZKa/XMrSbdmg3r2Xnaidz9Qumd0VPaMrZlF9V9sA==}
     engines: {node: '>=0.4.0'}
+
+  proj4@2.22.0:
+    resolution: {integrity: sha512-MVvH09QrYm3A235rcX39WDiCKanrBiblu28l0KYIn/B2DofmYhvP/LLS43kE66jNDfx/P1l/nah3JmsAq8UgbQ==}
+    peerDependencies:
+      geotiff: '*'
+    peerDependenciesMeta:
+      geotiff:
+        optional: true
 
   promise-retry@2.0.1:
     resolution: {integrity: sha512-y+WKFlBR8BGXnsNlIHFGPZmyDf3DFMoLhaflAnyZgV6rG6xu+JwesTo2Q9R6XwYmtmwAFCkAk3e35jEdoeh/3g==}
@@ -4826,6 +4872,9 @@ packages:
     engines: {node: '>=8'}
     hasBin: true
 
+  wkt-parser@1.6.0:
+    resolution: {integrity: sha512-O2WMUagkdOKkgcfqZBUauysHVeifCwcs+zUd2QG7UIzVljLwK9g5xHUfL/TkQFwmQ3eF7oHFKGnMcb/kZdvbaw==}
+
   word-wrap@1.2.5:
     resolution: {integrity: sha512-BN22B5eaMMI9UMtjrGd5g5eCYPpCPDUy0FJXbYsaT5zYxjFOckS53SQDE3pWkVoWpHXVb3BrYcEN4Twa55B5cA==}
     engines: {node: '>=0.10.0'}
@@ -4946,6 +4995,16 @@ packages:
         optional: true
 
 snapshots:
+
+  3d-tiles-renderer@0.5.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.170.0):
+    dependencies:
+      '@mapbox/vector-tile': 2.0.4
+      pbf: 4.0.1
+      pmtiles: 4.5.0
+    optionalDependencies:
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+      three: 0.170.0
 
   7zip-bin@5.2.0: {}
 
@@ -8246,6 +8305,8 @@ snapshots:
     dependencies:
       json-buffer: 3.0.1
 
+  laz-perf@0.0.7: {}
+
   lazy-val@1.0.5: {}
 
   lazystream@1.0.1:
@@ -8410,6 +8471,8 @@ snapshots:
   meshoptimizer@0.18.1: {}
 
   methods@1.1.2: {}
+
+  mgrs@1.0.0: {}
 
   micromatch@4.0.8:
     dependencies:
@@ -8815,6 +8878,11 @@ snapshots:
   process@0.11.10: {}
 
   progress@2.0.3: {}
+
+  proj4@2.22.0:
+    dependencies:
+      mgrs: 1.0.0
+      wkt-parser: 1.6.0
 
   promise-retry@2.0.1:
     dependencies:
@@ -9901,6 +9969,8 @@ snapshots:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
+
+  wkt-parser@1.6.0: {}
 
   word-wrap@1.2.5: {}
 

@@ -30,6 +30,8 @@ import {
   buildPx4Layout,
   findFrameLayout,
   getFrameClassType,
+  boardValue,
+  frameState,
   testOrderToLabel,
   frameTypeDisplayName,
 } from './motor-layout-utils';
@@ -77,11 +79,15 @@ export const MotorTestTab: React.FC<{ isPlane?: boolean }> = ({ isPlane = false 
     if (isPx4) {
       return buildPx4Layout((key) => parameters.get(key)?.value) ?? buildGenericLayout(4);
     }
-    const frameInfo = getFrameClassType((key) => parameters.get(key)?.value);
+    // The board's frame, not a staged edit it has not received yet.
+    const frameInfo = getFrameClassType((key) => boardValue(parameters.get(key)));
     if (!frameInfo) return buildGenericLayout(4);
     const found = findFrameLayout(frameInfo.frameClass, frameInfo.frameType);
     return found ?? buildGenericLayout(4);
   }, [parameters, isPx4]);
+
+  const rebootPending = useParameterStore((s) => s.rebootPending);
+  const frameStateNow = useMemo(() => frameState((key) => parameters.get(key), rebootPending), [parameters, rebootPending]);
 
   const motorCount = layout.motors.length;
 
@@ -356,6 +362,20 @@ export const MotorTestTab: React.FC<{ isPlane?: boolean }> = ({ isPlane = false 
           <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
           <div className="text-xs text-amber-300">
             {t('mavlink-config:motorTestTab.highThrottle', { throttle })}
+          </div>
+        </div>
+      )}
+
+      {/* The frame the board runs is not the one shown in the parameters */}
+      {!isPx4 && frameStateNow !== 'ok' && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className="text-xs text-amber-200">
+            {frameStateNow === 'unwritten'
+              ? t('mavlink-config:motorTestTab.frameUnwritten')
+              : frameStateNow === 'reboot'
+                ? t('mavlink-config:motorTestTab.frameReboot')
+                : t('mavlink-config:motorTestTab.frameUndefined')}
           </div>
         </div>
       )}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigationStore } from '../../stores/navigation-store';
 import type { TrainerStatus } from '../../../shared/trainer-types';
+import { ui } from '../ui/ui-hooks';
 
 /**
  * "Fly it in the Trainer", on the screen where SITL is started.
@@ -43,6 +44,7 @@ export function TrainerQuickAction(): JSX.Element | null {
 
   return (
     <button
+      {...ui('button', { variant: 'primary' })}
       onClick={() => void fly()}
       disabled={busy || !status?.canLaunch}
       data-tip={status?.reason ?? t('trainer:trainerQuickAction.tip')}

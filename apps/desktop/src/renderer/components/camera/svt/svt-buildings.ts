@@ -8,6 +8,7 @@ import type { Polygon, MultiPolygon } from 'geojson';
 import { type ElevationGrid, lonLatToLocal, sampleElevation, M_PER_DEG_LAT, metersPerDegLon } from './svt-terrain';
 
 import type { SvtBuildings } from './svt-building-sources';
+import { buildingExcluded, type ExclusionZone } from '../../../three/scene-model-exclusion';
 
 /** Buildings are drawn this far around the aircraft; past it they are specks. */
 export const BUILDINGS_RADIUS_M = 2_500;
@@ -231,7 +232,13 @@ export function loadBuildings(source: SvtBuildings, lat: number, lon: number): P
 // ─── Geometry ────────────────────────────────────────────────────────────────
 
 /** One mesh for all buildings, each standing on the lowest terrain under its footprint so no corner floats. */
-export function buildBuildingsGeometry(buildings: Building[], grid: ElevationGrid, center: { lat: number; lon: number }, radiusM = BUILDINGS_RADIUS_M): THREE.BufferGeometry | null {
+export function buildBuildingsGeometry(
+  buildings: Building[],
+  grid: ElevationGrid,
+  center: { lat: number; lon: number },
+  radiusM = BUILDINGS_RADIUS_M,
+  exclusions: ExclusionZone[] = [],
+): THREE.BufferGeometry | null {
   const pos: number[] = [];
   const nrm: number[] = [];
   const col: number[] = [];
@@ -283,6 +290,7 @@ export function buildBuildingsGeometry(buildings: Building[], grid: ElevationGri
     const c = outer[0]!;
     if (Math.hypot(c.x - center2.x, c.z - center2.z) > radiusM) continue;
     if (Math.abs(c.x) > grid.halfSizeM || Math.abs(c.z) > grid.halfSizeM) continue;
+    if (exclusions.length > 0 && buildingExcluded(b.rings[0]!, exclusions)) continue;
 
     let ground = Infinity;
     for (const [lon, lat] of b.rings[0]!) ground = Math.min(ground, sampleElevation(grid, lat, lon));

@@ -373,6 +373,9 @@ function checkEkf(log: DataFlashLog): HealthCheckResult {
 }
 
 /** Run all health checks against a parsed log */
+/** Message types the health checks read as rows; a columnar parse must keep these. */
+export const HEALTH_CHECK_TYPES: ReadonlySet<string> = new Set(['VIBE', 'GPS', 'BAT', 'MAG', 'EV', 'POWR', 'MODE', 'NKF4', 'EKF4']);
+
 export function runHealthChecks(log: DataFlashLog): HealthCheckResult[] {
   return [
     checkVibration(log),

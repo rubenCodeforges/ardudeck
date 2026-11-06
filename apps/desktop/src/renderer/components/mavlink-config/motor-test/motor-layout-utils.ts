@@ -209,3 +209,40 @@ export function getFrameClassType(
   if (frameClass === undefined || frameType === undefined) return null;
   return { frameClass, frameType };
 }
+
+/** What the board holds for a parameter: a staged edit is not on the vehicle until it is written. */
+export function boardValue(p: { value: number; originalValue?: number; isModified?: boolean } | undefined): number | undefined {
+  if (!p) return undefined;
+  return p.isModified ? (p.originalValue ?? p.value) : p.value;
+}
+
+export type FrameState = 'ok' | 'unwritten' | 'reboot' | 'undefined';
+
+/**
+ * Whether the motor test can trust the frame. A FRAME_CLASS / FRAME_TYPE edit that is only
+ * staged is not on the vehicle, and class 0 (Undefined) means the board has no motor layout, so
+ * ArduPilot refuses the test either way.
+ */
+export function frameState(
+  get: (key: string) => { value: number; originalValue?: number; isModified?: boolean } | undefined,
+  rebootPending: readonly string[] = [],
+): FrameState {
+  const prefix = get('FRAME_CLASS') ? '' : get('Q_FRAME_CLASS') ? 'Q_' : null;
+  if (prefix === null) return 'ok';
+  if (get(`${prefix}FRAME_CLASS`)?.isModified || get(`${prefix}FRAME_TYPE`)?.isModified) return 'unwritten';
+  // Written, but ArduPilot builds the motor layout at boot: it still runs the old frame.
+  if (rebootPending.includes(`${prefix}FRAME_CLASS`) || rebootPending.includes(`${prefix}FRAME_TYPE`)) return 'reboot';
+  return boardValue(get(`${prefix}FRAME_CLASS`)) === 0 ? 'undefined' : 'ok';
+}
+
+/** FRAME_CLASS values the ArduCopter heli build can run: Heli, Heli_Dual, HeliQuad. */
+const HELI_FRAME_CLASSES = new Set([6, 11, 13]);
+
+/**
+ * True when the board runs the ArduCopter heli build (only it has H_RSC_MODE) but FRAME_CLASS asks
+ * for a multirotor. That build never takes a multirotor frame, so the value is refused on every boot.
+ */
+export function heliBuildWithMultirotorFrame(get: (key: string) => { value: number } | undefined): boolean {
+  const frameClass = get('FRAME_CLASS')?.value;
+  return get('H_RSC_MODE') !== undefined && frameClass !== undefined && frameClass !== 0 && !HELI_FRAME_CLASSES.has(frameClass);
+}

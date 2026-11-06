@@ -184,7 +184,8 @@
     "uploadedToVehicle": "Uploaded {{count}} waypoints to vehicle",
     "vehicleMissionLabel": "Vehicle mission @ {{stamp}}",
     "fromVehicleGroup": "From vehicle @ {{stamp}}",
-    "downloadedGroup": "Downloaded @ {{stamp}}"
+    "downloadedGroup": "Downloaded @ {{stamp}}",
+    "hazardBlocked": "Upload blocked: the route crosses a hazard. Reroute it, or override with the admin PIN."
   },
   "modesWizardStore": {
     "clearSlotFailed": "Failed to clear mode slot {{i}}",
