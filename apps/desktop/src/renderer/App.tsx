@@ -648,8 +648,22 @@ function App() {
         // Prove any calibration that is waiting on a reboot actually survived
         // it. A reconnect is exactly the moment the operator assumes all is
         // well, so this is where the vehicle has to be asked, not assumed.
+        // Wait for the parameter download to settle first: reads fired while it floods the link time out,
+        // which left every record "not yet confirmed" and condemned some as lost (#159).
         if (connectionState.boardUid) {
-          void window.electronAPI?.calibrationRecordVerify?.(connectionState.boardUid);
+          const boardUid = connectionState.boardUid;
+          const runVerify = () => void window.electronAPI?.calibrationRecordVerify?.(boardUid);
+          const busy = () => useParameterStore.getState().isLoading;
+          if (!busy()) runVerify();
+          else {
+            const giveUp = setTimeout(() => { unsub(); runVerify(); }, 180_000);
+            const unsub = useParameterStore.subscribe((st) => {
+              if (st.isLoading) return;
+              clearTimeout(giveUp);
+              unsub();
+              runVerify();
+            });
+          }
         }
         // Auto-download the vehicle's mission ONLY when we have nothing locally.
         // The FC holds the flattened union of whatever was uploaded, so if the

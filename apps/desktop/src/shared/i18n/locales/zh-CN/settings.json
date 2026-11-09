@@ -279,11 +279,21 @@
       "supports": "{{firmware}} 仅支援：{{types}}。",
       "title": "配置文件相容性问题"
     },
+    "telemetryLog": {
+      "title": "遥测日志",
+      "record": "将遥测记录到 .tlog 文件",
+      "recordHint": "每次连接都会以 MAVLink .tlog 格式保存在应用数据文件夹中，可用任何 tlog 查看器打开。保留最新的 50 个文件，总计不超过 2 GB。",
+      "openFolder": "打开日志文件夹"
+    },
     "terrainUplink": {
       "title": "地形上传",
       "serve": "向载具提供地形",
       "serveHint": "依地图高程数据回应自动驾驶仪的地形请求，包括 Cargo 提供的任何测绘曲面",
-      "counts": "已提供区块：{{served}},缺少数据：{{missing}}"
+      "counts": "已提供区块：{{served}},缺少数据：{{missing}}",
+      "unavailable": "缺少 {{count}} 个区块:高程瓦片不可用(离线或被屏蔽?)。",
+      "unavailableHint": "请检查网络连接并清除瓦片缓存。没有地形数据时,飞行器无法使用相对地形的高度,可能会返航。",
+      "gaps": "{{count}} 个区块缺少部分高程数据(地图数据边缘);飞行器会继续请求。",
+      "errors": "{{count}} 个区块因错误失败;请查看控制台日志。"
     },
     "console": {
       "title": "控制台",
@@ -557,7 +567,20 @@
       "waveHeight": "浪高",
       "windFrom": "风来自 {{dir}}"
     },
-    "weight": "重量"
+    "weight": "重量",
+    "carto": {
+      "label": "CARTO API 密钥（Dark 地图样式）",
+      "freeAt": "- 没有密钥时 Dark 样式使用 Esri。获取密钥，网址：",
+      "placeholder": "贴上你的 CARTO API 密钥",
+      "configured": "密钥已设置：Dark 样式使用 CARTO"
+    },
+    "voiceVolume": {
+      "title": "语音音量",
+      "hint": "调试和飞行分别设置音量：调试时可以调低或关闭语音，飞行器解锁后立即恢复到解锁音量。顶栏的静音按钮仍会关闭所有声音。",
+      "disarmed": "已上锁",
+      "armed": "已解锁",
+      "silent": "静音"
+    }
   },
   "signingSection": {
     "active": "使用中",

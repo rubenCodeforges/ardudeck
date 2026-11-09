@@ -8,7 +8,7 @@
  * refer to when several areas are on the map.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useObjectsStore } from './objects-store';
 import { useSurveyStore } from '../stores/survey-store';
@@ -66,9 +66,22 @@ function Metrics({ hud, distanceUnit, areaUnit }: { hud: AreaHud; distanceUnit: 
   );
 }
 
+/** Trails the value so the survey generator does not run on every mousemove of a drag. */
+function useSettled<T>(value: T, ms: number): T {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setSettled(value), ms);
+    return () => clearTimeout(id);
+  }, [value, ms]);
+  return settled;
+}
+
+const HUD_SETTLE_MS = 250;
+
 export function ObjectEditorHud(): JSX.Element {
   const { t } = useTranslation();
-  const objects = useObjectsStore((s) => s.objects);
+  const liveObjects = useObjectsStore((s) => s.objects);
+  const objects = useSettled(liveObjects, HUD_SETTLE_MS);
   const selectedId = useObjectsStore((s) => s.selectedId);
   const surveyConfig = useSurveyStore((s) => s.config);
   const enduranceSec = useSettingsStore((s) => s.getEstimatedFlightTime());

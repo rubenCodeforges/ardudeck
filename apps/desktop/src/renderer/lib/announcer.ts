@@ -76,8 +76,16 @@ let playing = false;
 const lastSpokenAt = new Map<string, number>();
 const DEDUPE_MS = 4000;
 
+/** 0..1 for the current arm state: a quieter (or silent) bench while disarmed, full voice once armed (#165). The header mute stays the master switch. */
+function volume(): number {
+  const s = useSettingsStore.getState();
+  if (s.voiceAlertsMuted) return 0;
+  const armed = useTelemetryStore.getState().flight.armed;
+  return (armed ? s.voiceVolumeArmed : s.voiceVolumeDisarmed) / 100;
+}
+
 function muted(): boolean {
-  return useSettingsStore.getState().voiceAlertsMuted;
+  return volume() <= 0;
 }
 
 function linkUp(): boolean {
@@ -145,7 +153,10 @@ function playWav(buffer: AudioBuffer): Promise<void> {
     if (!ctx) return resolve();
     const src = ctx.createBufferSource();
     src.buffer = buffer;
-    src.connect(ctx.destination);
+    const gain = ctx.createGain();
+    gain.gain.value = volume();
+    src.connect(gain);
+    gain.connect(ctx.destination);
     src.onended = () => resolve();
     src.start();
   });
@@ -161,7 +172,7 @@ function playTone(kind: 'warn' | 'error' | 'crit'): Promise<void> {
     const t0 = ctx.currentTime;
     const gain = ctx.createGain();
     gain.connect(ctx.destination);
-    gain.gain.value = 0.25;
+    gain.gain.value = 0.25 * volume();
     for (let i = 0; i < count; i++) {
       const osc = ctx.createOscillator();
       osc.type = 'sine';
@@ -192,8 +203,14 @@ async function playNext(): Promise<void> {
   }
 }
 
+/** What still speaks on the "Important" level: alerts, failsafes, errors and warnings, and arm / disarm. */
+function important(item: QueueItem): boolean {
+  return !!item.critical || item.tone === 'error' || item.tone === 'warn' || item.tone === 'crit' || item.key === 'arm';
+}
+
 function announce(item: QueueItem): void {
   if (muted() || !linkUp()) return;
+  if (useSettingsStore.getState().voiceAlertLevel === 'important' && !important(item)) return;
   const now = Date.now();
   // dedupe by event key AND by wav: the same phrase can arrive from two
   // sources (battery threshold + FC failsafe statustext, GPS transition +

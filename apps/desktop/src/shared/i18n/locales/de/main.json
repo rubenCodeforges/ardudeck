@@ -317,7 +317,12 @@
     "pickFolderTitle": "Ordner wählen",
     "resetParamsArduPilotOnly": "Das Zurücksetzen aller Parameter ist nur für ArduPilot verfügbar.",
     "resetParamsDisarmFirst": "Das Fahrzeug muss disarmt sein, bevor du seine Parameter zurücksetzt.",
-    "resetParamsFailed": "Der Flugcontroller hat das Zurücksetzen der Parameter nicht angenommen."
+    "resetParamsFailed": "Der Flugcontroller hat das Zurücksetzen der Parameter nicht angenommen.",
+    "rcMapUnknown": "Die Stick-Übersteuerung bleibt aus, bis die Fahrzeugparameter geladen sind (RCMAP bestimmt, welcher Kanal Gas ist).",
+    "paramNoEcho": "{{param}}: Der Flugcontroller hat das Schreiben nicht bestätigt. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+    "paramRejected": "{{param}}: Der Flugcontroller hat {{value}} behalten und den neuen Wert nicht übernommen.",
+    "flashWriteRejected": "Der Flugcontroller hat das Schreiben in den Flash abgelehnt (Ergebnis {{result}}).",
+    "calibrationLost": "{{type}}-Kalibrierung hat den Neustart NICHT überstanden. Vor dem Flug neu kalibrieren."
   },
   "licenseValidator": {
     "invalidKeyFormat": "Ungültiges Schlüsselformat",
@@ -717,5 +722,10 @@
     "pointCloudEmpty": "Die Punktwolke enthält keine verwendbaren Punkte.",
     "plyInvalid": "Die Datei ist keine lesbare PLY-Punktwolke.",
     "unverifiedCrs": "Mit EPSG:{{epsg}} von epsg.io platziert. Dessen 7-Parameter-Datumsverschiebung ist nicht mit PROJ geprüft und kann um Meter danebenliegen; prüfen Sie die Position auf der Karte."
+  },
+  "missionShare": {
+    "invalidPackage": "Dies ist kein ArduDeck-Missionspaket.",
+    "saveTitle": "Missionspaket speichern",
+    "fileFilter": "ArduDeck-Missionspaket"
   }
 }

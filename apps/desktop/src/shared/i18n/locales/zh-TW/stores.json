@@ -22,7 +22,8 @@
       "spoilers": "帶擾流板的飛機",
       "vectored": "向量式(預設)",
       "vectored6dof": "向量式 6DOF",
-      "vtail": "V 尾飛機"
+      "vtail": "V 尾飛機",
+      "glider": "滑翔機"
     },
     "startFailed": "啟動 SITL 失敗"
   },
@@ -184,7 +185,8 @@
     "uploadedToVehicle": "已將 {{count}} 個航點上傳到載具",
     "vehicleMissionLabel": "載具任務 @ {{stamp}}",
     "fromVehicleGroup": "來自載具 @ {{stamp}}",
-    "downloadedGroup": "下載於 @ {{stamp}}"
+    "downloadedGroup": "下載於 @ {{stamp}}",
+    "hazardBlocked": "上傳已被阻擋:航線穿越危險區。請重新規劃航線,或以管理員 PIN 強制覆寫。"
   },
   "modesWizardStore": {
     "clearSlotFailed": "清除模式欄位 {{i}} 失敗",

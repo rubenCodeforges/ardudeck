@@ -743,6 +743,7 @@
     "savedCountToFile_other": "已将 {{count}} 个参数保存到文件",
     "savedToFile": "参数已保存到文件",
     "savedToFlash": "参数已成功保存到快闪内存",
+    "savedUnconfirmed": "参数已发送并确认，但飞控未确认快闪内存写入。飞行前请重新启动并检查数值。",
     "searchPlaceholder": "搜索参数...（支援正规表示式）",
     "selectedCount": "已选 {{selected}} / {{total}}",
     "showAllParameters": "显示所有参数",
@@ -1024,5 +1025,9 @@
   "paramsValidBitmask": "位掩码值必须是非负整数",
   "paramsValidUnknownValue": "数值 {{value}} 不在已知数值列表中",
   "paramsValidRange": "数值必须介于 {{min}} 与 {{max}}{{units}} 之间",
-  "paramsValidIncrement": "数值应为 {{increment}} 的倍数"
+  "paramsValidIncrement": "数值应为 {{increment}} 的倍数",
+  "defaultColumn": {
+    "header": "默认值",
+    "reset": "重置为默认值（{{value}}）。写入快闪内存以保留。"
+  }
 }

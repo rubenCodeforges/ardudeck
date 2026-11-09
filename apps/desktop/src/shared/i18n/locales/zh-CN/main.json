@@ -233,7 +233,7 @@
     "missionUploadInProgress": "另一个任务上传正在进行中",
     "motorTestNeedsMavlink": "电机测试需要 MAVLink 连接",
     "noBoardIdentity": "没有主板识别信息",
-    "noClaudeKey": "尚未设置 claude 的 API 密钥。请在设居中新增。",
+    "noClaudeKey": "尚未设置 claude 的 API 密钥。请在设置中添加。",
     "noCompatibleFirmware": "未侦测到相容的固件",
     "noDjiWaypoints": "DJI 任务中找不到航点",
     "noExportableWaypoints": "没有可导出的航点(DJI KMZ 需要带座标的一般航点）",
@@ -317,7 +317,12 @@
     "pickFolderTitle": "选择文件夹",
     "resetParamsArduPilotOnly": "仅 ArduPilot 支持重置所有参数。",
     "resetParamsDisarmFirst": "重置参数前载具必须处于上锁状态。",
-    "resetParamsFailed": "飞控未接受参数重置。"
+    "resetParamsFailed": "飞控未接受参数重置。",
+    "rcMapUnknown": "在载具参数加载之前，摇杆覆盖保持关闭（RCMAP 决定哪个通道是油门）。",
+    "paramNoEcho": "{{param}}：飞控未确认写入。请检查链路后重试。",
+    "paramRejected": "{{param}}：飞控保留了 {{value}}，未接受新值。",
+    "flashWriteRejected": "飞控拒绝了快闪内存写入（结果 {{result}}）。",
+    "calibrationLost": "{{type}} 校准在重启后未保留。飞行前请重新校准。"
   },
   "licenseValidator": {
     "invalidKeyFormat": "密钥格式无效",
@@ -717,5 +722,10 @@
     "pointCloudEmpty": "该点云没有可用的点。",
     "plyInvalid": "该文件不是可读取的 PLY 点云。",
     "unverifiedCrs": "已使用来自 epsg.io 的 EPSG:{{epsg}} 放置。其七参数基准转换未经 PROJ 验证，可能偏差数米；请对照地图检查位置。"
+  },
+  "missionShare": {
+    "invalidPackage": "这不是 ArduDeck 任务包。",
+    "saveTitle": "保存任务包",
+    "fileFilter": "ArduDeck 任务包"
   }
 }

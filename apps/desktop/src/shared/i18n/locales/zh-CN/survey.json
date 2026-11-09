@@ -10,13 +10,17 @@
     "manualTitle": "无相机：直接设置线距（例如地面车/割草机割幅宽度）",
     "saved": "已保存",
     "searchPlaceholder": "搜索相机...",
-    "sensorSummary": "{{sensorWidth}}x{{sensorHeight}}mm 传感器,{{focalLength}}mm,{{imageWidth}}x{{imageHeight}}px"
+    "sensorSummary": "{{sensorWidth}}x{{sensorHeight}}mm 传感器,{{focalLength}}mm,{{imageWidth}}x{{imageHeight}}px",
+    "magnetometerLabel": "磁力计",
+    "magnetometerHint": "点式传感器：设置测线间距，不拍照",
+    "magnetometerSummary": "点式传感器：直接设置测线间距，不触发相机"
   },
   "cameraPresets": {
     "custom": "自订",
     "groupMultispectral": "多光谱",
     "groupOther": "其他",
-    "manual": "手动"
+    "manual": "手动",
+    "magnetometer": "磁力计"
   },
   "enginePlanLegend": {
     "coveragePlan": "覆盖计划",
@@ -284,7 +288,12 @@
     "turnsPlaneTitle": "固定翼：在每个转弯处延伸较短的线端，以形成干净的 180° 跑道式转弯",
     "unlockShapeTip": "解锁形状，使其可再次被拖拽",
     "width": "宽度",
-    "zigzagHint": "标准之字形图样。地面车在每条线的末端转 180°。"
+    "zigzagHint": "标准之字形图样。地面车在每条线的末端转 180°。",
+    "lineSpacingM": "测线间距 (m)",
+    "sensorSpacingHint": "测绘线之间的距离。典型的磁力计测绘以 10 到 50 m 飞行。",
+    "tieLines": "联络线",
+    "tieLinesHint": "每 {{every}} 条测绘线加一条垂直联络线，在测绘线之后飞行。用于将各测线相互调平。",
+    "tieLinesOff": "关闭。磁力计测绘通常每 5 到 10 条测线加一条。"
   },
   "surveyMapOverlay": {
     "clickToAddControlPoint": "点击以新增控制点",
@@ -319,7 +328,11 @@
       "description": "地面载具。直接设置廊道宽度。",
       "name": "地面车 / 割草机"
     },
-    "savedPreset": "已保存的预设"
+    "savedPreset": "已保存的预设",
+    "magnetometer": {
+      "name": "磁力计",
+      "description": "低空、慢速、离地高度恒定。使用联络线进行调平。"
+    }
   },
   "surveyRegen": {
     "generatorNotInstalled": "未安装生成器「{{generatorId}}」",

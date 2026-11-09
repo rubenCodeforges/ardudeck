@@ -22,7 +22,8 @@
       "spoilers": "Plane w/ Spoilers",
       "vectored": "Vectored (default)",
       "vectored6dof": "Vectored 6DOF",
-      "vtail": "V-Tail Plane"
+      "vtail": "V-Tail Plane",
+      "glider": "Glider"
     },
     "startFailed": "Failed to start SITL"
   },

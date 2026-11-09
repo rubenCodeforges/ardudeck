@@ -22,7 +22,8 @@
       "spoilers": "带扰流板的飞机",
       "vectored": "矢量式（预设）",
       "vectored6dof": "矢量式 6DOF",
-      "vtail": "V 尾飞机"
+      "vtail": "V 尾飞机",
+      "glider": "滑翔机"
     },
     "startFailed": "启动 SITL 失败"
   },
@@ -184,7 +185,8 @@
     "uploadedToVehicle": "已将 {{count}} 个航点上传到载具",
     "vehicleMissionLabel": "载具任务 @ {{stamp}}",
     "fromVehicleGroup": "来自载具 @ {{stamp}}",
-    "downloadedGroup": "下载于 @ {{stamp}}"
+    "downloadedGroup": "下载于 @ {{stamp}}",
+    "hazardBlocked": "上传被阻止：航线穿越危险区。请重新规划航线，或使用管理员 PIN 强制执行。"
   },
   "modesWizardStore": {
     "clearSlotFailed": "清除模式字段 {{i}} 失败",

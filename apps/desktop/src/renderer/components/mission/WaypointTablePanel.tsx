@@ -3,15 +3,16 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import {
-  Camera, Clock, Gauge, Crosshair, RotateCw, RotateCcw,
+  Camera, Clock, Gauge, Crosshair, Navigation, RotateCw, RotateCcw,
   Repeat, Wrench, Ruler, ArrowUpDown, ChevronRight, MoreHorizontal,
   RefreshCw, Pencil, Upload, Save, Play, Copy, Check,
   type LucideIcon,
 } from 'lucide-react';
 import { useVehicleMissionStore, groupVehicleState } from '../../stores/vehicle-mission-store';
-import { useMissionStore } from '../../stores/mission-store';
+import { useMissionStore, useFcSeqOffset } from '../../stores/mission-store';
 import { useHazardsStore } from '../../stores/hazards-store';
 import { useSurveyStore } from '../../stores/survey-store';
+import { useGuideStore } from '../../stores/guide-store';
 import { useSurveyAreaStore } from '../../stores/survey-area-store';
 import { useCargoEnabled, MISSION_LIBRARY_CARGO_SLUG } from '../../modules/capabilities';
 import { type Group, isSurveyGroup, type SurveyGroup, GROUP_COLOR_PALETTE, isAssignedToVehicle } from '../../../shared/mission-group-types';
@@ -45,7 +46,9 @@ import { useConnectionStore } from '../../stores/connection-store';
 import { useFleetVehicles } from '../../hooks/useFleet';
 import { useVehicleAppearanceStore, resolveVehicleColor } from '../../stores/vehicle-appearance-store';
 import { computeItemColors, SEGMENT_COLORS } from '../../utils/mission-segment-colors';
-import { validateMission } from '../../../shared/mission-validation';
+import { validateMission, hazardCrossings, type ZoneCrossing } from '../../../shared/mission-validation';
+import { HazardConflict } from './HazardConflict';
+import { useMissionLibraryStore } from '../../stores/mission-library-store';
 import { MissionValidationBadge } from './MissionValidationBadge';
 import { midMissionReturns, flownSeparately, flightBoundaries, vehicleItemNumbers } from './mission-end';
 import { predictFlownPath, turnRadiusFor, coverageGaps, type CornerCut } from './flown-path';
@@ -2156,6 +2159,12 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
     distributeGroupAcrossFleet,
   } = useMissionStore();
 
+  const fcSeqOffset = useFcSeqOffset();
+  const flyToWaypoint = useCallback(async (seq: number) => {
+    const res = await window.electronAPI.setCurrentWaypoint(seq + fcSeqOffset).catch(() => null);
+    useMissionStore.setState({ error: res?.success ? null : (res?.error ?? t('mission:waypointTable.list.flyToFailed')) });
+  }, [fcSeqOffset, t]);
+
   const libraryEnabled = useCargoEnabled(MISSION_LIBRARY_CARGO_SLUG);
   const saveGroupAsArea = useSurveyAreaStore((s) => s.saveGroupAsArea);
   const setSurveyGroupSource = useMissionStore((s) => s.setSurveyGroupSource);
@@ -2457,6 +2466,14 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
   const coverageGapAt = useCallback((seq: number) => coverageGapBySeq.get(seq), [coverageGapBySeq]);
   const hazards = useHazardsStore((s) => s.hazards);
   const missionHome = useMissionStore((s) => s.homePosition);
+  // Same conflict card as the toolbar's Upload, so a group's upload button behaves the same way.
+  const [groupZoneConflict, setGroupZoneConflict] = useState<{ crossings: ZoneCrossing[]; run: () => void } | null>(null);
+  const syncGroup = (groupId: string, run: () => void) => {
+    const ms = useMissionStore.getState();
+    const crossings = hazardCrossings(ms.getUploadItemsForGroup(groupId), useHazardsStore.getState().hazards, ms.homePosition);
+    if (crossings.length > 0) setGroupZoneConflict({ crossings, run });
+    else run();
+  };
   const validation = useMemo(
     () => validateMission(missionItems, groups, {
       isAir: true,
@@ -2742,6 +2759,22 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
     window.setTimeout(() => setCoordsCopied(false), 1200);
   };
 
+  // #164: the selected waypoints (e.g. a boundary walked or flown and downloaded) become a
+  // polygon guide in mission order, and a survey draft opens on it right away.
+  const handleMakePolygon = () => {
+    const source = multiSelected.size > 0 ? missionItems.filter(w => multiSelected.has(w.seq)) : missionItems;
+    const located = source.filter(w => commandHasLocation(w.command) && hasValidCoordinates(w.latitude, w.longitude));
+    if (located.length < 3) return;
+    const guides = useGuideStore.getState();
+    const res = guides.addSurveyedPoints(
+      located.map((w) => ({ lat: w.latitude, lng: w.longitude, label: `WP ${w.seq + 1}` })),
+      { connect: true, name: t('mission:waypointTable.list.polygonName', { from: located[0]!.seq + 1, to: located[located.length - 1]!.seq + 1 }) },
+    );
+    if (!res.ok) return;
+    const added = useGuideStore.getState().guides.at(-1);
+    if (added) useGuideStore.getState().startSurveyFromGuide(added.id);
+  };
+
   // each line that reads as a position, in any format, becomes a waypoint
   const handlePastePositions = async () => {
     let text = '';
@@ -2879,6 +2912,18 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
 
   return (
     <div className="h-full flex flex-col bg-surface">
+      {groupZoneConflict && (
+        <HazardConflict
+          crossings={groupZoneConflict.crossings}
+          missionName={useMissionLibraryStore.getState().selectedMission?.name ?? t('mission:missionShare.defaultName')}
+          onClose={() => setGroupZoneConflict(null)}
+          onContinue={() => {
+            const run = groupZoneConflict.run;
+            setGroupZoneConflict(null);
+            run();
+          }}
+        />
+      )}
       {/* Header: collapse/expand or, when multi-selected, bulk actions */}
       {missionItems.length > 0 && (
         <div className="relative shrink-0 px-3 py-1.5 border-b border-subtle flex items-center justify-between">
@@ -2950,6 +2995,15 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                   data-tip={t('mission:waypointTable.list.copySelectedTip')}
                 >
                   {coordsCopied ? t('mission:waypointTable.list.copied') : t('mission:waypointTable.list.copyCoords')}
+                </button>
+                <span className="text-content-tertiary text-[10px]">|</span>
+                <button {...ui('button', { variant: 'ghost' })}
+                  onClick={handleMakePolygon}
+                  disabled={missionItems.filter(w => multiSelected.has(w.seq) && commandHasLocation(w.command) && hasValidCoordinates(w.latitude, w.longitude)).length < 3}
+                  className="text-[10px] font-medium text-blue-400/80 hover:text-blue-300 transition-colors disabled:opacity-40 disabled:hover:text-blue-400/80"
+                  data-tip={t('mission:waypointTable.list.makePolygonTip')}
+                >
+                  {t('mission:waypointTable.list.makePolygon')}
                 </button>
                 <span className="text-content-tertiary text-[10px]">|</span>
                 <button {...ui('button', { variant: 'ghost' })}
@@ -3357,13 +3411,11 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                         if (opt) setGroupColor(group.id, opt.color);
                       }
                     }}
-                    onSync={() =>
-                      liveAssignedKey
-                        ? uploadGroupToVehicle(group.id, liveAssignedKey)
-                        : connectionState.isConnected
-                          ? uploadGroup(group.id)
-                          : saveGroupToFile(group.id)
-                    }
+                    onSync={() => {
+                      if (liveAssignedKey) syncGroup(group.id, () => void uploadGroupToVehicle(group.id, liveAssignedKey));
+                      else if (connectionState.isConnected) syncGroup(group.id, () => void uploadGroup(group.id));
+                      else void saveGroupToFile(group.id);
+                    }}
                     connected={connectionState.isConnected || !!liveAssignedKey}
                     onRename={(name) => renameGroup(group.id, name)}
                     onSetColor={(color) => setGroupColor(group.id, color)}
@@ -3582,6 +3634,22 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                       data-tip={t('mission:waypointTable.list.focusMap')}
                     >
                       <Crosshair className="w-4 h-4" />
+                    </button>
+                  )}
+
+                  {/* Fly to: retarget the connected vehicle to this waypoint (AUTO diverts at once). */}
+                  {!readOnly && connectionState.isConnected && commandHasLocation(wp.command) && (
+                    <button {...ui('icon-button')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void flyToWaypoint(wp.seq);
+                      }}
+                      className={`p-1 text-content-secondary hover:text-emerald-400 hover:bg-emerald-500/10 rounded transition-all shrink-0 ${
+                        isSelected || multiSelected.has(wp.seq) ? '' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
+                      }`}
+                      data-tip={t('mission:waypointTable.list.flyToWp', { n: wp.seq + 1 })}
+                    >
+                      <Navigation className="w-4 h-4" />
                     </button>
                   )}
 

@@ -4,6 +4,8 @@ import type { SceneAltitudeMode } from '@ardudeck/module-sdk';
 /** Local frame of every 3D view: x east, y up, z south, metres. */
 
 export const DEFAULT_MODEL_RADIUS_M = 30;
+/** Geometry whose lowest point sits this far above its origin carries absolute heights (the origin is a datum, not the base). */
+export const ABSOLUTE_HEIGHT_MIN_Y = 1;
 const M_PER_DEG_LAT = 111_320;
 const DEG = Math.PI / 180;
 
@@ -112,7 +114,11 @@ export interface ModelPlacement {
 export function resolvePlacement(input: PlacementInput, groundAt: GroundAt, bounds?: (LocalBounds & Partial<VerticalExtent>) | null): ModelPlacement {
   const groundOrigin = groundAt(input.origin.lat, input.origin.lng);
   const lowest = lowestGround(groundSamplePoints(input, bounds), groundAt);
-  const extent = input.pointCloud && bounds?.minY != null && bounds.maxY != null ? { minY: bounds.minY, maxY: bounds.maxY } : null;
+  const hasExtent = bounds?.minY != null && bounds.maxY != null;
+  // A georeferenced mesh whose vertices carry their own heights (a survey surface: origin at height 0, geometry tens of
+  // metres above it) holds the ground itself like a point cloud. Flooring its origin would lift it by the whole offset.
+  const ownHeights = hasExtent && bounds.minY! > ABSOLUTE_HEIGHT_MIN_Y;
+  const extent = (input.pointCloud || ownHeights) && hasExtent ? { minY: bounds.minY!, maxY: bounds.maxY! } : null;
   return {
     altMsl: modelAltitude(input.altitudeMode, input.origin.altMsl, groundOrigin != null && Number.isFinite(groundOrigin) ? groundOrigin : null, lowest, extent),
     quaternion: modelQuaternion(input.yawDeg, input.pitchDeg, input.rollDeg),

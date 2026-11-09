@@ -85,7 +85,12 @@
     "topSpeedToggle": "Schnelles Flugzeug",
     "topSpeedLabel": "Höchstgeschwindigkeit im Horizontalflug",
     "topSpeedHint": "Setzt AIRSPEED_MAX auf {{max}} m/s und AIRSPEED_CRUISE auf {{cruise}} m/s. Gilt ab dem nächsten Start; wurden diese Parameter in diesem Simulator schon geändert, EEPROM löschen anhaken, damit die neuen Grenzen greifen.",
-    "topSpeedValue": "{{speed}} km/h"
+    "topSpeedValue": "{{speed}} km/h",
+    "gliderRelease": "Ballonabwurf",
+    "gliderReleaseDesc": "Das Segler-Modell von ArduPilot steigt an einem Ballon auf (Steigen im Sticks-Instrument oder Joystick-Panel) und wird in dieser Höhe ausgeklinkt.",
+    "gliderReleaseLabel": "Ausklinkhöhe über Home",
+    "gliderReleaseValue": "{{m}} m",
+    "gliderReleaseHint": "Vor dem Ausklinken in FBWA oder AUTO armen. Die Home-Höhe oben ist die Geländehöhe, keine Starthöhe."
   },
   "customFrame": {
     "active": "Aktiv",
@@ -289,5 +294,14 @@
     "xplaneStep1": "Settings → Data Output → Netzwerkausgabe aktivieren",
     "xplaneStep2": "Senden an: <mono>127.0.0.1:49000</mono>",
     "xplaneStep3": "Aktivieren: Speeds, Pitch/Roll/Heading, Lat/Lon/Alt"
+  },
+  "balloon": {
+    "title": "Ballon",
+    "desc": "Segler-SITL: Den Segler am Ballon aufsteigen lassen und zum Gleiten ausklinken.",
+    "lift": "Steigen",
+    "liftTip": "Ballon steigt, solange aktiv (Servoausgang 6)",
+    "release": "Ausklinken",
+    "releaseTip": "Ballon jetzt trennen (Ausgang 10)",
+    "released": "Ausgeklinkt"
   }
 }

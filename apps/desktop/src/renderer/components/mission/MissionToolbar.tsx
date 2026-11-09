@@ -4,7 +4,7 @@ import { Fragment, useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { FileCode, Globe, Library, ListOrdered, Share2 } from 'lucide-react';
 import { useConnectionStore } from '../../stores/connection-store';
-import { useMissionStore } from '../../stores/mission-store';
+import { useMissionStore, clearHazardCrossingOverride } from '../../stores/mission-store';
 import { useSurveyStore } from '../../stores/survey-store';
 import {
   getModuleMissionPanels,
@@ -476,6 +476,7 @@ export function MissionToolbar({ onResetLayout, showToast }: MissionToolbarProps
   };
 
   const handleUpload = async () => {
+    clearHazardCrossingOverride();
     if (activeMode === 'mission') {
       const crossings = hazardCrossings(missionStore.missionItems, useHazardsStore.getState().hazards, missionStore.homePosition);
       if (crossings.length > 0) {

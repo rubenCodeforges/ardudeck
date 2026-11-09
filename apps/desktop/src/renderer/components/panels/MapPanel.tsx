@@ -37,6 +37,7 @@ import { dispatchMapCommand, type ActiveCommandTarget, type MapCommand } from '.
 import { useCommandTargetStore, useActiveVehicleTarget, commandTargetKey } from '../../stores/command-target-store';
 import { useImperativeMapLayer } from '../map/ImperativeMapLayer';
 import { MapCommandPopup } from '../map/MapCommandPopup';
+import { openWaypointPickerAt, PinWaypointPicker, WaypointPreviewMarker } from '../map/WaypointFlyTo';
 import { SmoothWheelZoom } from '../map/SmoothWheelZoom';
 import { useDraggableOverlay } from '../map/useDraggableOverlay';
 import { createPortal } from 'react-dom';
@@ -1044,6 +1045,8 @@ function SplitControl() {
   const [isOpen, setIsOpen] = useState(false);
   const target = useMapSplitStore((s) => s.target);
   const setTarget = useMapSplitStore((s) => s.setTarget);
+  const full = useMapSplitStore((s) => s.full);
+  const setFull = useMapSplitStore((s) => s.setFull);
 
   // Splittable panels: everything in the registry we have a renderer for,
   // except the map itself. Vision leads.
@@ -1081,6 +1084,27 @@ function SplitControl() {
           <div className="absolute right-0 top-full mt-1 bg-surface-solid border border-subtle rounded shadow-xl z-[1000] py-1 min-w-[160px] max-h-[320px] overflow-y-auto">
             {target && (
               <>
+                <button
+                  onClick={() => {
+                    setFull(!full);
+                    setIsOpen(false);
+                  }}
+                  className="w-full px-3 py-1.5 text-left text-xs text-content hover:bg-surface-raised transition-colors flex items-center gap-1.5"
+                >
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    {full ? (
+                      <>
+                        <rect x="3" y="4" width="18" height="16" rx="1.5" />
+                        <line x1="12" y1="4" x2="12" y2="20" />
+                      </>
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+                    )}
+                  </svg>
+                  {full
+                    ? t('panels:mapPanel.shareWithMap')
+                    : t('panels:mapPanel.fillWith', { panel: t(PANEL_COMPONENTS[target].titleKey) })}
+                </button>
                 <button
                   onClick={() => {
                     setTarget(null);
@@ -1926,6 +1950,7 @@ const MissionOverlays = React.memo(function MissionOverlays() {
       id: string;
       color: string;
       dim: boolean;
+      vehicleKey: string | null;
       waypoints: MissionItem[];
     }> = [];
     for (const p of vehiclePlans) {
@@ -1937,7 +1962,7 @@ const MissionOverlays = React.memo(function MissionOverlays() {
         if (viewMode === 'selected') continue;
         dim = true;
       }
-      plans.push({ id: p.id, color: p.color, dim, waypoints: wps });
+      plans.push({ id: p.id, color: p.color, dim, vehicleKey: p.vehicleKey, waypoints: wps });
     }
     return plans;
   }, [vehiclePlans, activeVehicleKey, viewMode]);
@@ -2003,11 +2028,20 @@ const MissionOverlays = React.memo(function MissionOverlays() {
                       : createWaypointIcon(wp, wp.seq === currentSeq, plan.color, reachedSeq !== null && wp.seq <= reachedSeq)
                 }
                 zIndexOffset={role === 'current' ? 1000 : 0}
+                eventHandlers={plan.vehicleKey === null ? {
+                  click: (e) => {
+                    L.DomEvent.stopPropagation(e.originalEvent);
+                    openWaypointPickerAt(wp.seq, e.originalEvent.clientX, e.originalEvent.clientY);
+                  },
+                } : undefined}
               />
             ))}
           </React.Fragment>
         );
       })}
+
+      <WaypointPreviewMarker />
+      <PinWaypointPicker />
 
       {/* Mission home marker */}
       {missionHome && (
@@ -2630,6 +2664,9 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
   // panel, spanning both halves. The Leaflet map must be told its width changed
   // (invalidateSize) or it paints grey tiles.
   const splitTarget = useMapSplitStore((s) => s.target);
+  const splitFull = useMapSplitStore((s) => s.full);
+  // Filled: the target covers the whole map area under the instruments, so the map keeps full width.
+  const splitPane = splitFull ? null : splitTarget;
 
   // Opening the split swaps the cockpit to a profile sized for a half-width
   // map. First time it ASKS (preset / current / keep, with remember), after
@@ -2639,8 +2676,8 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
   const [splitPrompt, setSplitPrompt] = useState(false);
   useEffect(() => {
     const wasSplit = prevSplitRef.current !== null;
-    const isSplit = splitTarget !== null;
-    prevSplitRef.current = splitTarget;
+    const isSplit = splitPane !== null;
+    prevSplitRef.current = splitPane;
     if (isSplit === wasSplit) return;
     // A workspace layout set this split and restored its own cockpit already.
     if (useMapSplitStore.getState().consumeLayoutApply()) {
@@ -2665,7 +2702,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
       setSplitPrompt(false);
       store.exitSplitProfile();
     }
-  }, [splitTarget]);
+  }, [splitPane]);
   const onSplitPromptChoice = useCallback((action: 'preset' | 'current' | 'keep', remember: boolean) => {
     setSplitPrompt(false);
     const store = useMapInstrumentsStore.getState();
@@ -2711,7 +2748,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
   useEffect(() => {
     const id = requestAnimationFrame(invalidateMapSize);
     return () => cancelAnimationFrame(id);
-  }, [splitTarget, effectiveRatio, invalidateMapSize]);
+  }, [splitPane, effectiveRatio, invalidateMapSize]);
 
   const handleSplitRatio = useCallback((ratio: number) => {
     const clamped = Math.max(MAP_SPLIT_RATIO_MIN, Math.min(MAP_SPLIT_RATIO_MAX, ratio));
@@ -2823,7 +2860,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
       <div ref={splitRowRef} className="flex-1 min-h-0 flex">
         <div
           className="relative h-full min-w-0"
-          style={{ flexGrow: splitTarget ? effectiveRatio : 1, flexBasis: 0 }}
+          style={{ flexGrow: splitPane ? effectiveRatio : 1, flexBasis: 0 }}
         >
       {MapBackground && cargoTheme && (
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
@@ -2995,6 +3032,11 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
               toggled from the Instruments menu). Inside the map half, NOT the
               panel root: on split their anchors re-derive against the map's own
               box, so they stay off the second surface. */}
+          {splitFull && splitTarget && (
+            <div className="absolute inset-0 z-[790]">
+              <SecondSurface panelId={splitTarget} />
+            </div>
+          )}
           <InstrumentsLayer />
           <ProximityDiscovery />
       {/* Top toolbar: inside the map half, so on split it hugs the MAP's
@@ -3025,6 +3067,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
           </svg>
         </button>
+        {splitFull ? <SplitControl /> : (<>
         <MapLayersControl
           baseLayers={Object.keys(TELEMETRY_LAYERS) as LayerKey[]}
           activeLayer={currentLayer}
@@ -3139,12 +3182,13 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
           </svg>
           {t('panels:mapPanel.mission')}
         </button>
+        </>)}
       </div>
       )}
         </div>
 
         {/* In-map split: divider + second surface (Vision first). */}
-        {splitTarget && (
+        {splitPane && (
           <>
             <SplitDivider
               rowRef={splitRowRef}
@@ -3156,7 +3200,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
               className="relative h-full min-w-0"
               style={{ flexGrow: 1 - effectiveRatio, flexBasis: 0 }}
             >
-              <SecondSurface panelId={splitTarget} />
+              <SecondSurface panelId={splitPane} />
             </div>
           </>
         )}

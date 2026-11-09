@@ -358,6 +358,7 @@ const FALLBACK_FRAMES: SitlFrameInfo[] = [
   { value: 'plane',        label: 'Plane (default)',  vehicleType: 'plane',  category: 'Plane',      defaultParamFiles: ['default_params/plane.parm'] }, // i18n-exempt
   { value: 'quadplane',    label: 'Quadplane',        vehicleType: 'plane',  category: 'Quadplane',  defaultParamFiles: ['default_params/quadplane.parm'] }, // i18n-exempt
   { value: 'plane-tailsitter', label: 'Plane Tailsitter', vehicleType: 'plane', category: 'Tailsitter', defaultParamFiles: ['default_params/plane-tailsitter.parm'] }, // i18n-exempt
+  { value: 'glider',       label: 'Glider',           vehicleType: 'plane',  category: 'Plane',      defaultParamFiles: ['default_params/glider.parm'] }, // i18n-exempt
   { value: 'firefly',      label: 'Firefly (Y6 VTOL)',vehicleType: 'plane',  category: 'Quadplane',  defaultParamFiles: ['default_params/firefly.parm'] }, // i18n-exempt
   { value: 'rover',        label: 'Rover (default)',  vehicleType: 'rover',  category: 'Rover',      defaultParamFiles: ['default_params/rover.parm'] }, // i18n-exempt
   { value: 'rover-skid',   label: 'Skid Steer Rover', vehicleType: 'rover',  category: 'Rover',      defaultParamFiles: ['default_params/rover-skid.parm'] }, // i18n-exempt

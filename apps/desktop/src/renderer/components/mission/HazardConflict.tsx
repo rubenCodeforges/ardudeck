@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle } from 'lucide-react';
 import { useMissionStore, allowHazardCrossingOnce } from '../../stores/mission-store';
@@ -43,8 +44,9 @@ export function HazardConflict({ crossings, missionName, onClose, onContinue }: 
     ? t('mission:hazards.titleFromHome', { to: first.toSeq + 1, zone: first.zone.name })
     : t('mission:hazards.title', { from: first.fromSeq + 1, to: first.toSeq + 1, zone: first.zone.name });
 
-  return (
-    <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-6 pointer-events-none">
+  // Portalled to the body: inside a panel it would be clipped by that panel (the height profile cut it off).
+  return createPortal(
+    <div className="fixed inset-x-0 bottom-6 z-[1000] flex justify-center px-6 pointer-events-none">
       <div className="pointer-events-auto w-full max-w-3xl bg-surface-solid border border-red-500 rounded-xl shadow-2xl px-4 py-3.5 flex flex-col gap-2.5">
         <div className="flex items-center gap-2.5">
           <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
@@ -89,6 +91,7 @@ export function HazardConflict({ crossings, missionName, onClose, onContinue }: 
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

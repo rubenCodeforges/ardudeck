@@ -71,7 +71,7 @@ async function fetchBatch(batch: Array<{ lat: number; lon: number }>): Promise<A
       return none;
     }
     if (!response.ok) {
-      warnThrottled(`status:${response.status}`, 'Elevation API error:', response.status);
+      warnThrottled(`status:${response.status}`, 'Elevation API error:', response.status); // i18n-exempt
       return none;
     }
     consecutiveLimits = 0;
@@ -79,7 +79,7 @@ async function fetchBatch(batch: Array<{ lat: number; lon: number }>): Promise<A
     const elevations: unknown[] = data.elevation ?? [];
     return batch.map((_, j) => (typeof elevations[j] === 'number' ? elevations[j] as number : null));
   } catch (error) {
-    warnThrottled('network', 'Failed to fetch elevations batch:', error);
+    warnThrottled('network', 'Failed to fetch elevations batch:', error); // i18n-exempt
     return none;
   }
 }

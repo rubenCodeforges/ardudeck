@@ -743,6 +743,7 @@
     "savedCountToFile_other": "已將 {{count}} 個參數儲存到檔案",
     "savedToFile": "參數已儲存到檔案",
     "savedToFlash": "參數已成功儲存到快閃記憶體",
+    "savedUnconfirmed": "參數已送出並確認,但飛控未回應快閃記憶體寫入。飛行前請重新啟動並檢查數值。",
     "searchPlaceholder": "搜尋參數...(支援正規表示式)",
     "selectedCount": "已選 {{selected}} / {{total}}",
     "showAllParameters": "顯示所有參數",
@@ -1024,5 +1025,9 @@
   "paramsValidBitmask": "位元遮罩值必須是非負整數",
   "paramsValidUnknownValue": "數值 {{value}} 不在已知數值清單中",
   "paramsValidRange": "數值必須介於 {{min}} 與 {{max}}{{units}} 之間",
-  "paramsValidIncrement": "數值應為 {{increment}} 的倍數"
+  "paramsValidIncrement": "數值應為 {{increment}} 的倍數",
+  "defaultColumn": {
+    "header": "預設值",
+    "reset": "重設為預設值({{value}})。請寫入快閃記憶體以保留。"
+  }
 }

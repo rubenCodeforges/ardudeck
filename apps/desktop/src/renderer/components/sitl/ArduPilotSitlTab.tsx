@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useCallback, useState } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
-import { useArduPilotSitlStore, ARDUPILOT_MODELS } from '../../stores/ardupilot-sitl-store';
+import { useArduPilotSitlStore, ARDUPILOT_MODELS, GLIDER_RELEASE_MIN_M, GLIDER_RELEASE_MAX_M } from '../../stores/ardupilot-sitl-store';
 import { supportsTopSpeed, TOP_SPEED_MIN_KMH, TOP_SPEED_MAX_KMH } from '../../../shared/sitl-top-speed';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useSettingsStore } from '../../stores/settings-store';
@@ -108,6 +108,8 @@ export default function ArduPilotSitlTab() {
     setUseArduDeckSim,
     topSpeedKmh,
     setTopSpeedKmh,
+    gliderReleaseM,
+    setGliderReleaseM,
     startRcSender,
     stopRcSender,
     setRcState,
@@ -559,6 +561,31 @@ export default function ArduPilotSitlTab() {
             </div>
 
             <CustomFramePanel />
+
+            {/* Glider: ArduPilot's balloon model lifts it on RC6 and lets go at SIM_GLD_BLN_BRST */}
+            {vehicleType === 'plane' && model === 'glider' && (
+              <div className="rounded-lg border border-subtle bg-surface p-3 mt-3 space-y-2">
+                <div>
+                  <div className="text-sm font-medium text-content">{t('sitl:ardupilot.gliderRelease')}</div>
+                  <div className="text-xs text-content-secondary">{t('sitl:ardupilot.gliderReleaseDesc')}</div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-content-secondary">{t('sitl:ardupilot.gliderReleaseLabel')}</label>
+                  <span className="text-xs font-mono text-content tabular-nums">{t('sitl:ardupilot.gliderReleaseValue', { m: gliderReleaseM })}</span>
+                </div>
+                <input
+                  type="range"
+                  min={GLIDER_RELEASE_MIN_M}
+                  max={GLIDER_RELEASE_MAX_M}
+                  step={50}
+                  value={gliderReleaseM}
+                  onChange={(e) => setGliderReleaseM(parseFloat(e.target.value))}
+                  disabled={isRunning || isStarting}
+                  className="w-full h-2 bg-surface-raised rounded-lg appearance-none cursor-pointer accent-amber-500 disabled:opacity-50"
+                />
+                <p className="text-xs text-content-tertiary">{t('sitl:ardupilot.gliderReleaseHint')}</p>
+              </div>
+            )}
 
             {/* Fast VTOL: built-in quadplane physics with the jet cruise motor and matching drag */}
             {supportsTopSpeed(vehicleType, model) && (

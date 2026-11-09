@@ -321,7 +321,8 @@
     "rcMapUnknown": "Stick override is off until the vehicle's parameters are loaded (RCMAP decides which channel is throttle).",
     "paramNoEcho": "{{param}}: the flight controller did not confirm the write. Check the link and try again.",
     "paramRejected": "{{param}}: the flight controller kept {{value}} and did not take the new value.",
-    "flashWriteRejected": "The flight controller refused the flash write (result {{result}})."
+    "flashWriteRejected": "The flight controller refused the flash write (result {{result}}).",
+    "calibrationLost": "{{type}} calibration did NOT survive the reboot. Recalibrate before flying."
   },
   "licenseValidator": {
     "invalidKeyFormat": "Invalid key format",

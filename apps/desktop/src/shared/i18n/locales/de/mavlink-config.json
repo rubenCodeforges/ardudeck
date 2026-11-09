@@ -651,6 +651,7 @@
     "saveAll": "Alle Änderungen speichern",
     "saveAllTip": "Parameter im permanenten Speicher des Flugcontrollers sichern",
     "savedToFlash": "Parameter erfolgreich im Flash gespeichert",
+    "savedUnconfirmed": "Parameter gesendet und bestätigt, aber der Flugcontroller hat das Schreiben in den Flash nicht quittiert. Starten Sie neu und prüfen Sie die Werte vor dem Flug.",
     "sysId": "SysID {{id}}",
     "tabs": {
       "arming": "Arming",
@@ -717,7 +718,9 @@
     "writeBody": "Die folgenden {{count}} Parameter werden dauerhaft im Flugcontroller gespeichert.",
     "writeRebootWarning": "Einige Parameter erfordern einen Neustart, um wirksam zu werden.",
     "writeTitle": "Parameter in Flash schreiben",
-    "writeToFlash": "In Flash schreiben"
+    "writeToFlash": "In Flash schreiben",
+    "heliBuildMultirotor": "Auf diesem Board läuft die ArduCopter-Helikopter-Firmware. Sie akzeptiert nur Helikopter-Rahmen, daher wird FRAME_CLASS Quad, Hexa oder Octa nie übernommen. Flashen Sie den normalen ArduCopter-Build (Multirotor).",
+    "reflashCopter": "ArduCopter neu flashen"
   },
   "mavlinkPidSchemes": {
     "planeDesc": "Starrflügel-Regler",
@@ -822,7 +825,10 @@
     "planeTitle": "Kein Motortest bei Flächenflugzeugen",
     "planeBody": "ArduPlane kann Motoren nur bei einem QuadPlane (VTOL) von der Bodenstation aus drehen, und zwar die Hubmotoren. Für den Vortriebsmotor eines reinen Flächenflugzeugs hat die Firmware keinen Motortest, in keiner Bodenstation.",
     "planeHow": "Vortriebsmotor prüfen: Propeller abnehmen, in MANUAL armen und den Gasknüppel anheben. Welcher Ausgang ihn ansteuert, zeigt Servo Output.",
-    "quadplaneNote": "Testet die VTOL-Hubmotoren. Ein eigener Vortriebsmotor gehört nicht zum Motortest von ArduPilot; ihn mit Gas in MANUAL und ohne Propeller prüfen."
+    "quadplaneNote": "Testet die VTOL-Hubmotoren. Ein eigener Vortriebsmotor gehört nicht zum Motortest von ArduPilot; ihn mit Gas in MANUAL und ohne Propeller prüfen.",
+    "frameUnwritten": "FRAME_CLASS oder FRAME_TYPE hat eine Änderung, die noch nicht auf das Board geschrieben ist. Drücken Sie Schreiben, um sie in den Flash zu schreiben, und starten Sie dann den Flugcontroller neu: Der Motortest verwendet den Rahmen, mit dem das Board läuft (hier angezeigt).",
+    "frameUndefined": "FRAME_CLASS ist auf dem Board Undefined (0), daher hat es kein Motorlayout und verweigert den Motortest. Setzen Sie FRAME_CLASS und FRAME_TYPE, schreiben Sie in den Flash und starten Sie den Flugcontroller neu.",
+    "frameReboot": "Der neue Rahmen ist gespeichert, aber der Flugcontroller erstellt sein Motorlayout beim Booten. Starten Sie ihn vor dem Motortest neu, sonst verweigert er mit \"Check frame class and type\"."
   },
   "notifyTab": {
     "allSoundsOn": "Alle Töne an",
@@ -1061,6 +1067,7 @@
     "savedToFile_one": "{{count}} Parameter in Datei gespeichert",
     "savedToFile_other": "{{count}} Parameter in Datei gespeichert",
     "savedToFlash": "Parameter erfolgreich im Flash gespeichert",
+    "savedUnconfirmed": "Parameter gesendet und bestätigt, aber der Flugcontroller hat das Schreiben in den Flash nicht quittiert. Starten Sie neu und prüfen Sie die Werte vor dem Flug.",
     "searchPlaceholder": "Parameter suchen... (Regex unterstützt)",
     "selectedCount": "{{selected}} von {{total}} ausgewählt",
     "setValueTip": "{{id}} = {{code}} setzen ({{label}})",
@@ -1830,6 +1837,7 @@
     "activeNote": "Armed im Modus MANUAL. Override-Streaming mit {{hz}}Hz. Klicken Sie auf Freigeben, um zu stoppen und zu disarmen.",
     "copterUnavailable": "Bei Multicoptern nicht verfügbar. Gas in einen gearmten Copter einzuspeisen, lässt die Motoren drehen. Verwenden Sie den <b>Motortest</b>, um die Ausgänge Motor für Motor auf dem Prüfstand zu prüfen.",
     "errArm": "Arming des Fahrzeugs fehlgeschlagen - prüfen Sie die Meldungen auf den PreArm-Grund",
+    "needsRcMap": "Laden Sie zuerst die Parameter: RCMAP bestimmt, welcher Kanal Gas ist, daher bleibt der Test aus, bis das bekannt ist.",
     "errRelaxArmingCheck": "Lockern von ARMING_CHECK fehlgeschlagen",
     "errSetManual": "Setzen des Modus MANUAL fehlgeschlagen",
     "fcColumnHint": "Die FC-Spalte zeigt, was der Autopilot aktuell auf {{channels}} liest (Msg 65). Grün = entspricht Ihrem Schieberegler (Override greift). Bernstein = Abweichung. Strich = FC meldet überhaupt kein RC.",

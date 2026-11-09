@@ -225,7 +225,9 @@
     "toggleHeadingLine": "切换航向线",
     "toggleMission": "切换任务叠加层",
     "toggleMissionFull": "切换任务叠加层（航点、地理围栏、集结点）",
-    "toggleTerrain": "切换地形高程"
+    "toggleTerrain": "切换地形高程",
+    "fillWith": "以{{panel}}填满",
+    "shareWithMap": "与地图分屏"
   },
   "messagesPanel": {
     "count_one": "{{count}} 则消息",

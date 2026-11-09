@@ -50,5 +50,17 @@
   "bridgeMoved": {
     "text": "紀念 Sir Patrick Stewart 的艦橋主題現已成為 Hangar 中的 Cargo。",
     "open": "在 Hangar 中開啟"
+  },
+  "voiceLevel": {
+    "title": "語音播報",
+    "all": "全部",
+    "allDesc": "所有播報：模式、航點、起飛降落、警報",
+    "allTip": "語音：全部播報",
+    "important": "僅重要",
+    "importantDesc": "警報、失控保護、警告以及解鎖 / 上鎖",
+    "importantTip": "語音：僅重要",
+    "off": "關閉",
+    "offDesc": "不播報任何語音",
+    "offTip": "語音：關閉"
   }
 }

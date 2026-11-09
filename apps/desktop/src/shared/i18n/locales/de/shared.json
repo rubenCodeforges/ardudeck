@@ -490,7 +490,9 @@
     "emptyGroup": "Gruppe „{{name}}“ hat keine Wegpunkte.",
     "midMissionReturn_one": "{{count}} Vermessung kehrt vor dem Missionsende nach Home zurück. Verbinden Sie sie, um direkt weiterzufliegen.",
     "midMissionReturn_other": "{{count}} Vermessungen kehren vor dem Missionsende nach Home zurück. Verbinden Sie sie, um direkt weiterzufliegen.",
-    "noTakeoff": "Kein Startbefehl - das Fahrzeug fliegt aus seinem aktuellen Zustand zum ersten Wegpunkt."
+    "noTakeoff": "Kein Startbefehl - das Fahrzeug fliegt aus seinem aktuellen Zustand zum ersten Wegpunkt.",
+    "hazard": "Abschnitt {{from}} bis {{to}} kreuzt die Gefahrenzone \"{{zone}}\"",
+    "hazardFromHome": "Abschnitt von Home bis {{to}} kreuzt die Gefahrenzone \"{{zone}}\""
   },
   "parameterGroups": {
     "all": {

@@ -490,7 +490,9 @@
     "emptyGroup": "群組「{{name}}」沒有航點。",
     "midMissionReturn_one": "{{count}} survey returns home before the mission ends. Connect them to fly straight on.",
     "midMissionReturn_other": "有 {{count}} 個測繪在任務結束前就返航。請將它們連接起來,以便直接繼續飛行。",
-    "noTakeoff": "沒有起飛指令:載具會從目前狀態直接飛往第一個航點。"
+    "noTakeoff": "沒有起飛指令:載具會從目前狀態直接飛往第一個航點。",
+    "hazard": "航段 {{from}} 到 {{to}} 穿越危險區「{{zone}}」",
+    "hazardFromHome": "從 Home 到 {{to}} 的航段穿越危險區「{{zone}}」"
   },
   "parameterGroups": {
     "all": {

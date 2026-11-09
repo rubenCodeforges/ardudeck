@@ -279,11 +279,21 @@
       "supports": "{{firmware}} 僅支援:{{types}}。",
       "title": "設定檔相容性問題"
     },
+    "telemetryLog": {
+      "title": "遙測日誌",
+      "record": "將遙測記錄到 .tlog 檔案",
+      "recordHint": "每次連線都會以 MAVLink .tlog 格式儲存在應用程式資料資料夾中，可用任何 tlog 檢視器開啟。保留最新的 50 個檔案，總計不超過 2 GB。",
+      "openFolder": "開啟日誌資料夾"
+    },
     "terrainUplink": {
       "title": "地形上傳",
       "serve": "向載具提供地形",
       "serveHint": "依地圖高程資料回應自動駕駛儀的地形請求,包括 Cargo 提供的任何測繪曲面",
-      "counts": "已提供區塊:{{served}},缺少資料:{{missing}}"
+      "counts": "已提供區塊:{{served}},缺少資料:{{missing}}",
+      "unavailable": "缺少 {{count}} 個區塊:高程圖磚無法使用(離線或被封鎖?)。",
+      "unavailableHint": "請檢查網路連線並清除圖磚快取。沒有地形資料時,飛行器無法使用相對地形的高度,可能會返航。",
+      "gaps": "{{count}} 個區塊缺少部分高程資料(地圖資料邊緣);飛行器會持續請求。",
+      "errors": "{{count}} 個區塊因錯誤失敗;請查看主控台日誌。"
     },
     "console": {
       "title": "主控台",
@@ -557,7 +567,20 @@
       "waveHeight": "浪高",
       "windFrom": "風來自 {{dir}}"
     },
-    "weight": "重量"
+    "weight": "重量",
+    "carto": {
+      "label": "CARTO API 金鑰(深色地圖樣式)",
+      "freeAt": "- 沒有金鑰時,深色樣式會使用 Esri。取得金鑰:",
+      "placeholder": "貼上你的 CARTO API 金鑰",
+      "configured": "金鑰已設定:深色樣式使用 CARTO"
+    },
+    "voiceVolume": {
+      "title": "語音音量",
+      "hint": "調試和飛行分別設定音量：調試時可以調低或關閉語音，飛行器解鎖後立即恢復到解鎖音量。頂欄的靜音按鈕仍會關閉所有聲音。",
+      "disarmed": "已上鎖",
+      "armed": "已解鎖",
+      "silent": "靜音"
+    }
   },
   "signingSection": {
     "active": "使用中",

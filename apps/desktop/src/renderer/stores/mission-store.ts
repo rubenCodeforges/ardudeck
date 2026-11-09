@@ -708,14 +708,18 @@ export function allowHazardCrossingOnce(): void {
   zoneOverrideOnce = true;
 }
 
+/** Drops an unused override, e.g. when the pilot cancels the upload dialog that followed it. */
+export function clearHazardCrossingOverride(): void {
+  zoneOverrideOnce = false;
+}
+
 function blockedByHazards(items: MissionItem[], home: HomePosition | null): boolean {
+  // The override covers exactly one upload attempt: always spent, never left armed for a later one.
+  const overridden = zoneOverrideOnce;
+  zoneOverrideOnce = false;
   const zones = useHazardsStore.getState().hazards;
   if (zones.length === 0 || hazardCrossings(items, zones, home).length === 0) return false;
-  if (zoneOverrideOnce) {
-    zoneOverrideOnce = false;
-    return false;
-  }
-  return true;
+  return !overridden;
 }
 
 export const useMissionStore = create<MissionStore>((set, get) => ({

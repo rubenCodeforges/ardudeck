@@ -13,7 +13,11 @@
     "setProfile": "Fahrzeugprofil für Flugdauer festlegen",
     "unknown": "unbekannt",
     "usableEach": "je ~{{duration}} nutzbar",
-    "wind": "Wind"
+    "wind": "Wind",
+    "flightTimeWindDetail": "gegen den vorhergesagten Bodenwind ({{duration}} bei Windstille); in der Höhe ist der Wind meist stärker",
+    "windBlocked": "Abschnitte gegen den Wind",
+    "windBlockedDetail": "der vorhergesagte Wind liegt auf diesen Abschnitten auf oder über der Reisegeschwindigkeit, daher kann das Fluggerät sie nicht halten",
+    "flightTimeLayerWindDetail": "gegen den Wind der Windschicht auf {{altitude}} ({{duration}} bei Windstille)"
   },
   "joystickSafety": {
     "assign": "Zuerst {{names}} zuweisen",

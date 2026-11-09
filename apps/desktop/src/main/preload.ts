@@ -1226,6 +1226,9 @@ const api = {
   logEraseAll: (): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.LOG_ERASE_ALL),
 
+  tlogOpenFolder: (): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TLOG_OPEN_FOLDER),
+
   logStorageInfo: (): Promise<{ totalBytes: number; usedBytes: number; availableBytes: number } | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.LOG_STORAGE_INFO),
 

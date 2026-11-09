@@ -353,6 +353,9 @@ interface SettingsStore {
 
   // Voice announcer
   voiceAlertsMuted: boolean;
+  /** Top-bar voice level, like car navigation: every callout, only important ones (alerts, failsafes, arm), or none. 'off' keeps voiceAlertsMuted true. */
+  voiceAlertLevel: 'all' | 'important' | 'off';
+  setVoiceAlertLevel: (level: 'all' | 'important' | 'off') => void;
   setVoiceAlertsMuted: (muted: boolean) => void;
 
   // Console
@@ -361,6 +364,12 @@ interface SettingsStore {
   /** Answer the autopilot's terrain requests from the map's DEM tiles. */
   serveTerrain: boolean;
   setServeTerrain: (enabled: boolean) => void;
+  recordTlog: boolean;
+  setRecordTlog: (enabled: boolean) => void;
+  /** Voice volume 0-100 while every vehicle is disarmed (setup on the bench) and while one is armed (#165). */
+  voiceVolumeDisarmed: number;
+  voiceVolumeArmed: number;
+  setVoiceVolume: (state: 'armed' | 'disarmed', volume: number) => void;
 
   // MAVLink source system id of this station (1-255). Distinct ids let
   // several GCS share one vehicle without corrupting param/mission transfers.
@@ -841,9 +850,13 @@ export const useSettingsStore = create<SettingsStore>()(
     set({ tourPromptsEnabled: enabled });
   },
 
+  voiceAlertLevel: 'all',
+  setVoiceAlertLevel: (level) => {
+    set({ voiceAlertLevel: level, voiceAlertsMuted: level === 'off' });
+  },
   voiceAlertsMuted: false,
   setVoiceAlertsMuted: (muted: boolean) => {
-    set({ voiceAlertsMuted: muted });
+    set({ voiceAlertsMuted: muted, voiceAlertLevel: muted ? 'off' : 'all' });
   },
 
   showDebugLogs: false,
@@ -853,6 +866,18 @@ export const useSettingsStore = create<SettingsStore>()(
   serveTerrain: true,
   setServeTerrain: (enabled: boolean) => {
     set({ serveTerrain: enabled });
+    void get()._saveSettings();
+  },
+  recordTlog: true,
+  voiceVolumeDisarmed: 100,
+  voiceVolumeArmed: 100,
+  setVoiceVolume: (state, volume) => {
+    const v = Math.max(0, Math.min(100, Math.round(volume)));
+    set(state === 'armed' ? { voiceVolumeArmed: v } : { voiceVolumeDisarmed: v });
+    void get()._saveSettings();
+  },
+  setRecordTlog: (enabled: boolean) => {
+    set({ recordTlog: enabled });
     void get()._saveSettings();
   },
 
@@ -1036,8 +1061,14 @@ export const useSettingsStore = create<SettingsStore>()(
             : 'relative'),
           tourPromptsEnabled: settingsRecord.tourPromptsEnabled !== false,
           voiceAlertsMuted: !!settingsRecord.voiceAlertsMuted,
+          voiceAlertLevel: settingsRecord.voiceAlertsMuted
+            ? 'off'
+            : settingsRecord.voiceAlertLevel === 'important' ? 'important' : 'all',
           showDebugLogs: !!settingsRecord.showDebugLogs,
           serveTerrain: settingsRecord.serveTerrain !== false,
+          recordTlog: settingsRecord.recordTlog !== false,
+          voiceVolumeDisarmed: typeof settingsRecord.voiceVolumeDisarmed === 'number' ? Math.max(0, Math.min(100, settingsRecord.voiceVolumeDisarmed as number)) : 100,
+          voiceVolumeArmed: typeof settingsRecord.voiceVolumeArmed === 'number' ? Math.max(0, Math.min(100, settingsRecord.voiceVolumeArmed as number)) : 100,
           gcsSysid: typeof settingsRecord.gcsSysid === 'number'
             ? Math.min(255, Math.max(1, Math.round(settingsRecord.gcsSysid)))
             : 255,
@@ -1079,6 +1110,9 @@ export const useSettingsStore = create<SettingsStore>()(
         defaultSitlType: state.defaultSitlType,
         preferredFirmwareSource: state.preferredFirmwareSource,
         serveTerrain: state.serveTerrain,
+        recordTlog: state.recordTlog,
+        voiceVolumeDisarmed: state.voiceVolumeDisarmed,
+        voiceVolumeArmed: state.voiceVolumeArmed,
         telemetrySpeed: state.telemetrySpeed,
         unitPreferences: state.unitPreferences,
         coordinateFormat: state.coordinateFormat,
@@ -1093,6 +1127,7 @@ export const useSettingsStore = create<SettingsStore>()(
         defaultCommandAltFrame: state.defaultCommandAltFrame,
         tourPromptsEnabled: state.tourPromptsEnabled,
         voiceAlertsMuted: state.voiceAlertsMuted,
+        voiceAlertLevel: state.voiceAlertLevel,
         showDebugLogs: state.showDebugLogs,
         gcsSysid: state.gcsSysid,
         aiProvider: state.aiProvider,
@@ -1435,6 +1470,7 @@ useSettingsStore.subscribe(
     advancedCommandsUnlocked: state.advancedCommandsUnlocked,
     defaultCommandAltFrame: state.defaultCommandAltFrame,
     voiceAlertsMuted: state.voiceAlertsMuted,
+    voiceAlertLevel: state.voiceAlertLevel,
     showDebugLogs: state.showDebugLogs,
     gcsSysid: state.gcsSysid,
     aiProvider: state.aiProvider,

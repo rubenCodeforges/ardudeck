@@ -85,7 +85,12 @@
     "topSpeedToggle": "高速機身",
     "topSpeedLabel": "平飛最高速度",
     "topSpeedHint": "將 AIRSPEED_MAX 設為 {{max}} m/s,AIRSPEED_CRUISE 設為 {{cruise}} m/s。下次啟動時生效;如果你之前曾在此模擬器上變更過這些參數,請勾選「清除 EEPROM」,新的限制才會套用。",
-    "topSpeedValue": "{{speed}} km/h"
+    "topSpeedValue": "{{speed}} km/h",
+    "gliderRelease": "氣球投放",
+    "gliderReleaseDesc": "ArduPilot 的滑翔機模型由氣球帶升(在 Sticks 儀表或 Joystick 面板中點擊上升),並在此高度釋放。",
+    "gliderReleaseLabel": "相對 Home 的釋放高度",
+    "gliderReleaseValue": "{{m}} 公尺",
+    "gliderReleaseHint": "釋放前請在 FBWA 或 AUTO 模式下解鎖。上方的 Home 高度是地面海拔,不是起始高度。"
   },
   "customFrame": {
     "active": "使用中",
@@ -289,5 +294,14 @@
     "xplaneStep1": "Settings → Data Output → 啟用網路輸出",
     "xplaneStep2": "傳送到:<mono>127.0.0.1:49000</mono>",
     "xplaneStep3": "啟用:Speeds、Pitch/Roll/Heading、Lat/Lon/Alt"
+  },
+  "balloon": {
+    "title": "氣球",
+    "desc": "滑翔機 SITL:用氣球帶升滑翔機,然後釋放滑翔。",
+    "lift": "上升",
+    "liftTip": "開啟時氣球上升(伺服輸出 6)",
+    "release": "釋放",
+    "releaseTip": "立即切斷氣球(輸出 10)",
+    "released": "已釋放"
   }
 }

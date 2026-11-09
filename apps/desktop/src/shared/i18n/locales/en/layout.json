@@ -50,5 +50,17 @@
   "bridgeMoved": {
     "text": "Bridge, the theme in memory of Sir Patrick Stewart, is now a cargo in the Hangar.",
     "open": "Open in the Hangar"
+  },
+  "voiceLevel": {
+    "title": "Voice callouts",
+    "all": "All",
+    "allDesc": "Every callout: modes, waypoints, takeoff and landing, alerts",
+    "allTip": "Voice: all callouts",
+    "important": "Important only",
+    "importantDesc": "Alerts, failsafes, warnings and arm / disarm",
+    "importantTip": "Voice: important only",
+    "off": "Off",
+    "offDesc": "No voice at all",
+    "offTip": "Voice: off"
   }
 }

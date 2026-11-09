@@ -65,6 +65,27 @@ describe('point clouds', () => {
   });
 });
 
+describe('meshes with their own heights (Locus survey surface)', () => {
+  const flat: GroundAt = () => 1;
+  // Locus GLB: vertex heights are ellipsoidal (25 to 64 m), origin altMsl is 0 minus the geoid (-40.2 m at 53.3 N 8.5 E)
+  const surface = { minX: 182, maxX: 1285, minZ: -963, maxZ: -130, minY: 25, maxY: 64 };
+
+  it('keeps the datum origin below the ground instead of flooring it up by the geoid offset', () => {
+    const p = resolvePlacement({ origin: { lat: 53.27, lng: 8.45, altMsl: -40.22 } }, flat, surface);
+    expect(p.altMsl).toBeCloseTo(-40.22, 6);
+  });
+
+  it('still lifts such a mesh when all of it would be underground', () => {
+    const p = resolvePlacement({ origin: { lat: 53.27, lng: 8.45, altMsl: -100 } }, flat, surface);
+    expect(p.altMsl).toBe(1 - 64);
+  });
+
+  it('leaves ordinary models (geometry starting at the origin) on the old floor rule', () => {
+    const p = resolvePlacement({ origin: { lat: 53.27, lng: 8.45, altMsl: -5 } }, flat, { minX: -5, maxX: 5, minZ: -5, maxZ: 5, minY: 0, maxY: 10 });
+    expect(p.altMsl).toBe(1);
+  });
+});
+
 describe('ground under the footprint', () => {
   it('samples every footprint vertex and the origin', () => {
     const ring = [offsetLatLng(origin, -10, 0), offsetLatLng(origin, 10, 0), offsetLatLng(origin, 0, 10)];

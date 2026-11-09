@@ -117,12 +117,22 @@ describe('verifyCalibrationPersisted', () => {
     expect(result.state).toBe('unverified');
   });
 
-  it('treats a missing single value as not persisted', () => {
+  it('leaves a partly read-back record unverified instead of condemning it (#159)', () => {
+    // A dropped PARAM_VALUE on a lossy telemetry link is not proof the reboot lost the value.
     const result = verifyCalibrationPersisted(written, {
       INS_ACCOFFS_X: 0.42,
       INS_ACCOFFS_Y: -0.11,
     });
-    expect(result.state).toBe('not-persisted');
+    expect(result.state).toBe('unverified');
     expect(result.mismatched).toContain('INS_ACCSCAL_X');
+  });
+
+  it('still flags a real loss when other values are missing', () => {
+    const result = verifyCalibrationPersisted(written, {
+      INS_ACCOFFS_X: 0,
+      INS_ACCOFFS_Y: -0.11,
+    });
+    expect(result.state).toBe('not-persisted');
+    expect(result.mismatched).toEqual(['INS_ACCOFFS_X']);
   });
 });

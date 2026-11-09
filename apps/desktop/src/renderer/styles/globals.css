@@ -1222,6 +1222,8 @@ html.surface-calm *::after {
 /* Theme hooks: hidden unless a cargo theme shows them (host.theme). */
 .nav-rail-short { display: none; }
 .app-header-cap { display: none; }
+/* The top bar tint is translucent in dark mode; lay it over the page base so nothing under it (an overflowing toolbar, a banner) shows through blurred. Themes that set .app-header background override this. */
+.app-header { background-color: var(--bg-base); background-image: linear-gradient(var(--bg-nav), var(--bg-nav)); }
 
 /* Every theme: sized by window height so the cards fit at 949 px with a banner open. */
 :root .welcome-wrap { padding: clamp(12px, 2.5vh, 32px) 32px; }

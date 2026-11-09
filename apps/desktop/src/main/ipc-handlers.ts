@@ -5,7 +5,7 @@
 
 import { ipcMain, BrowserWindow, dialog, app, shell, safeStorage, session, ShareMenu, webContents as allWebContents, type WebContents } from 'electron';
 import { join, dirname, basename } from 'path';
-import { existsSync, readFileSync, statSync } from 'fs';
+import { existsSync, readFileSync, statSync, mkdirSync } from 'fs';
 import { execFile as execFileCb } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
@@ -35,6 +35,7 @@ import { registerCompanionIpcHandlers } from './companion/companion-ipc-handlers
 import { registerDroneBridgeIpcHandlers } from './dronebridge/dronebridge-ipc-handlers.js';
 import { registerCameraSettingsIpcHandlers } from './camera-settings/camera-settings-ipc.js';
 import { mavlinkTee } from './mavlink-tee.js';
+import { TlogRecorder } from './tlog/tlog-recorder.js';
 import { setupOverlayHandlers, getApiKey } from './overlays/overlay-ipc-handlers.js';
 import { setupTrafficHandlers } from './traffic/traffic-ipc-handlers.js';
 import {
@@ -352,6 +353,11 @@ function clampGcsSysid(v: unknown): number {
     ? Math.min(255, Math.max(1, Math.round(v)))
     : 255;
 }
+
+const tlogRecorder = new TlogRecorder({
+  dir: join(app.getPath('userData'), 'tlogs'),
+  enabled: () => settingsStore.get('recordTlog') !== false,
+});
 
 // Settings/vehicle profile storage
 const settingsStore = new Store<SettingsStoreSchema>({
@@ -2112,7 +2118,7 @@ function createBackgroundDiscoveryHandler(
             }
           } else if (packet.msgid === MSG_TERRAIN_REQUEST) {
             const live = connectionRegistry.getTransport(transportId);
-            if (live?.transport?.isOpen) void terrainUplink?.handleRequest(packet, live.transport);
+            if (live?.transport?.isOpen) void terrainUplink?.handleRequest(packet, live.transport).catch((err) => console.warn('[terrain] uplink request failed:', err));
           } else if (packet.msgid === MSG_TERRAIN_REPORT) {
             // Same decode as the primary path: gates terrain-relative commands
             // per fleet vehicle. Zero-pad, never length-guard (v2 truncation).
@@ -5635,6 +5641,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           for await (const packet of mavlinkParser.parse(chunk)) {
             connectionState.packetsReceived++;
             noteVehicleTraffic();
+            tlogRecorder.record(packet.buffer, packet.rxtime.getTime());
 
             // Detect signed incoming packets from FC. Only a CRC-checked packet counts: an
             // unknown msgid is unverified bytes, and its signed bit proves nothing.
@@ -5920,7 +5927,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
 
             // Parse telemetry data from known message types
             parseTelemetry(mainWindow, packet);
-            if (packet.msgid === MSG_TERRAIN_REQUEST && currentTransport) void terrainUplink?.handleRequest(packet, currentTransport);
+            if (packet.msgid === MSG_TERRAIN_REQUEST && currentTransport) void terrainUplink?.handleRequest(packet, currentTransport).catch((err) => console.warn('[terrain] uplink request failed:', err));
             vehicleControl.notePacket(packet);
 
             // Broadcast raw frame to the renderer windows holding a live
@@ -7537,6 +7544,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     return layoutStore.get('activeLayout', 'default');
   });
 
+  ipcMain.handle(IPC_CHANNELS.TLOG_OPEN_FOLDER, async (): Promise<boolean> => {
+    mkdirSync(tlogRecorder.folder, { recursive: true });
+    return (await shell.openPath(tlogRecorder.folder)) === '';
+  });
+
   // Settings/Vehicle profile handlers
   ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, async (): Promise<SettingsStoreSchema> => {
     return settingsStore.store;
@@ -8435,12 +8447,21 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       })();
     });
 
-    const results = await Promise.all(paramIds.map(readOne));
+    // Small batches and up to three passes: firing every request at once over a telemetry radio drops replies,
+    // and an unread value must not read as a lost calibration (#159).
     const values: Record<string, number> = {};
-    paramIds.forEach((id, i) => {
-      const v = results[i];
-      if (v !== null && v !== undefined) values[id] = v;
-    });
+    let pending = [...paramIds];
+    for (let pass = 0; pass < 3 && pending.length > 0; pass++) {
+      for (let i = 0; i < pending.length; i += 8) {
+        const chunk = pending.slice(i, i + 8);
+        const results = await Promise.all(chunk.map(readOne));
+        chunk.forEach((id, k) => {
+          const v = results[k];
+          if (v !== null && v !== undefined) values[id] = v;
+        });
+      }
+      pending = pending.filter((id) => !(id in values));
+    }
     return values;
   };
 
@@ -8471,7 +8492,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       sendLog(mainWindow, verified ? 'info' : 'error', `Calibration check (${record.type}): ${record.persistence?.summary ?? ''}`);
       // CRITICAL in Messages so the voice announcer picks it up: a log line is exactly what gets missed.
       if (!verified && mainWindow) {
-        emitStatusText(mainWindow, 2, `${record.type} calibration did NOT survive the reboot. Recalibrate before flying.`);
+        emitStatusText(mainWindow, 2, t('main:ipc.calibrationLost', { type: record.type }));
       }
     });
     return { success: true, records };
@@ -15132,6 +15153,12 @@ async function withDeadline(label: string, ms: number, work: Promise<unknown>): 
  * causing issues on next connection or potential BSOD.
  */
 export async function cleanupOnShutdown(): Promise<void> {
+  try {
+    await withDeadline('closing telemetry log', 1500, tlogRecorder.end());
+  } catch (err) {
+    console.warn('[Shutdown] Error closing telemetry log:', err);
+  }
+
   try {
     // Production bays hold USB serial ports open
     await withDeadline('closing production bays', 2000, shutdownProduction());

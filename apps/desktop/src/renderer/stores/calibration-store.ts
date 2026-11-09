@@ -6,6 +6,7 @@
  */
 
 import { create } from 'zustand';
+import { settledCalibrationValues } from './calibration-record-values';
 import { t as i18nT } from '../../shared/i18n/index.js';
 import { useConnectionStore } from './connection-store';
 import {
@@ -1005,10 +1006,17 @@ async function recordCalibrationOutcome(
   const boardUid = useConnectionStore.getState().connectionState.boardUid;
   if (!boardUid) return;
 
-  const written: Record<string, number> = {};
-  for (const row of verification.results) {
-    if (row.after !== undefined && row.after !== null) written[row.paramId] = row.after;
-  }
+  // Only what the calibration actually moved is evidence; untouched params carry nothing to verify.
+  const moved = verification.results.filter((row) => row.changed && row.after !== undefined && row.after !== null);
+  const rows = moved.length > 0 ? moved : verification.results.filter((row) => row.after !== undefined && row.after !== null);
+  if (rows.length === 0) return;
+
+  // The FC writes the values from its own loop a moment after reporting success, so the first read can hold a
+  // mix of old and new numbers. Record the settled values, or the reboot check later compares against numbers
+  // the FC never kept and reports a good calibration as lost (#159).
+  await new Promise((resolve) => setTimeout(resolve, 2500));
+  const settled = await window.electronAPI?.readParameterBatch(rows.map((r) => r.paramId)).catch(() => null);
+  const written = settledCalibrationValues(rows, settled?.success ? settled.values : undefined);
   if (Object.keys(written).length === 0) return;
 
   const fits = calType === 'compass'

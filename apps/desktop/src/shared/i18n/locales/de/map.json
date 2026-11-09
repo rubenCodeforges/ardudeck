@@ -142,6 +142,17 @@
     "right": "R",
     "roll": "ROLL",
     "sats": "{{n}} Sats",
+    "gps2": "GPS2 {{fix}} · {{n}}",
+    "pickWp": "Wegpunkt wählen",
+    "wpFirst": "Erster",
+    "wpCurrent": "Aktuell",
+    "wpLast": "Letzter",
+    "wpRange": "1 bis {{count}}",
+    "wpGroup": "Gruppe",
+    "pickWpHint": "Wegpunkt auswählen",
+    "flyToWp": "Zu WP {{n}} fliegen",
+    "flyingToWp": "Flug zu WP {{n}}",
+    "jumpFailed": "Wegpunkt konnte nicht gewechselt werden",
     "satsNone": "-- Sats",
     "spd": "SPD",
     "spdShort": "Geschw.",
@@ -192,7 +203,8 @@
     "rangefinder": "Entfernungsmesser",
     "proximity": "Nähe",
     "ekf": "EKF-Zustand",
-    "flightTimer": "Flugzeit"
+    "flightTimer": "Flugzeit",
+    "mavlinkFields": "MAVLink-Felder"
   },
   "instrumentsCatalog": {
     "arrange": "Anordnen",
@@ -607,5 +619,15 @@
     "hint": "Alles im grünen Rahmen wird heruntergeladen. Herauszoomen für ein größeres Gebiet.",
     "vehicle": "Fahrzeug",
     "useThisArea": "Dieses Gebiet verwenden"
+  },
+  "mavlinkFieldInstrument": {
+    "title": "MAVLink-Felder",
+    "empty": "Wählen Sie Felder in den Einstellungen dieses Instruments.",
+    "noData": "keine Daten",
+    "pickMessage": "Nachricht",
+    "pickField": "Feld",
+    "add": "Hinzufügen",
+    "limit": "Bis zu {{max}} Felder aus den Nachrichten, die das Fahrzeug gerade sendet.",
+    "noMessages": "Noch keine Nachrichten: Verbinden Sie zuerst ein Fahrzeug."
   }
 }

@@ -85,7 +85,12 @@
     "topSpeedToggle": "Швидкісний планер",
     "topSpeedLabel": "Макс. швидкість у горизонтальному польоті",
     "topSpeedHint": "Встановлює AIRSPEED_MAX = {{max}} m/s і AIRSPEED_CRUISE = {{cruise}} m/s. Діє з наступного запуску; якщо ви раніше змінювали ці параметри в цьому симуляторі, позначте «Очистити EEPROM», щоб нові межі набули чинності.",
-    "topSpeedValue": "{{speed}} км/год"
+    "topSpeedValue": "{{speed}} км/год",
+    "gliderRelease": "Скидання з аеростата",
+    "gliderReleaseDesc": "Модель планера ArduPilot піднімається на аеростаті (Підйом в інструменті Sticks або панелі Joystick) і відчіплюється на цій висоті.",
+    "gliderReleaseLabel": "Висота відчеплення над домом",
+    "gliderReleaseValue": "{{m}} м",
+    "gliderReleaseHint": "Увімкніть охорону (arm) у FBWA або AUTO до відчеплення. Висота дому вище: це висота рельєфу, а не стартова висота."
   },
   "customFrame": {
     "active": "Активна",
@@ -289,5 +294,14 @@
     "xplaneStep1": "Settings → Data Output → увімкніть вивід у мережу",
     "xplaneStep2": "Надсилати на: <mono>127.0.0.1:49000</mono>",
     "xplaneStep3": "Увімкніть: Speeds, Pitch/Roll/Heading, Lat/Lon/Alt"
+  },
+  "balloon": {
+    "title": "Аеростат",
+    "desc": "SITL планера: підніміть планер на аеростаті, потім відчепіть для планування.",
+    "lift": "Підйом",
+    "liftTip": "Аеростат піднімається, поки увімкнено (вихід сервопривода 6)",
+    "release": "Відчепити",
+    "releaseTip": "Відчепити аеростат зараз (вихід 10)",
+    "released": "Відчеплено"
   }
 }

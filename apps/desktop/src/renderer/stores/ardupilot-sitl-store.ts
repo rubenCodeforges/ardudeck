@@ -105,6 +105,13 @@ export interface ArduPilotSitlStore {
   /** Level top speed (km/h) for fast VTOL testing; 0 = the frame's stock speed. */
   topSpeedKmh: number;
   setTopSpeedKmh: (kmh: number) => void;
+  /** Glider frame: height above home where the balloon lets go (SIM_GLD_BLN_BRST is AMSL). */
+  gliderReleaseM: number;
+  setGliderReleaseM: (m: number) => void;
+  /** Glider SITL balloon: RC6 high climbs; release drops RC6 and cuts on output 10. One way: SIM_Glider never re-attaches. Not persisted. */
+  balloon: BalloonPhase;
+  setBalloonLift: (on: boolean) => Promise<{ success: boolean; error?: string }>;
+  releaseBalloon: () => Promise<{ success: boolean; error?: string }>;
 
   // RC State
   isRcSending: boolean;
@@ -225,6 +232,17 @@ function model(value: string, labelKey: string): { value: string; labelKey: stri
   return { value, labelKey, get label() { return i18nT(labelKey); } };
 }
 
+export const GLIDER_RELEASE_MIN_M = 50;
+export const GLIDER_RELEASE_MAX_M = 5000;
+const GLIDER_RELEASE_DEFAULT_M = 400;
+export type BalloonPhase = 'ground' | 'lifting' | 'released';
+// SIM_Glider climbs with output 6 and cuts the balloon when output 10 goes above 0.8 of its range. Both are driven by
+// DO_SET_SERVO so no RC source (arm stand-in, on-screen sticks, a radio) can lift or hold the balloon.
+const BALLOON_LIFT_CHANNEL = 6;
+const BALLOON_CUT_CHANNEL = 10;
+const SERVO_PWM_LOW = 1000;
+const SERVO_PWM_HIGH = 2000;
+
 export const ARDUPILOT_MODELS: Record<ArduPilotVehicleType, Array<{ value: string; label: string; labelKey?: string }>> = {
   copter: [
     model('quad', 'stores:ardupilotSitlStore.model.quad'),
@@ -242,6 +260,7 @@ export const ARDUPILOT_MODELS: Record<ArduPilotVehicleType, Array<{ value: strin
     { value: 'firefly', label: 'FireFly6' }, // i18n-exempt
     model('plane-vtail', 'stores:ardupilotSitlStore.model.vtail'),
     model('plane-dspoilers', 'stores:ardupilotSitlStore.model.spoilers'),
+    model('glider', 'stores:ardupilotSitlStore.model.glider'),
   ],
   rover: [
     model('rover', 'stores:ardupilotSitlStore.model.rover'),
@@ -333,6 +352,26 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
       setSimBatterySag: (on) => set({ simBatterySag: on }),
       topSpeedKmh: 0,
       setTopSpeedKmh: (kmh) => set({ topSpeedKmh: kmh > 0 ? clampTopSpeedKmh(kmh) : 0 }),
+      gliderReleaseM: GLIDER_RELEASE_DEFAULT_M,
+      balloon: 'ground',
+      setBalloonLift: async (on) => {
+        const prev = get().balloon;
+        if (prev === 'released') return { success: false };
+        set({ balloon: on ? 'lifting' : 'ground' });
+        const r = await window.electronAPI.servoTestPulse(BALLOON_LIFT_CHANNEL, on ? SERVO_PWM_HIGH : SERVO_PWM_LOW);
+        if (!r.success) set({ balloon: prev });
+        return r;
+      },
+      releaseBalloon: async () => {
+        if (get().balloon !== 'lifting') return { success: false };
+        set({ balloon: 'released' });
+        // SIM_Glider only lets go once the balloon stops pulling, so stop the climb before the cut.
+        const stop = await window.electronAPI.servoTestPulse(BALLOON_LIFT_CHANNEL, SERVO_PWM_LOW);
+        const r = stop.success ? await window.electronAPI.servoTestPulse(BALLOON_CUT_CHANNEL, SERVO_PWM_HIGH) : stop;
+        if (!r.success) set({ balloon: 'lifting' });
+        return r;
+      },
+      setGliderReleaseM: (m) => set({ gliderReleaseM: Math.max(GLIDER_RELEASE_MIN_M, Math.min(GLIDER_RELEASE_MAX_M, Math.round(m))) }),
 
       isRcSending: false,
       rcState: DEFAULT_RC_STATE,
@@ -375,6 +414,7 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
           simSensorNoise,
           simBatterySag,
           topSpeedKmh,
+          gliderReleaseM,
           appendOutput,
           autoUpgradedFrames,
           crashedFrameTracks,
@@ -450,13 +490,17 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
             simSensorNoise,
             simBatterySag,
             topSpeedKmh: topSpeedKmh > 0 && supportsTopSpeed(vehicleType, model) ? topSpeedKmh : undefined,
+            // glider.parm bursts the balloon at 50 km; release where the pilot asked instead
+            extraParams: vehicleType === 'plane' && model === 'glider'
+              ? { SIM_GLD_BLN_BRST: Math.round(homeLocation.alt + gliderReleaseM), SERVO6_FUNCTION: 0 }
+              : undefined,
           };
 
           const result = await window.electronAPI.ardupilotSitlStart(config);
 
           if (result.success) {
             // Auto-uncheck "Wipe EEPROM" after successful start so restarts/reboots don't wipe again
-            set({ isRunning: true, isStarting: false, lastCommand: result.command ?? null, wipeOnStart: false });
+            set({ isRunning: true, isStarting: false, lastCommand: result.command ?? null, wipeOnStart: false, balloon: 'ground' });
             if (result.command) {
               appendOutput(`Command: ${result.command}`);
             }
@@ -1040,6 +1084,7 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
         simSensorNoise: state.simSensorNoise,
         simBatterySag: state.simBatterySag,
         topSpeedKmh: state.topSpeedKmh,
+        gliderReleaseM: state.gliderReleaseM,
         // Remember auto-upgrades so a frame that crashes on stable goes
         // straight to dev on subsequent runs without the user seeing it.
         autoUpgradedFrames: state.autoUpgradedFrames,

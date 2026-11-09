@@ -21,6 +21,7 @@ import { create } from 'zustand';
 import { useTelemetryStore } from '../../../stores/telemetry-store';
 import { useParameterStore } from '../../../stores/parameter-store';
 import { useMissionStore } from '../../../stores/mission-store';
+import { WaypointPicker, type PickerAnchor } from '../WaypointPicker';
 import { useVehicleMissionView } from '../../../stores/vehicle-mission-store';
 import { useSettingsStore } from '../../../stores/settings-store';
 import {
@@ -177,19 +178,68 @@ function trimmed(value: number, decimals: number): string {
   return String(Number(value.toFixed(decimals)));
 }
 
-const BATTERY_SCALE: GaugeScale = {
-  min: 0,
-  max: 100,
-  startAngle: -135,
-  endAngle: 135,
-  zones: [
-    { from: 0, to: 15, color: GAUGE_COLORS.red },
-    { from: 15, to: 30, color: GAUGE_COLORS.amber },
-    { from: 30, to: 100, color: GAUGE_COLORS.green },
-  ],
-  majorTicks: [0, 50, 100],
-  minorTicks: [25, 75],
-};
+const BATTERY_DEFAULT_LOW_PCT = 30;
+const BATTERY_DEFAULT_CRIT_PCT = 15;
+
+function batteryScale(lowPct: number, critPct: number): GaugeScale {
+  return {
+    min: 0,
+    max: 100,
+    startAngle: -135,
+    endAngle: 135,
+    zones: [
+      { from: 0, to: critPct, color: GAUGE_COLORS.red },
+      { from: critPct, to: lowPct, color: GAUGE_COLORS.amber },
+      { from: lowPct, to: 100, color: GAUGE_COLORS.green },
+    ],
+    majorTicks: [0, 50, 100],
+    minorTicks: [25, 75],
+  };
+}
+
+interface BatteryLevels {
+  scale: GaugeScale;
+  lowPct: number;
+  critPct: number;
+  /** Failsafe voltages (0 = unset). They cannot sit on a percent dial, so they colour the readout instead. */
+  lowVolt: number;
+  critVolt: number;
+  level: (remaining: number, voltage: number) => 'ok' | 'low' | 'crit';
+}
+
+/** The dial bands follow the vehicle's own failsafe settings: BATT_LOW_MAH / BATT_CRT_MAH against BATT_CAPACITY, and BATT_LOW_VOLT / BATT_CRT_VOLT for the voltage readout. Defaults apply when unset. */
+function useBatteryLevels(monitorId: number): BatteryLevels {
+  const prefix = monitorId === 0 ? 'BATT' : `BATT${monitorId + 1}`;
+  const capacity = useParameterStore((st) => st.parameters.get(`${prefix}_CAPACITY`)?.value ?? 0);
+  const lowMah = useParameterStore((st) => st.parameters.get(`${prefix}_LOW_MAH`)?.value ?? 0);
+  const crtMah = useParameterStore((st) => st.parameters.get(`${prefix}_CRT_MAH`)?.value ?? 0);
+  const lowVolt = useParameterStore((st) => st.parameters.get(`${prefix}_LOW_VOLT`)?.value ?? 0);
+  const critVolt = useParameterStore((st) => st.parameters.get(`${prefix}_CRT_VOLT`)?.value ?? 0);
+  return useMemo(() => {
+    const pct = (mah: number, fallback: number): number =>
+      capacity > 0 && mah > 0 ? Math.min(99, Math.max(1, Math.round((mah / capacity) * 100))) : fallback;
+    let critPct = pct(crtMah, BATTERY_DEFAULT_CRIT_PCT);
+    let lowPct = pct(lowMah, BATTERY_DEFAULT_LOW_PCT);
+    if (lowPct <= critPct) lowPct = Math.min(100, critPct + 1);
+    if (critPct >= lowPct) critPct = Math.max(0, lowPct - 1);
+    return {
+      scale: batteryScale(lowPct, critPct),
+      lowPct,
+      critPct,
+      lowVolt,
+      critVolt,
+      level: (remaining, voltage) => {
+        if (remaining >= 0 && remaining <= critPct) return 'crit';
+        if (critVolt > 0 && voltage > 0 && voltage <= critVolt) return 'crit';
+        if (remaining >= 0 && remaining <= lowPct) return 'low';
+        if (lowVolt > 0 && voltage > 0 && voltage <= lowVolt) return 'low';
+        return 'ok';
+      },
+    };
+  }, [capacity, lowMah, crtMah, lowVolt, critVolt]);
+}
+
+const BATTERY_LEVEL_TEXT = { ok: 'text-[var(--gauge-green)]', low: 'text-[var(--gauge-amber)]', crit: 'text-[var(--gauge-red)]' } as const;
 
 /** "B{n}" chip on the BAT instrument, shown only when the vehicle streams
  * more than one monitor. One click cycles to the next monitor (every display
@@ -244,10 +294,11 @@ function makeBatteryInstanceGauge(monitorId: number): () => JSX.Element {
   return function BatteryInstanceGauge(): JSX.Element {
     const { t } = useTranslation();
     const { voltage, remaining, fresh } = useBatteryInstance(monitorId);
+    const levels = useBatteryLevels(monitorId);
     const known = fresh && remaining >= 0;
-    const valueColor = !known ? 'text-[var(--gauge-text)]' : remaining > 30 ? 'text-[var(--gauge-green)]' : remaining > 15 ? 'text-[var(--gauge-amber)]' : 'text-[var(--gauge-red)]';
+    const valueColor = !known ? 'text-[var(--gauge-text)]' : BATTERY_LEVEL_TEXT[levels.level(remaining, voltage)];
     return (
-      <RoundGauge label={t('map:instrument.batN', { n: monitorId + 1 })} scale={BATTERY_SCALE} needleValue={known ? remaining : null}>
+      <RoundGauge label={t('map:instrument.batN', { n: monitorId + 1 })} scale={levels.scale} needleValue={known ? remaining : null}>
         <span className={`text-[15px] font-semibold leading-none ${valueColor}`}>
           {fresh ? voltage.toFixed(1) : '--'}
           {fresh && <span className="text-[8px] font-normal text-[var(--gauge-text-dim)] ml-0.5">V</span>}
@@ -264,8 +315,9 @@ function makeBatteryInstanceNumeric(monitorId: number): () => JSX.Element {
   return function BatteryInstanceNumeric(): JSX.Element {
     const { t } = useTranslation();
     const { voltage, remaining, fresh } = useBatteryInstance(monitorId);
+    const levels = useBatteryLevels(monitorId);
     const known = fresh && remaining >= 0;
-    const valueClassName = !known ? undefined : remaining > 30 ? 'text-[var(--gauge-green)]' : remaining > 15 ? 'text-[var(--gauge-amber)]' : 'text-[var(--gauge-red)]';
+    const valueClassName = !known ? undefined : BATTERY_LEVEL_TEXT[levels.level(remaining, voltage)];
     return (
       <NumericReadout
         label={t('map:instrument.batN', { n: monitorId + 1 })}
@@ -283,12 +335,13 @@ function BatteryInstrument(): JSX.Element {
   const connected = useTelemetryFresh('battery');
   const voltage = useTelemetryStore((s) => s.battery.voltage);
   const remaining = useTelemetryStore((s) => s.battery.remaining);
+  const levels = useBatteryLevels(useTelemetryStore((s) => s.primaryBatteryId) ?? 0);
 
   const known = connected && remaining >= 0;
-  const valueColor = !known ? 'text-[var(--gauge-text)]' : remaining > 30 ? 'text-[var(--gauge-green)]' : remaining > 15 ? 'text-[var(--gauge-amber)]' : 'text-[var(--gauge-red)]';
+  const valueColor = !known ? 'text-[var(--gauge-text)]' : BATTERY_LEVEL_TEXT[levels.level(remaining, voltage)];
 
   return (
-    <RoundGauge label={t('map:instrument.bat')} scale={BATTERY_SCALE} needleValue={known ? remaining : null}>
+    <RoundGauge label={t('map:instrument.bat')} scale={levels.scale} needleValue={known ? remaining : null}>
       <span className={`text-[15px] font-semibold leading-none ${valueColor}`}>
         {connected ? voltage.toFixed(1) : '--'}
         {connected && <span className="text-[8px] font-normal text-[var(--gauge-text-dim)] ml-0.5">V</span>}
@@ -318,10 +371,12 @@ function BatteryUsedInstrument(): JSX.Element {
   const drawn = useTelemetryStore((s) => s.battery.mahDrawn);
   const capacityMah = useParameterStore((s) => s.parameters.get('BATT_CAPACITY')?.value as number | undefined);
 
+  const levels = useBatteryLevels(useTelemetryStore((s) => s.primaryBatteryId) ?? 0);
+
   const known = connected && remaining >= 0;
   const valueColor = !known
     ? 'text-[var(--gauge-text)]'
-    : remaining > 30 ? 'text-[var(--gauge-green)]' : remaining > 15 ? 'text-[var(--gauge-amber)]' : 'text-[var(--gauge-red)]';
+    : BATTERY_LEVEL_TEXT[levels.level(remaining, voltage)];
 
   const usedPct = connected && typeof drawn === 'number' && drawn >= 0 && capacityMah && capacityMah > 0
     ? Math.min(100, (drawn / capacityMah) * 100)
@@ -332,7 +387,7 @@ function BatteryUsedInstrument(): JSX.Element {
   const usedTrack = (
     <>
       <path
-        d={gaugeArcPath(USED_TRACK_R, BATTERY_SCALE.startAngle, BATTERY_SCALE.endAngle)}
+        d={gaugeArcPath(USED_TRACK_R, levels.scale.startAngle, levels.scale.endAngle)}
         fill="none"
         stroke="var(--gauge-text-dim)"
         strokeWidth="2.5"
@@ -340,7 +395,7 @@ function BatteryUsedInstrument(): JSX.Element {
       />
       {usedPct !== null && usedPct > 0.5 && (
         <path
-          d={gaugeArcPath(USED_TRACK_R, BATTERY_SCALE.startAngle, valueToAngle(usedPct, BATTERY_SCALE))}
+          d={gaugeArcPath(USED_TRACK_R, levels.scale.startAngle, valueToAngle(usedPct, levels.scale))}
           fill="none"
           stroke={GAUGE_COLORS.amber}
           strokeWidth="2.5"
@@ -351,7 +406,7 @@ function BatteryUsedInstrument(): JSX.Element {
   );
 
   return (
-    <RoundGauge label={t('map:instrument.bat')} scale={BATTERY_SCALE} needleValue={known ? remaining : null} svgContent={usedTrack}>
+    <RoundGauge label={t('map:instrument.bat')} scale={levels.scale} needleValue={known ? remaining : null} svgContent={usedTrack}>
       <span className={`text-[19px] font-semibold leading-none ${valueColor}`}>
         {connected ? voltage.toFixed(1) : '--'}
         {connected && <span className="text-[9px] font-normal text-[var(--gauge-text-dim)] ml-0.5">V</span>}
@@ -402,6 +457,7 @@ function GpsInstrument(): JSX.Element {
   const connected = useTelemetryFresh('gps');
   const fixType = useTelemetryStore((s) => s.gps.fixType);
   const satellites = useTelemetryStore((s) => s.gps.satellites);
+  const gps2 = useTelemetryStore((s) => s.gps2);
 
   const fixColor = !connected ? 'text-[var(--gauge-text)]' : fixType >= 3 ? 'text-[var(--gauge-green)]' : fixType >= 2 ? 'text-[var(--gauge-amber)]' : 'text-[var(--gauge-red)]';
   const segColor = fixType >= 3 ? GAUGE_COLORS.green : fixType >= 2 ? GAUGE_COLORS.amber : GAUGE_COLORS.red;
@@ -415,6 +471,11 @@ function GpsInstrument(): JSX.Element {
       <span className="mt-1 text-[9px] leading-none text-[var(--gauge-text-dim)]">
         {connected ? t('map:instrument.sats', { n: satellites }) : t('map:instrument.satsNone')}
       </span>
+      {connected && gps2 && (
+        <span className="mt-0.5 text-[8px] leading-none whitespace-nowrap text-[var(--gauge-text-dim)]">
+          {t('map:instrument.gps2', { fix: GPS_FIX_SHORT[gps2.fixType] ?? t('map:instrument.noFix'), n: gps2.satellites })}
+        </span>
+      )}
     </RoundGauge>
   );
 }
@@ -922,8 +983,9 @@ function BatteryNumeric(): JSX.Element {
   const connected = useTelemetryFresh('battery');
   const voltage = useTelemetryStore((s) => s.battery.voltage);
   const remaining = useTelemetryStore((s) => s.battery.remaining);
+  const levels = useBatteryLevels(useTelemetryStore((s) => s.primaryBatteryId) ?? 0);
   const known = connected && remaining >= 0;
-  const valueClassName = !known ? undefined : remaining > 30 ? 'text-[var(--gauge-green)]' : remaining > 15 ? 'text-[var(--gauge-amber)]' : 'text-[var(--gauge-red)]';
+  const valueClassName = !known ? undefined : BATTERY_LEVEL_TEXT[levels.level(remaining, voltage)];
   return (
     <NumericReadout
       label={t('map:instrument.bat')}
@@ -1194,6 +1256,7 @@ function MissionInstrument(): JSX.Element {
   const lon = useTelemetryStore((s) => s.position.lon);
   const groundspeed = useTelemetryStore((s) => s.vfrHud.groundspeed);
   const distanceUnit = useSettingsStore((s) => s.unitPreferences.distance);
+  const [pickerAnchor, setPickerAnchor] = useState<PickerAnchor | null>(null);
 
   const total = missionItems.length;
   // currentSeq is already fcSeqOffset-translated in the store, so it indexes
@@ -1230,10 +1293,20 @@ function MissionInstrument(): JSX.Element {
         </span>
       ) : (
         <div className="flex items-baseline gap-2 whitespace-nowrap w-full">
-          <span className="text-[15px] font-semibold leading-none text-[var(--gauge-text)]">
+          <button
+            type="button"
+            disabled={!connected}
+            onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setPickerAnchor({ x: r.left, y: r.bottom + 6 }); }}
+            data-tip={connected ? t('map:instrument.pickWp') : undefined}
+            className="text-[15px] font-semibold leading-none text-[var(--gauge-text)] enabled:hover:text-blue-400 enabled:cursor-pointer underline-offset-4 enabled:hover:underline"
+          >
             {t('map:instrument.wp', { n: cur ?? '--' })}
             <span className="text-[10px] font-normal text-[var(--gauge-text-dim)]">/{total}</span>
-          </span>
+            {connected && (
+              <svg className="inline-block ml-1 w-2.5 h-2.5 align-baseline text-[var(--gauge-text-dim)]" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M2 3.5l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            )}
+          </button>
+          {pickerAnchor && <WaypointPicker count={total} current={cur !== null ? cur - 1 : null} anchor={pickerAnchor} onClose={() => setPickerAnchor(null)} />}
           {dirty && cur === null ? (
             /* The plan on screen is not on the vehicle; say so where the
                pilot looks instead of implying a ready-to-fly mission. */

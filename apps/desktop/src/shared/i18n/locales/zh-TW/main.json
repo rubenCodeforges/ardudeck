@@ -317,7 +317,12 @@
     "pickFolderTitle": "Choose a folder",
     "resetParamsArduPilotOnly": "僅 ArduPilot 支援重設所有參數。",
     "resetParamsDisarmFirst": "重設參數前載具必須處於上鎖狀態。",
-    "resetParamsFailed": "飛控未接受參數重設。"
+    "resetParamsFailed": "飛控未接受參數重設。",
+    "rcMapUnknown": "在載入載具參數之前,搖桿覆寫會保持關閉(RCMAP 決定哪個通道是油門)。",
+    "paramNoEcho": "{{param}}:飛控未確認寫入。請檢查連線後再試。",
+    "paramRejected": "{{param}}:飛控保留了 {{value}},未接受新數值。",
+    "flashWriteRejected": "飛控拒絕寫入快閃記憶體(結果 {{result}})。",
+    "calibrationLost": "{{type}} 校準在重啟後未保留。飛行前請重新校準。"
   },
   "licenseValidator": {
     "invalidKeyFormat": "金鑰格式無效",
@@ -717,5 +722,10 @@
     "pointCloudEmpty": "該點雲沒有可用的點。",
     "plyInvalid": "該檔案不是可讀取的 PLY 點雲。",
     "unverifiedCrs": "已使用來自 epsg.io 的 EPSG:{{epsg}} 放置。其七參數基準轉換未經 PROJ 驗證，可能偏差數公尺；請對照地圖檢查位置。"
+  },
+  "missionShare": {
+    "invalidPackage": "這不是 ArduDeck 任務包。",
+    "saveTitle": "儲存任務包",
+    "fileFilter": "ArduDeck 任務包"
   }
 }

@@ -9,12 +9,12 @@ export function parseGeoidPgm(bytes: Uint8Array): Geoid {
   let pos = 0;
   const line = (): string => {
     const end = bytes.indexOf(0x0a, pos);
-    if (end < 0) throw new Error('geoid grid header is truncated');
+    if (end < 0) throw new Error('geoid grid header is truncated'); // i18n-exempt
     const s = new TextDecoder().decode(bytes.subarray(pos, end)).replace(/\r$/, '');
     pos = end + 1;
     return s;
   };
-  if (!line().startsWith('P5')) throw new Error('geoid grid is not a binary PGM');
+  if (!line().startsWith('P5')) throw new Error('geoid grid is not a binary PGM'); // i18n-exempt
   let offset = 0;
   let scale = 1;
   const fields: number[] = [];
@@ -29,8 +29,8 @@ export function parseGeoidPgm(bytes: Uint8Array): Geoid {
     for (const v of l.trim().split(/\s+/)) if (v && fields.length < 3) fields.push(Number(v));
   }
   const [width, height, max] = fields as [number, number, number];
-  if (width < 4 || height < 4 || max !== 65535) throw new Error('unsupported geoid grid layout');
-  if (bytes.length - pos < width * height * 2) throw new Error('truncated geoid grid');
+  if (width < 4 || height < 4 || max !== 65535) throw new Error('unsupported geoid grid layout'); // i18n-exempt
+  if (bytes.length - pos < width * height * 2) throw new Error('truncated geoid grid'); // i18n-exempt
   const data = new Uint16Array(width * height);
   for (let i = 0; i < data.length; i++) data[i] = (bytes[pos + 2 * i]! << 8) | bytes[pos + 2 * i + 1]!;
 

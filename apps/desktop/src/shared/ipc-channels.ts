@@ -977,6 +977,7 @@ export const IPC_CHANNELS = {
   LOG_DOWNLOAD_ERROR: 'log:download-error',
   LOG_DOWNLOAD_CANCEL: 'log:download-cancel',
   LOG_ERASE_ALL: 'log:erase-all',
+  TLOG_OPEN_FOLDER: 'tlog:open-folder',
   LOG_STORAGE_INFO: 'log:storage-info',
   LOG_FORMAT_SD: 'log:format-sd',
   /** Show open-file dialog only (no read). Returns just the chosen path so
@@ -1604,6 +1605,13 @@ export interface SettingsStoreSchema {
   showDebugLogs?: boolean;
   /** Answer the autopilot's terrain requests from the map's DEM tiles. Default on. */
   serveTerrain?: boolean;
+  /** Record every connection's telemetry to a .tlog in the app data folder. Default on. */
+  recordTlog?: boolean;
+  /** Voice volume 0-100 while disarmed and while armed (#165). Default 100. */
+  voiceVolumeDisarmed?: number;
+  /** Top-bar voice level: all callouts, important only, or off. */
+  voiceAlertLevel?: 'all' | 'important' | 'off';
+  voiceVolumeArmed?: number;
   aiProvider?: 'claude' | 'openai' | 'gemini' | null;
   /** User-saved survey planner presets. Built-in presets ship in code. */
   surveyPresets?: PersistedSurveyPreset[];

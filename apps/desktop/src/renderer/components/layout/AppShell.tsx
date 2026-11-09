@@ -14,6 +14,7 @@ import { BridgeMovedNote, CargoThemeBanners, CargoThemeOverlays, TitleBarItems, 
 import { ArmDisarmButton } from './ArmDisarmButton';
 import { ScriptHealthBadge } from '../script-installer/ScriptHealthBadge';
 import { QuickLaunchMenu } from './QuickLaunchMenu';
+import { VoiceLevelMenu } from './VoiceLevelMenu';
 import { betaLabel } from '../../utils/version-label';
 import iconImage from '../../assets/icon.png';
 import { isPrimaryLinkUp } from '../../lib/primary-link';
@@ -28,8 +29,6 @@ export function AppShell({ children }: AppShellProps) {
   const { connectionState, disconnect } = useConnectionStore();
   const { currentVersion, status, fetchVersion } = useUpdateStore();
   const setView = useNavigationStore((s) => s.setView);
-  const voiceAlertsMuted = useSettingsStore((s) => s.voiceAlertsMuted);
-  const setVoiceAlertsMuted = useSettingsStore((s) => s.setVoiceAlertsMuted);
 
   // Fleet (multi-vehicle/swarm) connects over background transports that don't
   // set the primary connection flag. Surface it as its own status so the pill
@@ -68,7 +67,7 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="h-screen flex flex-col bg-surface-base">
       {/* Header */}
-      <header className="app-header h-14 border-b border-subtle bg-surface-nav backdrop-blur-sm flex items-center shrink-0 relative z-50">
+      <header className="app-header h-14 border-b border-subtle backdrop-blur-sm flex items-center shrink-0 relative z-50">
         <span className="app-header-cap" aria-hidden="true" />
         {/* Logo sits in a nav-rail-width slot so it lines up with the sidebar icons */}
         <div className="app-header-logo w-14 flex items-center justify-center shrink-0">
@@ -79,22 +78,7 @@ export function AppShell({ children }: AppShellProps) {
         <TitleBarItems />
 
         <div className="ml-auto flex items-center gap-4 pr-6 shrink-0">
-          {/* Voice alerts mute */}
-          <button
-            onClick={() => setVoiceAlertsMuted(!voiceAlertsMuted)}
-            data-tip={voiceAlertsMuted ? t('layout:appShell.voiceMuted') : t('layout:appShell.voiceOn')}
-            className={`transition-colors ${voiceAlertsMuted ? 'text-content-tertiary hover:text-content-secondary' : 'text-content-secondary hover:text-content'}`}
-          >
-            {voiceAlertsMuted ? (
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.7-.51-1.94-1.36a9.02 9.02 0 010-4.86c.24-.85 1.06-1.36 1.94-1.36h2.24z" />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.11 5.11a9 9 0 010 13.78M16.46 7.76a5.25 5.25 0 010 8.48M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.7-.51-1.94-1.36a9.02 9.02 0 010-4.86c.24-.85 1.06-1.36 1.94-1.36h2.24z" />
-              </svg>
-            )}
-          </button>
+          <VoiceLevelMenu />
 
           {/* Version badge */}
           {currentVersion && (

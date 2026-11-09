@@ -2050,6 +2050,8 @@ export function SettingsView() {
             <MavlinkSettingsSection />
             {/* SECTION: Terrain uplink */}
             <TerrainUplinkSection />
+            <VoiceVolumeSection />
+            <TelemetryLogSection />
             {/* SECTION: Console */}
             <ConsoleSettingsSection />
             {/* SECTION: Experimental Features (AI Flight Analysis lives here). */}
@@ -2186,6 +2188,9 @@ function TerrainUplinkSection() {
   const uplink = useTerrainStatusStore((s) => s.uplink);
   const served = Object.values(uplink).reduce((n, u) => n + u.served, 0);
   const missing = Object.values(uplink).reduce((n, u) => n + u.missing, 0);
+  const unavailable = Object.values(uplink).reduce((n, u) => n + u.unavailable, 0);
+  const gaps = Object.values(uplink).reduce((n, u) => n + u.gaps, 0);
+  const errors = Object.values(uplink).reduce((n, u) => n + u.errors, 0);
 
   return (
     <div className="mt-8">
@@ -2200,6 +2205,11 @@ function TerrainUplinkSection() {
               <div className="text-sm text-content font-medium">{t('settings:settingsView.terrainUplink.serve')}</div>
               <div className="text-xs text-content-secondary mt-0.5">{t('settings:settingsView.terrainUplink.serveHint')}</div>
               <div className="text-xs text-content-tertiary mt-1 tabular-nums">{t('settings:settingsView.terrainUplink.counts', { served, missing })}</div>
+              {unavailable > 0 && (
+                <div className="text-xs text-amber-500 mt-1">{t('settings:settingsView.terrainUplink.unavailable', { count: unavailable })} {t('settings:settingsView.terrainUplink.unavailableHint')}</div>
+              )}
+              {gaps > 0 && <div className="text-xs text-amber-500 mt-1">{t('settings:settingsView.terrainUplink.gaps', { count: gaps })}</div>}
+              {errors > 0 && <div className="text-xs text-red-400 mt-1">{t('settings:settingsView.terrainUplink.errors', { count: errors })}</div>}
             </div>
             <button
               onClick={() => setServeTerrain(!serveTerrain)}
@@ -2208,6 +2218,87 @@ function TerrainUplinkSection() {
               <div className={`w-4 h-4 rounded-full bg-white border border-strong shadow-sm absolute top-0.5 transition-all ${serveTerrain ? 'left-[18px]' : 'left-0.5'}`} />
             </button>
           </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function VoiceVolumeSection() {
+  const { t } = useTranslation();
+  const disarmed = useSettingsStore((s) => s.voiceVolumeDisarmed);
+  const armed = useSettingsStore((s) => s.voiceVolumeArmed);
+  const setVoiceVolume = useSettingsStore((s) => s.setVoiceVolume);
+  const rows: { key: 'disarmed' | 'armed'; value: number }[] = [
+    { key: 'disarmed', value: disarmed },
+    { key: 'armed', value: armed },
+  ];
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-1.5 h-5 bg-content-secondary rounded-full" />
+        <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('settings:settingsView.voiceVolume.title')}</h2>
+      </div>
+      <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
+        <p className="text-xs text-content-secondary mb-3">{t('settings:settingsView.voiceVolume.hint')}</p>
+        <div className="space-y-3">
+          {rows.map((r) => (
+            <div key={r.key} className="flex items-center justify-between bg-surface-input rounded-lg p-3">
+              <div>
+                <span className="text-sm text-content font-medium">{t(`settings:settingsView.voiceVolume.${r.key}`)}</span>
+                <span className="text-xs text-content-secondary ml-1.5">{r.value === 0 ? t('settings:settingsView.voiceVolume.silent') : `${r.value}%`}</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={r.value}
+                onChange={(e) => setVoiceVolume(r.key, parseInt(e.target.value))}
+                aria-label={t(`settings:settingsView.voiceVolume.${r.key}`)}
+                className="w-40 accent-blue-500"
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function TelemetryLogSection() {
+  const { t } = useTranslation();
+  const recordTlog = useSettingsStore((s) => s.recordTlog);
+  const setRecordTlog = useSettingsStore((s) => s.setRecordTlog);
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-1.5 h-5 bg-content-secondary rounded-full" />
+        <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('settings:settingsView.telemetryLog.title')}</h2>
+      </div>
+      <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between bg-surface-input rounded-lg p-3">
+            <div className="flex-1 mr-3">
+              <div className="text-sm text-content font-medium">{t('settings:settingsView.telemetryLog.record')}</div>
+              <div className="text-xs text-content-secondary mt-0.5">{t('settings:settingsView.telemetryLog.recordHint')}</div>
+            </div>
+            <button
+              onClick={() => setRecordTlog(!recordTlog)}
+              className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${recordTlog ? 'bg-blue-600' : 'bg-surface-inset'}`}
+            >
+              <div className={`w-4 h-4 rounded-full bg-white border border-strong shadow-sm absolute top-0.5 transition-all ${recordTlog ? 'left-[18px]' : 'left-0.5'}`} />
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => void window.electronAPI.tlogOpenFolder()}
+            className="h-8 px-3 rounded-lg border border-subtle text-xs text-content-secondary hover:text-content hover:bg-surface-raised"
+          >
+            {t('settings:settingsView.telemetryLog.openFolder')}
+          </button>
         </div>
       </section>
     </div>
