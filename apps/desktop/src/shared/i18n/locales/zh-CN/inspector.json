@@ -1,23 +1,23 @@
 {
   "fieldGraph": {
-    "clearTip": "舍弃目前已收集的取样",
+    "clearTip": "舍弃当前已收集的取样",
     "colAvg": "平均",
     "colField": "字段 · 缓冲",
     "colMax": "最大",
     "colMin": "最小",
-    "colNow": "目前",
+    "colNow": "当前",
     "exportTip": "将已绘制的字段导出为 CSV",
     "summary_one": "{{count}} 个数列 · sysid {{sysid}} · msgid {{msgid}} · {{samples}} 笔取样",
     "summary_other": "{{count}} 个数列 · sysid {{sysid}} · msgid {{msgid}} · {{samples}} 笔取样",
-    "timeAxis": "时间 (s)"
+    "timeAxis": "时间 （s）"
   },
   "inspectorGraphsView": {
-    "clearTitle": "清除查看器统计：图表会在下一个封包到达时重置取样缓冲",
+    "clearTitle": "清除查看器统计：图表会在下一个数据包到达时重置取样缓冲",
     "live": "实时 · 从已连接的飞控视频流",
     "noGraphs": "没有图表",
     "noGraphsHint": "此窗口中的所有选项卡都已关闭。使用「停靠回主窗口」即可返回查看器。",
     "notConnected": "未连接",
-    "pauseTitle": "暂停图表取样：图表冻结，封包仍持续送达",
+    "pauseTitle": "暂停图表取样：图表冻结，数据包仍持续送达",
     "paused": "已暂停",
     "resumeTitle": "继续图表取样"
   },
@@ -47,9 +47,9 @@
     "resume": "继续",
     "resumeTitle": "继续数据包捕获",
     "searchPlaceholder": "搜索消息…",
-    "waiting": "等待封包中…",
+    "waiting": "等待数据包中…",
     "waitingHint": "飞控一开始发送，消息就会显示在这里。",
-    "waitingNotConnected": "未连接，等待封包中",
+    "waitingNotConnected": "未连接，等待数据包中",
     "watermarkHint": "在左侧树状结构中展开一则消息，再点击任何数值字段上的图表图标。每张图表都会成为这里的一个选项卡。你可以将它们弹出为独立窗口，或将选项卡拖在一起建立多图表查看。",
     "watermarkTitle": "绘制字段以开始绘图",
     "windowTitle_one": "查看器：{{count}} 张图表",

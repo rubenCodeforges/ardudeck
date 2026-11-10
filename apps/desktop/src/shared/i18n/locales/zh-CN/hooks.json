@@ -1,6 +1,6 @@
 {
   "useFleet": {
-    "fleetCount": "机队 ({{count}})"
+    "fleetCount": "机队 （{{count}}）"
   },
   "useModeRequest": {
     "noResponse": "无回应",

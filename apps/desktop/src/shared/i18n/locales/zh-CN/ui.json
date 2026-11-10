@@ -24,7 +24,7 @@
   "profileManager": {
     "namePlaceholder": "名称...",
     "resetToFactoryDefaults": "重置为原厂默认值",
-    "saveAsProfile": "将目前设置保存为配置文件"
+    "saveAsProfile": "将当前设置保存为配置文件"
   },
   "rateCurve": {
     "maxRate": "最大：<v>{{maxRate}}°/s</v>"

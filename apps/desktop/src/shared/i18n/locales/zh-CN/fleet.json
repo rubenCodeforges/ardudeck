@@ -11,7 +11,7 @@
     "chipTip": "{{label}} (m)",
     "commandVehicle": "指挥此载具",
     "createLeader": "建立领队",
-    "currentShape": "{{label}}（目前）",
+    "currentShape": "{{label}}（当前）",
     "disband": "解散机队",
     "disbandTip": "解散此机队，其僚机将恢复手动控制",
     "formUp_one": "编队 {{count}} 架自由无人机",
@@ -26,7 +26,7 @@
   },
   "fleetCoordination": {
     "alt": "高度",
-    "altitudeTip": "起飞高度 (m)",
+    "altitudeTip": "起飞高度 （m）",
     "collapseFleet": "折叠机队",
     "engineError": "引擎错误",
     "engineReportTip": "协调引擎的最新报告（集体起飞/任务开始）",
@@ -36,7 +36,7 @@
     "reformTip": "重新编队 {{label}} 的机队：{{shape}}",
     "startMission": "开始任务",
     "startMissionTip": "{{label}} 以 AUTO 飞行已上传的任务；其僚机维持队形并跟随",
-    "startMissions": "开始任务 ({{count}})",
+    "startMissions": "开始任务 （{{count}}）",
     "startMissionsTip": "上传每架载具被指派的航点群组，并以 AUTO 开始全部 {{count}} 个任务",
     "takeOff": "起飞",
     "takeOffAll": "全部起飞",
@@ -56,8 +56,8 @@
     "confirmArm_other": "要解锁 {{count}} 架载具吗？",
     "confirmDisarm_one": "要上锁 {{count}} 架载具吗？",
     "confirmDisarm_other": "要上锁 {{count}} 架载具吗？",
-    "confirmRtl_one": "要让 {{count}} 架载具返航 (RTL) 吗？",
-    "confirmRtl_other": "要让 {{count}} 架载具返航 (RTL) 吗？",
+    "confirmRtl_one": "要让 {{count}} 架载具返航 （RTL） 吗？",
+    "confirmRtl_other": "要让 {{count}} 架载具返航 （RTL） 吗？",
     "confirmStart_one": "要在 {{count}} 架载具上开始任务吗？",
     "confirmStart_other": "要在 {{count}} 架载具上开始任务吗？",
     "selected": "已选择 {{count}} 架",
@@ -65,7 +65,7 @@
   },
   "fleetStrip": {
     "collapseFleet": "折叠机队",
-    "deselectTip": "{{label}},点击以取消选择",
+    "deselectTip": "{{label}}，点击以取消选择",
     "dragHere": "将载具拖拽到这里",
     "dropToRemove": "放开以从机队移除",
     "expandFleet": "展开机队",
@@ -77,7 +77,7 @@
     "setColour": "设置颜色 {{color}}",
     "unassigned": "未指派",
     "vehicleTip": "{{label}},{{mode}}",
-    "vehicleTipArmed": "{{label}},{{mode}},已解锁"
+    "vehicleTipArmed": "{{label}},{{mode}}，已解锁"
   },
   "formationGlyphs": {
     "box": "方形（网格）",
