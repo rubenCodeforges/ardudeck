@@ -5,10 +5,10 @@
     "fetching": "正在获取预报...",
     "flightConditions": "飞行条件",
     "forecastValid": "预报有效时间：{{clock}}（场地当地时间）· Open-Meteo",
-    "launchGates": "起飞门槛",
+    "launchGates": "放行条件",
     "limits": "限制：阵风 {{gustC}} / {{gustN}} m/s，风速 {{windC}} / {{windN}} m/s，降水概率 {{probC}} / {{probN}}%，降水量 {{mmC}} / {{mmN}} mm，能见度低于 {{visC}} / {{visN}} km。",
     "locationAt": "{{location}} · 当地时间 {{clock}}",
-    "noPosition": "没有可简报的位置",
+    "noPosition": "未设置简报位置",
     "noPositionHint": "请连接载具、设置 Home 位置，或打开任务地图，让简报知道要查询哪里的天气。",
     "precip": "降水",
     "precipChance": "降水概率",
@@ -28,7 +28,7 @@
     "clear": "晴",
     "fog": "雾",
     "overcast": "阴",
-    "partlyCloudy": "多云转晴",
+    "partlyCloudy": "晴间多云",
     "rain": "雨"
   },
   "geomag": {
@@ -50,7 +50,7 @@
     "unavailable": "无法获取太空天气",
     "unavailableHint": "无法连到 NOAA Kp 服务。天气判定不受影响。",
     "within72h": "72 小时内",
-    "wmmInvalid": "WMM2025 已超出其有效期间；磁偏角与磁场数值仅为近似值。"
+    "wmmInvalid": "WMM2025 已超出有效期；磁偏角与磁场数值仅为近似值。"
   },
   "locationDialog": {
     "clickToSet": "点击地图以设置简报位置",
@@ -86,15 +86,15 @@
   "source": {
     "home": "Home 位置",
     "map": "地图中心",
-    "override": "选择的位置",
+    "override": "手动选择位置",
     "vehicle": "载具位置"
   },
   "status": {
     "caution": "注意",
-    "cautionSummary": "条件处于临界。起飞前请查看被标示的参数。",
-    "go": "可行",
-    "goSummary": "条件在起飞限制内。",
-    "nogoPill": "不可行",
-    "nogoSummary": "有一个或多个参数超过安全限制。请勿起飞。"
+    "cautionSummary": "条件处于临界。起飞前请查看已标记的参数。",
+    "go": "可起飞",
+    "goSummary": "各项条件均在起飞限制内。",
+    "nogoPill": "禁飞",
+    "nogoSummary": "有一项或多项参数超过安全限制。请勿起飞。"
   }
 }
