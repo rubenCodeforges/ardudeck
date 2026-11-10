@@ -213,7 +213,7 @@
       "restartToUpdate": "重新启动以更新",
       "sponsors": {
         "adlerblix": "光学航测：摄影测量、RTK 精度、大面积制图。德国。",
-        "cargo": "模块在 Hangar 上架",
+        "cargo": "Cargo 在 Hangar 上架",
         "shop": "商店",
         "subtitle": "以硬件、专业与实地测试支持 ArduDeck 的公司。",
         "thankYou": "感谢文章",
@@ -288,7 +288,7 @@
     "terrainUplink": {
       "title": "地形上传",
       "serve": "向载具提供地形",
-      "serveHint": "依地图高程数据回应自动驾驶仪的地形请求，包括模块提供的任何测绘曲面",
+      "serveHint": "依地图高程数据回应自动驾驶仪的地形请求，包括 Cargo 提供的任何测绘曲面",
       "counts": "已提供区块：{{served}}，缺少数据：{{missing}}",
       "unavailable": "缺少 {{count}} 个区块：高程瓦片不可用（离线或被屏蔽？）。",
       "unavailableHint": "请检查网络连接并清除瓦片缓存。没有地形数据时，飞行器无法使用相对地形的高度，可能会返航。",
@@ -777,7 +777,7 @@
     "title": "坐标",
     "decimal": "十进位度数",
     "dms": "度、分、秒",
-    "unavailable": "格式来自尚未加载的模块（当前先使用十进位）",
+    "unavailable": "格式来自尚未加载的 Cargo（暂时为十进制）",
     "precision": "坐标精度",
     "decimals_one": "{{count}} 位小数",
     "decimals_other": "{{count}} 位小数",

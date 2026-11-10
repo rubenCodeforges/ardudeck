@@ -93,6 +93,6 @@
     "selectingArea": "选择中… 请在地图上框选范围",
     "telemetryRate": "遥测速率",
     "telemetryRateHint": "载具视频流遥测的频率。选择 FC 时不会更动飞控本身的速率。",
-    "cargoPanelMissing": "此面板来自当前未加载的模块。"
+    "cargoPanelMissing": "此面板来自当前未加载的 Cargo。"
   }
 }

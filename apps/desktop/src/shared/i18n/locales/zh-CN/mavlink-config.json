@@ -585,7 +585,7 @@
     "docs": "说明文件",
     "flightController": "飞控",
     "kit": "套件",
-    "noCatalog": "安装制造商模块，即可看到以官方产品名称列出的零件，并附照片与说明文件。",
+    "noCatalog": "安装制造商 Cargo，即可看到以官方产品名称列出的零件，并附照片与说明文件。",
     "noDroneCan": "当有 CAN 端口使用 DroneCAN（CAN_P1_DRIVER 与 CAN_D1_PROTOCOL）后，CAN 总线上的设备就会出现在这里。",
     "notConnected": "连接载具以查看其硬件。",
     "notIdentified": "未识别",

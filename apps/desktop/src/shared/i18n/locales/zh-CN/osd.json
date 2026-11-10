@@ -30,7 +30,7 @@
     "line": "线条 {{value}}×",
     "liveOverlayUses": "实时叠加层使用",
     "metric": "公制",
-    "module": "模块",
+    "module": "Cargo",
     "noSavedHuds": "尚未保存任何 HUD。",
     "profileAir": "一律使用飞行器",
     "profileAuto": "自动（配合载具）",

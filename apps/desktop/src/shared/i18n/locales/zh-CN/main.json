@@ -11,9 +11,9 @@
     "verifying": "正在验证 {{slug}}...",
     "notInstalled": "{{slug}} 未安装",
     "noExecutable": "在 {{slug}} 的安装文件夹中找不到程序",
-    "installingCompanion": "正在加载与之配套的 {{slug}} 模块...",
-    "installedWithCargo": "{{name}} 已安装。其模块会在 ArduDeck 重新启动时加载。",
-    "companionFailed": "{{name}} 已安装，但其模块{{slug}} 无法加载：{{msg}}"
+    "installingCompanion": "正在加载与之配套的 {{slug}} Cargo...",
+    "installedWithCargo": "{{name}} 已安装。其 Cargo 会在 ArduDeck 重新启动时加载。",
+    "companionFailed": "{{name}} 已安装，但其 Cargo {{slug}} 无法加载：{{msg}}"
   },
   "areaEditorWindow": {
     "title": "区域编辑器",
@@ -466,8 +466,8 @@
     "unsupportedFrame": "不支持的框架"
   },
   "moduleManager": {
-    "activated_one": "已启用 {{count}} 个模块",
-    "activated_other": "已启用 {{count}} 个模块",
+    "activated_one": "已启用 {{count}} 个 Cargo",
+    "activated_other": "已启用 {{count}} 个 Cargo",
     "activating": "正在向服务器启用...",
     "activationFailed": "启用失败：{{msg}}",
     "activationRejected": "启用被拒绝",
@@ -484,10 +484,10 @@
     "signatureFailed": "{{slug}} 的软件包签名验证失败",
     "validatingKey": "正在验证授权密钥...",
     "verifying": "正在验证 {{slug}}...",
-    "installingDependency": "正在安装所需的模块{{slug}}...",
-    "dependencyFailed": "已安装，但无法安装所需的模块{{slug}}:{{msg}}",
+    "installingDependency": "正在安装所需的 Cargo {{slug}}...",
+    "dependencyFailed": "已安装，但无法安装所需的 Cargo {{slug}}：{{msg}}",
     "installingApp": "正在安装 {{slug}} 应用程序...",
-    "appFailed": "模块已安装，但其应用程序 {{slug}} 无法安装：{{msg}}"
+    "appFailed": "Cargo 已安装，但其应用程序 {{slug}} 无法安装：{{msg}}"
   },
   "msp": {
     "notConnected": "未连接"
