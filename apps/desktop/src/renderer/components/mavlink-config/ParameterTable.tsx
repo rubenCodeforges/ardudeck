@@ -23,7 +23,9 @@ import { classifySitlUnsafeParam } from '../../../shared/sitl-unsafe-params';
 import BitmaskEditor from './BitmaskEditor';
 import ParamHistoryModal from './ParamHistoryModal';
 import { Tooltip } from '../ui/Tooltip';
+import { ui } from '../ui/ui-hooks';
 import { NON_DEFAULT_COLORS, getNonDefaultColor } from '../parameters/non-default-palette';
+import { DefaultValueCell } from '../parameters/DefaultValueCell';
 import { wiringStepFor } from '../../lib/wiring-checks';
 import { detectSetupVehicle } from '../../../shared/vehicle-setup/plans';
 import { useOwnsCompareModal } from '../parameters/compare-modal-host';
@@ -36,7 +38,7 @@ interface Toast {
 }
 
 // Column widths kept in one place so header and rows stay aligned.
-const PARAM_GRID_COLUMNS = 'minmax(220px, 260px) minmax(140px, 200px) minmax(220px, 320px) minmax(0, 1fr) 140px';
+const PARAM_GRID_COLUMNS = 'minmax(220px, 260px) minmax(140px, 200px) 96px minmax(220px, 320px) minmax(0, 1fr) 140px';
 
 // Group tab colors keyed by PARAMETER_GROUPS[].color. Literal class strings so
 // Tailwind's content scan keeps them; runtime-built `bg-${c}-500/20` strings get purged.
@@ -290,7 +292,8 @@ const ParameterTable: React.FC = () => {
         }
 
         markAllAsSaved();
-        showToast(t('mavlink-config:parameterTable.savedToFlash'), 'success');
+        if (result && 'unconfirmed' in result && result.unconfirmed) showToast(t('mavlink-config:parameterTable.savedUnconfirmed'), 'info');
+        else showToast(t('mavlink-config:parameterTable.savedToFlash'), 'success');
       } else {
         showToast(result?.error ?? t('mavlink-config:parameterTable.failedToWriteFlash'), 'error');
       }
@@ -618,6 +621,7 @@ const ParameterTable: React.FC = () => {
         <div className="flex items-center gap-3">
           <div className="flex-1 relative">
             <input
+              {...ui('input')}
               type="text"
               value={searchQuery}
               onChange={handleSearch}
@@ -633,6 +637,7 @@ const ParameterTable: React.FC = () => {
           <div className="relative" ref={saveDropdownRef}>
             <div className="flex">
               <button
+                {...ui('button', { variant: 'secondary' })}
                 onClick={() => handleSaveToFile(false)}
                 disabled={isSavingFile || paramCount === 0}
                 className="px-3 py-2 bg-surface-raised hover:bg-surface disabled:bg-surface text-content disabled:text-content-tertiary rounded-l-lg text-sm font-medium transition-colors flex items-center gap-2"
@@ -644,6 +649,7 @@ const ParameterTable: React.FC = () => {
                 {isSavingFile ? t('common:saving') : t('common:save')}
               </button>
               <button
+                {...ui('icon-button', { active: saveDropdownOpen })}
                 onClick={() => setSaveDropdownOpen(prev => !prev)}
                 disabled={isSavingFile || paramCount === 0}
                 className="px-1.5 py-2 bg-surface-raised hover:bg-surface disabled:bg-surface text-content disabled:text-content-tertiary rounded-r-lg border-l border/30 text-sm transition-colors"
@@ -657,12 +663,14 @@ const ParameterTable: React.FC = () => {
             {saveDropdownOpen && (
               <div className="absolute top-full left-0 mt-1 w-52 bg-surface-solid border-subtle rounded-lg shadow-xl z-50 py-1">
                 <button
+                  {...ui('button', { variant: 'secondary' })}
                   onClick={() => handleSaveToFile(false)}
                   className="w-full px-3 py-2 text-left text-sm text-content hover:bg-surface-raised transition-colors"
                 >
                   {t('mavlink-config:parameterTable.saveAllParams')}
                 </button>
                 <button
+                  {...ui('button', { variant: 'secondary' })}
                   onClick={() => handleSaveToFile(true)}
                   disabled={modified === 0}
                   className="w-full px-3 py-2 text-left text-sm text-content hover:bg-surface-raised disabled:text-content-tertiary disabled:hover:bg-transparent transition-colors"
@@ -675,6 +683,7 @@ const ParameterTable: React.FC = () => {
           </div>
 
           <button
+            {...ui('button', { variant: 'secondary' })}
             onClick={handleLoadFromFile}
             disabled={isLoadingFile}
             className="px-3 py-2 bg-surface-raised hover:bg-surface disabled:bg-surface text-content disabled:text-content-tertiary rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
@@ -687,6 +696,7 @@ const ParameterTable: React.FC = () => {
           </button>
 
           <button
+            {...ui('button', { variant: 'secondary' })}
             onClick={() => setShowHistory(true)}
             className="px-3 py-2 bg-surface-raised hover:bg-surface text-content rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
             title={t('mavlink-config:parameterTable.historyTip')}
@@ -697,6 +707,7 @@ const ParameterTable: React.FC = () => {
 
           {favouriteCount() > 0 && (
             <button
+              {...ui('chip', { active: showOnlyFavourites })}
               onClick={toggleShowOnlyFavourites}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 ${
                 showOnlyFavourites
@@ -712,6 +723,7 @@ const ParameterTable: React.FC = () => {
 
           {modified > 0 && (
             <button
+              {...ui('chip', { active: showOnlyModified })}
               onClick={toggleShowOnlyModified}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 ${
                 showOnlyModified
@@ -733,6 +745,7 @@ const ParameterTable: React.FC = () => {
             <div className="relative" ref={colorPickerRef}>
               <div className="flex">
                 <button
+                  {...ui('chip', { active: showOnlyNonDefault })}
                   onClick={toggleShowOnlyNonDefault}
                   className={`px-3 py-2 rounded-l-lg text-sm font-medium transition-colors flex items-center gap-2 ${
                     showOnlyNonDefault
@@ -750,6 +763,7 @@ const ParameterTable: React.FC = () => {
                   <span className="text-xs text-content-secondary">({nonDefaultCount})</span>
                 </button>
                 <button
+                  {...ui('icon-button', { active: colorPickerOpen })}
                   onClick={() => setColorPickerOpen((o) => !o)}
                   className="px-1.5 py-2 bg-surface-raised hover:bg-surface text-content rounded-r-lg border-l border-subtle/40 text-sm transition-colors"
                   title={t('mavlink-config:parameterTable.pickHighlightColor')}
@@ -827,6 +841,7 @@ const ParameterTable: React.FC = () => {
               return (
                 <button
                   key={group.id}
+                  {...ui('chip', { active: isActive })}
                   onClick={() => setSelectedGroup(group.id)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${
                     isActive
@@ -965,6 +980,7 @@ const ParameterTable: React.FC = () => {
                 </button>
               </div>
               <div className="px-4 py-3 font-medium">{t('common:value')}</div>
+              <div className="px-2 py-3 font-medium">{t('parameters:defaultColumn.header')}</div>
               <div className="px-4 py-3 font-medium">{t('mavlink-config:parameterTable.options')}</div>
               <div className="px-4 py-3 font-medium">{t('common:description')}</div>
               <div className="px-4 py-3 font-medium text-right">
@@ -1119,6 +1135,9 @@ const ParameterTable: React.FC = () => {
                         </div>
                       );
                     })()}
+                  </div>
+                  <div className="px-2 py-2.5 min-w-0 flex items-center">
+                    <DefaultValueCell value={param.value} defaultValue={param.defaultValue} readOnly={param.isReadOnly} onReset={(v) => setParameter(param.id, v)} />
                   </div>
                   {/* Options column: discrete value labels for params with meta.values */}
                   <div className="px-4 py-2.5 min-w-0 overflow-hidden">

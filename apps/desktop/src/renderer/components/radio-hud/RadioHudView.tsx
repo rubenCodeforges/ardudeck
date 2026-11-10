@@ -1,3 +1,4 @@
+import { ui } from '../ui/ui-hooks';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTelemetryStore } from '../../stores/telemetry-store';
@@ -2561,6 +2562,7 @@ export function RadioHudView() {
           )}
           <div className="flex flex-wrap gap-2">
             <button
+              {...ui('button', { variant: 'secondary' })}
               type="button"
               onClick={async () => {
                 setApplyError(null);
@@ -2582,6 +2584,7 @@ export function RadioHudView() {
               {t('radio-hud:studio.openFromRadio')}
             </button>
             <button
+              {...ui('button', { variant: 'secondary' })}
               type="button"
               onClick={handleEject}
               disabled={busyWithCard}
@@ -2592,6 +2595,7 @@ export function RadioHudView() {
             </button>
             {hudInstalled && (
               <button
+                {...ui('button', { variant: 'danger' })}
                 type="button"
                 onClick={handleRemoveWidget}
                 data-tip={t('radio-hud:radioHudView.removeTip')}
@@ -2613,6 +2617,7 @@ export function RadioHudView() {
               <li>{t('radio-hud:studio.lookingStep3')}</li>
             </ol>
             <button
+              {...ui('button', { variant: 'secondary' })}
               type="button"
               onClick={() => { void rescan(true); }}
               disabled={busyWithCard}
@@ -2649,6 +2654,7 @@ export function RadioHudView() {
         <BatteryMedium className="h-4 w-4 text-amber-400" />, 'border-amber-500/20 bg-amber-500/10',
         t('radio-hud:studio.vehicleBattery'), t('radio-hud:studio.batteryHint'),
         <button
+          {...ui('chip')}
           type="button"
           onClick={handleLoadFromVehicle}
           data-tip={t('radio-hud:radioHudView.loadFromVehicleTip')}
@@ -2683,6 +2689,7 @@ export function RadioHudView() {
       {([['sample', t('radio-hud:radioHudView.sampleFlight')], ['live', t('radio-hud:radioHudView.liveVehicle')]] as const).map(([m, label]) => (
         <button
           key={m}
+          {...ui('chip', { active: previewMode === m })}
           type="button"
           disabled={m === 'live' && !connectionState.isConnected}
           data-tip={m === 'live' && !connectionState.isConnected ? t('radio-hud:radioHudView.liveVehicleConnectFirst') : undefined}
@@ -2695,6 +2702,7 @@ export function RadioHudView() {
         </button>
       ))}
       <button
+        {...ui('chip', { active: snapping })}
         type="button"
         onClick={toggleSnapping}
         aria-pressed={snapping}
@@ -2708,10 +2716,11 @@ export function RadioHudView() {
       </button>
       <div role="group" aria-label={t('radio-hud:radioHudView.theme')} className="flex items-center gap-2">
         <span className="text-xs text-content-tertiary">{t('radio-hud:radioHudView.theme')}</span>
-        <div className="flex gap-0.5 rounded-lg border border-subtle bg-surface-input p-0.5">
+        <div {...ui('segmented')} className="flex gap-0.5 rounded-lg border border-subtle bg-surface-input p-0.5">
           {(['dark', 'light'] as const).map((th) => (
             <button
               key={th}
+              {...ui('segment', { active: cfg.theme === th })}
               type="button"
               onClick={() => setCfg({ ...cfg, theme: th })}
               className={`rounded-md px-3 py-0.5 text-xs transition-colors ${cfg.theme === th ? 'bg-surface-raised text-content' : 'text-content-secondary hover:text-content'}`}
@@ -2804,10 +2813,11 @@ export function RadioHudView() {
           <h1 className="text-xl font-semibold text-content">{t('radio-hud:radioHudView.title')}</h1>
           <span className="text-xs text-content-secondary">{t('radio-hud:radioHudView.subtitle')}</span>
         </div>
-        <div role="tablist" className="mt-3 flex gap-1">
+        <div {...ui('tabs')} role="tablist" className="mt-3 flex gap-1">
           {(['editor', 'guide'] as const).map((id) => (
             <button
               key={id}
+              {...ui('tab', { active: tab === id })}
               type="button"
               role="tab"
               aria-selected={tab === id}
@@ -2863,6 +2873,7 @@ export function RadioHudView() {
                 {isBw ? (
                   <>
                     <button
+                      {...ui('button', { variant: 'secondary' })}
                       type="button"
                       onClick={() => setEditing(!editing)}
                       data-tour="hud-edit"
@@ -2874,6 +2885,7 @@ export function RadioHudView() {
                     </button>
                     {editing && (
                       <button
+                        {...ui('button', { variant: 'secondary' })}
                         type="button"
                         onClick={() => setBw(DEFAULT_BW_LAYOUT)}
                         disabled={JSON.stringify(bw) === JSON.stringify(DEFAULT_BW_LAYOUT)}
@@ -2886,6 +2898,7 @@ export function RadioHudView() {
                   </>
                 ) : (
                   <button
+                    {...ui('button', { variant: 'secondary' })}
                     type="button"
                     onClick={() => setGallery('replace')}
                     data-tour="hud-edit"
@@ -3007,6 +3020,7 @@ export function RadioHudView() {
           )}
         </div>
         <button
+          {...ui('button', { variant: 'primary' })}
           type="button"
           onClick={() => {
             if (applyNeedsConfirm && !confirmApply) {

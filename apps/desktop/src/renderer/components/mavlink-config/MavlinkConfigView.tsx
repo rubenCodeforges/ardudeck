@@ -15,6 +15,7 @@
  * - All Parameters: Full parameter table (expert mode)
  */
 
+import { ui } from '../ui/ui-hooks';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Gauge,
@@ -49,10 +50,13 @@ import {
   Boxes,
   Puzzle,
   Wand2,
+  RotateCcw,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useConnectionStore } from '../../stores/connection-store';
+import { useTelemetryStore } from '../../stores/telemetry-store';
+import { ResetParamsDialog } from './ResetParamsDialog';
 import { useConfigTabMenuStore } from '../../stores/config-tab-menu-store';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { formatParamValue } from '../../../shared/parameter-types';
@@ -64,6 +68,8 @@ import FlightModesTab from './FlightModesTab';
 import SafetyTab from './SafetyTab';
 import { QuickSetupTab } from './QuickSetupTab';
 import { NewVehicleWizardHost } from './new-vehicle/NewVehicleWizard';
+import { heliBuildWithMultirotorFrame } from './motor-test/motor-layout-utils';
+import { useFirmwareStore } from '../../stores/firmware-store';
 import SensorsTab from './SensorsTab';
 import TuningTab from './TuningTab';
 import AutotuneTab from './AutotuneTab';
@@ -392,6 +398,15 @@ export const MavlinkConfigView: React.FC = () => {
   const setSearchQuery = useParameterStore((s) => s.setSearchQuery);
   const connectionState = useConnectionStore((s) => s.connectionState);
   const scrollTarget = useNavigationStore((s) => s.scrollTarget);
+  const setView = useNavigationStore((s) => s.setView);
+  const params = useParameterStore((s) => s.parameters);
+  const heliFrameMismatch = useMemo(() => heliBuildWithMultirotorFrame((k) => params.get(k)), [params]);
+  const reflashCopter = useCallback(() => {
+    const fw = useFirmwareStore.getState();
+    fw.setSelectedSource('ardupilot');
+    fw.setSelectedVehicleType('copter');
+    setView('firmware');
+  }, [setView]);
   const clearScrollTarget = useNavigationStore((s) => s.clearScrollTarget);
 
   // Determine vehicle type and appropriate tabs
@@ -488,6 +503,8 @@ export const MavlinkConfigView: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [rebooting, setRebooting] = useState(false);
   const [showRebootConfirm, setShowRebootConfirm] = useState(false);
+  const [showResetParams, setShowResetParams] = useState(false);
+  const armed = useTelemetryStore((s) => s.flight.armed);
   const [toast, setToast] = useState<Toast | null>(null);
   const [rebootRequiredParams, setRebootRequiredParams] = useState<string[]>([]);
   // Tracks whether we initiated a reboot from the banner and should auto-refresh params
@@ -550,7 +567,8 @@ export const MavlinkConfigView: React.FC = () => {
         }
 
         markAllAsSaved();
-        showToast(t('mavlink-config:mavlinkConfigView.savedToFlash'), 'success');
+        if (result && 'unconfirmed' in result && result.unconfirmed) showToast(t('mavlink-config:mavlinkConfigView.savedUnconfirmed'), 'info');
+        else showToast(t('mavlink-config:mavlinkConfigView.savedToFlash'), 'success');
       } else {
         showToast(result?.error ?? t('mavlink-config:mavlinkConfigView.failedToWriteFlash'), 'error');
       }
@@ -582,6 +600,18 @@ export const MavlinkConfigView: React.FC = () => {
       showToast(t('mavlink-config:mavlinkConfigView.rebootFailed'), 'error');
     }
   }, [showToast, rebootRequiredParams, t]);
+
+  const handleResetParams = useCallback(async (): Promise<boolean> => {
+    const result = await window.electronAPI?.mavlinkResetParams();
+    if (!result?.success) {
+      showToast(result?.error ?? t('mavlink-config:resetParams.failed'), 'error');
+      return false;
+    }
+    showToast(t('mavlink-config:resetParams.erased'), 'success');
+    setShowResetParams(false);
+    await handleReboot();
+    return true;
+  }, [showToast, handleReboot, t]);
 
   // Watch for reconnection completion after a reboot we initiated
   useEffect(() => {
@@ -728,6 +758,7 @@ export const MavlinkConfigView: React.FC = () => {
             )}
 
             <button
+              {...ui('button', { variant: 'secondary' })}
               onClick={() => fetchParameters({ force: true })}
               disabled={isLoading}
               className="px-4 py-2 text-sm rounded-lg bg-surface-raised hover:bg-surface text-content border border-subtle"
@@ -736,6 +767,7 @@ export const MavlinkConfigView: React.FC = () => {
             </button>
 
             <button
+              {...ui('button', { variant: 'secondary' })}
               onClick={() => setShowRebootConfirm(true)}
               disabled={rebooting}
               className="px-4 py-2 text-sm rounded-lg flex items-center gap-2 bg-surface-raised hover:bg-surface text-content border border-subtle"
@@ -745,7 +777,21 @@ export const MavlinkConfigView: React.FC = () => {
               {rebooting ? t('common:rebooting') : t('common:reboot')}
             </button>
 
+            {connectionState.firmware === 'ardupilot' && !isInavLink && (
+              <button
+                {...ui('button', { variant: 'danger' })}
+                onClick={() => setShowResetParams(true)}
+                disabled={rebooting || armed}
+                className="px-4 py-2 text-sm rounded-lg flex items-center gap-2 bg-surface-raised hover:bg-surface text-red-400 border border-subtle disabled:opacity-50 disabled:cursor-not-allowed"
+                data-tip={armed ? t('mavlink-config:resetParams.disarmFirst') : t('mavlink-config:resetParams.buttonTip')}
+              >
+                <RotateCcw className="w-4 h-4" />
+                {t('mavlink-config:resetParams.button')}
+              </button>
+            )}
+
             <button
+              {...ui('button', { variant: 'secondary' })}
               onClick={() => setShowHistory(true)}
               className="px-4 py-2 text-sm rounded-lg flex items-center gap-2 bg-surface-raised hover:bg-surface text-content border border-subtle"
               title={t('mavlink-config:mavlinkConfigView.historyTip')}
@@ -755,6 +801,7 @@ export const MavlinkConfigView: React.FC = () => {
             </button>
 
             <button
+              {...ui('button', { variant: 'primary' })}
               onClick={handleWriteToFlashClick}
               disabled={isWritingFlash || modified === 0}
               className={`px-5 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2 ${
@@ -847,6 +894,23 @@ export const MavlinkConfigView: React.FC = () => {
         </div>
       </div>
 
+      {/* The heli build refuses every multirotor FRAME_CLASS on boot */}
+      {heliFrameMismatch && (
+        <div className="shrink-0 px-6 py-3 border-b bg-red-500/10 border-red-500/30 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
+            <div className="text-sm text-red-200">{t('mavlink-config:mavlinkConfigView.heliBuildMultirotor')}</div>
+          </div>
+          <button
+            {...ui('button', { variant: 'primary' })}
+            onClick={reflashCopter}
+            className="shrink-0 h-8 px-3 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-medium"
+          >
+            {t('mavlink-config:mavlinkConfigView.reflashCopter')}
+          </button>
+        </div>
+      )}
+
       {/* Reboot Required Banner */}
       {rebootRequiredParams.length > 0 && (
         <div className={`shrink-0 px-6 py-3 border-b flex items-center justify-between ${
@@ -914,6 +978,15 @@ export const MavlinkConfigView: React.FC = () => {
 
       {/* Reboot Confirmation Modal: one misclick next to Refresh must not
           restart a live flight controller. */}
+      {showResetParams && (
+        <ResetParamsDialog
+          armed={armed}
+          vehicleType={connectionState.vehicleType || connectionState.fcVariant}
+          onCancel={() => setShowResetParams(false)}
+          onReset={handleResetParams}
+        />
+      )}
+
       {showRebootConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-surface-solid border rounded-xl shadow-2xl max-w-sm w-full mx-4">

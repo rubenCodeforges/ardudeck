@@ -490,7 +490,9 @@
     "emptyGroup": "群組「{{name}}」沒有航點。",
     "midMissionReturn_one": "{{count}} survey returns home before the mission ends. Connect them to fly straight on.",
     "midMissionReturn_other": "有 {{count}} 個測繪在任務結束前就返航。請將它們連接起來,以便直接繼續飛行。",
-    "noTakeoff": "沒有起飛指令:載具會從目前狀態直接飛往第一個航點。"
+    "noTakeoff": "沒有起飛指令:載具會從目前狀態直接飛往第一個航點。",
+    "hazard": "航段 {{from}} 到 {{to}} 穿越危險區「{{zone}}」",
+    "hazardFromHome": "從 Home 到 {{to}} 的航段穿越危險區「{{zone}}」"
   },
   "parameterGroups": {
     "all": {
@@ -746,5 +748,19 @@
   "vtolTransition": {
     "toHover": "轉懸停",
     "toWing": "轉翼飛"
+  },
+  "userModelParsers": {
+    "badLatLng": "緯度或經度缺失或超出範圍",
+    "badNumber": "{{field}} 不是有效數字",
+    "emptyTable": "放置表中沒有資料列。",
+    "invalidJson": "放置表不是有效的 JSON（{{detail}}）",
+    "missingFile": "該列未指定模型檔案",
+    "noCrs": "此 CityJSON 檔案未指定座標參考系統（metadata.referenceSystem），無法放置。",
+    "noGeometry": "此 CityJSON 檔案沒有可繪製的面。",
+    "noValidRows": "放置表中的模型都無法放置。第 {{row}} 列：{{problem}}。",
+    "notCityJson": "此檔案不是 CityJSON。",
+    "notFeatureCollection": "GeoJSON 表必須是由 Point 圖徵組成的 FeatureCollection。",
+    "notModelList": "models.json 必須是模型清單，或包含 \"models\" 清單的物件。",
+    "unknownCrs": "未知的座標參考系統 EPSG:{{epsg}}。此 CityJSON 檔案無法放置。"
   }
 }

@@ -215,7 +215,8 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
 
       try {
         // Interpolate points along the path for terrain sampling
-        const surveyed = waypoints.some(wp => demSourceAt(wp.latitude, wp.longitude) !== null);
+        // Dense sampling only pays inside the survey; spread over a route that leaves it, it buys nothing.
+        const surveyed = waypoints.every(wp => demSourceAt(wp.latitude, wp.longitude) !== null);
         const pathPoints = interpolatePathPoints(
           waypoints.map(wp => ({ lat: wp.latitude, lon: wp.longitude })),
           surveyed ? SURVEY_TERRAIN_SAMPLES : TERRAIN_SAMPLES

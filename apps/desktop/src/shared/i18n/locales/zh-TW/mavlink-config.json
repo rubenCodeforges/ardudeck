@@ -651,6 +651,7 @@
     "saveAll": "儲存所有變更",
     "saveAllTip": "將參數儲存到飛控的永久儲存空間",
     "savedToFlash": "參數已成功儲存到快閃記憶體",
+    "savedUnconfirmed": "參數已送出並確認,但飛控未回應快閃記憶體寫入。飛行前請重新啟動並檢查數值。",
     "sysId": "SysID {{id}}",
     "tabs": {
       "arming": "解鎖",
@@ -717,7 +718,9 @@
     "writeBody": "以下 {{count}} 個參數將被永久儲存到飛控。",
     "writeRebootWarning": "有些參數需要重新啟動才會生效。",
     "writeTitle": "將參數寫入快閃記憶體",
-    "writeToFlash": "寫入快閃記憶體"
+    "writeToFlash": "寫入快閃記憶體",
+    "heliBuildMultirotor": "此機板執行的是 ArduCopter 直升機韌體。它只接受直升機機架,因此 FRAME_CLASS 設為 Quad、Hexa 或 Octa 永遠不會生效。請燒錄一般的 ArduCopter(多旋翼)版本。",
+    "reflashCopter": "重新燒錄 ArduCopter"
   },
   "mavlinkPidSchemes": {
     "planeDesc": "固定翼控制器",
@@ -822,7 +825,10 @@
     "planeTitle": "固定翼沒有馬達測試",
     "planeBody": "ArduPlane 只能對 QuadPlane (VTOL) 的升力馬達,從地面站讓馬達旋轉。一般固定翼的前進馬達在韌體中沒有馬達測試,在任何地面站都一樣。",
     "planeHow": "若要檢查前進馬達:拆下螺旋槳,在 MANUAL 中解鎖並推高油門搖桿。要查看哪個輸出驅動它,請使用伺服輸出。",
-    "quadplaneNote": "測試 VTOL 升力馬達。獨立的前進馬達不屬於 ArduPilot 的馬達測試;請在 MANUAL 中拆下螺旋槳,以油門檢查它。"
+    "quadplaneNote": "測試 VTOL 升力馬達。獨立的前進馬達不屬於 ArduPilot 的馬達測試;請在 MANUAL 中拆下螺旋槳,以油門檢查它。",
+    "frameUnwritten": "FRAME_CLASS 或 FRAME_TYPE 有尚未寫入機板的變更。請按「寫入」寫入快閃記憶體,然後重新啟動飛控:馬達測試使用的是機板目前執行的機架,如此處所示。",
+    "frameUndefined": "機板上的 FRAME_CLASS 為 Undefined (0),因此沒有馬達配置,會拒絕馬達測試。請設定 FRAME_CLASS 與 FRAME_TYPE,寫入快閃記憶體,然後重新啟動飛控。",
+    "frameReboot": "新的機架已儲存,但飛控會在開機時建立馬達配置。請在馬達測試前重新啟動,否則它會以「Check frame class and type」拒絕。"
   },
   "notifyTab": {
     "allSoundsOn": "全部開啟聲音",
@@ -1061,6 +1067,7 @@
     "savedToFile_one": "Saved {{count}} parameter to file",
     "savedToFile_other": "已將 {{count}} 個參數儲存到檔案",
     "savedToFlash": "參數已成功儲存到快閃記憶體",
+    "savedUnconfirmed": "參數已送出並確認,但飛控未回應快閃記憶體寫入。飛行前請重新啟動並檢查數值。",
     "searchPlaceholder": "搜尋參數...(支援正規表示式)",
     "selectedCount": "已選 {{selected}} / {{total}}",
     "setValueTip": "設定 {{id}} = {{code}}({{label}})",
@@ -1830,6 +1837,7 @@
     "activeNote": "已在 MANUAL 模式解鎖。覆寫串流頻率 {{hz}}Hz。點擊「釋放」以停止並上鎖。",
     "copterUnavailable": "多旋翼上無法使用。對已解鎖的多旋翼注入油門會讓馬達轉動。請使用<b>馬達測試</b>,一次檢查一顆馬達的輸出。",
     "errArm": "解鎖載具失敗:請查看「訊息」中的 PreArm 原因",
+    "needsRcMap": "請先載入參數:RCMAP 決定哪個通道是油門,因此在得知之前測試會保持關閉。",
     "errRelaxArmingCheck": "放寬 ARMING_CHECK 失敗",
     "errSetManual": "設定 MANUAL 模式失敗",
     "fcColumnHint": "FC 欄顯示自動駕駛儀目前在 {{channels}} 上讀到的值 (msg 65)。綠色 = 與你的滑桿相符(覆寫生效)。琥珀色 = 不符。破折號 = FC 完全沒有回報 RC。",
@@ -2480,5 +2488,19 @@
       "notCopter": "The filter card is for multirotors and QuadPlanes.",
       "openInLogs": "Open in Logs"
     }
+  },
+  "resetParams": {
+    "button": "全部重設",
+    "buttonTip": "將所有參數重設為韌體預設值",
+    "title": "將所有參數重設為預設值？",
+    "body": "所有參數將恢復為韌體預設值，飛控隨後重新啟動。",
+    "calibrationWarning": "這也會清除加速度計、羅盤和遙控校準、機架設定以及所有調參。飛行前請重新設定並校準飛行器。",
+    "saveFirst": "請先儲存參數檔，以便之後恢復需要的內容。",
+    "saveFile": "儲存參數檔",
+    "saved": "參數檔已儲存",
+    "confirm": "重設並重新啟動",
+    "disarmFirst": "載具必須先處於上鎖狀態。",
+    "erased": "參數已清除。正在重新啟動以載入預設值。",
+    "failed": "參數重設未成功。"
   }
 }

@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Loader2, Zap, Play, Square } from 'lucide-react';
 import { Trans, useTranslation } from 'react-i18next';
+import { ui } from '../ui/ui-hooks';
 
 interface CompassMotDialogProps {
   onClose: () => void;
@@ -288,14 +289,14 @@ export function CompassMotDialog({ onClose }: CompassMotDialogProps) {
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-subtle">
-          <button
+          <button {...ui('button', { variant: 'ghost' })}
             onClick={handleClose}
             className="px-3 py-1.5 rounded-lg text-xs text-content-secondary hover:text-content hover:bg-surface transition-colors"
           >
             {run.kind === 'done' ? t('common:close') : t('common:cancel')}
           </button>
           {(run.kind === 'idle' || run.kind === 'error') && (
-            <button
+            <button {...ui('button', { variant: 'primary' })}
               onClick={start}
               disabled={!acknowledged}
               className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-orange-600 hover:bg-orange-500 disabled:bg-orange-600/40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
@@ -305,7 +306,7 @@ export function CompassMotDialog({ onClose }: CompassMotDialogProps) {
             </button>
           )}
           {isBusy && (
-            <button
+            <button {...ui('button', { variant: 'primary' })}
               onClick={finish}
               className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-500 transition-colors flex items-center gap-1.5"
             >

@@ -1,16 +1,19 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { t as i18nT } from '../../../shared/i18n/index.js';
+import { ui } from '../ui/ui-hooks';
 import { GuidesAndToursCard } from '../guides/GuidesAndToursList';
 import { DraftNumberInput } from '../../hooks/useNumericDraft';
 import { TileCacheCard } from './TileCacheCard';
 import { UnitSelectionCard } from './UnitSelectionCard';
 import { LanguageCard } from './LanguageCard';
 import { ThemeCard } from './ThemeCard';
-import { DedicationPlaque } from '../tribute/DedicationPlaque';
+import { CargoThemeAboutCards } from '../layout/CargoThemeSlots';
 import { TrafficSettingsCard } from './TrafficSettingsCard';
 import { GroupShapeCard } from './GroupShapeCard';
 import { useSettingsStore, type VehicleProfile, type VehicleType, type ExperienceLevel, type UiVisibility } from '../../stores/settings-store';
+import { useMapKeysStore } from '../../stores/map-keys-store';
+import { CARTO_KEY_SERVICE } from '../../../shared/map-layers';
 import { useTerrainStatusStore } from '../../stores/terrain-status-store';
 import { useRenderGovernor } from '../../perf/render-governor';
 import { useParameterStore } from '../../stores/parameter-store';
@@ -339,6 +342,7 @@ function ProfileCompatibilityBanner({
             {supportedTypes.map((type) => (
               <button
                 key={type}
+                {...ui('button', { variant: 'secondary' })}
                 onClick={() => onCreateNewProfile(type)}
                 className="flex items-center gap-2 px-3 py-2 bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/50 rounded-lg text-sm text-amber-200 transition-colors"
               >
@@ -834,6 +838,7 @@ function WeatherWidget({ vehicleType }: { vehicleType?: VehicleType }) {
           </div>
           {briefingAvailable && (
             <button
+              {...ui('button', { variant: 'ghost' })}
               onClick={() => setView('weather')}
               className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-content-secondary hover:text-content transition-colors"
               data-tip={t('settings:settingsView.weather.openBriefing')}
@@ -1376,7 +1381,7 @@ export function SettingsView() {
 
       {/* Category tabs */}
       <div className="shrink-0 px-4 py-2 border-b border-subtle bg-surface-overlay-subtle overflow-x-auto">
-        <div className="max-w-6xl mx-auto flex gap-1">
+        <div {...ui('tabs')} className="max-w-6xl mx-auto flex gap-1">
           {SETTINGS_CATEGORIES.map((cat) => {
             const isActive = selectedCategory === cat.id;
             const Icon = cat.icon;
@@ -1384,6 +1389,7 @@ export function SettingsView() {
             return (
               <button
                 key={cat.id}
+                {...ui('tab', { active: isActive })}
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${
                   isActive
@@ -1449,6 +1455,7 @@ export function SettingsView() {
                     </div>
                     {activeVehicle && (
                       <button
+                        {...ui('icon-button')}
                         onClick={() => setEditingVehicleId(activeVehicle.id)}
                         className="p-1.5 text-content-secondary hover:text-content hover:bg-surface-raised rounded transition-colors"
                         title={t('settings:settingsView.editVehicleTitle')}
@@ -1630,6 +1637,7 @@ export function SettingsView() {
                     {t('settings:settingsView.vehicleProfiles')}
                   </h2>
                   <button
+                    {...ui('button', { variant: 'primary' })}
                     onClick={() => setShowTemplatePicker(true)}
                     className="px-2.5 py-1 bg-emerald-600/80 hover:bg-emerald-500/80 text-white text-xs rounded-lg transition-colors flex items-center gap-1"
                   >
@@ -1731,8 +1739,9 @@ export function SettingsView() {
                   <div className="text-[11px] text-content-secondary">{t('settings:settingsView.experienceHint')}</div>
                 </div>
               </div>
-              <div className="flex bg-surface-input rounded-lg border border-subtle overflow-hidden">
+              <div {...ui('segmented')} className="flex bg-surface-input rounded-lg border border-subtle overflow-hidden">
                 <button
+                  {...ui('segment', { active: experienceLevel === 'beginner' })}
                   onClick={async () => {
                     const v = await window.electronAPI?.getAppVersion() || '0.0.0';
                     setExperienceLevel('beginner', v);
@@ -1746,6 +1755,7 @@ export function SettingsView() {
                   {t('common:beginner')}
                 </button>
                 <button
+                  {...ui('segment', { active: experienceLevel === 'advanced' })}
                   onClick={async () => {
                     const v = await window.electronAPI?.getAppVersion() || '0.0.0';
                     setExperienceLevel('advanced', v);
@@ -2017,7 +2027,16 @@ export function SettingsView() {
               </div>
             </div>
 
-            <OpenAipKeyInput />
+            <ApiKeyInput service="openaip" ns="openAip" href="https://www.openaip.net" linkLabel="openaip.net" />
+            <div className="mt-4">
+              <ApiKeyInput
+                service={CARTO_KEY_SERVICE}
+                ns="carto"
+                href="https://carto.com/basemaps/apikey"
+                linkLabel="carto.com"
+                onSaved={() => void useMapKeysStore.getState().refresh()}
+              />
+            </div>
           </div>
 
           <TrafficSettingsCard />
@@ -2031,6 +2050,8 @@ export function SettingsView() {
             <MavlinkSettingsSection />
             {/* SECTION: Terrain uplink */}
             <TerrainUplinkSection />
+            <VoiceVolumeSection />
+            <TelemetryLogSection />
             {/* SECTION: Console */}
             <ConsoleSettingsSection />
             {/* SECTION: Experimental Features (AI Flight Analysis lives here). */}
@@ -2046,35 +2067,43 @@ export function SettingsView() {
   );
 }
 
-function OpenAipKeyInput() {
+function ApiKeyInput({ service, ns, href, linkLabel, onSaved }: {
+  service: string;
+  /** i18n group under settings:settingsView with label, freeAt, placeholder and configured. */
+  ns: 'openAip' | 'carto';
+  href: string;
+  linkLabel: string;
+  onSaved?: () => void;
+}) {
   const { t } = useTranslation();
   const [key, setKey] = useState('');
   const [hasKey, setHasKey] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    window.electronAPI?.getApiKey('openaip').then((result: { hasKey: boolean; key: string }) => {
+    window.electronAPI?.getApiKey(service).then((result: { hasKey: boolean; key: string }) => {
       if (result?.hasKey) {
         setHasKey(true);
         setKey(result.key);
       }
     });
-  }, []);
+  }, [service]);
 
   const handleSave = async () => {
-    await window.electronAPI?.setApiKey('openaip', key.trim());
+    await window.electronAPI?.setApiKey(service, key.trim());
     setHasKey(!!key.trim());
     setSaved(true);
+    onSaved?.();
     setTimeout(() => setSaved(false), 2000);
   };
 
   return (
     <div>
       <label className="block text-xs text-content-secondary mb-1.5">
-        {t('settings:settingsView.openAip.label')}
-        <span className="text-content-tertiary ml-1">{t('settings:settingsView.openAip.freeAt')}</span>{' '}
-        <a href="https://www.openaip.net" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
-          openaip.net
+        {t(`settings:settingsView.${ns}.label`)}
+        <span className="text-content-tertiary ml-1">{t(`settings:settingsView.${ns}.freeAt`)}</span>{' '}
+        <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+          {linkLabel}
         </a>
       </label>
       <div className="flex gap-2">
@@ -2082,10 +2111,11 @@ function OpenAipKeyInput() {
           type="password"
           value={key}
           onChange={(e) => { setKey(e.target.value); setSaved(false); }}
-          placeholder={hasKey ? '••••••••••••••••' : t('settings:settingsView.openAip.placeholder')}
+          placeholder={hasKey ? '••••••••••••••••' : t(`settings:settingsView.${ns}.placeholder`)}
           className="flex-1 px-3 py-1.5 bg-surface-input border border-border rounded-lg text-sm text-content placeholder-content-tertiary focus:outline-none focus:border-blue-500"
         />
         <button
+          {...ui('button', { variant: 'primary' })}
           onClick={handleSave}
           className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
         >
@@ -2093,7 +2123,7 @@ function OpenAipKeyInput() {
         </button>
       </div>
       {hasKey && !saved && (
-        <p className="text-xs text-emerald-400 mt-1">{t('settings:settingsView.openAip.configured')}</p>
+        <p className="text-xs text-emerald-400 mt-1">{t(`settings:settingsView.${ns}.configured`)}</p>
       )}
     </div>
   );
@@ -2158,6 +2188,9 @@ function TerrainUplinkSection() {
   const uplink = useTerrainStatusStore((s) => s.uplink);
   const served = Object.values(uplink).reduce((n, u) => n + u.served, 0);
   const missing = Object.values(uplink).reduce((n, u) => n + u.missing, 0);
+  const unavailable = Object.values(uplink).reduce((n, u) => n + u.unavailable, 0);
+  const gaps = Object.values(uplink).reduce((n, u) => n + u.gaps, 0);
+  const errors = Object.values(uplink).reduce((n, u) => n + u.errors, 0);
 
   return (
     <div className="mt-8">
@@ -2172,6 +2205,11 @@ function TerrainUplinkSection() {
               <div className="text-sm text-content font-medium">{t('settings:settingsView.terrainUplink.serve')}</div>
               <div className="text-xs text-content-secondary mt-0.5">{t('settings:settingsView.terrainUplink.serveHint')}</div>
               <div className="text-xs text-content-tertiary mt-1 tabular-nums">{t('settings:settingsView.terrainUplink.counts', { served, missing })}</div>
+              {unavailable > 0 && (
+                <div className="text-xs text-amber-500 mt-1">{t('settings:settingsView.terrainUplink.unavailable', { count: unavailable })} {t('settings:settingsView.terrainUplink.unavailableHint')}</div>
+              )}
+              {gaps > 0 && <div className="text-xs text-amber-500 mt-1">{t('settings:settingsView.terrainUplink.gaps', { count: gaps })}</div>}
+              {errors > 0 && <div className="text-xs text-red-400 mt-1">{t('settings:settingsView.terrainUplink.errors', { count: errors })}</div>}
             </div>
             <button
               onClick={() => setServeTerrain(!serveTerrain)}
@@ -2180,6 +2218,87 @@ function TerrainUplinkSection() {
               <div className={`w-4 h-4 rounded-full bg-white border border-strong shadow-sm absolute top-0.5 transition-all ${serveTerrain ? 'left-[18px]' : 'left-0.5'}`} />
             </button>
           </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function VoiceVolumeSection() {
+  const { t } = useTranslation();
+  const disarmed = useSettingsStore((s) => s.voiceVolumeDisarmed);
+  const armed = useSettingsStore((s) => s.voiceVolumeArmed);
+  const setVoiceVolume = useSettingsStore((s) => s.setVoiceVolume);
+  const rows: { key: 'disarmed' | 'armed'; value: number }[] = [
+    { key: 'disarmed', value: disarmed },
+    { key: 'armed', value: armed },
+  ];
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-1.5 h-5 bg-content-secondary rounded-full" />
+        <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('settings:settingsView.voiceVolume.title')}</h2>
+      </div>
+      <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
+        <p className="text-xs text-content-secondary mb-3">{t('settings:settingsView.voiceVolume.hint')}</p>
+        <div className="space-y-3">
+          {rows.map((r) => (
+            <div key={r.key} className="flex items-center justify-between bg-surface-input rounded-lg p-3">
+              <div>
+                <span className="text-sm text-content font-medium">{t(`settings:settingsView.voiceVolume.${r.key}`)}</span>
+                <span className="text-xs text-content-secondary ml-1.5">{r.value === 0 ? t('settings:settingsView.voiceVolume.silent') : `${r.value}%`}</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={r.value}
+                onChange={(e) => setVoiceVolume(r.key, parseInt(e.target.value))}
+                aria-label={t(`settings:settingsView.voiceVolume.${r.key}`)}
+                className="w-40 accent-blue-500"
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function TelemetryLogSection() {
+  const { t } = useTranslation();
+  const recordTlog = useSettingsStore((s) => s.recordTlog);
+  const setRecordTlog = useSettingsStore((s) => s.setRecordTlog);
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-1.5 h-5 bg-content-secondary rounded-full" />
+        <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('settings:settingsView.telemetryLog.title')}</h2>
+      </div>
+      <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between bg-surface-input rounded-lg p-3">
+            <div className="flex-1 mr-3">
+              <div className="text-sm text-content font-medium">{t('settings:settingsView.telemetryLog.record')}</div>
+              <div className="text-xs text-content-secondary mt-0.5">{t('settings:settingsView.telemetryLog.recordHint')}</div>
+            </div>
+            <button
+              onClick={() => setRecordTlog(!recordTlog)}
+              className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${recordTlog ? 'bg-blue-600' : 'bg-surface-inset'}`}
+            >
+              <div className={`w-4 h-4 rounded-full bg-white border border-strong shadow-sm absolute top-0.5 transition-all ${recordTlog ? 'left-[18px]' : 'left-0.5'}`} />
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => void window.electronAPI.tlogOpenFolder()}
+            className="h-8 px-3 rounded-lg border border-subtle text-xs text-content-secondary hover:text-content hover:bg-surface-raised"
+          >
+            {t('settings:settingsView.telemetryLog.openFolder')}
+          </button>
         </div>
       </section>
     </div>
@@ -2303,6 +2422,7 @@ function AiAnalysisSection() {
               {providers.map((p) => (
                 <button
                   key={p.id}
+                  {...ui('chip', { active: aiProvider === p.id })}
                   onClick={() => setAiProvider(aiProvider === p.id ? null : p.id)}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors ${
                     aiProvider === p.id
@@ -2328,6 +2448,7 @@ function AiAnalysisSection() {
                   </svg>
                   <span className="text-sm text-content flex-1">{t('settings:settingsView.ai.keyConfigured')}</span>
                   <button
+                    {...ui('button', { variant: 'danger' })}
                     onClick={handleRemoveKey}
                     className="text-xs text-red-400 hover:text-red-300 transition-colors"
                   >
@@ -2344,6 +2465,7 @@ function AiAnalysisSection() {
                     className="flex-1 bg-surface-input border border-subtle rounded-lg px-3 py-2 text-sm text-content placeholder-content-tertiary focus:outline-none focus:border-purple-500/50"
                   />
                   <button
+                    {...ui('button', { variant: 'primary' })}
                     onClick={handleSaveKey}
                     disabled={!apiKey.trim() || saving}
                     className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -2452,7 +2574,7 @@ function ExperimentalFeaturesSection() {
                   {t('settings:settingsView.experimental.altFrameHint')}
                 </div>
               </div>
-              <div className="flex items-stretch overflow-hidden rounded-lg border border-subtle flex-shrink-0 h-8">
+              <div {...ui('segmented')} className="flex items-stretch overflow-hidden rounded-lg border border-subtle flex-shrink-0 h-8">
                 {([
                   { id: 'relative', label: t('common:home') },
                   { id: 'terrain', label: t('common:terrain') },
@@ -2461,6 +2583,7 @@ function ExperimentalFeaturesSection() {
                   <button
                     key={o.id}
                     type="button"
+                    {...ui('segment', { active: defaultCommandAltFrame === o.id })}
                     onClick={() => setDefaultCommandAltFrame(o.id)}
                     className={`px-3 text-xs transition-colors ${i > 0 ? 'border-l border-subtle' : ''} ${
                       defaultCommandAltFrame === o.id
@@ -2493,6 +2616,7 @@ function ScriptInstallerActions() {
         {t('settings:settingsView.scripts.hint')}
       </span>
       <button
+        {...ui('button', { variant: 'primary' })}
         onClick={() => setModalOpen(true)}
         className="px-3 py-1.5 text-xs bg-purple-600/80 hover:bg-purple-600 text-white rounded"
       >
@@ -2555,7 +2679,7 @@ function GraphicsStatus() {
 
       <div className="mb-4 rounded-lg border border-subtle bg-surface-raised p-3">
         <div className="mb-2 text-xs text-content">{t('settings:settingsView.graphics.acceleration')}</div>
-        <div className="flex gap-2">
+        <div {...ui('segmented')} className="flex gap-2">
           {([
             { value: 'auto' as const, label: t('settings:settingsView.graphics.forceOn'), tip: t('settings:settingsView.graphics.forceOnTip') },
             { value: 'safe' as const, label: t('common:default'), tip: t('settings:settingsView.graphics.defaultTip') },
@@ -2563,6 +2687,7 @@ function GraphicsStatus() {
           ]).map((opt) => (
             <button
               key={opt.value}
+              {...ui('segment', { active: info.mode === opt.value })}
               data-tip={opt.tip}
               onClick={() => {
                 void window.electronAPI?.setGraphicsMode?.(opt.value);
@@ -2596,7 +2721,7 @@ function GraphicsStatus() {
         <p className="mt-1 mb-2 text-[11px] text-content-tertiary">
           {t('settings:settingsView.graphics.updateRateHint')}
         </p>
-        <div className="flex gap-2">
+        <div {...ui('segmented')} className="flex gap-2">
           {([
             { value: null, label: t('settings:settingsView.graphics.automatic') },
             { value: 'full' as const, label: t('common:full') },
@@ -2605,6 +2730,7 @@ function GraphicsStatus() {
           ]).map((opt) => (
             <button
               key={opt.value ?? 'auto'}
+              {...ui('segment', { active: pinned === opt.value })}
               onClick={() => setPinned(opt.value)}
               className={`flex-1 rounded-md px-2 py-1.5 text-[11px] transition-colors ${
                 pinned === opt.value
@@ -2704,7 +2830,7 @@ function AboutSection() {
       </div>
 
       <div className="mb-4">
-        <DedicationPlaque />
+        <CargoThemeAboutCards />
       </div>
 
       <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
@@ -2728,6 +2854,7 @@ function AboutSection() {
 
             {showCheckButton && (
               <button
+                {...ui('button', { variant: 'primary' })}
                 onClick={() => checkForUpdate()}
                 disabled={isChecking}
                 className="px-3 py-1.5 bg-blue-600/80 hover:bg-blue-500/80 disabled:opacity-50 text-white text-xs font-medium rounded-lg transition-colors flex items-center gap-2"
@@ -2751,6 +2878,7 @@ function AboutSection() {
 
             {status === 'available' && canAutoUpdate && (
               <button
+                {...ui('button', { variant: 'primary' })}
                 onClick={() => downloadUpdate()}
                 className="px-3 py-1.5 bg-blue-600/80 hover:bg-blue-500/80 text-white text-xs font-medium rounded-lg transition-colors"
               >
@@ -2760,6 +2888,7 @@ function AboutSection() {
 
             {status === 'available' && !canAutoUpdate && (
               <button
+                {...ui('button', { variant: 'primary' })}
                 onClick={openReleaseUrl}
                 className="px-3 py-1.5 bg-blue-600/80 hover:bg-blue-500/80 text-white text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5"
               >
@@ -2772,6 +2901,7 @@ function AboutSection() {
 
             {status === 'downloaded' && (
               <button
+                {...ui('button', { variant: 'primary' })}
                 onClick={() => installUpdate()}
                 className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500/80 text-white text-xs font-medium rounded-lg transition-colors"
               >
@@ -3863,7 +3993,7 @@ function VehicleEditModal({
             </div>
             <h2 className="text-lg font-semibold text-content">{t('settings:settingsView.edit.title', { type: vehicleTypeName(vehicle.type) })}</h2>
           </div>
-          <button onClick={onClose} className="text-content-secondary hover:text-content">
+          <button {...ui('icon-button')} onClick={onClose} className="text-content-secondary hover:text-content">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -4447,6 +4577,7 @@ function VehicleEditModal({
         {/* Footer */}
         <div className="px-6 py-4 border-t border-border flex justify-end">
           <button
+            {...ui('button', { variant: 'primary' })}
             onClick={onClose}
             className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors"
           >
@@ -4590,6 +4721,7 @@ function VehicleCard({
           <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
             <ApplyProfileButton profile={vehicle} />
             <button
+              {...ui('icon-button')}
               onClick={async () => {
                 const tpl = getTemplate(vehicle.templateSlug) ?? defaultTemplateForType(vehicle.type);
                 await saveParmToFile(vehicle, tpl, { includeSim: false });
@@ -4599,13 +4731,14 @@ function VehicleCard({
             >
               <Download className="w-4 h-4" />
             </button>
-            <button onClick={onEdit} className="p-1.5 text-content-secondary hover:text-content transition-colors" title={t('common:edit')}>
+            <button {...ui('icon-button')} onClick={onEdit} className="p-1.5 text-content-secondary hover:text-content transition-colors" title={t('common:edit')}>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
               </svg>
             </button>
             {canDelete && (
               <button
+                {...ui('icon-button')}
                 onClick={() => {
                   if (confirmDelete) {
                     onDelete();

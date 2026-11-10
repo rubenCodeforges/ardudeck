@@ -85,7 +85,12 @@
     "topSpeedToggle": "Fast airframe",
     "topSpeedLabel": "Level top speed",
     "topSpeedHint": "Sets AIRSPEED_MAX to {{max}} m/s and AIRSPEED_CRUISE to {{cruise}} m/s. Takes effect on the next start; if you changed those parameters on this simulator before, tick Wipe EEPROM so the new limits apply.",
-    "topSpeedValue": "{{speed}} km/h"
+    "topSpeedValue": "{{speed}} km/h",
+    "gliderRelease": "Balloon drop",
+    "gliderReleaseDesc": "ArduPilot's glider model rises under a balloon (Lift on the Sticks instrument or Joystick panel) and lets go at this height.",
+    "gliderReleaseLabel": "Release height above home",
+    "gliderReleaseValue": "{{m}} m",
+    "gliderReleaseHint": "Arm in FBWA or AUTO before it lets go. The home altitude above is the ground elevation, not a starting height."
   },
   "customFrame": {
     "active": "Active",
@@ -289,5 +294,14 @@
     "xplaneStep1": "Settings → Data Output → enable network output",
     "xplaneStep2": "Send to: <mono>127.0.0.1:49000</mono>",
     "xplaneStep3": "Enable: Speeds, Pitch/Roll/Heading, Lat/Lon/Alt"
+  },
+  "balloon": {
+    "title": "Balloon",
+    "desc": "Glider SITL: lift the glider under its balloon, then release it to glide.",
+    "lift": "Lift",
+    "liftTip": "Balloon climbs while on (servo output 6)",
+    "release": "Release",
+    "releaseTip": "Cut the balloon now (output 10)",
+    "released": "Released"
   }
 }

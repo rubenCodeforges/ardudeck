@@ -225,7 +225,9 @@
     "toggleHeadingLine": "Kurslinie ein/aus",
     "toggleMission": "Missions-Overlays ein/aus",
     "toggleMissionFull": "Missions-Overlays ein/aus (Wegpunkte, Geofence, Rally)",
-    "toggleTerrain": "Geländehöhe ein/aus"
+    "toggleTerrain": "Geländehöhe ein/aus",
+    "fillWith": "Mit {{panel}} füllen",
+    "shareWithMap": "Mit Karte teilen"
   },
   "messagesPanel": {
     "count_one": "{{count}} Meldung",

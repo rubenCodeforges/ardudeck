@@ -5,7 +5,10 @@ import { MediaGallery } from '../camera/MediaGallery';
 import { useNavigationStore, type ViewId } from '../../stores/navigation-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useSettingsStore, type ThemePreference } from '../../stores/settings-store';
-import { useTributeStore } from '../../stores/tribute-store';
+import { themeRegistry } from '../../modules/module-theme-registry';
+import { useThemeOptions } from '../settings/ThemeCard';
+import { useActiveCargoTheme } from '../../hooks/useTheme';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { isViewAvailable, useEnabledCapabilitySlugs, CARGO_VIEWS } from '../../modules/capabilities';
 import { viewBodyRegistry } from '../../modules/module-extension-registries';
 import { useTrainerAvailable, useTrainerStore } from '../../stores/trainer-store';
@@ -377,7 +380,7 @@ export function NavigationRail({ onViewChange }: NavigationRailProps) {
       {/* Theme toggle */}
       <ThemeToggle />
 
-      <TributeStar />
+      <CargoRailUtilities />
 
       {/* Report Bug button */}
       <button
@@ -431,30 +434,20 @@ function MediaButton() {
   );
 }
 
-const THEME_CYCLE: ThemePreference[] = ['dark', 'light', 'system', 'bridge'];
-const THEME_LABEL_KEYS: Record<ThemePreference, string> = {
-  dark: 'navigation:navigationRail.themeDark',
-  light: 'navigation:navigationRail.themeLight',
-  system: 'navigation:navigationRail.themeSystem',
-  bridge: 'navigation:navigationRail.themeBridge',
-};
-
-function TributeStar() {
-  const { t } = useTranslation();
-  const openBanner = useTributeStore((s) => s.openBanner);
-
+/** Rail buttons cargo themes bring (host.theme railUtility). */
+function CargoRailUtilities() {
+  const entries = themeRegistry.useEntries();
   return (
-    <button
-      onClick={openBanner}
-      className="nav-rail-util relative w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 text-content-tertiary hover:text-amber-400 hover:bg-surface-raised mb-1"
-      title={t('tribute:banner.reopen')}
-      aria-label={t('tribute:banner.reopen')}
-    >
-      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-        <path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.7 7-6.3-3.9-6.3 3.9 1.7-7L2 9.5l7.1-.6z" />
-      </svg>
-      <span className="nav-rail-short">{t('navigation:short.tribute')}</span>
-    </button>
+    <>
+      {entries.map((e) => {
+        const Utility = e.value.railUtility;
+        return Utility ? (
+          <ErrorBoundary key={`${e.slug}/${e.id}`} label={e.slug} fallback={() => null}>
+            <Utility />
+          </ErrorBoundary>
+        ) : null;
+      })}
+    </>
   );
 }
 
@@ -462,45 +455,48 @@ function ThemeToggle() {
   const { t } = useTranslation();
   const theme = useSettingsStore((s) => s.theme);
   const setTheme = useSettingsStore((s) => s.setTheme);
+  const options = useThemeOptions();
+  const cargo = useActiveCargoTheme();
+  const CargoIcon = cargo?.value.icon;
+  const label = options.find((o) => o.value === theme)?.label ?? t('navigation:navigationRail.themeDark');
 
   const cycle = () => {
-    const idx = THEME_CYCLE.indexOf(theme);
-    const next = THEME_CYCLE[(idx + 1) % THEME_CYCLE.length]!;
-    setTheme(next);
+    const idx = options.findIndex((o) => o.value === theme);
+    setTheme(options[(idx + 1) % options.length]!.value as ThemePreference);
   };
 
   return (
     <button
       onClick={cycle}
       className="nav-rail-util relative w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 group text-content-tertiary hover:text-content-secondary hover:bg-surface-raised mb-1"
-      title={t(THEME_LABEL_KEYS[theme])}
+      data-tip={label}
+      aria-label={label}
     >
-      {theme === 'dark' && (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-        </svg>
-      )}
-      {theme === 'light' && (
+      {theme === 'light' ? (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
         </svg>
-      )}
-      {theme === 'system' && (
+      ) : theme === 'system' ? (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
-      )}
-      {theme === 'bridge' && (
+      ) : CargoIcon ? (
+        <CargoIcon className="w-5 h-5" />
+      ) : cargo ? (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 21a9 9 0 110-18c4.97 0 9 3.58 9 8 0 2.21-1.79 4-4 4h-1.5a1.5 1.5 0 00-1.06 2.56A1.5 1.5 0 0112 21z" />
           <circle cx="7.5" cy="11" r="1" fill="currentColor" stroke="none" />
           <circle cx="11" cy="7.5" r="1" fill="currentColor" stroke="none" />
           <circle cx="15.5" cy="9" r="1" fill="currentColor" stroke="none" />
         </svg>
+      ) : (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
       )}
-      <span className="nav-rail-short">{t(THEME_LABEL_KEYS[theme])}</span>
+      <span className="nav-rail-short">{label}</span>
       <div className="absolute left-full ml-2 px-2 py-1 bg-surface-solid text-content text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg">
-        {t(THEME_LABEL_KEYS[theme])}
+        {label}
       </div>
     </button>
   );

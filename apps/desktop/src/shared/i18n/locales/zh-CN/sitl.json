@@ -84,8 +84,14 @@
     "topSpeedDesc": "将此 VTOL 变成高速机身，用于测试高速飞行。",
     "topSpeedToggle": "高速机身",
     "topSpeedLabel": "平飞最高速度",
-    "topSpeedHint": "将 AIRSPEED_MAX 设为 {{max}} m/s,AIRSPEED_CRUISE 设为 {{cruise}} m/s。下次启动时生效；如果你之前曾在此模拟器上变更过这些参数，请勾选「清除 EEPROM」，新的限制才会应用。",
-    "topSpeedValue": "{{speed}} km/h"
+    "topSpeedHint": "将 AIRSPEED_MAX 设为 {{max}} m/s，AIRSPEED_CRUISE 设为 {{cruise}} m/s。下次启动时生效；如果你之前曾在此模拟器上变更过这些参数，请勾选「清除 EEPROM」，新的限制才会应用。",
+    "topSpeedValue": "{{speed}} km/h",
+    "gliderRelease": "气球投放",
+    "gliderReleaseDesc": "ArduPilot 的滑翔机模型由气球带升（在 Sticks 仪表或 Joystick 面板中点击上升），并在此高度释放。",
+    "gliderReleaseLabel": "相对 Home 的释放高度",
+    "gliderReleaseValue": "{{m}} 米",
+    "gliderReleaseHint": "释放前请在 FBWA 或 AUTO 模式下解锁。上方的 Home 高度是地面海拔，不是起始高度。"
+
   },
   "customFrame": {
     "active": "使用中",
@@ -289,5 +295,14 @@
     "xplaneStep1": "Settings → Data Output → 启用网络输出",
     "xplaneStep2": "发送到：<mono>127.0.0.1:49000</mono>",
     "xplaneStep3": "启用：Speeds、Pitch/Roll/Heading、Lat/Lon/Alt"
+  },
+  "balloon": {
+    "title": "气球",
+    "desc": "滑翔机 SITL：用气球带升滑翔机，然后释放滑翔。",
+    "lift": "上升",
+    "liftTip": "开启时气球上升（舵机输出 6）",
+    "release": "释放",
+    "releaseTip": "立即切断气球（输出 10）",
+    "released": "已释放"
   }
 }

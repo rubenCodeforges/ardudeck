@@ -8,6 +8,7 @@
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSimParam } from '../../hooks/useSimParam';
+import { ui } from '../ui/ui-hooks';
 
 // Wind direction arrow SVG - rotates to show wind direction
 function WindDirectionIndicator({ degrees }: { degrees: number }) {
@@ -106,7 +107,7 @@ export default function SitlEnvironmentPanel({ bare = false }: { bare?: boolean 
           </svg>
           <h3 className="text-sm font-medium text-content">{t('sitl:environmentPanel.title')}</h3>
         </div>
-        <button
+        <button {...ui('button', { variant: 'secondary' })}
           onClick={handleReset}
           className="px-2 py-1 text-xs text-content-secondary hover:text-content bg-surface-raised hover:bg-surface-raised rounded transition-colors"
         >

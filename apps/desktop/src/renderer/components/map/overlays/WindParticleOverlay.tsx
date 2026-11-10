@@ -14,6 +14,7 @@ import * as L from 'leaflet';
 import { useWindStore } from '../../../stores/wind-store';
 import { WindAnimator, type WindProjector, type FrameRef } from '../wind/wind-animator';
 import type { WindBBox } from '../../../../shared/wind-types';
+import { isPicking } from '../../../hooks/map-picking';
 
 const PANE = 'windParticles';
 const FETCH_DEBOUNCE_MS = 700;
@@ -87,10 +88,10 @@ export function WindParticleOverlay(): null {
       scheduleFetch();
     };
 
-    // Plain click probes the wind rose at that point; shift+click is reserved
-    // for adding waypoints, so leave it alone.
+    // Plain click probes the wind rose at that point. Shift+click adds waypoints, and while a
+    // tool is placing something (waypoint, home, fence, survey) the click is that tool's.
     const onClick = (e: L.LeafletMouseEvent): void => {
-      if (e.originalEvent.shiftKey) return;
+      if (e.originalEvent.shiftKey || isPicking(map.getContainer())) return;
       useWindStore.getState().setProbe({ lat: e.latlng.lat, lng: e.latlng.lng });
     };
 

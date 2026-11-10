@@ -36,6 +36,7 @@ import { useSurveyStore } from '../../stores/survey-store';
 import { useToursStore } from '../../stores/tours-store';
 import { isUnsupportedF3Board, hasInavF3Support } from '../../../shared/board-mappings';
 import { Map, AlertTriangle, Lightbulb, RefreshCw, Plane, Wrench } from 'lucide-react';
+import { ui } from '../ui/ui-hooks';
 
 // Reserved layout name for mission view (auto-save/restore)
 const MISSION_LAYOUT_NAME = '__mission_autosave';
@@ -208,13 +209,13 @@ function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardI
 
           {/* Actions */}
           <div className="flex items-center justify-center gap-3">
-            <button
+            <button {...ui('button', { variant: 'secondary' })}
               onClick={() => setView('telemetry')}
               className="px-4 py-2 bg-surface-raised hover:bg-surface-raised text-content-secondary rounded-lg text-sm transition-colors"
             >
               {t('mission:missionPlanningView.back')}
             </button>
-            <button
+            <button {...ui('button', { variant: 'primary' })}
               onClick={handleFlashInav}
               className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-lg font-medium transition-all shadow-lg shadow-blue-500/25"
             >
@@ -263,7 +264,7 @@ function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardI
           </div>
 
           {/* Actions */}
-          <button
+          <button {...ui('button', { variant: 'secondary' })}
             onClick={() => setView('telemetry')}
             className="px-4 py-2 bg-surface-raised hover:bg-surface-raised text-content-secondary rounded-lg text-sm transition-colors"
           >
@@ -342,13 +343,13 @@ function MissionNotAvailable({ fcVariant, boardId }: { fcVariant: string; boardI
 
         {/* Quick actions */}
         <div className="flex items-center justify-center gap-3 mt-8">
-          <button
+          <button {...ui('button', { variant: 'primary' })}
             onClick={handleFlashInav}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors"
           >
             {t('mission:missionPlanningView.flashInavTitle')}
           </button>
-          <button
+          <button {...ui('button', { variant: 'secondary' })}
             onClick={() => setView('telemetry')}
             className="px-4 py-2 bg-surface-raised hover:bg-surface-raised text-content-secondary rounded-lg text-sm transition-colors"
           >

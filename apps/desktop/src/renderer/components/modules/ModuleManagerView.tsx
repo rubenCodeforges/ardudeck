@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Download, Boxes, Package, KeyRound, X, User, ChevronDown, ChevronLeft, ChevronRight, BookOpen, type LucideIcon } from 'lucide-react';
 import { useModuleStore } from '../../stores/module-store';
+import { ui } from '../ui/ui-hooks';
 import { useAppStore } from '../../stores/app-store';
 import { HangarApps } from './HangarApps';
 import type {
@@ -219,7 +220,7 @@ function InstalledControls({
           {pairedName && (
             <span className="text-xs text-content-secondary">{t('modules:moduleManager.removesApp', { name: pairedName })}</span>
           )}
-          <button
+          <button {...ui('button', { variant: 'danger' })}
             onClick={() => {
               onRemove();
               setConfirmRemove(false);
@@ -228,7 +229,7 @@ function InstalledControls({
           >
             {t('common:confirm')}
           </button>
-          <button
+          <button {...ui('button', { variant: 'ghost' })}
             onClick={() => setConfirmRemove(false)}
             className="px-2 py-1 text-xs bg-surface-raised text-content-secondary rounded transition-colors"
           >
@@ -236,7 +237,7 @@ function InstalledControls({
           </button>
         </div>
       ) : (
-        <button
+        <button {...ui('icon-button')}
           onClick={() => setConfirmRemove(true)}
           className="p-1.5 ml-1 rounded-lg text-content-tertiary hover:text-red-400 hover:bg-red-500/10 transition-colors"
           data-tip={t('modules:moduleManager.removeCargo')}
@@ -375,7 +376,7 @@ function BrowseCard({
   const version = cargo.version ?? installed?.version ?? '';
 
   return (
-    <div
+    <div {...ui('option')}
       onClick={onOpenDetail}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -896,7 +897,7 @@ function CargoDetailModal({
                 className="text-sm py-2 px-4"
               />
             )}
-            <button
+            <button {...ui('icon-button')}
               onClick={onClose}
               className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-raised text-content-secondary hover:text-content transition-colors"
               data-tip={t('common:close')}
@@ -919,7 +920,7 @@ function CargoDetailModal({
                 <p className="text-sm text-red-400">{t('modules:moduleManager.detailsError')}</p>
                 <p className="text-xs text-content-secondary mt-0.5 break-words">{error}</p>
               </div>
-              <button
+              <button {...ui('button', { variant: 'secondary' })}
                 onClick={onRetry}
                 className="px-3 py-1.5 text-xs text-content-secondary hover:text-content bg-surface-raised border border-subtle rounded-lg transition-colors shrink-0"
               >
@@ -1090,7 +1091,7 @@ function DevCargoSection() {
             <span className="truncate text-xs text-content-tertiary">{items.map((m) => m.name).join(', ')}</span>
           )}
         </button>
-        <button
+        <button {...ui('button', { variant: 'secondary' })}
           type="button"
           className="shrink-0 rounded bg-surface-raised px-3 py-1.5 text-sm text-content hover:bg-surface-hover"
           onClick={async () => {
@@ -1123,7 +1124,7 @@ function DevCargoSection() {
                     {m.name} <span className="text-content-tertiary">{m.version}</span>
                     <span className="ml-2 text-[11px] text-content-tertiary">{m.path.replace(/^\/Users\/[^/]+/, '~')}</span>
                   </div>
-                  <button
+                  <button {...ui('button', { variant: 'ghost' })}
                     type="button"
                     className="shrink-0 text-xs text-content-secondary hover:text-content"
                     onClick={() =>
@@ -1134,7 +1135,7 @@ function DevCargoSection() {
                   >
                     {t('common:reload')}
                   </button>
-                  <button
+                  <button {...ui('button', { variant: 'ghost' })}
                     type="button"
                     className="shrink-0 text-xs text-content-secondary hover:text-content"
                     onClick={async () => {
@@ -1315,7 +1316,7 @@ export function ModuleManagerView() {
                 </p>
               </div>
             </div>
-            <button
+            <button {...ui('button', { variant: 'secondary' })}
               onClick={() => (showKey ? setShowKey(false) : openKeyPanel())}
               className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-colors shrink-0 ${
                 showKey
@@ -1338,7 +1339,7 @@ export function ModuleManagerView() {
                     <KeyRound className="w-4 h-4 text-blue-400" />
                     {t('modules:moduleManager.addKeyTitle')}
                   </h2>
-                  <button
+                  <button {...ui('icon-button')}
                     onClick={() => setShowKey(false)}
                     className="p-1 rounded text-content-tertiary hover:text-content hover:bg-surface-raised transition-colors"
                     data-tip={t('common:close')}
@@ -1348,7 +1349,7 @@ export function ModuleManagerView() {
                 </div>
                 <div className="flex gap-2">
                   <div className="flex-1 relative">
-                    <input
+                    <input {...ui('input')}
                       ref={inputRef}
                       type="text"
                       value={keyInput}
@@ -1361,7 +1362,7 @@ export function ModuleManagerView() {
                       autoComplete="off"
                     />
                     {!keyInput && (
-                      <button
+                      <button {...ui('button', { variant: 'ghost' })}
                         onClick={handlePaste}
                         className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs text-content-secondary hover:text-content bg-surface-raised rounded transition-colors"
                       >
@@ -1388,14 +1389,14 @@ export function ModuleManagerView() {
 
       {/* Tabs (pinned) */}
       <div className="shrink-0 px-4 py-2 border-b border-subtle bg-surface-overlay-subtle overflow-x-auto">
-        <div className="max-w-6xl mx-auto flex gap-1">
+        <div {...ui('tabs')} className="max-w-6xl mx-auto flex gap-1">
           {CARGO_TABS.map((tab) => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
             const colors = TAB_COLORS[tab.id];
             const count = tab.id === 'browse' ? catalog.length : modules.length;
             return (
-              <button
+              <button {...ui('tab', { active: isActive })}
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${
@@ -1435,7 +1436,7 @@ export function ModuleManagerView() {
               <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
                 <AlertIcon className="w-4 h-4 text-red-400 shrink-0" />
                 <p className="text-sm text-red-400 flex-1 min-w-0 break-words">{error}</p>
-                <button
+                <button {...ui('icon-button')}
                   onClick={clearError}
                   className="p-1 rounded text-red-400/70 hover:text-red-400 transition-colors shrink-0"
                   data-tip={t('common:dismiss')}
@@ -1459,13 +1460,13 @@ export function ModuleManagerView() {
                       {t('modules:moduleManager.restartBody')}
                     </p>
                   </div>
-                  <button
+                  <button {...ui('button', { variant: 'primary' })}
                     onClick={() => window.electronAPI.relaunchApp()}
                     className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-sm font-medium rounded-lg transition-colors shrink-0"
                   >
                     {t('modules:moduleManager.restartNow')}
                   </button>
-                  <button
+                  <button {...ui('button', { variant: 'ghost' })}
                     onClick={() => setRestartRequired(false)}
                     className="px-3 py-2 text-sm text-content-secondary hover:text-content transition-colors shrink-0"
                   >
@@ -1504,7 +1505,7 @@ export function ModuleManagerView() {
                     <span className="text-xs text-content-tertiary">{catalog.length}</span>
                   )}
                 </div>
-                <button
+                <button {...ui('button', { variant: 'secondary' })}
                   onClick={() => fetchCatalog()}
                   disabled={catalogLoading}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-content-secondary hover:text-content bg-surface-raised border border-subtle rounded-lg transition-colors disabled:opacity-60 shrink-0"
@@ -1516,7 +1517,7 @@ export function ModuleManagerView() {
 
               {catalog.length > 0 && categories.length > 1 && (
                 <div className="flex flex-wrap gap-1.5">
-                  <button
+                  <button {...ui('chip', { active: selectedCategory === null })}
                     onClick={() => setSelectedCategory(null)}
                     className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
                       selectedCategory === null
@@ -1527,7 +1528,7 @@ export function ModuleManagerView() {
                     {t('common:all')}
                   </button>
                   {categories.map((cat) => (
-                    <button
+                    <button {...ui('chip', { active: selectedCategory === cat })}
                       key={cat}
                       onClick={() => setSelectedCategory(cat)}
                       className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
@@ -1553,7 +1554,7 @@ export function ModuleManagerView() {
                     <p className="text-sm text-red-400">{t('modules:moduleManager.hangarUnreachable')}</p>
                     <p className="text-xs text-content-secondary mt-0.5 break-words">{catalogError}</p>
                   </div>
-                  <button
+                  <button {...ui('button', { variant: 'secondary' })}
                     onClick={() => fetchCatalog()}
                     className="px-3 py-1.5 text-xs text-content-secondary hover:text-content bg-surface-raised border border-subtle rounded-lg transition-colors shrink-0"
                   >
@@ -1619,7 +1620,7 @@ export function ModuleManagerView() {
                       <span className="text-xs text-content-secondary">{t('modules:moduleManager.upToDate')}</span>
                     ) : null}
                     {updates.length > 0 && (
-                      <button
+                      <button {...ui('button', { variant: 'primary' })}
                         onClick={handleUpdateAll}
                         disabled={updating !== null}
                         className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
@@ -1637,7 +1638,7 @@ export function ModuleManagerView() {
                             : t('modules:moduleManager.update')}
                       </button>
                     )}
-                    <button
+                    <button {...ui('button', { variant: 'secondary' })}
                       onClick={() => checkUpdates()}
                       disabled={checkingUpdates}
                       className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-content-secondary hover:text-content bg-surface-raised border border-subtle rounded-lg transition-colors disabled:opacity-60"

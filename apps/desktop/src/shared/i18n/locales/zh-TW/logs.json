@@ -478,10 +478,14 @@
     "warnings_other": "{{count}} 則警告"
   },
   "spectrum": {
+    "allAxes": "X+Y+Z",
+    "allAxesTip": "在同一張圖上一起顯示 X、Y 與 Z 軸",
+    "allAxesUnavailable": "此欄位不是 X/Y/Z 組中的單一軸",
     "amplitude": "振幅",
     "amplitudeDb": "振幅 (dB)",
     "dbTip": "對數振幅 (dB)",
     "enableSyncTip": "啟用圖表同步以跟隨縮放",
+    "exportCsv": "將頻譜匯出為 CSV(依目前縮放的視窗)",
     "followZoom": "跟隨縮放",
     "followZoomTip": "只分析圖表目前縮放到的時間範圍",
     "frequency": "頻率 (Hz)",

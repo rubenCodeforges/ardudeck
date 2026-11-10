@@ -11,6 +11,7 @@
  *   Body     — element library | always-editable canvas | contextual panel
  */
 
+import { ui } from '../ui/ui-hooks';
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { MonitorPlay, Cpu, Radio, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -452,12 +453,13 @@ function Segmented<T extends string>({
   options: { value: T; label: string; icon?: LucideIcon; tip?: string }[];
 }) {
   return (
-    <div className="inline-flex items-center rounded-lg border border-subtle overflow-hidden bg-surface">
+    <div {...ui('segmented')} className="inline-flex items-center rounded-lg border border-subtle overflow-hidden bg-surface">
       {options.map((opt) => {
         const Icon = opt.icon;
         return (
           <button
             key={opt.value}
+            {...ui('segment', { active: value === opt.value })}
             onClick={() => onChange(opt.value)}
             data-tip={opt.tip}
             className={`flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-xs font-medium transition-colors ${

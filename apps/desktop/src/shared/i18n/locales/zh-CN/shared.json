@@ -490,7 +490,9 @@
     "emptyGroup": "群组「{{name}}」没有航点。",
     "midMissionReturn_one": "有 {{count}} 个测绘在任务结束前就返航。请将它们连接起来，以便直接继续飞行。",
     "midMissionReturn_other": "有 {{count}} 个测绘在任务结束前就返航。请将它们连接起来，以便直接继续飞行。",
-    "noTakeoff": "没有起飞指令：载具会从当前状态直接飞往第一个航点。"
+    "noTakeoff": "没有起飞指令：载具会从当前状态直接飞往第一个航点。",
+    "hazard": "航段 {{from}} 到 {{to}} 穿越危险区「{{zone}}」",
+    "hazardFromHome": "从 Home 到 {{to}} 的航段穿越危险区「{{zone}}」"
   },
   "parameterGroups": {
     "all": {
@@ -746,5 +748,19 @@
   "vtolTransition": {
     "toHover": "转悬停",
     "toWing": "转翼飞"
+  },
+  "userModelParsers": {
+    "badLatLng": "纬度或经度缺失或超出范围",
+    "badNumber": "{{field}} 不是有效数字",
+    "emptyTable": "放置表中没有行。",
+    "invalidJson": "放置表不是有效的 JSON（{{detail}}）",
+    "missingFile": "该行未指定模型文件",
+    "noCrs": "此 CityJSON 文件未指定坐标参考系（metadata.referenceSystem），无法放置。",
+    "noGeometry": "此 CityJSON 文件没有可绘制的面。",
+    "noValidRows": "放置表中的模型都无法放置。第 {{row}} 行：{{problem}}。",
+    "notCityJson": "此文件不是 CityJSON。",
+    "notFeatureCollection": "GeoJSON 表必须是由 Point 要素组成的 FeatureCollection。",
+    "notModelList": "models.json 必须是模型列表，或包含 \"models\" 列表的对象。",
+    "unknownCrs": "未知的坐标参考系 EPSG:{{epsg}}。此 CityJSON 文件无法放置。"
   }
 }

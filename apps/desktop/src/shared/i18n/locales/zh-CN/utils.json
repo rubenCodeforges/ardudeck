@@ -13,7 +13,11 @@
     "setProfile": "请设置载具配置文件以获取续航信息",
     "unknown": "未知",
     "usableEach": "每块约可用 {{duration}}",
-    "wind": "风"
+    "wind": "风",
+    "flightTimeWindDetail": "迎着预报的地面风（无风时 {{duration}}）；高空风通常更强",
+    "windBlocked": "逆风航段",
+    "windBlockedDetail": "这些航段上的预报风速达到或超过巡航速度，因此飞行器无法保持",
+    "flightTimeLayerWindDetail": "迎着 {{altitude}} 风层的风（无风时 {{duration}}）"
   },
   "joystickSafety": {
     "assign": "请先指派 {{names}}",

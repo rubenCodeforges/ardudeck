@@ -1,3 +1,4 @@
+import { ui } from '../ui/ui-hooks';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Copy, LayoutTemplate, Plus, Square, X } from 'lucide-react';
@@ -89,6 +90,7 @@ export function ScreenStrip({ renderScreen, pages, active, screen, maxPages, onP
       {pages.length < maxPages && (
         <div className="relative w-[110px] shrink-0">
           <button
+            {...ui('option')}
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
             className="flex h-full w-full flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-content-tertiary/50 text-xs text-content-secondary hover:border-content-tertiary hover:text-content"

@@ -22,7 +22,8 @@
       "spoilers": "Flächenflugzeug mit Spoilern",
       "vectored": "Vectored (Standard)",
       "vectored6dof": "Vectored 6DOF",
-      "vtail": "V-Leitwerk-Flugzeug"
+      "vtail": "V-Leitwerk-Flugzeug",
+      "glider": "Segler"
     },
     "startFailed": "SITL konnte nicht gestartet werden"
   },
@@ -184,7 +185,8 @@
     "uploadedToVehicle": "{{count}} Wegpunkte auf das Fahrzeug hochgeladen",
     "vehicleMissionLabel": "Mission des Fluggeräts @ {{stamp}}",
     "fromVehicleGroup": "Vom Fluggerät @ {{stamp}}",
-    "downloadedGroup": "Heruntergeladen @ {{stamp}}"
+    "downloadedGroup": "Heruntergeladen @ {{stamp}}",
+    "hazardBlocked": "Upload gesperrt: Die Route kreuzt eine Gefahrenzone. Planen Sie sie um oder übersteuern Sie mit der Admin-PIN."
   },
   "modesWizardStore": {
     "clearSlotFailed": "Modus-Slot {{i}} konnte nicht gelöscht werden",

@@ -10,13 +10,17 @@
     "manualTitle": "無相機:直接設定線距(例如地面車/割草機割幅寬度)",
     "saved": "已儲存",
     "searchPlaceholder": "搜尋相機...",
-    "sensorSummary": "{{sensorWidth}}x{{sensorHeight}}mm 感測器,{{focalLength}}mm,{{imageWidth}}x{{imageHeight}}px"
+    "sensorSummary": "{{sensorWidth}}x{{sensorHeight}}mm 感測器,{{focalLength}}mm,{{imageWidth}}x{{imageHeight}}px",
+    "magnetometerLabel": "磁力計",
+    "magnetometerHint": "點感測器:設定測線間距,不拍照",
+    "magnetometerSummary": "點感測器:直接設定測線間距,不觸發相機"
   },
   "cameraPresets": {
     "custom": "自訂",
     "groupMultispectral": "多光譜",
     "groupOther": "其他",
-    "manual": "手動"
+    "manual": "手動",
+    "magnetometer": "磁力計"
   },
   "enginePlanLegend": {
     "coveragePlan": "覆蓋計畫",
@@ -284,7 +288,12 @@
     "turnsPlaneTitle": "固定翼:在每個轉彎處延伸較短的線端,以形成乾淨的 180° 跑道式轉彎",
     "unlockShapeTip": "解鎖形狀,使其可再次被拖曳",
     "width": "寬度",
-    "zigzagHint": "標準之字形圖樣。地面車在每條線的末端轉 180°。"
+    "zigzagHint": "標準之字形圖樣。地面車在每條線的末端轉 180°。",
+    "lineSpacingM": "測線間距 (m)",
+    "sensorSpacingHint": "測繪線之間的距離。典型的磁力測量間距為 10 至 50 m。",
+    "tieLines": "聯絡測線",
+    "tieLinesHint": "每 {{every}} 條測繪線加一條垂直的聯絡測線,在測繪線之後飛行。用來讓各測線彼此校平。",
+    "tieLinesOff": "關閉。磁力測量通常每 5 到 10 條測線加一條。"
   },
   "surveyMapOverlay": {
     "clickToAddControlPoint": "點擊以新增控制點",
@@ -319,7 +328,11 @@
       "description": "地面載具。直接設定廊道寬度。",
       "name": "地面車 / 割草機"
     },
-    "savedPreset": "已儲存的預設"
+    "savedPreset": "已儲存的預設",
+    "magnetometer": {
+      "name": "磁力計",
+      "description": "低空、慢速、維持固定離地高度。以聯絡測線進行校平。"
+    }
   },
   "surveyRegen": {
     "generatorNotInstalled": "未安裝產生器「{{generatorId}}」",

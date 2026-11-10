@@ -279,11 +279,21 @@
       "supports": "{{firmware}} only supports: {{types}}.",
       "title": "Profile Compatibility Issue"
     },
+    "telemetryLog": {
+      "title": "Telemetry log",
+      "record": "Record telemetry to a .tlog file",
+      "recordHint": "Every connection is saved as a MAVLink .tlog in the app data folder. Open it in any tlog viewer. The newest 50 files, up to 2 GB, are kept.",
+      "openFolder": "Open log folder"
+    },
     "terrainUplink": {
       "title": "Terrain uplink",
       "serve": "Serve terrain to vehicles",
       "serveHint": "Answer the autopilot's terrain requests from the map's elevation data, including any survey surface a cargo provides",
-      "counts": "Blocks served: {{served}}, missing data: {{missing}}"
+      "counts": "Blocks served: {{served}}, missing data: {{missing}}",
+      "unavailable": "{{count}} blocks missing: elevation tiles unavailable (offline or blocked?).",
+      "unavailableHint": "Check the internet connection and clear the tile cache. Without terrain data the vehicle cannot use terrain-relative altitude and may return home.",
+      "gaps": "{{count}} blocks missing part of their elevation data (edge of the map data); the vehicle keeps asking.",
+      "errors": "{{count}} blocks failed with an error; see the console log."
     },
     "console": {
       "title": "Console",
@@ -557,7 +567,20 @@
       "waveHeight": "Wave Height",
       "windFrom": "Wind from {{dir}}"
     },
-    "weight": "Weight"
+    "weight": "Weight",
+    "carto": {
+      "label": "CARTO API key (Dark map style)",
+      "freeAt": "- without one the Dark style uses Esri. Get a key at",
+      "placeholder": "Paste your CARTO API key",
+      "configured": "Key configured: the Dark style uses CARTO"
+    },
+    "voiceVolume": {
+      "title": "Voice volume",
+      "hint": "Separate volume for the bench and for flight: turn the voice down or off while setting up, it comes back at the armed volume the moment a vehicle arms. The mute button in the top bar still silences everything.",
+      "disarmed": "Disarmed",
+      "armed": "Armed",
+      "silent": "Silent"
+    }
   },
   "signingSection": {
     "active": "active",
@@ -762,5 +785,7 @@
     "secondDecimals_other": "Seconds with {{count}} decimals"
   },
   "themeTitle": "Theme",
-  "themeHint": "Changes the colours across every screen."
+  "themeHint": "Changes the colours across every screen.",
+  "themeSettings": "Theme settings",
+  "themeSettingsTitle": "{{name}} settings"
 }

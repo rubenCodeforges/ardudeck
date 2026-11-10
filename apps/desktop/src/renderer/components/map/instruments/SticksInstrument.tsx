@@ -10,6 +10,7 @@ import { radioUsable, reversibleThrottle } from '../../../utils/joystick-safety'
 import { GAUGE_COLORS } from './RoundGauge';
 import { gaugeTint } from './ReadoutPrimitives';
 import { useInDock } from './dock-context';
+import { GliderBalloonControls } from '../../sitl/GliderBalloonControls';
 
 export type SticksVariant = 'full' | 'compact';
 
@@ -219,6 +220,7 @@ export function SticksInstrument({ variant = 'full' }: { variant?: SticksVariant
           onRelease={() => setRight({ x: 0, y: 0 })}
         />
       </div>
+      <GliderBalloonControls variant="instrument" />
       {message && <div className="mt-1.5 text-[10px] leading-snug" style={{ color: GAUGE_COLORS.amber, maxWidth: 2 * box + 12 }}>{message}</div>}
       {!enabled && !message && variant === 'full' && (
         <div className="mt-1.5 text-[10px] leading-snug" style={{ color: GAUGE_COLORS.textDim, maxWidth: 2 * box + 12 }}>{t('map:sticksInstrument.hint')}</div>

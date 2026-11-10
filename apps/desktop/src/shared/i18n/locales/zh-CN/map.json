@@ -142,6 +142,17 @@
     "right": "R",
     "roll": "ROLL",
     "sats": "{{n}} 颗卫星",
+    "gps2": "GPS2 {{fix}} · {{n}}",
+    "pickWp": "选择航点",
+    "wpFirst": "首个",
+    "wpCurrent": "当前",
+    "wpLast": "末个",
+    "wpRange": "1 至 {{count}}",
+    "wpGroup": "分组",
+    "pickWpHint": "请选择航点",
+    "flyToWp": "飞往航点 {{n}}",
+    "flyingToWp": "正在飞往航点 {{n}}",
+    "jumpFailed": "无法切换航点",
     "satsNone": "-- 颗卫星",
     "spd": "SPD",
     "spdShort": "速度",
@@ -192,6 +203,7 @@
     "rangefinder": "测距仪",
     "ekf": "EKF 健康状态",
     "flightTimer": "飞行计时器",
+    "mavlinkFields": "MAVLink 字段",
     "proximity": "避障雷达距离"
   },
   "instrumentsCatalog": {
@@ -601,6 +613,16 @@
     "hint": "绿色框内的所有内容都会被下载。缩小可获取较大的区域。",
     "vehicle": "载具",
     "useThisArea": "使用此区域"
+  },
+  "mavlinkFieldInstrument": {
+    "title": "MAVLink 字段",
+    "empty": "请在此仪表的设置中选择字段。",
+    "noData": "无数据",
+    "pickMessage": "消息",
+    "pickField": "字段",
+    "add": "添加",
+    "limit": "最多 {{max}} 个字段，来自载具当前正在发送的消息。",
+    "noMessages": "尚无消息：请先连接载具。"
   },
   "proximityDiscovery": {
     "add": "新增避障仪表",

@@ -46,5 +46,21 @@
     "ready": "<b>ArduDeck {{version}}</b> ist bereit zur Installation",
     "restartToUpdate": "Neu starten und aktualisieren",
     "viewRelease": "Release ansehen"
+  },
+  "bridgeMoved": {
+    "text": "Bridge, das Thema in Erinnerung an Sir Patrick Stewart, ist jetzt ein Cargo im Hangar.",
+    "open": "Im Hangar öffnen"
+  },
+  "voiceLevel": {
+    "title": "Sprachansagen",
+    "all": "Alle",
+    "allDesc": "Jede Ansage: Modi, Wegpunkte, Start und Landung, Warnungen",
+    "allTip": "Sprache: alle Ansagen",
+    "important": "Nur Wichtiges",
+    "importantDesc": "Alarme, Failsafes, Warnungen sowie Scharf / Unscharf",
+    "importantTip": "Sprache: nur Wichtiges",
+    "off": "Aus",
+    "offDesc": "Keine Sprachausgabe",
+    "offTip": "Sprache: aus"
   }
 }

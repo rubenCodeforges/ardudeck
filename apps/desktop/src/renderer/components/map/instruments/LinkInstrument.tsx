@@ -133,7 +133,7 @@ export function LinkInstrument(): JSX.Element {
           {rssiKnown ? rssiPct : '--'}
           <span className="text-[8px] font-normal text-[var(--gauge-text-dim)] ml-0.5">%</span>
         </span>
-        <span className="ml-auto text-[8px] leading-none text-[var(--gauge-text-dim)]">
+        <span className="ml-auto text-[8px] leading-none whitespace-nowrap text-[var(--gauge-text-dim)]">
           {state.kind === 'unconfigured' ? t('map:linkInstrument.notSetUp') : state.fromModem ? 'TLM RSSI' : 'RSSI'}
         </span>
         <svg className="w-2.5 h-2.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ color: GAUGE_COLORS.textDim }}>
@@ -141,7 +141,8 @@ export function LinkInstrument(): JSX.Element {
         </svg>
       </button>
       {rssiNote && state.kind !== 'no-link' && (
-        <div className="mt-1 text-[8px] leading-tight text-[var(--gauge-text-dim)]">{rssiNote}</div>
+        // One line: the strip has a fixed height in a dock, so a wrapped sentence spills over its neighbours.
+        <div className="mt-1 text-[8px] leading-tight truncate text-[var(--gauge-text-dim)]" data-tip={rssiNote}>{rssiNote}</div>
       )}
 
       {open && pos &&

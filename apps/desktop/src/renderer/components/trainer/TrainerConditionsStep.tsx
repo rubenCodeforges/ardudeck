@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { TrainerCatalogue, TrainerConditions } from '../../../shared/trainer-types';
 import { useWeatherStore } from '../../stores/weather-store';
 import { SkyPreview } from './SkyPreview';
+import { ui } from '../ui/ui-hooks';
 
 /** Nearest preset to a measured cloud fraction, using the catalogue's own cover figures. */
 function presetForCover(
@@ -222,6 +223,7 @@ export function TrainerConditionsStep({
               {catalogue.gusts.map((option) => (
                 <button
                   key={option.id}
+                  {...ui('chip', { active: conditions.gust === option.id })}
                   onClick={() => onChange({ gust: option.id })}
                   data-tip={option.hint}
                   className={`rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${
@@ -304,6 +306,7 @@ function Tile({
 }): JSX.Element {
   return (
     <button
+      {...ui('option', { active })}
       onClick={onClick}
       className={`card wx-card overflow-hidden text-left ${
         active ? '!border-blue-500/60 ring-1 ring-blue-500/30' : 'hover:border-strong'

@@ -14,8 +14,7 @@
     "trainer": "Тренажер",
     "locus": "Locus",
     "weatherBriefing": "Метеобрифінг",
-    "productionLine": "Виробнича лінія",
-    "themeBridge": "Тема «Місток»"
+    "productionLine": "Виробнича лінія"
   },
   "short": {
     "calibration": "КАЛІБР",
@@ -28,7 +27,7 @@
     "logs": "ЖУРНАЛИ",
     "lua-graph": "LUA",
     "mission": "МІСІЯ",
-    "modules": "МОДИ",
+    "modules": "КАРГО",
     "osd": "OSD",
     "parameters": "ПАРАМ",
     "production": "ВИРОБН",
@@ -39,7 +38,6 @@
     "sitl": "SITL",
     "telemetry": "ТЕЛЕМ",
     "trainer": "ТРЕНАЖ",
-    "tribute": "ПРИСВЯТА",
     "vault": "ФЛОТ",
     "weather": "ПОГОДА"
   }

@@ -651,6 +651,7 @@
     "saveAll": "保存所有变更",
     "saveAllTip": "将参数保存到飞控的永久存储空间",
     "savedToFlash": "参数已成功保存到闪存",
+    "savedUnconfirmed": "参数已发送并确认，但飞控未确认闪存写入。飞行前请重新启动并检查数值。",
     "sysId": "SysID {{id}}",
     "tabs": {
       "arming": "解锁",
@@ -717,7 +718,9 @@
     "writeBody": "以下 {{count}} 个参数将被永久保存到飞控。",
     "writeRebootWarning": "有些参数需要重新启动才会生效。",
     "writeTitle": "将参数写入闪存",
-    "writeToFlash": "写入闪存"
+    "writeToFlash": "写入闪存",
+    "heliBuildMultirotor": "此飞控板运行的是 ArduCopter 直升机固件。它只接受直升机机架，因此 FRAME_CLASS 设为 Quad、Hexa 或 Octa 永远不会生效。请刷写一般的 ArduCopter（多旋翼）固件。",
+    "reflashCopter": "重新刷写 ArduCopter"
   },
   "mavlinkPidSchemes": {
     "planeDesc": "固定翼控制器",
@@ -820,9 +823,12 @@
     "testIndividual": "个别测试",
     "title": "电机测试",
     "planeTitle": "固定翼没有电机测试",
-    "planeBody": "ArduPlane 只能对 QuadPlane （VTOL） 的升力电机，从地面站让电机旋转。一般固定翼的前进电机在固件中没有电机测试，在任何地面站都一样。",
+    "planeBody": "ArduPlane 只能对 QuadPlane（VTOL）的升力电机，从地面站让电机旋转。一般固定翼的前进电机在固件中没有电机测试，在任何地面站都一样。",
     "planeHow": "若要检查前进电机：拆下螺旋桨，在 MANUAL 中解锁并推高油门摇杆。要查看哪个输出驱动它，请使用舵机输出。",
-    "quadplaneNote": "测试 VTOL 升力电机。独立的前进电机不属于 ArduPilot 的电机测试；请在 MANUAL 中拆下螺旋桨，以油门检查它。"
+    "quadplaneNote": "测试 VTOL 升力电机。独立的前进电机不属于 ArduPilot 的电机测试；请在 MANUAL 中拆下螺旋桨，以油门检查它。",
+    "frameUnwritten": "FRAME_CLASS 或 FRAME_TYPE 有尚未写入飞控板的更改。请按「写入」保存到闪存，然后重新启动飞控：电机测试使用飞控板正在运行的机架，即此处显示的机架。",
+    "frameUndefined": "飞控板上的 FRAME_CLASS 为 Undefined (0)，因此没有电机布局，会拒绝电机测试。请设置 FRAME_CLASS 与 FRAME_TYPE，写入闪存，然后重新启动飞控。",
+    "frameReboot": "新机架已保存，但飞控会在启动时建立电机布局。请在电机测试前重新启动飞控，否则它会以「Check frame class and type」拒绝。"
   },
   "notifyTab": {
     "allSoundsOn": "全部打开声音",
@@ -1061,7 +1067,8 @@
     "savedToFile_one": "已将 {{count}} 个参数保存到文件",
     "savedToFile_other": "已将 {{count}} 个参数保存到文件",
     "savedToFlash": "参数已成功保存到闪存",
-    "searchPlaceholder": "搜索参数...（支持正规表示式）",
+    "savedUnconfirmed": "参数已发送并确认，但飞控未确认闪存写入。飞行前请重新启动并检查数值。",
+    "searchPlaceholder": "搜索参数...（支持正则表达式）",
     "selectedCount": "已选 {{selected}} / {{total}}",
     "setValueTip": "设置 {{id}} = {{code}}({{label}})",
     "showAll": "显示所有参数",
@@ -1830,6 +1837,7 @@
     "activeNote": "已在 MANUAL模式解锁。覆盖视频流频率 {{hz}}Hz。点击「释放」以停止并上锁。",
     "copterUnavailable": "多旋翼上无法使用。对已解锁的多旋翼注入油门会让电机转动。请使用<b>电机测试</b>，一次检查一颗电机的输出。",
     "errArm": "解锁载具失败：请查看「消息」中的 PreArm 原因",
+    "needsRcMap": "请先加载参数：RCMAP 决定哪个通道是油门，因此在确定之前测试保持关闭。",
     "errRelaxArmingCheck": "放宽 ARMING_CHECK 失败",
     "errSetManual": "设置 MANUAL模式失败",
     "fcColumnHint": "FC 栏显示自动驾驶仪当前在 {{channels}} 上读到的值 (msg 65)。绿色 = 与你的滑块相符（覆盖生效）。琥珀色 = 不符。破折号 = FC 完全没有报告 RC。",
@@ -2480,5 +2488,19 @@
       "notCopter": "滤波器卡片适用于多旋翼和 QuadPlane。",
       "openInLogs": "在「日志」中打开"
     }
+  },
+  "resetParams": {
+    "button": "全部重置",
+    "buttonTip": "将所有参数重置为固件默认值",
+    "title": "将所有参数重置为默认值？",
+    "body": "所有参数将恢复为固件默认值，飞控随后重启。",
+    "calibrationWarning": "这也会清除加速度计、罗盘和遥控校准、机架设置以及所有调参。飞行前请重新设置并校准飞行器。",
+    "saveFirst": "请先保存参数文件，以便之后恢复需要的内容。",
+    "saveFile": "保存参数文件",
+    "saved": "参数文件已保存",
+    "confirm": "重置并重启",
+    "disarmFirst": "载具必须先处于上锁状态。",
+    "erased": "参数已清除。正在重启以加载默认值。",
+    "failed": "参数重置未成功。"
   }
 }

@@ -121,7 +121,12 @@
     "unplugReconnect": "Trennen Sie Ihr Board und schließen Sie es wieder an, um die neue Firmware zu verwenden.",
     "usbSerialChip": "Ihr <b>{{board}}</b> verwendet einen USB-Seriell-Chip und kann nicht per Software in den Bootloader wechseln. Keine Sorge, der Assistent führt Sie durch den Vorgang!",
     "vehicleNotSupported": "{{vehicle}} wird von {{source}} nicht unterstützt",
-    "vtol": "VTOL"
+    "vtol": "VTOL",
+    "heli": "Hubschrauber (klassisch)",
+    "fullChipEraseUnavailable": "Auf diesem Board nicht möglich: Der ArduPilot-Bootloader behält den Parameterspeicher. Nutze „Alle Parameter zurücksetzen“ in der Parameteransicht.",
+    "fullChipEraseAlways": "Hier immer aktiv: Dieser Bootloader löscht den ganzen Chip, Parameter eingeschlossen.",
+    "fullChipEraseOptional": "Löscht auch den Bootloader und alle Parameter; dieses Image stellt den Bootloader wieder her.",
+    "fullChipEraseNeedsBl": "Braucht ein *_with_bl.hex-Image: Vollständiges Löschen entfernt den Bootloader."
   },
   "radioSdView": {
     "afterInstallNote": "Nach der Installation: SD-Laufwerk auswerfen, USB trennen und dann an der Fernsteuerung das Widget zu einem Modellbildschirm hinzufügen (TELE lange drücken, Vollbild-Widget). Pakete werden bei der Installation aus ihren offiziellen Repositories heruntergeladen.",

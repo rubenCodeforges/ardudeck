@@ -116,8 +116,7 @@
     "theme": {
       "dark": "Design: Dunkel (klicken für Hell)",
       "light": "Design: Hell (klicken für System)",
-      "system": "Design: System (klicken für Dunkel)",
-      "bridge": "Bridge"
+      "system": "Design: System (klicken für Dunkel)"
     },
     "tool": {
       "branch": "Abzweig: Korridor auswählen, Abzweigung davon zeichnen (Doppelklick zum Beenden)",
@@ -200,5 +199,45 @@
     "workspaceRoleTip": "Zulässiger Flugbereich, der jeder gesendeten Vermessung beigefügt wird; nur ein Objekt kann der Arbeitsbereich sein",
     "workspaceTip": "Arbeitsbereich - zulässiger Flugbereich, der jeder gesendeten Vermessung beigefügt wird",
     "zoomTo": "Karte auf dieses Objekt zoomen"
+  },
+  "hazards": {
+    "title_one": "Gefahrenzonen ({{count}})",
+    "title_other": "Gefahrenzonen ({{count}})",
+    "titleEmpty": "Gefahrenzonen",
+    "howTo": "Gefahrenzonen sind Flugverbotsbereiche wie Stromleitungen, Masten oder Flughäfen. Planung und Upload verweigern Routen durch sie. Wählen Sie einen Bereich und dann In Gefahrenzone umwandeln.",
+    "noPinNote": "Legen Sie eine Admin-PIN fest, um Gefahrenzonen hinzuzufügen oder zu löschen. Piloten ohne PIN sehen Gefahrenzonen, können sie aber nicht ändern.",
+    "lockedNote": "Gesperrt. Geben Sie die Admin-PIN ein, um Gefahrenzonen hinzuzufügen oder zu löschen.",
+    "unlockedNote": "Entsperrt: Sie können Gefahrenzonen hinzufügen und löschen.",
+    "pinPlaceholder": "Admin-PIN",
+    "newPinPlaceholder": "Neue PIN ({{min}}+ Zeichen)",
+    "setPin": "PIN festlegen",
+    "unlock": "Entsperren",
+    "relock": "Sperren",
+    "wrongPin": "Falsche PIN.",
+    "throttled": "Zu viele Fehlversuche. Bitte einen Moment warten.",
+    "weakPin": "Verwenden Sie mindestens {{min}} Zeichen.",
+    "needUnlock": "Geben Sie zuerst die Admin-PIN ein.",
+    "failed": "Das hat nicht funktioniert.",
+    "cloudSoon": "Cloud-Verwaltung mit ArduDeck ID: demnächst verfügbar.",
+    "export": "Exportieren",
+    "exportTip": "Gefahrenzonen und die Admin-PIN-Sperre in eine Datei speichern, die Sie an andere Piloten weitergeben können",
+    "import": "Importieren",
+    "importTip": "Die Gefahrenzonen auf diesem Computer durch eine Gefahrenzonen-Datei ersetzen",
+    "imported": "Gefahrenzonen importiert. Sie bleiben gesperrt, bis die Admin-PIN eingegeben wird.",
+    "importInvalid": "Das ist keine Gefahrenzonen-Datei.",
+    "convert": "In Gefahrenzone umwandeln",
+    "convertTip": "Macht diesen Bereich zu einer Gefahrenzone und entfernt ihn aus den bearbeitbaren Bereichen",
+    "formTitle": "Neue Gefahrenzone",
+    "name": "Name",
+    "reason": "Grund",
+    "buffer": "Puffer (m)",
+    "uploadAsFence": "Zusätzlich als Fahrzeug-Geofence hochladen",
+    "badBuffer": "Geben Sie den Puffer in Metern ein.",
+    "add": "Gefahrenzone hinzufügen",
+    "addedOn": "Hinzugefügt am {{date}}.",
+    "delete": "Gefahrenzone löschen",
+    "deleteNeedsPin": "Zum Löschen ist die Admin-PIN nötig.",
+    "yes": "Ja",
+    "no": "Nein"
   }
 }

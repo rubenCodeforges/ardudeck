@@ -17,6 +17,8 @@ export default defineConfig({
           // many seconds to decode, and on the main thread that stalls IPC,
           // every window AND the MAVLink link.
           'log-worker': resolve(__dirname, 'src/main/log-worker.ts'),
+          // LAS/LAZ point clouds: decoding millions of points must never stall the main process.
+          'point-cloud-worker': resolve(__dirname, 'src/main/user-models/point-cloud-worker.ts'),
         },
         output: {
           // electron-vite's ESM shim finds the "last import" with a regex that also matches inside

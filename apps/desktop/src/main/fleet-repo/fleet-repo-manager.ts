@@ -26,6 +26,9 @@ import { formatParamFile } from '../../shared/param-file';
 import { isSurveyDocument, type SurveyDocument } from '../../shared/survey-document-types';
 import type { VaultMission, VaultSurveyArea } from '../../shared/ipc-channels';
 import { isStoredMission, type StoredMission } from '../../shared/mission-library-types';
+import { isMissionPackage, MISSION_PACKAGE_EXT, type IncomingShare, type MissionPackage, type ShareIdentity } from '../../shared/mission-share-types';
+import { randomUUID } from 'crypto';
+import { userInfo } from 'os';
 import { syncErrorMessage } from './sync-error.js';
 import { t } from '../../shared/i18n/index.js';
 
@@ -101,6 +104,10 @@ interface VaultStoreSchema {
   remoteUsername?: string;
   /** Push to the remote automatically after every snapshot */
   autoSync?: boolean;
+  /** This install's id on shared missions, so its own shares never come back as incoming. */
+  shareIdentityId?: string;
+  /** sharedAt of the version of each shared mission already reviewed, keyed by vault path. */
+  seenShares?: Record<string, number>;
 }
 
 // ── State ───────────────────────────────────────────────────────
@@ -191,6 +198,27 @@ export async function commitFiles(
   const oid = await git.commit({ fs, dir, message, author: COMMITTER });
   // Fire-and-forget: a failed background sync must never fail the snapshot.
   // The next manual sync or auto-synced snapshot retries.
+  if (vaultStore.get('autoSync') && getToken()) {
+    void githubSync().catch(() => undefined);
+  }
+  return { changed: true, oid };
+}
+
+export async function removeFiles(paths: string[], message: string): Promise<{ changed: boolean; oid?: string }> {
+  await ensureRepo();
+  const dir = repoDir();
+  let removed = 0;
+  for (const path of paths) {
+    try {
+      await fsp.unlink(join(dir, path));
+      await git.remove({ fs, dir, filepath: path });
+      removed++;
+    } catch {
+      // already gone
+    }
+  }
+  if (removed === 0) return { changed: false };
+  const oid = await git.commit({ fs, dir, message, author: COMMITTER });
   if (vaultStore.get('autoSync') && getToken()) {
     void githubSync().catch(() => undefined);
   }
@@ -637,6 +665,82 @@ export async function listSites(): Promise<FleetRepoSite[]> {
   return out.sort((a, b) => a.site.localeCompare(b.site));
 }
 
+// ── Shared missions ─────────────────────────────────────────────
+
+const SHARE_PATH = new RegExp(`^sites/[A-Za-z0-9._-]+/shared/[A-Za-z0-9._-]+\\.${MISSION_PACKAGE_EXT}\\.json$`);
+
+export function shareIdentity(): ShareIdentity {
+  let id = vaultStore.get('shareIdentityId');
+  if (!id) {
+    id = randomUUID();
+    vaultStore.set('shareIdentityId', id);
+  }
+  let name = vaultStore.get('login');
+  if (!name) {
+    try {
+      name = userInfo().username;
+    } catch {
+      name = 'ArduDeck'; // i18n-exempt
+    }
+  }
+  return { id, name };
+}
+
+function markShareSeen(path: string, sharedAt: number): void {
+  vaultStore.set('seenShares', { ...(vaultStore.get('seenShares') ?? {}), [path]: sharedAt });
+}
+
+/** One file per mission and site: sharing it again replaces it, and git keeps the earlier versions. */
+export async function shareMission(site: string, pkg: MissionPackage): Promise<{ changed: boolean; path: string }> {
+  const s = sanitizeSegment(site);
+  const path = `sites/${s}/shared/${sanitizeSegment(pkg.id)}.${MISSION_PACKAGE_EXT}.json`;
+  const result = await commitFiles([{ path, content: JSON.stringify(pkg, null, 2) }], `share ${s}/${pkg.name}`);
+  markShareSeen(path, pkg.sharedAt);
+  return { changed: result.changed, path };
+}
+
+/** Shared missions from someone else that this install has not reviewed yet, newest first. */
+export async function pendingShares(): Promise<IncomingShare[]> {
+  await ensureRepo();
+  const me = shareIdentity().id;
+  const seen = vaultStore.get('seenShares') ?? {};
+  const sitesDir = join(repoDir(), 'sites');
+  let sites: string[] = [];
+  try {
+    sites = await fsp.readdir(sitesDir);
+  } catch {
+    return [];
+  }
+  const out: IncomingShare[] = [];
+  for (const site of sites) {
+    if (site.startsWith('.')) continue;
+    let files: string[] = [];
+    try {
+      files = (await fsp.readdir(join(sitesDir, site, 'shared'))).filter((f) => f.endsWith(`.${MISSION_PACKAGE_EXT}.json`));
+    } catch {
+      continue;
+    }
+    for (const file of files) {
+      const path = `sites/${site}/shared/${file}`;
+      try {
+        const raw: unknown = JSON.parse(await fsp.readFile(join(repoDir(), path), 'utf-8'));
+        if (!isMissionPackage(raw) || raw.sharedBy.id === me) continue;
+        if ((seen[path] ?? 0) >= raw.sharedAt) continue;
+        out.push({ path, site, pkg: raw });
+      } catch {
+        // A hand-edited or half-synced file is skipped, not fatal.
+      }
+    }
+  }
+  return out.sort((a, b) => b.pkg.sharedAt - a.pkg.sharedAt);
+}
+
+export function dismissShare(path: string, sharedAt: number): boolean {
+  if (!SHARE_PATH.test(path) || path.includes('..')) return false;
+  markShareSeen(path, sharedAt);
+  return true;
+}
+
 // ── Status ──────────────────────────────────────────────────────
 
 export async function status(): Promise<FleetRepoStatus> {
@@ -944,6 +1048,13 @@ async function remoteHasBranch(dir: string, ref: string, onAuth: () => { usernam
   }
 }
 
+let syncListener: (() => void) | null = null;
+
+/** Called after every successful sync, background ones included, so new shares can be announced. */
+export function onSynced(listener: (() => void) | null): void {
+  syncListener = listener;
+}
+
 export async function githubSync(): Promise<{ success: boolean; error?: string }> {
   const token = getToken();
   const mode = vaultStore.get('remoteMode') ?? 'github';
@@ -969,6 +1080,7 @@ export async function githubSync(): Promise<{ success: boolean; error?: string }
     }
     await git.push({ fs, http, dir, remote: 'origin', ref, onAuth });
     vaultStore.set('lastSyncAt', Date.now());
+    syncListener?.();
     return { success: true };
   } catch (err) {
     return { success: false, error: syncErrorMessage(err) };

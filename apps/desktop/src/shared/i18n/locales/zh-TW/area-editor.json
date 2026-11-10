@@ -116,8 +116,7 @@
     "theme": {
       "dark": "主題:深色(點擊切換為淺色)",
       "light": "主題:淺色(點擊切換為系統)",
-      "system": "主題:系統(點擊切換為深色)",
-      "bridge": "艦橋"
+      "system": "主題:系統(點擊切換為深色)"
     },
     "tool": {
       "branch": "分支:選取廊道,從它畫出岔路(按兩下完成)",
@@ -200,5 +199,45 @@
     "workspaceRoleTip": "附加到每個已傳送測繪的允許飛行區域;只能有一個物件作為工作區",
     "workspaceTip": "工作區:附加到每個已傳送測繪的允許飛行區域",
     "zoomTo": "將地圖縮放至此物件"
+  },
+  "hazards": {
+    "title_one": "Hazards ({{count}})",
+    "title_other": "危險區({{count}})",
+    "titleEmpty": "危險區",
+    "howTo": "危險區是禁飛區域,例如電線、鐵塔或機場。規劃與上傳會拒絕穿越它們的航線。選取一個區域,然後點擊「轉換為危險區」。",
+    "noPinNote": "設定管理員 PIN 後才能新增或刪除危險區。沒有 PIN 的飛手可以看到危險區,但無法變更。",
+    "lockedNote": "已鎖定。輸入管理員 PIN 才能新增或刪除危險區。",
+    "unlockedNote": "已解除鎖定:你可以新增與刪除危險區。",
+    "pinPlaceholder": "管理員 PIN",
+    "newPinPlaceholder": "新 PIN({{min}} 個字元以上)",
+    "setPin": "設定 PIN",
+    "unlock": "解除鎖定",
+    "relock": "鎖定",
+    "wrongPin": "PIN 錯誤。",
+    "throttled": "錯誤次數過多,請稍候片刻。",
+    "weakPin": "請使用至少 {{min}} 個字元。",
+    "needUnlock": "請先輸入管理員 PIN。",
+    "failed": "操作未成功。",
+    "cloudSoon": "使用 ArduDeck ID 的雲端管理:即將推出。",
+    "export": "匯出",
+    "exportTip": "將危險區與管理員 PIN 鎖儲存成檔案,可提供給其他飛手",
+    "import": "匯入",
+    "importTip": "以危險區檔案取代這台電腦上的危險區",
+    "imported": "已匯入危險區。在輸入管理員 PIN 之前,它們會保持鎖定。",
+    "importInvalid": "這不是危險區檔案。",
+    "convert": "轉換為危險區",
+    "convertTip": "將此區域轉為危險區,並從可編輯區域中移除",
+    "formTitle": "新增危險區",
+    "name": "名稱",
+    "reason": "原因",
+    "buffer": "緩衝距離 (m)",
+    "uploadAsFence": "同時上傳為載具圍欄",
+    "badBuffer": "請以公尺輸入緩衝距離。",
+    "add": "新增危險區",
+    "addedOn": "新增於 {{date}}。",
+    "delete": "刪除危險區",
+    "deleteNeedsPin": "刪除需要管理員 PIN。",
+    "yes": "是",
+    "no": "否"
   }
 }

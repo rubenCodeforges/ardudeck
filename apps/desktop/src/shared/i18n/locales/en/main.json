@@ -139,13 +139,16 @@
     "kmzArchive": "KMZ Archive",
     "luaScript": "Lua Script",
     "missionFiles": "Mission Files",
+    "models3d": "3D Models",
     "parameterFiles": "Parameter Files",
+    "pointClouds": "Point Clouds",
     "postureReport": "Posture Report (Markdown)",
     "rallyFiles": "Rally Files",
     "textFiles": "Text Files",
     "waypoints": "Waypoints",
     "workspaceLayout": "ArduDeck workspace layout",
-    "xplaneExecutable": "X-Plane Executable"
+    "xplaneExecutable": "X-Plane Executable",
+    "zipArchive": "Zip Archive"
   },
   "firmwareDownloader": {
     "aborted": "Download aborted",
@@ -190,7 +193,8 @@
     "waitingDfu": "Waiting for DFU device...",
     "writingFirmware": "Writing firmware...",
     "writingProgress": "Writing firmware... {{percent}}%",
-    "writingProgressKb": "Writing firmware... {{percent}}% ({{done}}/{{total}} KB)"
+    "writingProgressKb": "Writing firmware... {{percent}}% ({{done}}/{{total}} KB)",
+    "fullEraseNeedsBootloaderImage": "Full chip erase over DFU needs a *_with_bl.hex image: the erase removes the bootloader, and this image does not put it back."
   },
   "fleetRepo": {
     "adoptFailed": "Could not adopt repository",
@@ -310,7 +314,15 @@
     "writeProbeNoResponse": "FC did not respond to a write probe within 1.5 s. The MAVLink FTP server may be disabled or the FC has no writable filesystem (no SD card?).",
     "writeProbeRejected": "FC rejected the write probe: {{error}}",
     "inavNoParams": "This flight controller has no MAVLink parameters (INAV). Configure it over MSP.",
-    "pickFolderTitle": "Choose a folder"
+    "pickFolderTitle": "Choose a folder",
+    "resetParamsArduPilotOnly": "Resetting all parameters is only available for ArduPilot.",
+    "resetParamsDisarmFirst": "Disarm the vehicle before resetting its parameters.",
+    "resetParamsFailed": "The flight controller did not accept the parameter reset.",
+    "rcMapUnknown": "Stick override is off until the vehicle's parameters are loaded (RCMAP decides which channel is throttle).",
+    "paramNoEcho": "{{param}}: the flight controller did not confirm the write. Check the link and try again.",
+    "paramRejected": "{{param}}: the flight controller kept {{value}} and did not take the new value.",
+    "flashWriteRejected": "The flight controller refused the flash write (result {{result}}).",
+    "calibrationLost": "{{type}} calibration did NOT survive the reboot. Recalibrate before flying."
   },
   "licenseValidator": {
     "invalidKeyFormat": "Invalid key format",
@@ -461,8 +473,8 @@
     "title": "{{name}} wants to start a program"
   },
   "moduleManager": {
-    "activated_one": "Activated {{count}} module(s)",
-    "activated_other": "Activated {{count}} module(s)",
+    "activated_one": "Activated {{count}} cargo",
+    "activated_other": "Activated {{count}} cargo",
     "activating": "Activating with server...",
     "activationFailed": "Activation failed: {{msg}}",
     "activationRejected": "Activation rejected",
@@ -681,5 +693,39 @@
     "uploadFailed": "Upload failed.",
     "noReconnect": "The flight controller did not come back after the reboot.",
     "notStarted": "The script did not start. Check the Messages panel for a Lua error, such as \"Insufficent memory\"."
+  },
+  "userModels": {
+    "importTitle": "Import 3D Models",
+    "watchFolderTitle": "Watch a Folder of 3D Models",
+    "readFailed": "Could not read this file: {{reason}}",
+    "fileNotFound": "The file was not found.",
+    "notJson": "The file is not valid JSON.",
+    "unknownJson": "This JSON file is neither a 3D Tiles tileset nor CityJSON.",
+    "unsupportedFile": "Unsupported file type. Use .glb, .gltf, .kmz, .kml, a 3D Tiles tileset.json, CityJSON, a .las, .laz or .ply point cloud, or a .zip holding one of these.",
+    "missingResource": "A file the model needs is missing: {{file}}",
+    "badArchive": "The archive could not be opened.",
+    "noKmlInKmz": "The KMZ holds no KML document.",
+    "noModelsInKml": "The KML holds no 3D model with a local file.",
+    "remoteHref": "The model points to a web address. Only files inside the KMZ or next to the KML can be loaded.",
+    "tilesetNoPosition": "The tileset has no position: its root has neither a transform nor a usable bounding volume.",
+    "cityJsonFailed": "The CityJSON file could not be converted.",
+    "zipEmpty": "The zip holds no glTF, KML, KMZ, 3D Tiles, CityJSON or point cloud model.",
+    "folderNotFound": "The folder was not found.",
+    "noPlacementTable": "The folder needs a placement table: models.json, a .csv or a .geojson file.",
+    "tableUnreadable": "{{file}} could not be read: {{reason}}",
+    "pointCloudNotLas": "The file is not a LAS or LAZ point cloud.",
+    "pointCloudVersion": "Unsupported LAS version. LAS 1.0 to 1.4 can be read.",
+    "pointCloudFormat": "Unsupported LAS point format or LAZ compression.",
+    "pointCloudTruncated": "The point cloud file is truncated.",
+    "pointCloudNoCrs": "The point cloud has no coordinate reference system: it carries neither GeoTIFF keys nor a WKT record.",
+    "pointCloudUnknownCrs": "The point cloud's reference system ({{crs}}) is not known.",
+    "pointCloudEmpty": "The point cloud holds no usable points.",
+    "plyInvalid": "The file is not a readable PLY point cloud.",
+    "unverifiedCrs": "Placed with EPSG:{{epsg}} from epsg.io. Its 7-parameter datum shift is not verified against PROJ and can be off by metres; check the position against the map."
+  },
+  "missionShare": {
+    "invalidPackage": "This is not an ArduDeck mission package.",
+    "saveTitle": "Save mission package",
+    "fileFilter": "ArduDeck mission package"
   }
 }

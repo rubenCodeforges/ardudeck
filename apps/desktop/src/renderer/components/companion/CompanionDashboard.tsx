@@ -30,6 +30,7 @@ import { ExtensionsPanel } from './panels/ExtensionsPanel';
 import { DroneBridgeStatusPanel } from './panels/DroneBridgeStatusPanel';
 import { DroneBridgeSettingsPanel } from './panels/DroneBridgeSettingsPanel';
 import { Trans, useTranslation } from 'react-i18next';
+import { ui } from '../ui/ui-hooks';
 
 // ─── Tab types ──────────────────────────────────────────────────────────────
 
@@ -209,9 +210,9 @@ function loadPresetLayout(api: DockviewApi, preset: PresetLayoutKey, t: TFunctio
 function CompanionTabBar({ activeTab, onTabChange }: { activeTab: CompanionTab; onTabChange: (tab: CompanionTab) => void }) {
   const { t } = useTranslation();
   return (
-    <div className="flex items-center gap-0.5 px-3 py-1.5 bg-surface border-b border-subtle">
+    <div {...ui('tabs')} className="flex items-center gap-0.5 px-3 py-1.5 bg-surface border-b border-subtle">
       {TAB_ITEMS.map(({ id, labelKey, icon }) => (
-        <button
+        <button {...ui('tab', { active: activeTab === id })}
           key={id}
           onClick={() => onTabChange(id)}
           className={`px-3 py-1.5 text-xs rounded transition-colors flex items-center gap-1.5 ${
@@ -434,7 +435,7 @@ function DroneBridgeUsbReader() {
               components={{ ssid: <span className="font-mono font-medium" /> }}
             />
           </p>
-          <button
+          <button {...ui('button', { variant: 'primary' })}
             onClick={handleGoLive}
             className="w-full py-2 bg-blue-600/80 hover:bg-blue-500/80 text-white text-xs font-medium rounded-lg transition-colors"
           >
@@ -442,7 +443,7 @@ function DroneBridgeUsbReader() {
           </button>
         </div>
 
-        <button
+        <button {...ui('button', { variant: 'ghost' })}
           onClick={() => setResult(null)}
           className="w-full text-[10px] text-content-tertiary hover:text-content-secondary transition-colors"
         >
@@ -466,7 +467,7 @@ function DroneBridgeUsbReader() {
             <option key={port} value={port}>{port}</option>
           ))}
         </select>
-        <button
+        <button {...ui('icon-button')}
           onClick={handleRefresh}
           disabled={reading}
           className="px-2 py-2 bg-surface-raised hover:bg-surface-raised disabled:opacity-40 text-content rounded-lg transition-colors"
@@ -477,7 +478,7 @@ function DroneBridgeUsbReader() {
           </svg>
         </button>
       </div>
-      <button
+      <button {...ui('button', { variant: 'secondary' })}
         onClick={handleRead}
         disabled={!selectedPort || reading}
         className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-amber-600/80 hover:bg-amber-500/80 disabled:bg-surface-raised disabled:text-content-tertiary text-white text-xs font-medium rounded-lg transition-colors"
@@ -539,7 +540,7 @@ function DroneBridgeManualProbe() {
 
   return (
     <div className="flex items-center gap-2">
-      <input
+      <input {...ui('input')}
         type="text"
         value={ip}
         onChange={(e) => setIp(e.target.value)}
@@ -547,7 +548,7 @@ function DroneBridgeManualProbe() {
         className="flex-1 bg-surface-input border border-subtle rounded-lg px-3 py-2 text-xs text-content font-mono placeholder-content-tertiary focus:outline-none focus:ring-1 focus:ring-blue-500/50"
         onKeyDown={(e) => { if (e.key === 'Enter') handleProbe(); }}
       />
-      <button
+      <button {...ui('button', { variant: 'primary' })}
         onClick={handleProbe}
         disabled={!ip.trim() || probing}
         className="px-3 py-2 bg-blue-600/80 hover:bg-blue-500/80 disabled:opacity-40 text-white text-xs rounded-lg transition-colors"
@@ -710,7 +711,7 @@ function DashboardConnectForm() {
     <div className="space-y-3">
       <h4 className="text-xs font-medium text-content">{t('companion:dashboard.connectAgent')}</h4>
       <div className="grid grid-cols-2 gap-2">
-        <input
+        <input {...ui('input')}
           type="text"
           value={host}
           onChange={(e) => setHost(e.target.value)}
@@ -718,7 +719,7 @@ function DashboardConnectForm() {
           className="bg-surface-input border border-subtle rounded-lg px-3 py-2 text-xs text-content placeholder-content-tertiary focus:outline-none focus:ring-1 focus:ring-blue-500/50"
           onKeyDown={(e) => { if (e.key === 'Enter') handleConnect(); }}
         />
-        <input
+        <input {...ui('input')}
           type="password"
           value={token}
           onChange={(e) => setToken(e.target.value)}
@@ -727,7 +728,7 @@ function DashboardConnectForm() {
           onKeyDown={(e) => { if (e.key === 'Enter') handleConnect(); }}
         />
       </div>
-      <button
+      <button {...ui('button', { variant: 'primary' })}
         onClick={handleConnect}
         disabled={connecting || !host.trim() || !token.trim()}
         className="w-full py-2 bg-blue-600/80 hover:bg-blue-500/80 disabled:bg-surface-raised disabled:text-content-tertiary text-white text-xs font-medium rounded-lg transition-colors"
@@ -879,7 +880,7 @@ function CompanionAddPanelDropdown({ onAddPanel }: { onAddPanel: (id: string, co
 
   return (
     <div className="relative">
-      <button
+      <button {...ui('button', { variant: 'secondary' })}
         onClick={() => setIsOpen(!isOpen)}
         className="px-2 py-1 bg-surface-raised hover:bg-surface-raised text-content text-xs rounded transition-colors flex items-center gap-1"
       >

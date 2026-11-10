@@ -155,8 +155,12 @@ export function parseFenceItems(items: FenceItem[]): {
         seq: item.seq,
       });
     } else if (fenceType.shape === 'polygon') {
-      // First vertex of polygon has vertex count in param1
-      if (item.param1 > 0 && item.param1 <= 100) {
+      // Every vertex carries the polygon's vertex count (ArduPilot sends it on each), so a vertex
+      // continues the open polygon until it is full or the zone type changes.
+      const continues = currentPolygon !== null
+        && currentPolygon.type === fenceType.type
+        && currentPolygon.vertices.length < expectedVertices;
+      if (!continues && item.param1 > 0 && item.param1 <= 100) {
         // Start new polygon
         if (currentPolygon && currentPolygon.vertices.length >= 3) {
           polygons.push(currentPolygon);
@@ -232,7 +236,7 @@ export function buildFenceItems(
         seq: seq++,
         command,
         frame: 0, // MAV_FRAME_GLOBAL
-        param1: i === 0 ? polygon.vertices.length : 0, // vertex count on first vertex
+        param1: polygon.vertices.length, // ArduPilot rejects a vertex whose count differs from the first (AC_PolyFence_loader validate)
         param2: 0,
         param3: 0,
         param4: 0,

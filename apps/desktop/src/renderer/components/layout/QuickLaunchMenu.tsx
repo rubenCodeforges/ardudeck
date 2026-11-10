@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { t as i18nT } from '../../../shared/i18n/index.js';
 import { useAppStore } from '../../stores/app-store';
 import { LOCUS_CARGO_SLUG } from '../../modules/capabilities';
+import { ui } from '../ui/ui-hooks';
 
 interface LaunchItem {
   id: string;
@@ -116,7 +117,7 @@ export function QuickLaunchMenu() {
 
   return (
     <div ref={ref} className="relative">
-      <button
+      <button {...ui('button', { variant: 'secondary' })}
         data-tour="quick-launch"
         onClick={() => setOpen((o) => !o)}
         className="group flex items-center gap-1.5 pl-2.5 pr-2 py-1.5 rounded-lg bg-surface border border-subtle hover:border-teal-500/40 hover:bg-surface-raised transition-colors"

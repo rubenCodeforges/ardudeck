@@ -38,7 +38,7 @@
     },
     "cargo": {
       "title": "Funktionen mit Cargo hinzufügen",
-      "blurb": "Mods listet das Cargo, das Sie hinzufügen können: installieren, aktualisieren oder entfernen. Installiertes Cargo bringt eigene Ansichten und Karten in die App."
+      "blurb": "Die Cargo Bay listet das Cargo, das Sie hinzufügen können: installieren, aktualisieren oder entfernen. Installiertes Cargo bringt eigene Ansichten und Karten in die App."
     },
     "adjust": {
       "title": "Im Flug anpassen",

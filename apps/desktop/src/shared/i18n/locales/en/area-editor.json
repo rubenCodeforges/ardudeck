@@ -116,8 +116,7 @@
     "theme": {
       "dark": "Theme: Dark (click for Light)",
       "light": "Theme: Light (click for System)",
-      "system": "Theme: System (click for Dark)",
-      "bridge": "Bridge"
+      "system": "Theme: System (click for Dark)"
     },
     "tool": {
       "branch": "Branch: select a corridor, draw a fork off it (double-click to finish)",
@@ -200,5 +199,45 @@
     "workspaceRoleTip": "Allowed flight area attached to every sent survey; only one object can be the workspace",
     "workspaceTip": "Workspace - allowed flight area attached to every sent survey",
     "zoomTo": "Zoom the map to this object"
+  },
+  "hazards": {
+    "title_one": "Hazards ({{count}})",
+    "title_other": "Hazards ({{count}})",
+    "titleEmpty": "Hazards",
+    "howTo": "Hazards are no-fly areas such as power lines, towers or airports. Planning and upload refuse routes through them. Select an area, then Convert to hazard.",
+    "noPinNote": "Set an admin PIN to add or delete hazards. Pilots without the PIN can see hazards but not change them.",
+    "lockedNote": "Locked. Enter the admin PIN to add or delete hazards.",
+    "unlockedNote": "Unlocked: you can add and delete hazards.",
+    "pinPlaceholder": "Admin PIN",
+    "newPinPlaceholder": "New PIN ({{min}}+ characters)",
+    "setPin": "Set PIN",
+    "unlock": "Unlock",
+    "relock": "Lock",
+    "wrongPin": "Wrong PIN.",
+    "throttled": "Too many wrong tries. Wait a moment.",
+    "weakPin": "Use at least {{min}} characters.",
+    "needUnlock": "Enter the admin PIN first.",
+    "failed": "That did not work.",
+    "cloudSoon": "Cloud admin with ArduDeck ID: coming soon.",
+    "export": "Export",
+    "exportTip": "Save the hazards and the admin PIN lock to a file you can give to other pilots",
+    "import": "Import",
+    "importTip": "Replace the hazards on this computer with a hazards file",
+    "imported": "Hazards imported. They are locked until the admin PIN is entered.",
+    "importInvalid": "That is not a hazards file.",
+    "convert": "Convert to hazard",
+    "convertTip": "Turns this area into a hazard and removes it from the editable areas",
+    "formTitle": "New hazard",
+    "name": "Name",
+    "reason": "Reason",
+    "buffer": "Buffer (m)",
+    "uploadAsFence": "Also upload as a vehicle fence",
+    "badBuffer": "Enter the buffer in metres.",
+    "add": "Add hazard",
+    "addedOn": "Added on {{date}}.",
+    "delete": "Delete hazard",
+    "deleteNeedsPin": "Deleting needs the admin PIN.",
+    "yes": "Yes",
+    "no": "No"
   }
 }

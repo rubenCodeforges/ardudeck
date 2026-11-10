@@ -205,19 +205,21 @@ export function verifyCalibrationPersisted(
     if (Math.abs(after - before) > tolerance * scale) mismatched.push(name);
   }
 
-  if (missing.length === names.length) {
+  // A value that came back different is proof the reboot lost it. A value that did not come back at all is
+  // only a dropped PARAM_VALUE on a lossy link (#159: telemetry radios dropped replies and every connect said
+  // "did not survive"), so it leaves the record unverified to be checked again, never condemned.
+  if (mismatched.length > 0) {
+    return {
+      state: 'not-persisted',
+      summary: t('shared:calibrationQuality.notPersisted', { count: mismatched.length }),
+      mismatched,
+    };
+  }
+  if (missing.length > 0) {
     return {
       state: 'unverified',
       summary: t('shared:calibrationQuality.readBackFailed'),
       mismatched: missing,
-    };
-  }
-  if (mismatched.length > 0 || missing.length > 0) {
-    const lost = [...mismatched, ...missing];
-    return {
-      state: 'not-persisted',
-      summary: t('shared:calibrationQuality.notPersisted', { count: lost.length }),
-      mismatched: lost,
     };
   }
 

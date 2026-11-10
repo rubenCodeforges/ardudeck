@@ -13,7 +13,11 @@
     "setProfile": "請設定載具設定檔以取得續航資訊",
     "unknown": "未知",
     "usableEach": "每顆約可用 {{duration}}",
-    "wind": "風"
+    "wind": "風",
+    "flightTimeWindDetail": "迎著預報的地面風(無風時為 {{duration}});高空風通常更強",
+    "windBlocked": "逆風航段",
+    "windBlockedDetail": "這些航段上的預報風速達到或超過巡航速度,飛機無法維持",
+    "flightTimeLayerWindDetail": "迎著 {{altitude}} 風層的風(無風時為 {{duration}})"
   },
   "joystickSafety": {
     "assign": "請先指派 {{names}}",

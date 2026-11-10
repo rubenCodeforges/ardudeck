@@ -29,6 +29,7 @@ import {
   type BoardFamily,
 } from './companion-templates';
 import { Trans, useTranslation } from 'react-i18next';
+import { ui } from '../ui/ui-hooks';
 
 // ── Per-template icons ──────────────────────────────────────────
 
@@ -71,7 +72,7 @@ function BoardSelectionView({ onSelectBoard }: { onSelectBoard: (board: BoardFam
 
       <div className="grid grid-cols-2 gap-4">
         {boardEntries.map(([key, board]) => (
-          <button
+          <button {...ui('option')}
             key={key}
             onClick={() => onSelectBoard(key)}
             disabled={templateCounts[key] === 0}
@@ -121,7 +122,7 @@ function TemplateListView({
 
   return (
     <div className="max-w-3xl mx-auto p-8 space-y-5">
-      <button
+      <button {...ui('button', { variant: 'ghost' })}
         onClick={onBack}
         className="flex items-center gap-1.5 text-xs text-content-secondary hover:text-content transition-colors"
       >
@@ -158,7 +159,7 @@ function TemplateListView({
                 const flash = FLASH_METHOD_LABEL[template.flashMethod];
 
                 return (
-                  <button
+                  <button {...ui('option')}
                     key={template.id}
                     onClick={() => onSelectTemplate(template)}
                     className={`group text-left rounded-xl border-t-2 border border-subtle bg-surface hover:bg-surface transition-all duration-200 hover:border hover:shadow-lg hover:shadow-black/20 ${style.accent}`}
@@ -287,7 +288,7 @@ function TemplateDetailView({ template, onBack, onFlashComplete }: { template: C
 
   return (
     <div className="max-w-2xl mx-auto p-8 space-y-5">
-      <button
+      <button {...ui('button', { variant: 'ghost' })}
         onClick={onBack}
         className="flex items-center gap-1.5 text-xs text-content-secondary hover:text-content transition-colors"
       >
@@ -385,7 +386,7 @@ function TemplateDetailView({ template, onBack, onFlashComplete }: { template: C
                       <option key={port} value={port}>{port}</option>
                     ))}
                   </select>
-                  <button
+                  <button {...ui('icon-button')}
                     onClick={handleRefreshPorts}
                     disabled={refreshing || flashing}
                     className="px-2 py-2 bg-surface-raised hover:bg-surface-raised disabled:opacity-40 text-content rounded-lg transition-colors"
@@ -444,7 +445,7 @@ function TemplateDetailView({ template, onBack, onFlashComplete }: { template: C
               </div>
             )}
 
-            <button
+            <button {...ui('button', { variant: 'primary' })}
               onClick={handleFlash}
               disabled={!selectedPort || flashing}
               className="w-full py-2.5 bg-blue-600/80 hover:bg-blue-500/80 disabled:bg-surface-raised disabled:text-content-tertiary text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -515,7 +516,7 @@ function TemplateDetailView({ template, onBack, onFlashComplete }: { template: C
                   <div className="bg-surface-input rounded-lg px-3 py-2 font-mono text-xs text-content-secondary pr-10 select-all overflow-x-auto">
                     {template.installCommand}
                   </div>
-                  <button
+                  <button {...ui('icon-button')}
                     onClick={() => handleCopy(template.installCommand!)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-surface-raised text-content-tertiary hover:text-content-secondary transition-colors"
                   >
@@ -538,7 +539,7 @@ function TemplateDetailView({ template, onBack, onFlashComplete }: { template: C
               <div className="bg-surface-input rounded-lg px-3 py-2 font-mono text-xs text-content-secondary pr-10 select-all overflow-x-auto">
                 {template.installCommand}
               </div>
-              <button
+              <button {...ui('icon-button')}
                 onClick={() => handleCopy(template.installCommand!)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-surface-raised text-content-tertiary hover:text-content-secondary transition-colors"
               >

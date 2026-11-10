@@ -2,6 +2,7 @@
  * Left sidebar — categorized, searchable list of available nodes.
  * Drag a node from here onto the canvas to add it.
  */
+import { ui } from '../ui/ui-hooks';
 import { useState, useCallback } from 'react';
 import {
   Search,
@@ -196,6 +197,7 @@ export function NodePalette() {
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-content-secondary" />
           <input
+            {...ui('input')}
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

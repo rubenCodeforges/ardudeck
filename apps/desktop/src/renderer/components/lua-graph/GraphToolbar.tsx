@@ -1,6 +1,7 @@
 /**
  * Toolbar - file operations, undo/redo, validation status.
  */
+import { ui } from '../ui/ui-hooks';
 import { useCallback, useState } from 'react';
 import {
   FilePlus,
@@ -119,6 +120,7 @@ export function GraphToolbar() {
       >
         {/* Graph name */}
         <input
+          {...ui('input')}
           type="text"
           value={graphName}
           onChange={(e) => setGraphName(e.target.value)}
@@ -204,6 +206,7 @@ function ToolbarButton({
 }) {
   return (
     <button
+      {...ui('button', { variant: accent ? 'primary' : 'ghost' })}
       onClick={onClick}
       disabled={disabled}
       className={`

@@ -92,6 +92,7 @@ export const IPC_CHANNELS = {
 
   // MAVLink Commands
   MAVLINK_REBOOT: 'mavlink:reboot',
+  MAVLINK_RESET_PARAMS: 'mavlink:reset-params',
   MAVLINK_ARM_DISARM: 'mavlink:arm-disarm',
   MAVLINK_SET_MODE: 'mavlink:set-mode',
   MAVLINK_COMMAND_TAKEOFF: 'mavlink:command-takeoff',
@@ -241,6 +242,23 @@ export const IPC_CHANNELS = {
   FLEET_REPO_LINK_UNIT: 'fleet-repo:link-unit',
   FLEET_REPO_GH_LIST_REPOS: 'fleet-repo:gh-list-repos',
   FLEET_REPO_GH_USE_EXISTING: 'fleet-repo:gh-use-existing',
+  FLEET_REPO_SHARE_MISSION: 'fleet-repo:share-mission',
+  FLEET_REPO_PENDING_SHARES: 'fleet-repo:pending-shares',
+  FLEET_REPO_DISMISS_SHARE: 'fleet-repo:dismiss-share',
+  FLEET_REPO_SHARE_IDENTITY: 'fleet-repo:share-identity',
+  FLEET_REPO_SYNCED: 'fleet-repo:synced',
+  MISSION_PACKAGE_SAVE: 'mission-package:save',
+  HAZARDS_LIST: 'hazards:list',
+  HAZARDS_STATUS: 'hazards:status',
+  HAZARDS_SET_PIN: 'hazards:set-pin',
+  HAZARDS_UNLOCK: 'hazards:unlock',
+  HAZARDS_RELOCK: 'hazards:relock',
+  HAZARDS_ADD: 'hazards:add',
+  HAZARDS_REMOVE: 'hazards:remove',
+  HAZARDS_OVERRIDE: 'hazards:override',
+  HAZARDS_EXPORT: 'hazards:export',
+  HAZARDS_IMPORT: 'hazards:import',
+  HAZARDS_CHANGED: 'hazards:changed',
   // Production line (golden models, bays, QA runs, birth certificates)
   PRODUCTION_LIST_MODELS: 'production:list-models',
   PRODUCTION_SAVE_MODEL: 'production:save-model',
@@ -959,6 +977,7 @@ export const IPC_CHANNELS = {
   LOG_DOWNLOAD_ERROR: 'log:download-error',
   LOG_DOWNLOAD_CANCEL: 'log:download-cancel',
   LOG_ERASE_ALL: 'log:erase-all',
+  TLOG_OPEN_FOLDER: 'tlog:open-folder',
   LOG_STORAGE_INFO: 'log:storage-info',
   LOG_FORMAT_SD: 'log:format-sd',
   /** Show open-file dialog only (no read). Returns just the chosen path so
@@ -1063,6 +1082,14 @@ export const IPC_CHANNELS = {
   TILE_SOURCES_LIST: 'tile-sources:list',
   TILE_SOURCES_CHANGED: 'tile-sources:changed',
   SCENE_MESHES_LIST: 'scene-meshes:list',
+  USER_MODELS_LIST: 'user-models:list',
+  USER_MODELS_IMPORT: 'user-models:import',
+  USER_MODELS_UPDATE: 'user-models:update',
+  USER_MODELS_REMOVE: 'user-models:remove',
+  USER_MODELS_WATCH_LIST: 'user-models:watch-list',
+  USER_MODELS_WATCH_ADD: 'user-models:watch-add',
+  USER_MODELS_WATCH_REMOVE: 'user-models:watch-remove',
+  USER_MODELS_CHANGED: 'user-models:changed',
   SCENE_MESHES_CHANGED: 'scene-meshes:changed',
   TERRAIN_UPLINK_STATUS: 'terrain-uplink:status',
 } as const;
@@ -1578,6 +1605,13 @@ export interface SettingsStoreSchema {
   showDebugLogs?: boolean;
   /** Answer the autopilot's terrain requests from the map's DEM tiles. Default on. */
   serveTerrain?: boolean;
+  /** Record every connection's telemetry to a .tlog in the app data folder. Default on. */
+  recordTlog?: boolean;
+  /** Voice volume 0-100 while disarmed and while armed (#165). Default 100. */
+  voiceVolumeDisarmed?: number;
+  /** Top-bar voice level: all callouts, important only, or off. */
+  voiceAlertLevel?: 'all' | 'important' | 'off';
+  voiceVolumeArmed?: number;
   aiProvider?: 'claude' | 'openai' | 'gemini' | null;
   /** User-saved survey planner presets. Built-in presets ship in code. */
   surveyPresets?: PersistedSurveyPreset[];

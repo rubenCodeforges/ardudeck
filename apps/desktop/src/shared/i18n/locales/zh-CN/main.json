@@ -139,13 +139,16 @@
     "kmzArchive": "KMZ 压缩档",
     "luaScript": "Lua 脚本",
     "missionFiles": "任务文件",
+    "models3d": "3D 模型",
     "parameterFiles": "参数文件",
-    "postureReport": "态势报告 （Markdown）",
+    "pointClouds": "点云",
+    "postureReport": "态势报告（Markdown）",
     "rallyFiles": "集结点文件",
     "textFiles": "文字文件",
     "waypoints": "航点",
     "workspaceLayout": "ArduDeck 工作区布局",
-    "xplaneExecutable": "X-Plane 可执行文件"
+    "xplaneExecutable": "X-Plane 可执行文件",
+    "zipArchive": "Zip 压缩包"
   },
   "firmwareDownloader": {
     "aborted": "下载已中止",
@@ -190,7 +193,8 @@
     "waitingDfu": "正在等待 DFU 设备...",
     "writingFirmware": "正在写入固件...",
     "writingProgress": "正在写入固件... {{percent}}%",
-    "writingProgressKb": "正在写入固件... {{percent}}%({{done}}/{{total}} KB)"
+    "writingProgressKb": "正在写入固件... {{percent}}%({{done}}/{{total}} KB)",
+    "fullEraseNeedsBootloaderImage": "通过 DFU 全片擦除需要 *_with_bl.hex 固件：擦除会移除引导程序，而此固件不会恢复它。"
   },
   "fleetRepo": {
     "adoptFailed": "无法接管仓库",
@@ -229,7 +233,7 @@
     "missionUploadInProgress": "另一个任务上传正在进行中",
     "motorTestNeedsMavlink": "电机测试需要 MAVLink 连接",
     "noBoardIdentity": "没有主板识别信息",
-    "noClaudeKey": "尚未设置 claude 的 API 密钥。请在设居中新增。",
+    "noClaudeKey": "尚未设置 claude 的 API 密钥。请在设置中添加。",
     "noCompatibleFirmware": "未检测到兼容的固件",
     "noDjiWaypoints": "DJI 任务中找不到航点",
     "noExportableWaypoints": "没有可导出的航点（DJI KMZ 需要带坐标的一般航点）",
@@ -309,8 +313,16 @@
     "vehicleSelectionFailed": "载具选择同步失败（{{vehicle}}）：指令仍会送到先前的载具",
     "writeProbeNoResponse": "飞控在 1.5 秒内没有回应写入探测。MAVLink FTP 服务器可能已停用，或飞控没有可写入的文件系统（没有 SD 卡？）。",
     "writeProbeRejected": "飞控拒绝了写入探测：{{error}}",
-    "inavNoParams": "此飞控没有 MAVLink 参数 （INAV）。请通过 MSP 设置。",
-    "pickFolderTitle": "选择文件夹"
+    "inavNoParams": "此飞控没有 MAVLink 参数（INAV）。请通过 MSP 设置。",
+    "pickFolderTitle": "选择文件夹",
+    "resetParamsArduPilotOnly": "仅 ArduPilot 支持重置所有参数。",
+    "resetParamsDisarmFirst": "重置参数前载具必须处于上锁状态。",
+    "resetParamsFailed": "飞控未接受参数重置。",
+    "rcMapUnknown": "在载具参数加载之前，摇杆覆盖保持关闭（RCMAP 决定哪个通道是油门）。",
+    "paramNoEcho": "{{param}}：飞控未确认写入。请检查链路后重试。",
+    "paramRejected": "{{param}}：飞控保留了 {{value}}，未接受新值。",
+    "flashWriteRejected": "飞控拒绝了闪存写入（结果 {{result}}）。",
+    "calibrationLost": "{{type}} 校准在重启后未保留。飞行前请重新校准。"
   },
   "licenseValidator": {
     "invalidKeyFormat": "密钥格式无效",
@@ -681,5 +693,39 @@
     "declined": "已拒绝执行模块程序",
     "message": "{{name}}：{{reason}}",
     "title": "{{name}} 想要启动外部程序"
+  },
+  "userModels": {
+    "importTitle": "导入 3D 模型",
+    "watchFolderTitle": "监视 3D 模型文件夹",
+    "readFailed": "无法读取此文件：{{reason}}",
+    "fileNotFound": "未找到该文件。",
+    "notJson": "该文件不是有效的 JSON。",
+    "unknownJson": "此 JSON 文件既不是 3D Tiles 瓦片集，也不是 CityJSON。",
+    "unsupportedFile": "不支持的文件类型。请使用 .glb、.gltf、.kmz、.kml、3D Tiles 的 tileset.json、CityJSON、.las、.laz 或 .ply 点云，或包含上述文件之一的 .zip。",
+    "missingResource": "模型所需的文件缺失：{{file}}",
+    "badArchive": "无法打开该压缩包。",
+    "noKmlInKmz": "该 KMZ 中没有 KML 文档。",
+    "noModelsInKml": "该 KML 中没有带本地文件的 3D 模型。",
+    "remoteHref": "该模型指向网络地址。只能加载 KMZ 内或 KML 旁边的文件。",
+    "tilesetNoPosition": "该瓦片集没有位置：其根节点既没有变换，也没有可用的包围体。",
+    "cityJsonFailed": "无法转换该 CityJSON 文件。",
+    "zipEmpty": "该 zip 中没有 glTF、KML、KMZ、3D Tiles、CityJSON 或点云模型。",
+    "folderNotFound": "未找到该文件夹。",
+    "noPlacementTable": "该文件夹需要一个放置表：models.json、.csv 或 .geojson 文件。",
+    "tableUnreadable": "无法读取 {{file}}：{{reason}}",
+    "pointCloudNotLas": "该文件不是 LAS 或 LAZ 点云。",
+    "pointCloudVersion": "不支持的 LAS 版本。可读取 LAS 1.0 至 1.4。",
+    "pointCloudFormat": "不支持的 LAS 点格式或 LAZ 压缩方式。",
+    "pointCloudTruncated": "点云文件不完整。",
+    "pointCloudNoCrs": "该点云没有坐标参考系：既没有 GeoTIFF 键，也没有 WKT 记录。",
+    "pointCloudUnknownCrs": "点云的参考系（{{crs}}）未知。",
+    "pointCloudEmpty": "该点云没有可用的点。",
+    "plyInvalid": "该文件不是可读取的 PLY 点云。",
+    "unverifiedCrs": "已使用来自 epsg.io 的 EPSG:{{epsg}} 放置。其七参数基准转换未经 PROJ 验证，可能偏差数米；请对照地图检查位置。"
+  },
+  "missionShare": {
+    "invalidPackage": "这不是 ArduDeck 任务包。",
+    "saveTitle": "保存任务包",
+    "fileFilter": "ArduDeck 任务包"
   }
 }

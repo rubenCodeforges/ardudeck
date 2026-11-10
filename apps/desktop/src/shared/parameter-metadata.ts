@@ -38,6 +38,12 @@ export const REBOOT_REQUIRED_OVERRIDES: ReadonlySet<string> = new Set([
   // AP_Logger backends are initialised at boot; changing type takes effect only
   // after a reboot, but AP_Logger.cpp's _BACKEND_TYPE has no @RebootRequired.
   'LOG_BACKEND_TYPE',
+  // Tagged upstream, listed here as well so the motor test can tell a pending frame change
+  // even when the metadata download failed.
+  'FRAME_CLASS',
+  'FRAME_TYPE',
+  'Q_FRAME_CLASS',
+  'Q_FRAME_TYPE',
 ]);
 
 /** Declared @Range ends that the firmware treats as "off". Quote the guard. */

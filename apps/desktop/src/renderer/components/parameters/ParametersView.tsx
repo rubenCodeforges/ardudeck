@@ -13,6 +13,7 @@ import { useQuickSetupStore } from '../../stores/quick-setup-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { NON_DEFAULT_COLORS, getNonDefaultColor } from './non-default-palette';
 import { getParamTypeName, formatParamValue } from '../../../shared/parameter-types';
+import { DefaultValueCell } from './DefaultValueCell';
 import { PARAMETER_GROUPS, parameterGroupName, parameterGroupDescription } from '../../../shared/parameter-groups';
 import { MspConfigView } from './MspConfigView';
 import MavlinkConfigView from '../mavlink-config/MavlinkConfigView';
@@ -227,7 +228,8 @@ export function ParametersView() {
         }
 
         markAllAsSaved();
-        showToast(t('parameters:parametersView.savedToFlash'), 'success');
+        if (result && 'unconfirmed' in result && result.unconfirmed) showToast(t('parameters:parametersView.savedUnconfirmed'), 'info');
+        else showToast(t('parameters:parametersView.savedToFlash'), 'success');
       } else {
         showToast(result?.error ?? t('parameters:parametersView.failedToWriteFlash'), 'error');
       }
@@ -922,6 +924,7 @@ export function ParametersView() {
                     <SortIndicator column="status" currentColumn={sortColumn} direction={sortDirection} />
                   </button>
                 </th>
+                <th className="px-2 py-3 font-medium w-[96px]">{t('parameters:defaultColumn.header')}</th>
                 <th className="px-4 py-3 font-medium w-[80px]">{t('common:type')}</th>
                 <th className="px-4 py-3 font-medium">{t('common:description')}</th>
               </tr>
@@ -1020,6 +1023,9 @@ export function ParametersView() {
                         </div>
                       ) : null}
                     </div>
+                  </td>
+                  <td className="px-2 py-2.5">
+                    <DefaultValueCell value={param.value} defaultValue={param.defaultValue} readOnly={param.isReadOnly} onReset={(v) => setParameter(param.id, v)} />
                   </td>
                   <td className="px-4 py-2.5">
                     <span className="text-xs text-content-secondary">{getParamTypeName(param.type)}</span>

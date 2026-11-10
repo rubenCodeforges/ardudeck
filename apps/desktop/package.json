@@ -1,6 +1,6 @@
 {
   "name": "@ardudeck/desktop",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "ArduDeck - Desktop Application",
   "author": {
     "name": "rubenCodeforges",
@@ -31,6 +31,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "3d-tiles-renderer": "0.5.3",
     "@ardudeck/comms": "workspace:*",
     "@ardudeck/companion-types": "workspace:*",
     "@ardudeck/dataflash-parser": "workspace:^",
@@ -56,6 +57,7 @@
     "electron-updater": "^6.7.3",
     "i18next": "^26.4.2",
     "isomorphic-git": "^1.40.4",
+    "laz-perf": "0.0.7",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.562.0",
     "maplibre-gl": "^5.19.0",
@@ -64,6 +66,7 @@
     "pmtiles": "^4",
     "pngjs": "7.0.0",
     "polygon-clipping": "0.15.7",
+    "proj4": "2.22.0",
     "react-i18next": "^17.0.15",
     "react-leaflet": "4.2.1",
     "serialport": "^12.0.0",

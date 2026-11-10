@@ -21,6 +21,7 @@ import { channelPwm, SAFE_AT_OPTIONS, type ChannelVerdict, type SafeAt } from '.
 import { useHandoverCheck } from '../../hooks/useHandoverCheck';
 import type { ChannelSource } from '../../utils/pseudo-tx';
 import { VirtualSticks } from './VirtualSticks';
+import { GliderBalloonControls } from '../sitl/GliderBalloonControls';
 
 const ROLE_KEYS = { roll: 'common:roll', pitch: 'common:pitch', throttle: 'common:throttle', yaw: 'common:yaw' } as const;
 
@@ -187,6 +188,7 @@ export function JoystickPanel(): JSX.Element {
 
   return (
     <div className="h-full overflow-y-auto p-3 space-y-3">
+      <GliderBalloonControls variant="panel" />
       {/* Device */}
       <div className="rounded-xl border border-subtle bg-surface p-3">
         <div className="flex items-center gap-2">

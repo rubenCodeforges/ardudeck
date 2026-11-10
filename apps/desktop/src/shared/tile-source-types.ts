@@ -17,6 +17,9 @@ export interface TerrainUplinkStatus {
   sysid: number;
   served: number;
   missing: number;
+  unavailable: number;
+  gaps: number;
+  errors: number;
   ignored: number;
   lastAt: number | null;
   spacing: number | null;

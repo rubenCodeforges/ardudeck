@@ -78,7 +78,9 @@
     "vehicleRefused": "載具拒絕了此變更",
     "waitingHeartbeat": "正在等待心跳...",
     "flowControl": "Hardware flow control (RTS/CTS)",
-    "flowControlTip": "Turn on when the radio is set to RTS/CTS flow control, as RFD900 and RFD868 radios often are. Needs the RTS and CTS wires connected."
+    "flowControlTip": "Turn on when the radio is set to RTS/CTS flow control, as RFD900 and RFD868 radios often are. Needs the RTS and CTS wires connected.",
+    "holdLinesHigh": "保持 DTR/RTS 為高電位",
+    "holdLinesHighTip": "僅在裝置要等 DTR 拉高才會開始傳輸時開啟,例如某些自帶 USB 的機板。ELRS 與其他以 ESP32 為基礎的模組請保持關閉:這些線路會讓它們重置。"
   },
   "driverAssistant": {
     "bundled": "已內建",

@@ -7,6 +7,7 @@
  * the local preset menu. This is the bar that makes the editor "real".
  */
 
+import { ui } from '../ui/ui-hooks';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOsdStore } from '../../stores/osd-store';
@@ -57,10 +58,11 @@ export function OsdSyncBar() {
       {target === 'ardupilot' && (
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] text-content-secondary uppercase tracking-wide">{t('osd:osdSyncBar.screen')}</span>
-          <div className="flex items-center gap-0.5 rounded-lg border border-subtle p-0.5 bg-surface-raised">
+          <div {...ui('segmented')} className="flex items-center gap-0.5 rounded-lg border border-subtle p-0.5 bg-surface-raised">
             {screens.map((s) => (
               <button
                 key={s}
+                {...ui('segment', { active: s === screen })}
                 onClick={() => setScreen(s)}
                 className={`w-6 h-6 text-[11px] font-medium rounded-md transition-colors ${
                   s === screen ? 'bg-blue-600/80 text-white' : 'text-content-secondary hover:text-content hover:bg-surface'
@@ -76,6 +78,7 @@ export function OsdSyncBar() {
       {/* Load / Upload */}
       <div className="flex items-center gap-2">
         <button
+          {...ui('button', { variant: 'secondary' })}
           onClick={() => void readFromFc()}
           disabled={offline || fc.busy}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-subtle bg-surface-raised hover:bg-surface text-content disabled:opacity-40 disabled:cursor-not-allowed"
@@ -150,6 +153,7 @@ function UploadButton({
 
   return (
     <button
+      {...ui('button', { variant: 'primary' })}
       onClick={click}
       disabled={offline || busy}
       className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
@@ -190,6 +194,7 @@ function PresetMenu() {
   return (
     <div className="relative" ref={ref}>
       <button
+        {...ui('button', { variant: 'secondary' })}
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-subtle bg-surface-raised hover:bg-surface text-content"
       >
@@ -203,6 +208,7 @@ function PresetMenu() {
         <div className="absolute right-0 top-full mt-1.5 w-56 bg-surface-solid border border-subtle rounded-lg shadow-2xl z-50 p-2">
           <div className="flex gap-1.5 mb-2">
             <input
+              {...ui('input')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => {
@@ -215,6 +221,7 @@ function PresetMenu() {
               className="flex-1 bg-surface-input text-content text-xs rounded-lg px-2.5 py-1.5 border border-subtle focus:border-blue-500 focus:outline-none placeholder-content-tertiary"
             />
             <button
+              {...ui('button', { variant: 'primary' })}
               onClick={() => { if (name.trim()) { savePreset(name); setName(''); } }}
               className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-blue-600/80 hover:bg-blue-500/80 text-white disabled:opacity-40"
               disabled={!name.trim()}

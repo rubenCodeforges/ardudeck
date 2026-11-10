@@ -1,3 +1,4 @@
+import { titleBarRegistry } from './title-bar-registry';
 import type { ComponentType } from 'react';
 import { coordinateFormatRegistry } from '../utils/coordinate-format';
 import { useSettingsStore } from '../stores/settings-store';
@@ -74,6 +75,8 @@ import {
   viewBodyRegistry,
 } from './module-extension-registries';
 import { viewOwnerSlug, CARGO_VIEWS } from './capabilities';
+import { cargoThemeKey, themeRegistry } from './module-theme-registry';
+import { cargoNamespace } from './slug-registry';
 import { createSetupApi } from './module-setup-api';
 import { vaultWorkspaceState, subscribeVaultWorkspace } from './vault-workspace';
 import * as productionHost from './production-host';
@@ -190,7 +193,6 @@ function currentDetectedHardware(): DetectedHardware[] {
 }
 
 /** Remove every config card, catalog, firmware source and template a module registered (unload/reload). */
-const cargoNamespace = (slug: string) => `cargo.${slug}`;
 
 export function unregisterModuleExtensionsForSlug(slug: string): void {
   for (const lang of Object.keys(i18n.store.data)) i18n.removeResourceBundle(lang, cargoNamespace(slug));
@@ -204,6 +206,8 @@ export function unregisterModuleExtensionsForSlug(slug: string): void {
   boardPortRegistry.unregisterAll(slug);
   nodeProfileRegistry.unregisterAll(slug);
   viewBodyRegistry.unregisterAll(slug);
+  themeRegistry.unregisterAll(slug);
+  titleBarRegistry.unregisterAll(slug);
   unregisterModuleTemplatesForSlug(slug);
 }
 
@@ -263,6 +267,10 @@ export function createRendererHostApi(
       getCurrent: () => useNavigationStore.getState().currentView as string,
       subscribe: (listener) =>
         useNavigationStore.subscribe((s) => listener(s.currentView as string)),
+      label: (viewId) => {
+        const id = viewId ?? useNavigationStore.getState().currentView;
+        return t(`navigation:short.${id}`, { defaultValue: id });
+      },
     },
 
     params: {
@@ -324,6 +332,10 @@ export function createRendererHostApi(
       },
       t: (key, vars) => i18n.t(`${cargoNamespace(slug)}:${key}`, vars ?? {}) as string,
       language: () => i18n.language,
+      subscribe: (listener) => {
+        i18n.on('languageChanged', listener);
+        return () => i18n.off('languageChanged', listener);
+      },
     },
 
     config: {
@@ -654,6 +666,36 @@ export function createRendererHostApi(
       pickPath: (prompt, initial) => startPick(prompt ?? t('modules:moduleHost.pickPathPrompt'), 'path', initial),
       pickPoint: (prompt, initial) => startPick(prompt ?? t('modules:moduleHost.pickPointPrompt'), 'point', initial ? [initial] : undefined).then((pts) => pts?.[0] ?? null),
       centerOn: (point, zoom) => useMapFocusStore.getState().centerOn(point.lat, point.lng, zoom),
+    },
+
+    titleBar: {
+      register: (reg) => {
+        if (!reg?.id || !reg.component) throw new Error(`[module:${slug}] title bar item needs an id and a component`);
+        titleBarRegistry.register(slug, reg.id, reg);
+      },
+      unregister: (id) => titleBarRegistry.unregister(slug, id),
+    },
+
+    theme: {
+      register: (reg) => {
+        if (!reg?.id || !reg.className || typeof reg.css !== 'string') throw new Error(`[module:${slug}] theme needs an id, a className and css`);
+        if (reg.className === 'light' || reg.className === 'dark') throw new Error(`[module:${slug}] theme className '${reg.className}' is reserved`);
+        themeRegistry.register(slug, reg.id, reg);
+      },
+      unregister: (id) => themeRegistry.unregister(slug, id),
+      update: (id, patch) => {
+        const current = themeRegistry.list().find((e) => e.slug === slug && e.id === id);
+        if (!current) throw new Error(`[module:${slug}] theme '${id}' is not registered`);
+        themeRegistry.register(slug, id, { ...current.value, ...patch, id });
+      },
+      isActive: (id) => useSettingsStore.getState().theme === cargoThemeKey(slug, id),
+      activate: (id) => {
+        if (!themeRegistry.list().some((e) => e.slug === slug && e.id === id)) throw new Error(`[module:${slug}] theme '${id}' is not registered`);
+        useSettingsStore.getState().setTheme(cargoThemeKey(slug, id));
+      },
+      subscribe: (listener) => useSettingsStore.subscribe((s, prev) => {
+        if (s.theme !== prev.theme) listener();
+      }),
     },
 
     coordinates: {

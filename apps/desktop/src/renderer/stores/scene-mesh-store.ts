@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { SceneName } from '@ardudeck/module-sdk';
 import type { SceneMeshEntry } from '../../shared/tile-source-types';
 
 interface SceneMeshStore {
@@ -24,6 +25,7 @@ export const useSceneMeshStore = create<SceneMeshStore>((set, get) => ({
   },
 }));
 
-export function meshesFor(scene: 'svt' | 'mission3d'): SceneMeshEntry[] {
+/** Entries shown in a scene; an entry without a scene list is in all of them. */
+export function meshesFor(scene: SceneName): SceneMeshEntry[] {
   return useSceneMeshStore.getState().entries.filter((e) => !e.scenes || e.scenes.includes(scene));
 }

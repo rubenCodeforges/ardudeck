@@ -771,6 +771,7 @@
     "savedCountToFile_other": "Збережено {{count}} параметра у файл",
     "savedToFile": "Параметри збережено у файл",
     "savedToFlash": "Параметри успішно збережено у флеш-пам’ять",
+    "savedUnconfirmed": "Параметри надіслано й підтверджено, але польотний контролер не підтвердив запис у флеш-пам’ять. Перезавантажте його й перевірте значення перед польотом.",
     "searchPlaceholder": "Пошук параметрів... (підтримуються regex)",
     "selectedCount": "Вибрано {{selected}} з {{total}}",
     "showAllParameters": "Показати всі параметри",
@@ -1052,5 +1053,9 @@
   "paramsValidBitmask": "Значення бітової маски має бути невід’ємним цілим числом",
   "paramsValidUnknownValue": "Значення {{value}} немає в списку відомих значень",
   "paramsValidRange": "Значення має бути між {{min}} і {{max}}{{units}}",
-  "paramsValidIncrement": "Значення має бути кратним {{increment}}"
+  "paramsValidIncrement": "Значення має бути кратним {{increment}}",
+  "defaultColumn": {
+    "header": "Стандартне",
+    "reset": "Скинути до стандартного ({{value}}). Запишіть у флеш-пам’ять, щоб зберегти."
+  }
 }

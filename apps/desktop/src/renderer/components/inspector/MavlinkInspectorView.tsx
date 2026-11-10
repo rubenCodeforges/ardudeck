@@ -38,6 +38,7 @@ import { useConnectionStore } from '../../stores/connection-store';
 import { useActiveVehicleIdentity } from '../../hooks/useFleet';
 import { useResolvedTheme } from '../../hooks/useTheme';
 import { FieldGraph } from './FieldGraph';
+import { ui } from '../ui/ui-hooks';
 
 // GraphSpec moved to inspector-store.ts so the store can own the canonical
 // list of plotted graphs (survives view switches). Imported above as a type.
@@ -302,7 +303,7 @@ export function MavlinkInspectorView(): JSX.Element {
           </div>
 
           <div className="flex items-center gap-1">
-            <button
+            <button {...ui('button', { variant: 'secondary' })}
               onClick={() => setPaused(!paused)}
               className={`px-2.5 py-1.5 text-xs rounded-md border transition-colors ${
                 paused
@@ -313,7 +314,7 @@ export function MavlinkInspectorView(): JSX.Element {
             >
               {paused ? t('inspector:mavlinkInspector.resume') : t('common:pause')}
             </button>
-            <button
+            <button {...ui('button', { variant: 'secondary' })}
               onClick={reset}
               className="px-2.5 py-1.5 text-xs rounded-md bg-surface border border-subtle text-content-secondary hover:bg-surface-raised hover:text-content transition-colors"
               title={t('inspector:mavlinkInspector.clearTitle')}
@@ -331,7 +332,7 @@ export function MavlinkInspectorView(): JSX.Element {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
             </svg>
-            <input
+            <input {...ui('input')}
               type="text"
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}

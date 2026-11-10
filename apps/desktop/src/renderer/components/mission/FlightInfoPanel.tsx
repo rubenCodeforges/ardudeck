@@ -25,6 +25,7 @@ import {
   type DaylightWindow,
 } from '../../utils/flight-briefing';
 import { getCurrentWeather, compassPoint, type WeatherSummary } from '../../utils/weather-api';
+import { useLayerWindAt } from '../map/wind/useLayerWindAt';
 import {
   formatAreaFromSquareMeters,
   formatSpeedFromMetersPerSecond,
@@ -224,6 +225,9 @@ export function FlightInfoPanel() {
     [homePosition],
   );
 
+  // The map's wind layer, at its altitude and scrubbed hour, when the pilot has it on.
+  const { windAt, altitudeM: windAltitudeM } = useLayerWindAt();
+
   const briefing = useMemo(
     () => computeMissionBriefing({
       located,
@@ -236,8 +240,10 @@ export function FlightInfoPanel() {
       distanceUnit,
       altitudeUnit,
       windSpeedUnit,
+      windAt,
+      windAltitudeM,
     }),
-    [located, home, homePosition?.alt, cruiseSpeedMs, enduranceSec, survey, weather, distanceUnit, altitudeUnit, windSpeedUnit],
+    [located, home, homePosition?.alt, cruiseSpeedMs, enduranceSec, survey, weather, distanceUnit, altitudeUnit, windSpeedUnit, windAt, windAltitudeM],
   );
 
   if (!isAerial) {
@@ -276,6 +282,22 @@ export function FlightInfoPanel() {
           unit={t('mission:flightInfoPanel.flightTime')}
           sub={t('mission:flightInfoPanel.atCruise', { speed: formatSpeedFromMetersPerSecond(cruiseSpeedMs, speedUnit), vehicle: vehicleName ?? t('mission:flightInfoPanel.vehicleFallback') })}
         />
+        {briefing.windAdjusted && (
+          <Stat
+            label={t('mission:flightInfoPanel.windIncluded')}
+            value={formatDurationSec(briefing.stillAirFlightTimeSec)}
+            detail={briefing.windSource === 'layer'
+              ? t('mission:flightInfoPanel.windLayerIncludedDetail', { altitude: formatAltitudeM(windAltitudeM ?? 0, altitudeUnit) })
+              : t('mission:flightInfoPanel.windIncludedDetail')}
+          />
+        )}
+        {briefing.windBlockedLegs > 0 && (
+          <Stat
+            label={t('mission:flightInfoPanel.windBlocked')}
+            value={`${briefing.windBlockedLegs}`}
+            detail={t('mission:flightInfoPanel.windBlockedDetail')}
+          />
+        )}
         <Stat
           label={t('common:batteries')}
           value={briefing.batteryCount > 0 ? `${briefing.batteryCount}` : t('mission:flightInfoPanel.setVehicle')}

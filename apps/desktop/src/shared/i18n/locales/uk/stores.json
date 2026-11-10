@@ -22,7 +22,8 @@
       "spoilers": "Літак зі спойлерами",
       "vectored": "Векторний (стандартний)",
       "vectored6dof": "Векторний 6DOF",
-      "vtail": "Літак із V-хвостом"
+      "vtail": "Літак із V-хвостом",
+      "glider": "Планер"
     },
     "startFailed": "Не вдалося запустити SITL"
   },
@@ -186,7 +187,8 @@
     "uploadedToVehicle": "Вивантажено точок маршруту на апарат: {{count}}",
     "vehicleMissionLabel": "Місія апарата @ {{stamp}}",
     "fromVehicleGroup": "З апарата @ {{stamp}}",
-    "downloadedGroup": "Завантажено @ {{stamp}}"
+    "downloadedGroup": "Завантажено @ {{stamp}}",
+    "hazardBlocked": "Вивантаження заблоковано: маршрут перетинає небезпечну зону. Перебудуйте маршрут або перевизначте блокування за допомогою PIN адміністратора."
   },
   "modesWizardStore": {
     "clearSlotFailed": "Не вдалося очистити слот режиму {{i}}",

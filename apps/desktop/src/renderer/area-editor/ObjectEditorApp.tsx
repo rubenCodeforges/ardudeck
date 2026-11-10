@@ -19,6 +19,7 @@ import { GoToLocation } from './GoToLocation';
 import { attachObjectInteractions } from './attachObjectInteractions';
 import { attachWindLayer } from './attachWindLayer';
 import { attachTrafficLayer } from './attachTrafficLayer';
+import { attachHazardsLayer } from './attachHazardsLayer';
 import { TrafficAltitudeFilterCard } from '../components/map/overlays/TrafficAltitudeFilter';
 import { useAreaEditorLayersStore } from './area-editor-layers-store';
 import { WindControls } from '../components/map/overlays/WindControls';
@@ -61,13 +62,11 @@ const ISun = () => <svg {...S}><circle cx="12" cy="12" r="4" /><path d="M12 2v2M
 const IMonitor = () => <svg {...S}><rect x="3" y="4" width="18" height="12" rx="1" /><path d="M8 20h8M12 16v4" /></svg>;
 const IUndo = () => <svg {...S}><path d="M9 14L4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-3" /></svg>;
 const IRedo = () => <svg {...S}><path d="M15 14l5-5-5-5" /><path d="M20 9H9a5 5 0 0 0 0 10h3" /></svg>;
-const IStar = () => <svg {...S}><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.7 7-6.3-3.9-6.3 3.9 1.7-7L2 9.5l7.1-.6z" /></svg>;
 
 const THEME_CYCLE: ThemePreference[] = ['dark', 'light', 'system'];
-const THEME_ICON: Record<ThemePreference, () => JSX.Element> = { dark: IMoon, light: ISun, system: IMonitor, bridge: IStar };
-const THEME_TIP_KEY: Record<ThemePreference, string> = {
+const THEME_ICON: Record<'dark' | 'light' | 'system', () => JSX.Element> = { dark: IMoon, light: ISun, system: IMonitor };
+const THEME_TIP_KEY: Record<'dark' | 'light' | 'system', string> = {
   dark: 'area-editor:objectEditorApp.theme.dark', light: 'area-editor:objectEditorApp.theme.light', system: 'area-editor:objectEditorApp.theme.system',
-  bridge: 'area-editor:objectEditorApp.theme.bridge',
 };
 
 const TOOLS: { id: AreaTool; icon: () => JSX.Element; tipKey: string }[] = [
@@ -228,8 +227,9 @@ export function ObjectEditorApp(): JSX.Element {
     const c1 = attachObjectInteractions(map);
     const c2 = attachWindLayer(map);
     const c3 = attachTrafficLayer(map);
+    const c4 = attachHazardsLayer(map);
     setMap(map);
-    cleanupRef.current = () => { c1(); c2(); c3(); };
+    cleanupRef.current = () => { c1(); c2(); c3(); c4(); };
   }, []);
   useEffect(() => () => { cleanupRef.current?.(); cleanupRef.current = null; }, []);
   useEffect(() => { setSent(false); }, [objects]);
@@ -268,7 +268,8 @@ export function ObjectEditorApp(): JSX.Element {
     const idx = THEME_CYCLE.indexOf(theme);
     setTheme(THEME_CYCLE[(idx + 1) % THEME_CYCLE.length]!);
   }, [theme, setTheme]);
-  const ThemeIcon = THEME_ICON[theme] ?? IMoon;
+  const builtIn = theme === 'light' || theme === 'system' ? theme : 'dark';
+  const ThemeIcon = THEME_ICON[builtIn];
 
   const sentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleSend = useCallback(() => {
@@ -508,7 +509,7 @@ export function ObjectEditorApp(): JSX.Element {
             <ISend />{sent ? t('area-editor:objectEditorApp.sent') : t('area-editor:objectEditorApp.sendToMission')}
           </button>
           <div className="w-px h-6 bg-subtle mx-1" />
-          <ActionButton tip={t(THEME_TIP_KEY[theme])} onClick={cycleTheme}><ThemeIcon /></ActionButton>
+          <ActionButton tip={t(THEME_TIP_KEY[builtIn])} onClick={cycleTheme}><ThemeIcon /></ActionButton>
         </div>
       </div>
 

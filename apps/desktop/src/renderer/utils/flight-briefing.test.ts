@@ -4,6 +4,7 @@ import {
   formatAltitudeM,
   formatDistanceM,
   formatDurationSec,
+  groundSpeedAlongTrack,
   type BriefingInput,
   type BriefingPoint,
 } from './flight-briefing';
@@ -209,5 +210,60 @@ describe('computeMissionBriefing', () => {
     expect(b.survey).not.toBeNull();
     expect(b.survey!.coverageHa).toBe(5);
     expect(b.survey!.photoCount).toBe(240);
+  });
+});
+
+describe('wind-aware flight time (#54)', () => {
+  const wx = (windSpeedMs: number, windDirDeg: number) => ({
+    windSpeedMs, windGustMs: windSpeedMs, windDirDeg, tempC: 15, precipMm: 0,
+    precipProbPct: 0, cloudCoverPct: 0, visibilityM: 20000, pressureHpa: 1013,
+    sunriseIso: null, sunsetIso: null, currentTimeIso: null, fetchedAtMs: 0,
+  });
+
+  it('wind triangle: head, tail and crosswind', () => {
+    expect(groundSpeedAlongTrack(10, 0, 5, 0)).toBeCloseTo(5, 6);    // wind from ahead
+    expect(groundSpeedAlongTrack(10, 0, 5, 180)).toBeCloseTo(15, 6); // from behind
+    expect(groundSpeedAlongTrack(10, 0, 6, 90)).toBeCloseTo(8, 6);   // pure crosswind: sqrt(100-36)
+    expect(groundSpeedAlongTrack(10, 0, 12, 0)).toBeNull();          // headwind above airspeed
+    expect(groundSpeedAlongTrack(10, 0, 10, 90)).toBeNull();         // crosswind equal to airspeed
+  });
+
+  it('a there-and-back mission takes longer in wind than in still air', () => {
+    const located = [{ lat: 0, lng: 0, altM: 50 }, { lat: 0.05, lng: 0, altM: 50 }, { lat: 0, lng: 0, altM: 50 }];
+    const calm = computeMissionBriefing({ ...base, located });
+    const windy = computeMissionBriefing({ ...base, located, weather: wx(5, 0) });
+    expect(calm.windAdjusted).toBe(false);
+    expect(windy.windAdjusted).toBe(true);
+    expect(windy.stillAirFlightTimeSec).toBeCloseTo(calm.flightTimeSec, 6);
+    // leg out at 5 m/s, back at 15 m/s: d/5 + d/15 = 4d/15 vs 2d/10 in still air
+    expect(windy.flightTimeSec / calm.flightTimeSec).toBeCloseTo((4 / 15) / (2 / 10), 3);
+    expect(windy.windBlockedLegs).toBe(0);
+  });
+
+  it('uses the wind layer per leg over the surface forecast', () => {
+    // Calm surface, 12 m/s from the north aloft: northbound legs at 10 m/s cruise are blocked.
+    const windAt = () => ({ speedMs: 12, fromDeg: 0 });
+    const b = computeMissionBriefing({ ...base, located: legPoints(3), weather: wx(1, 180), windAt, windAltitudeM: 120 });
+    expect(b.windSource).toBe('layer');
+    expect(b.windBlockedLegs).toBe(2);
+    expect(b.checks.find((c) => c.id === 'flightTime')?.detail).toContain('120 m');
+  });
+
+  it('falls back to the surface forecast outside the wind layer', () => {
+    const b = computeMissionBriefing({ ...base, located: legPoints(3), weather: wx(5, 0), windAt: () => null });
+    expect(b.windSource).toBe('surface');
+    expect(b.flightTimeSec).toBeCloseTo(b.stillAirFlightTimeSec * 2, 3); // 5 m/s ground speed vs 10
+  });
+
+  it('stays still-air with no wind at all', () => {
+    const b = computeMissionBriefing({ ...base, located: legPoints(3), windAt: () => null });
+    expect(b.windSource).toBeNull();
+    expect(b.windAdjusted).toBe(false);
+  });
+
+  it('counts legs the wind blocks and reports them', () => {
+    const b = computeMissionBriefing({ ...base, located: legPoints(3), weather: wx(12, 0) });
+    expect(b.windBlockedLegs).toBe(2);
+    expect(b.checks.find((c) => c.id === 'windBlocked')?.value).toBe('2');
   });
 });

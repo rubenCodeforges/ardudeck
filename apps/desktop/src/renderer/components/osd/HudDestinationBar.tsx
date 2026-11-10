@@ -10,6 +10,7 @@
  * would be misleading - while the editor is in HUD mode.
  */
 
+import { ui } from '../ui/ui-hooks';
 import { useTranslation } from 'react-i18next';
 import { MonitorPlay, Video, Layers, Monitor, Cpu, ChevronRight, type LucideIcon } from 'lucide-react';
 
@@ -59,6 +60,7 @@ export function HudDestinationBar() {
 function FlowNode({ icon: Icon, label, active }: { icon: LucideIcon; label: string; active?: boolean }) {
   return (
     <div
+      {...ui('chip', { active })}
       className={`flex items-center gap-1.5 px-2 py-1 rounded-md ${
         active ? 'bg-indigo-500/15 text-content' : 'bg-surface-raised text-content-secondary'
       }`}

@@ -1,3 +1,4 @@
+import { ui } from '../ui/ui-hooks';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle2, Info, Loader2, Radar } from 'lucide-react';
@@ -87,7 +88,7 @@ export function SonarSetupCard({ connected }: { connected: boolean }) {
     return shell('border-subtle bg-surface-input', <Info className="h-4 w-4 text-content-tertiary" />, t(`${k}.noneTitle`), (
       <>
         <p>{t(`${k}.noneBody`)}</p>
-        <button type="button" onClick={() => useNavigationStore.getState().setView('parameters', 'tab:hardware?setup=ping')}
+        <button {...ui('button', { variant: 'secondary' })} type="button" onClick={() => useNavigationStore.getState().setView('parameters', 'tab:hardware?setup=ping')}
           className="mt-1.5 rounded-lg border border-subtle bg-surface-raised px-3 py-1.5 text-xs text-content hover:bg-surface-inset">
           {t(`${k}.setUpSounder`)}
         </button>
@@ -102,7 +103,7 @@ export function SonarSetupCard({ connected }: { connected: boolean }) {
         <li className="text-content-tertiary">{t(`${k}.plusScripting`)}</li>
       </ul>
       <div className="flex items-center gap-3 pt-1">
-        <button type="button" onClick={() => { void setUp(); }}
+        <button {...ui('button', { variant: 'primary' })} type="button" onClick={() => { void setUp(); }}
           className="rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-blue-500">
           {t(`${k}.setUp`)}
         </button>

@@ -6,6 +6,7 @@
  * and element enable/select controls.
  */
 
+import { ui } from '../ui/ui-hooks';
 import { useState, useMemo, useRef, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOsdStore, type OsdElementId, type OsdElementKey, type OsdElementPosition } from '../../stores/osd-store';
@@ -137,6 +138,7 @@ export function OsdElementBrowser({ selectedElement, onSelect }: Props) {
       {/* Search */}
       <div className="p-3 border-b border-subtle">
         <input
+          {...ui('input')}
           type="text"
           placeholder={t('osd:osdElementBrowser.search')}
           value={searchQuery}

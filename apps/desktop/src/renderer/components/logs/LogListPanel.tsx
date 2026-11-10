@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { ui } from '../ui/ui-hooks';
 import type { TFunction } from 'i18next';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useLogStore, type LogListEntry } from '../../stores/log-store';
@@ -330,7 +331,7 @@ export function LogListPanel() {
       {/* Actions */}
       <div className="flex items-center gap-3">
         {isConnected && isMavlink && (
-          <button
+          <button {...ui('button', { variant: 'primary' })}
             onClick={handleRefresh}
             disabled={isListLoading}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-surface-raised disabled:text-content-secondary text-white text-sm font-medium rounded-lg transition-colors"
@@ -339,6 +340,7 @@ export function LogListPanel() {
           </button>
         )}
         <button
+          {...ui('button', { variant: 'primary' })}
           onClick={handleOpenFile}
           disabled={isParsingLog}
           className="px-4 py-2 bg-surface-raised hover:bg-surface-raised disabled:bg-surface-raised disabled:text-content-tertiary text-content text-sm font-medium rounded-lg transition-colors"
@@ -347,6 +349,7 @@ export function LogListPanel() {
         </button>
         {recentLogs.length + availableLogs.length > 8 && (
           <input
+            {...ui('input')}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder={t('logs:list.filter')}
@@ -396,7 +399,7 @@ export function LogListPanel() {
             collapsed={recentsCollapsed && !filterQuery}
             onToggle={toggleRecents}
             action={
-              <button
+              <button {...ui('button', { variant: 'ghost' })}
                 onClick={handleClearRecents}
                 disabled={openingRecent !== null}
                 title={t('logs:list.clearTip')}
@@ -431,6 +434,7 @@ export function LogListPanel() {
                     <td className="px-4 py-2 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
+                          {...ui('button', { variant: 'secondary' })}
                           onClick={() => handleOpenRecent(log)}
                           disabled={isParsingLog || openingRecent !== null}
                           className="text-xs px-3 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 disabled:opacity-50 rounded-md transition-colors"
@@ -554,6 +558,7 @@ export function LogListPanel() {
                       ) : downloaded ? (
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            {...ui('button', { variant: 'secondary' })}
                             onClick={() => handleOpenRecent(downloaded)}
                             disabled={isParsingLog || openingRecent !== null}
                             className="text-xs px-3 py-1 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 disabled:opacity-50 rounded-md transition-colors"
@@ -573,7 +578,7 @@ export function LogListPanel() {
                           </button>
                         </div>
                       ) : (
-                        <button
+                        <button {...ui('button', { variant: 'secondary' })}
                           onClick={() => handleDownload(log)}
                           disabled={downloadingLogId !== null}
                           className="text-xs px-3 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 disabled:opacity-50 rounded-md transition-colors"

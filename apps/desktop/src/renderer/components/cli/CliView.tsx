@@ -10,6 +10,7 @@ import { useTranslation, Trans } from 'react-i18next';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useCliStore } from '../../stores/cli-store';
 import CliTerminal from './CliTerminal';
+import { ui } from '../ui/ui-hooks';
 
 export default function CliView() {
   const { t } = useTranslation();
@@ -98,7 +99,7 @@ export default function CliView() {
         {/* Quick actions */}
         <div className="flex items-center gap-2">
           {/* Save output to file */}
-          <button
+          <button {...ui('button', { variant: 'secondary' })}
             onClick={handleSaveOutput}
             disabled={!output || isSaving}
             className="px-3 py-1.5 text-xs font-medium text-content bg-surface-raised hover:bg-surface-raised border border rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
@@ -111,7 +112,7 @@ export default function CliView() {
           </button>
 
           {/* Save as JSON - runs dump and parses */}
-          <button
+          <button {...ui('button', { variant: 'secondary' })}
             onClick={handleExportJsonClick}
             disabled={!isCliMode || isSavingJson}
             className="px-3 py-1.5 text-xs font-medium text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
@@ -124,7 +125,7 @@ export default function CliView() {
           </button>
 
           {/* Clear terminal */}
-          <button
+          <button {...ui('button', { variant: 'secondary' })}
             onClick={clearOutput}
             disabled={!output}
             className="px-3 py-1.5 text-xs font-medium text-content bg-surface-raised hover:bg-surface-raised border border rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
@@ -138,7 +139,7 @@ export default function CliView() {
 
           {/* Load config for autocomplete */}
           {!hasDumpData && isCliMode && (
-            <button
+            <button {...ui('button', { variant: 'secondary' })}
               onClick={() => fetchDump()}
               className="px-3 py-1.5 text-xs font-medium text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition-colors"
               title={t('cli:cliView.loadConfigTitle')}
@@ -202,7 +203,7 @@ export default function CliView() {
             </div>
 
             {/* Enter button */}
-            <button
+            <button {...ui('button', { variant: 'primary' })}
               onClick={() => enterCliMode()}
               disabled={isEntering}
               className="px-6 py-2.5 bg-green-600 hover:bg-green-500 disabled:bg-green-600/50 text-white font-medium rounded-lg transition-colors flex items-center gap-2 mx-auto"
@@ -301,7 +302,7 @@ export default function CliView() {
 
             {/* Dismiss button for terminal states */}
             {(rebootState === 'done' || rebootState === 'error') && (
-              <button
+              <button {...ui('button', { variant: 'secondary' })}
                 onClick={clearRebootState}
                 className="mt-4 px-6 py-2 bg-surface-raised hover:bg-surface-raised text-content rounded-lg text-sm transition-colors"
               >
@@ -326,13 +327,13 @@ export default function CliView() {
               <Trans i18nKey="cli:cliView.exportConfirm" components={{ c: <code className="px-1.5 py-0.5 bg-surface-raised rounded text-amber-400" /> }} />
             </p>
             <div className="flex gap-3">
-              <button
+              <button {...ui('button', { variant: 'secondary' })}
                 onClick={() => setShowExportConfirm(false)}
                 className="flex-1 px-4 py-2 bg-surface-raised hover:bg-surface-raised text-content rounded-lg text-sm transition-colors"
               >
                 {t('common:cancel')}
               </button>
-              <button
+              <button {...ui('button', { variant: 'primary' })}
                 onClick={handleExportJsonConfirm}
                 className="flex-1 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-sm font-medium transition-colors"
               >

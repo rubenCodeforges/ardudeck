@@ -1,5 +1,8 @@
 import { useSyncExternalStore } from 'react';
 
+/** i18n namespace of a cargo's own resources (host.i18n). */
+export const cargoNamespace = (slug: string) => `cargo.${slug}`;
+
 export interface SlugEntry<T> {
   slug: string;
   id: string;

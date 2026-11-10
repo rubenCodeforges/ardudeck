@@ -10,6 +10,7 @@ import { app } from 'electron';
 import {
   FIRMWARE_SERVERS,
   VEHICLE_TO_FIRMWARE,
+  type ArduPilotManifestEntry,
   type FirmwareSource,
   type FirmwareVehicleType,
   type FirmwareVersion,
@@ -30,11 +31,11 @@ function hexToBinarySize(hexSize: number): number {
  * Which vehicle types each firmware source supports
  */
 const SUPPORTED_VEHICLES: Record<FirmwareSource, FirmwareVehicleType[]> = {
-  ardupilot: ['copter', 'plane', 'vtol', 'rover', 'boat', 'sub'],
+  ardupilot: ['copter', 'heli', 'plane', 'vtol', 'rover', 'boat', 'sub'],
   px4: ['copter', 'plane', 'vtol', 'rover'],
   betaflight: ['copter'],
   inav: ['copter', 'plane', 'rover', 'boat'],
-  custom: ['copter', 'plane', 'vtol', 'rover', 'boat', 'sub'],
+  custom: ['copter', 'heli', 'plane', 'vtol', 'rover', 'boat', 'sub'],
 };
 
 /**
@@ -181,6 +182,7 @@ export async function getArduPilotBoards(vehicleType: FirmwareVehicleType): Prom
     const platforms = new Set<string>();
     for (const entry of manifest.firmware ?? []) {
       if (entry?.vehicletype !== firmwareType) continue;
+      if ((vehicleType === 'heli') !== isHeliEntry(entry)) continue;
       if (typeof entry.platform === 'string' && entry.platform.length > 0) {
         platforms.add(entry.platform);
       }
@@ -958,6 +960,10 @@ function getLegacyFirmwarePath(boardId: string, firmwareType: string): string {
 
 function getLegacyAvrVersions(vehicleType: FirmwareVehicleType, boardId: string): VersionGroup[] {
   const firmwareType = VEHICLE_TO_FIRMWARE[vehicleType]; // 'Copter', 'Plane', 'Rover', 'Sub'
+  // The bundled AVR Copter image is the multirotor build; never hand it to a heli.
+  if (vehicleType === 'heli') {
+    return [{ major: 'legacy', label: t('main:manifestFetcher.notSupportedAvr'), versions: [], isLatest: false }];
+  }
 
   // Map firmware type to filename (as stored in resources/firmware/legacy/)
   const firmwareFilenames: Record<string, string> = {
@@ -1024,6 +1030,99 @@ function getLegacyAvrVersions(vehicleType: FirmwareVehicleType, boardId: string)
   }];
 }
 
+/** Heli builds share vehicletype 'Copter' and the board id; only mav-type and the -heli path tell them apart. */
+export function isHeliEntry(entry: ArduPilotManifestEntry): boolean {
+  return entry['mav-type'] === 'HELICOPTER' || /-heli\//i.test(entry.url ?? '');
+}
+
+/** Manifest entries for one board and vehicle, grouped by major version, newest first. */
+export function groupArduPilotVersions(
+  entries: ArduPilotManifestEntry[],
+  vehicleType: FirmwareVehicleType,
+  boardId: string,
+): VersionGroup[] {
+  const firmwareType = VEHICLE_TO_FIRMWARE[vehicleType];
+  const firmwareNameLower = firmwareType.toLowerCase();
+  const heli = vehicleType === 'heli' ? '-heli' : '';
+  // Filter entries for this board and vehicle type
+  const versionMap = new Map<string, FirmwareVersion[]>();
+
+  // Also try case-insensitive match for board ID
+  const boardIdLower = boardId.toLowerCase();
+
+  for (const entry of entries) {
+    if (entry.vehicletype !== firmwareType) continue;
+    if ((vehicleType === 'heli') !== isHeliEntry(entry)) continue;
+    // Try exact match first, then case-insensitive
+    const platformMatch = entry.platform === boardId || entry.platform?.toLowerCase() === boardIdLower;
+    if (!platformMatch) continue;
+    if (entry.format !== 'apj') continue;
+
+    const version = entry['mav-firmware-version'];
+    const rawType = (entry['mav-firmware-version-type'] || '').toLowerCase();
+
+    if (!version) continue;
+
+    // Normalize release type: "STABLE-4.6.3" → "stable", "OFFICIAL" → "stable", "DEV" → "dev", "BETA" → "beta"
+    let releaseType: 'stable' | 'beta' | 'dev' = 'stable';
+    if (rawType.startsWith('stable') || rawType === 'official') {
+      releaseType = 'stable';
+    } else if (rawType.startsWith('beta')) {
+      releaseType = 'beta';
+    } else if (rawType.startsWith('dev')) {
+      releaseType = 'dev';
+    }
+
+    // Parse major.minor from version (e.g., "4.5.7" -> "4.5")
+    const parts = version.split('.');
+    if (parts.length < 2) continue;
+    const major = `${parts[0]}.${parts[1]}`;
+
+    const fwVersion: FirmwareVersion = {
+      version,
+      releaseType,
+      releaseDate: '',
+      downloadUrl: entry.url || `${FIRMWARE_SERVERS.ardupilot.base}/${firmwareType}/${releaseType}-${version}/${boardId}${heli}/ardu${firmwareNameLower}${heli}.apj`,
+      boardId,
+      vehicleType: firmwareType,
+      gitHash: entry['git-sha'],
+    };
+
+    if (!versionMap.has(major)) {
+      versionMap.set(major, []);
+    }
+    versionMap.get(major)!.push(fwVersion);
+  }
+
+  // Deduplicate versions within each group (keep first entry per version string)
+  for (const [key, versions] of versionMap.entries()) {
+    const seen = new Set<string>();
+    const deduped = versions.filter(v => {
+      if (seen.has(v.version)) return false;
+      seen.add(v.version);
+      return true;
+    });
+    versionMap.set(key, deduped);
+  }
+
+  // Sort versions within each group (newest first)
+  for (const versions of versionMap.values()) {
+    versions.sort((a, b) => compareVersions(b.version, a.version));
+  }
+
+  // Convert to VersionGroup array and sort (newest major first)
+  const groups = Array.from(versionMap.entries())
+    .map(([major, versions]) => ({
+      major,
+      label: major + '.x',
+      versions,
+      isLatest: false,
+    }))
+    .sort((a, b) => compareVersions(b.major, a.major));
+
+  return groups;
+}
+
 /**
  * Get firmware versions grouped by major version
  */
@@ -1036,89 +1135,10 @@ export async function getArduPilotVersions(
     return getLegacyAvrVersions(vehicleType, boardId);
   }
 
-  const firmwareType = VEHICLE_TO_FIRMWARE[vehicleType];
-  const firmwareNameLower = firmwareType.toLowerCase();
-
   try {
     const manifest = await fetchArduPilotManifest();
     const entries = manifest.firmware || [];
-
-
-    // Filter entries for this board and vehicle type
-    const versionMap = new Map<string, FirmwareVersion[]>();
-
-    // Also try case-insensitive match for board ID
-    const boardIdLower = boardId.toLowerCase();
-
-    for (const entry of entries) {
-      if (entry.vehicletype !== firmwareType) continue;
-      // Try exact match first, then case-insensitive
-      const platformMatch = entry.platform === boardId || entry.platform?.toLowerCase() === boardIdLower;
-      if (!platformMatch) continue;
-      if (entry.format !== 'apj') continue;
-
-      const version = entry['mav-firmware-version'];
-      const rawType = (entry['mav-firmware-version-type'] || '').toLowerCase();
-
-      if (!version) continue;
-
-      // Normalize release type: "STABLE-4.6.3" → "stable", "OFFICIAL" → "stable", "DEV" → "dev", "BETA" → "beta"
-      let releaseType: 'stable' | 'beta' | 'dev' = 'stable';
-      if (rawType.startsWith('stable') || rawType === 'official') {
-        releaseType = 'stable';
-      } else if (rawType.startsWith('beta')) {
-        releaseType = 'beta';
-      } else if (rawType.startsWith('dev')) {
-        releaseType = 'dev';
-      }
-
-      // Parse major.minor from version (e.g., "4.5.7" -> "4.5")
-      const parts = version.split('.');
-      if (parts.length < 2) continue;
-      const major = `${parts[0]}.${parts[1]}`;
-
-      const fwVersion: FirmwareVersion = {
-        version,
-        releaseType,
-        releaseDate: '',
-        downloadUrl: entry.url || `${FIRMWARE_SERVERS.ardupilot.base}/${firmwareType}/${releaseType}-${version}/${boardId}/ardu${firmwareNameLower}.apj`,
-        boardId,
-        vehicleType: firmwareType,
-        gitHash: entry['git-sha'],
-      };
-
-      if (!versionMap.has(major)) {
-        versionMap.set(major, []);
-      }
-      versionMap.get(major)!.push(fwVersion);
-    }
-
-    // Deduplicate versions within each group (keep first entry per version string)
-    for (const [key, versions] of versionMap.entries()) {
-      const seen = new Set<string>();
-      const deduped = versions.filter(v => {
-        if (seen.has(v.version)) return false;
-        seen.add(v.version);
-        return true;
-      });
-      versionMap.set(key, deduped);
-    }
-
-    // Sort versions within each group (newest first)
-    for (const versions of versionMap.values()) {
-      versions.sort((a, b) => compareVersions(b.version, a.version));
-    }
-
-    // Convert to VersionGroup array and sort (newest major first)
-    const groups = Array.from(versionMap.entries())
-      .map(([major, versions]) => ({
-        major,
-        label: major + '.x',
-        versions,
-        isLatest: false,
-      }))
-      .sort((a, b) => compareVersions(b.major, a.major));
-
+    const groups = groupArduPilotVersions(entries, vehicleType, boardId);
 
     // If no versions found, use fallback
     if (groups.length === 0) {
@@ -1163,11 +1183,12 @@ function getFallbackVersionGroups(vehicleType: FirmwareVehicleType, boardId: str
   const firmwareNameLower = firmwareType.toLowerCase();
   const baseUrl = FIRMWARE_SERVERS.ardupilot.base;
 
+  const heli = vehicleType === 'heli' ? '-heli' : '';
   const createVersion = (ver: string, type: 'stable' | 'beta' | 'dev'): FirmwareVersion => ({
     version: ver,
     releaseType: type,
     releaseDate: '',
-    downloadUrl: `${baseUrl}/${firmwareType}/${type === 'stable' ? 'stable' : type}-${ver}/${boardId}/ardu${firmwareNameLower}.apj`,
+    downloadUrl: `${baseUrl}/${firmwareType}/${type === 'stable' ? 'stable' : type}-${ver}/${boardId}${heli}/ardu${firmwareNameLower}${heli}.apj`,
     boardId,
     vehicleType: firmwareType,
   });
@@ -1224,6 +1245,7 @@ export async function fetchFirmwareVersions(
     };
     const vehicleNames: Record<FirmwareVehicleType, string> = {
       copter: 'multicopters',
+      heli: 'traditional helicopters',
       plane: 'fixed-wing aircraft',
       vtol: 'VTOL aircraft',
       rover: 'rovers',

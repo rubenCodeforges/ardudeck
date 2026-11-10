@@ -651,6 +651,7 @@
     "saveAll": "Save All Changes",
     "saveAllTip": "Save parameters to flight controller's permanent storage",
     "savedToFlash": "Parameters saved to flash successfully",
+    "savedUnconfirmed": "Parameters sent and confirmed, but the flight controller did not acknowledge the flash write. Reboot and check the values before flying.",
     "sysId": "SysID {{id}}",
     "tabs": {
       "arming": "Arming",
@@ -717,7 +718,9 @@
     "writeBody": "The following {{count}} parameter(s) will be saved permanently to the flight controller.",
     "writeRebootWarning": "Some parameters require a reboot to take effect.",
     "writeTitle": "Write Parameters to Flash",
-    "writeToFlash": "Write to Flash"
+    "writeToFlash": "Write to Flash",
+    "heliBuildMultirotor": "This board runs the ArduCopter helicopter firmware. It only accepts helicopter frames, so FRAME_CLASS Quad, Hexa or Octa never sticks. Flash the normal ArduCopter (multirotor) build.",
+    "reflashCopter": "Reflash ArduCopter"
   },
   "mavlinkPidSchemes": {
     "planeDesc": "Fixed-wing controller",
@@ -822,7 +825,10 @@
     "planeTitle": "No motor test on a fixed wing",
     "planeBody": "ArduPlane can only spin motors from the ground station on a QuadPlane (VTOL), for its lift motors. A plain fixed wing's forward motor has no motor test in the firmware, in any ground station.",
     "planeHow": "To check a forward motor: take the propeller off, arm in MANUAL and raise the throttle stick. To see which output drives it, use Servo Output.",
-    "quadplaneNote": "Tests the VTOL lift motors. A separate forward motor is not part of ArduPilot's motor test; check it with the throttle in MANUAL, propeller off."
+    "quadplaneNote": "Tests the VTOL lift motors. A separate forward motor is not part of ArduPilot's motor test; check it with the throttle in MANUAL, propeller off.",
+    "frameUnwritten": "FRAME_CLASS or FRAME_TYPE has a change that is not written to the board yet. Press Write to flash, then reboot the flight controller: the motor test uses the frame the board runs, shown here.",
+    "frameUndefined": "FRAME_CLASS is Undefined (0) on the board, so it has no motor layout and refuses the motor test. Set FRAME_CLASS and FRAME_TYPE, Write to flash, then reboot the flight controller.",
+    "frameReboot": "The new frame is saved, but the flight controller builds its motor layout at boot. Reboot it before the motor test, or it refuses with \"Check frame class and type\"."
   },
   "notifyTab": {
     "allSoundsOn": "All sounds on",
@@ -1061,6 +1067,7 @@
     "savedToFile_one": "Saved {{count}} parameter to file",
     "savedToFile_other": "Saved {{count}} parameters to file",
     "savedToFlash": "Parameters saved to flash successfully",
+    "savedUnconfirmed": "Parameters sent and confirmed, but the flight controller did not acknowledge the flash write. Reboot and check the values before flying.",
     "searchPlaceholder": "Search parameters... (regex supported)",
     "selectedCount": "{{selected}} of {{total}} selected",
     "setValueTip": "Set {{id}} = {{code}} ({{label}})",
@@ -1830,6 +1837,7 @@
     "activeNote": "Armed in MANUAL mode. Override streaming at {{hz}}Hz. Click Release to stop and disarm.",
     "copterUnavailable": "Not available on multirotors. Injecting throttle into an armed copter spins the motors. Use <b>Motor Test</b> to bench-check outputs one motor at a time.",
     "errArm": "Failed to arm vehicle - check Messages for PreArm reason",
+    "needsRcMap": "Load the parameters first: RCMAP decides which channel is throttle, so the test stays off until it is known.",
     "errRelaxArmingCheck": "Failed to relax ARMING_CHECK",
     "errSetManual": "Failed to set MANUAL mode",
     "fcColumnHint": "FC column shows what the autopilot currently reads on {{channels}} (msg 65). Green = matches your slider (override winning). Amber = mismatch. Dash = FC isn't reporting RC at all.",
@@ -2480,5 +2488,19 @@
       "notCopter": "The filter card is for multirotors and QuadPlanes.",
       "openInLogs": "Open in Logs"
     }
+  },
+  "resetParams": {
+    "button": "Reset all",
+    "buttonTip": "Reset all parameters to the firmware defaults",
+    "title": "Reset all parameters to defaults?",
+    "body": "Every parameter returns to its firmware default and the flight controller reboots.",
+    "calibrationWarning": "This also erases accelerometer, compass and radio calibration, the frame setup and all tuning. Set up and calibrate the vehicle again before it flies.",
+    "saveFirst": "Save a parameter file first, so you can restore anything you need afterwards.",
+    "saveFile": "Save parameter file",
+    "saved": "Parameter file saved",
+    "confirm": "Reset and reboot",
+    "disarmFirst": "Disarm the vehicle first.",
+    "erased": "Parameters erased. Rebooting to load the defaults.",
+    "failed": "The parameter reset did not go through."
   }
 }

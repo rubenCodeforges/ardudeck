@@ -9,7 +9,7 @@ import { t } from './i18n/index.js';
 export type FirmwareSource = 'ardupilot' | 'px4' | 'betaflight' | 'inav' | 'custom';
 
 // Vehicle types (matches SettingsVehicleType)
-export type FirmwareVehicleType = 'copter' | 'plane' | 'vtol' | 'rover' | 'boat' | 'sub';
+export type FirmwareVehicleType = 'copter' | 'heli' | 'plane' | 'vtol' | 'rover' | 'boat' | 'sub';
 
 // Release type
 export type ReleaseType = 'stable' | 'beta' | 'dev';
@@ -129,6 +129,7 @@ export interface ArduPilotManifestEntry {
   url?: string;
   latest?: number;
   'mav-type'?: string;
+  vehicletype?: string;
 }
 
 /**
@@ -388,6 +389,7 @@ export function firmwareLabel(cs: {
  */
 export const VEHICLE_TO_FIRMWARE: Record<FirmwareVehicleType, string> = {
   copter: 'Copter',
+  heli: 'Copter',  // Traditional helicopter: the arducopter-heli build, listed under Copter
   plane: 'Plane',
   vtol: 'Plane',  // VTOL uses ArduPlane with Q_ params
   rover: 'Rover',

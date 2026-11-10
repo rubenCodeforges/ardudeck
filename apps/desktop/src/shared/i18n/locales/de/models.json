@@ -1,0 +1,88 @@
+{
+  "layersEntry": {
+    "label": "3D-Modelle",
+    "tip": "Eigene 3D-Modelle (glTF, KMZ, 3D Tiles, CityJSON, LAS/LAZ-Punktwolken) in allen 3D-Ansichten anzeigen"
+  },
+  "dialog": {
+    "title": "3D-Modelle",
+    "subtitle": "Ihre eigenen Modelle, in allen 3D-Ansichten sichtbar",
+    "import": "Importieren",
+    "importing": "Importiere...",
+    "importTip": "glTF/GLB-, KMZ-, 3D-Tiles-tileset.json-, CityJSON- oder LAS-, LAZ- und PLY-Punktwolkendateien auswählen",
+    "failedTitle_one": "{{count}} Datei konnte nicht importiert werden",
+    "failedTitle_other": "{{count}} Dateien konnten nicht importiert werden",
+    "dismiss": "Ausblenden",
+    "needsPlacementHint_one": "{{count}} Modell enthält keine Position. Es wurde dort abgelegt, wo Sie es fallen gelassen haben (oder in der Kartenmitte). Klappen Sie es auf, um die Position festzulegen.",
+    "needsPlacementHint_other": "{{count}} Modelle enthalten keine Position. Sie wurden dort abgelegt, wo Sie sie fallen gelassen haben (oder in der Kartenmitte). Klappen Sie sie auf, um die Position festzulegen.",
+    "emptyTitle": "Noch keine 3D-Modelle",
+    "emptyHint": "Importieren Sie Dateien, ziehen Sie sie auf eine Karte oder überwachen Sie einen Ordner.",
+    "warningsTitle_one": "{{count}} Import prüfen",
+    "warningsTitle_other": "{{count}} Importe prüfen"
+  },
+  "row": {
+    "collapse": "Einklappen",
+    "editPlacement": "Position bearbeiten",
+    "placedByData": "Aus Daten platziert",
+    "placedByHand": "Von Hand platziert",
+    "fromFolder": "Aus Ordner",
+    "needsPosition": "Position fehlt",
+    "hide": "In 3D-Ansichten ausblenden",
+    "show": "In 3D-Ansichten anzeigen",
+    "remove": "Modell entfernen",
+    "confirmRemove": "Entfernen",
+    "removeWatchedTip": "Dieses Modell stammt aus einem überwachten Ordner. Entfernen Sie den Ordner oder bearbeiten Sie stattdessen dessen Tabelle.",
+    "points_one": "{{formatted}} Punkt",
+    "points_other": "{{formatted}} Punkte",
+    "pointsThinned": "{{shown}} von {{total}} Punkten",
+    "pointsThinnedTip": "Große Wolken werden gleichmäßig ausgedünnt, damit alle 3D-Ansichten flüssig bleiben"
+  },
+  "editor": {
+    "lat": "Breite",
+    "lng": "Länge",
+    "alt": "Höhe (m)",
+    "altMode": "Höhenbezug",
+    "altModes": {
+      "amsl": "Über Meeresspiegel",
+      "agl": "Über Grund",
+      "clamp": "Auf dem Boden"
+    },
+    "yaw": "Gieren (°)",
+    "pitch": "Nicken (°)",
+    "roll": "Rollen (°)",
+    "scale": "Maßstab",
+    "readOnlyNote": "Dieses Modell stammt aus einem überwachten Ordner. Seine Tabelle (models.json, CSV oder GeoJSON) bestimmt die Position; bearbeiten Sie die Tabelle, um es zu verschieben.",
+    "placeAtCentre": "In Kartenmitte platzieren",
+    "placeAtCentreTip": "Modell in die Mitte der zuletzt verwendeten Karte verschieben",
+    "adjustOnMap": "Auf Karte anpassen",
+    "adjustOnMapTip": "Ursprung des Modells auf der 2D-Karte ziehen und den Richtungsgriff drehen"
+  },
+  "watch": {
+    "title": "Überwachte Ordner",
+    "add": "Ordner hinzufügen",
+    "remove": "Nicht mehr überwachen",
+    "explain": "Legen Sie Modelle zusammen mit einer models.json-, CSV- oder GeoJSON-Tabelle in einen Ordner: Die Tabelle platziert jedes Modell. Änderungen am Ordner oder an der Tabelle werden sofort neu geladen.",
+    "none": "Keine Ordner überwacht."
+  },
+  "toast": {
+    "imported_one": "{{count}} Modell importiert",
+    "imported_other": "{{count}} Modelle importiert",
+    "failed_one": "{{count}} fehlgeschlagen",
+    "failed_other": "{{count}} fehlgeschlagen",
+    "needsPlacement_one": "{{count}} braucht eine Position",
+    "needsPlacement_other": "{{count}} brauchen eine Position",
+    "details": "Details",
+    "warnings_one": "{{count}} Hinweis",
+    "warnings_other": "{{count}} Hinweise"
+  },
+  "adjust": {
+    "hint": "{{name}} anpassen: Punkt ziehen zum Verschieben, Griff ziehen zum Drehen",
+    "edit": "Werte bearbeiten",
+    "done": "Fertig"
+  },
+  "drop": {
+    "overlay": "Ablegen, um 3D-Modell hinzuzufügen"
+  },
+  "format": {
+    "pointCloud": "Punktwolke"
+  }
+}

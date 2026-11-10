@@ -20,6 +20,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 // packaged builds (see ObjectEditorMap.tsx), breaking the MapLibre worker.
 maplibregl.setWorkerUrl(new URL('maplibre-worker.js', document.baseURI).href);
 import { createFlightPathThreeJsLayer } from './flight-threejs-layer';
+import { createMeshThreeJsLayer, type MeshThreeJsLayer } from '../mission/mesh-threejs-layer';
+import { meshesFor, useSceneMeshStore } from '../../stores/scene-mesh-store';
 import { buildFlightTrack, frameBounds, groundAmsl, trackAltitudeRange, trackIndexNearTime, trackSpeeds } from './flight-track';
 import { useLogStore } from '../../stores/log-store';
 import { lowerBoundIdx, upperBoundIdx, columnStats, fmtStat, padRange, parseAxisRange, chartCsv, SERIES_COLORS, type FieldStats } from './log-chart-stats';
@@ -34,6 +36,7 @@ import { SpectrumPanel } from './SpectrumPanel';
 import { px4ModeName } from '@ardudeck/ulog-parser';
 import { fieldNames, logCount, logRows } from '../../utils/log-columns';
 import { useTranslation } from 'react-i18next';
+import { ui } from '../ui/ui-hooks';
 import type { TFunction } from 'i18next';
 
 // All chart panels share one uPlot cursor-sync group, keyed by x VALUE (time
@@ -1541,6 +1544,8 @@ function FlightPathPanel() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const threeLayerRef = useRef<ReturnType<typeof createFlightPathThreeJsLayer> | null>(null);
+  const meshLayerRef = useRef<MeshThreeJsLayer | null>(null);
+  const meshVersion = useSceneMeshStore((s) => s.version);
   const [activeLayer, setActiveLayer] = useState('satellite');
   const [colorMode, setColorMode] = useState<PathColorMode>('mode');
 
@@ -1677,6 +1682,11 @@ function FlightPathPanel() {
       threeLayer.onHoverScreen(reportHoverScreen);
       map.addLayer(threeLayer.layer);
 
+      const meshLayer = createMeshThreeJsLayer();
+      meshLayerRef.current = meshLayer;
+      map.addLayer(meshLayer.layer);
+      meshLayer.setMeshes(meshesFor('logs'), 1);
+
       pointsRef.current = points.map((p) => ({ lon: p.lon, lat: p.lat, alt: p.altRel }));
       const startLngLat = new maplibregl.LngLat(points[0]!.lon, points[0]!.lat);
 
@@ -1792,10 +1802,16 @@ function FlightPathPanel() {
       terrainListenersRef.current = null;
       threeLayerRef.current?.dispose();
       threeLayerRef.current = null;
+      meshLayerRef.current?.dispose();
+      meshLayerRef.current = null;
       map.remove();
       mapRef.current = null;
     };
   }, [points, activeLayer, mapCenter]);
+
+  useEffect(() => {
+    meshLayerRef.current?.setMeshes(meshesFor('logs'), 1);
+  }, [meshVersion]);
 
   // Update colors without rebuilding the map
   useEffect(() => {
@@ -1825,9 +1841,10 @@ function FlightPathPanel() {
       {/* Controls overlay */}
       <div className="absolute top-2 right-2 z-10 flex flex-col items-stretch gap-1.5">
         {/* Layer switcher */}
-        <div className="flex bg-surface-overlay rounded-md backdrop-blur-sm overflow-hidden">
+        <div {...ui('segmented')} className="flex bg-surface-overlay rounded-md backdrop-blur-sm overflow-hidden">
           {Object.entries(FLIGHT_MAP_LAYERS).map(([key, l]) => (
             <button
+              {...ui('segment', { active: activeLayer === key })}
               key={key}
               onClick={() => setActiveLayer(key)}
               className={`flex-1 text-[10px] px-2 py-1 transition-colors ${
@@ -1841,7 +1858,7 @@ function FlightPathPanel() {
           ))}
         </div>
         {/* Path color mode */}
-        <div className="flex bg-surface-overlay rounded-md backdrop-blur-sm overflow-hidden">
+        <div {...ui('segmented')} className="flex bg-surface-overlay rounded-md backdrop-blur-sm overflow-hidden">
           {([
             ['solid', t('logs:explorer.colorSolid')],
             ['mode', t('common:modes')],
@@ -1849,6 +1866,7 @@ function FlightPathPanel() {
             ['speed', t('common:speed')],
           ] as [PathColorMode, string][]).map(([key, label]) => (
             <button
+              {...ui('segment', { active: colorMode === key })}
               key={key}
               onClick={() => setColorMode(key)}
               className={`flex-1 text-[10px] px-2 py-1 transition-colors ${
@@ -2065,6 +2083,7 @@ function FieldPickerPanel() {
             m.forEach((arr: string[]) => { fieldsCount += arr.length; });
             return (
               <button
+                {...ui('chip', { active: isActive })}
                 key={cid}
                 onClick={() => setActiveChartId(cid)}
                 className={`text-[10px] px-2 py-0.5 rounded transition-colors flex items-center gap-1 shrink-0 ${
@@ -2090,6 +2109,7 @@ function FieldPickerPanel() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
+            {...ui('input')}
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -2111,6 +2131,7 @@ function FieldPickerPanel() {
         <div className="flex flex-wrap gap-1">
           {presets.filter((p) => p.types.some((t) => messageTypes.includes(t))).map((preset) => (
             <button
+              {...ui('chip')}
               key={preset.id}
               onClick={() => applyPreset(preset)}
               className="text-[10px] px-1.5 py-0.5 rounded bg-surface-raised hover:bg-blue-500/20 hover:text-blue-400 text-content-secondary transition-colors"
@@ -2476,8 +2497,9 @@ export function LogExplorerPanel() {
       <div className="flex items-center gap-2 px-4 pt-2.5 pb-2 flex-shrink-0">
         {/* Pointer tool for all charts: mouse users live in Zoom (right-drag
             still pans); touchpad users flip to Pan for one-finger dragging. */}
-        <div className="flex rounded-md border border-subtle overflow-hidden">
+        <div {...ui('segmented')} className="flex rounded-md border border-subtle overflow-hidden">
           <button
+            {...ui('segment', { active: explorerTool === 'zoom' })}
             onClick={() => setExplorerTool('zoom')}
             className={`text-[10px] px-2 py-1 transition-colors flex items-center gap-1 ${
               explorerTool === 'zoom' ? 'bg-blue-500/20 text-blue-400' : 'bg-surface text-content-secondary hover:text-content'
@@ -2490,6 +2512,7 @@ export function LogExplorerPanel() {
             {t('logs:explorer.zoomTool')}
           </button>
           <button
+            {...ui('segment', { active: explorerTool === 'pan' })}
             onClick={() => setExplorerTool('pan')}
             className={`text-[10px] px-2 py-1 transition-colors flex items-center gap-1 border-l border-subtle ${
               explorerTool === 'pan' ? 'bg-blue-500/20 text-blue-400' : 'bg-surface text-content-secondary hover:text-content'
@@ -2504,6 +2527,7 @@ export function LogExplorerPanel() {
         </div>
         <div className="relative">
           <button
+            {...ui('icon-button', { active: helpOpen })}
             onClick={() => setHelpOpen(!helpOpen)}
             className={`text-[10px] w-6 h-6 rounded-md border transition-colors ${
               helpOpen ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-surface text-content-secondary hover:text-content border-subtle'
@@ -2536,6 +2560,7 @@ export function LogExplorerPanel() {
         </div>
         <span className="w-px h-4 bg-subtle" />
         <button
+          {...ui('button', { variant: 'secondary' })}
           onClick={handleAddChart}
           className="text-[10px] px-2 py-1 rounded-md bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 border border-blue-500/30 transition-colors flex items-center gap-1"
           data-tip={t('logs:explorer.addChartTip')}
@@ -2548,6 +2573,7 @@ export function LogExplorerPanel() {
             <span className="text-[10px] text-content-tertiary ml-1">{t('logs:explorer.panels')}</span>
             {closedPanels.map((def) => (
               <button
+                {...ui('chip')}
                 key={def.id}
                 onClick={() => handleAddPanel(def.id, def.component, t(def.titleKey))}
                 className="text-[10px] px-2 py-1 rounded-md bg-surface hover:bg-blue-500/20 hover:text-blue-400 text-content-secondary border border-subtle transition-colors"
@@ -2558,6 +2584,7 @@ export function LogExplorerPanel() {
           </>
         )}
         <button
+          {...ui('button', { variant: 'ghost' })}
           onClick={handleResetLayout}
           className="text-[10px] px-2 py-1 rounded-md bg-surface hover:bg-surface-raised text-content-secondary hover:text-content border border-subtle transition-colors ml-auto"
           data-tip={t('logs:explorer.resetLayoutTip')}

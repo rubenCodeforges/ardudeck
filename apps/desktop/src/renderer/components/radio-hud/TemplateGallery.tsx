@@ -1,3 +1,4 @@
+import { ui } from '../ui/ui-hooks';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, LayoutTemplate, Maximize2, Save, Trash2, X } from 'lucide-react';
@@ -171,13 +172,13 @@ export function TemplateGallery({ renderScreen: renderFor, mode, kind, connected
     <div className="space-y-1.5">
       <div className="flex gap-2">
         {mode === 'replace' ? (
-          <button type="button" onClick={() => onUse(pages, 'replace')}
+          <button {...ui('button', { variant: 'primary' })} type="button" onClick={() => onUse(pages, 'replace')}
             data-tip={t(`${k}.useAllTip`)}
             className="flex-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500">
             {t(`${k}.useAllScreens`)}
           </button>
         ) : null}
-        <button type="button" onClick={() => onUse([pages[shown] ?? pages[0] ?? []], 'add')} disabled={full}
+        <button {...ui('button', { variant: 'secondary' })} type="button" onClick={() => onUse([pages[shown] ?? pages[0] ?? []], 'add')} disabled={full}
           data-tip={full ? undefined : t(`${k}.addScreenTip`)}
           className="flex-1 rounded-lg border border-subtle bg-surface-raised px-3 py-1.5 text-xs text-content hover:bg-surface-inset disabled:cursor-not-allowed disabled:opacity-40">
           {pages.length > 1 ? t(`${k}.addScreenN`, { n: shown + 1 }) : t(`${k}.addThisScreen`)}
@@ -215,12 +216,12 @@ export function TemplateGallery({ renderScreen: renderFor, mode, kind, connected
               }}
               className="flex items-center gap-2"
             >
-              <input autoFocus value={saveName} onChange={(e) => setSaveName(e.target.value)}
+              <input {...ui('input')} autoFocus value={saveName} onChange={(e) => setSaveName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setSaving(false); } }}
                 aria-label={t(`${k}.templateNamePlaceholder`)}
                 placeholder={t(`${k}.templateNamePlaceholder`)}
                 className="w-56 rounded-lg border border-subtle bg-surface-input px-2.5 py-1.5 text-sm text-content placeholder:text-content-tertiary focus:border-blue-500 focus:outline-none" />
-              <button type="submit" disabled={!saveName.trim()}
+              <button {...ui('button', { variant: 'primary' })} type="submit" disabled={!saveName.trim()}
                 className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-40">
                 {t('common:save')}
               </button>
@@ -229,7 +230,7 @@ export function TemplateGallery({ renderScreen: renderFor, mode, kind, connected
               </button>
             </form>
           ) : (
-            <button type="button" onClick={() => setSaving(true)}
+            <button {...ui('button', { variant: 'secondary' })} type="button" onClick={() => setSaving(true)}
               className="flex items-center gap-1.5 rounded-lg border border-subtle bg-surface-raised px-3 py-1.5 text-xs text-content hover:bg-surface-inset">
               <Save className="h-3.5 w-3.5 text-content-tertiary" />
               {t(`${k}.saveCurrent`)}
@@ -242,7 +243,7 @@ export function TemplateGallery({ renderScreen: renderFor, mode, kind, connected
 
         <div role="group" aria-label={t(`${k}.vehicle`)} className="flex flex-wrap gap-2">
           {KINDS.map((v) => (
-            <button key={v} type="button" onClick={() => setFilter(v)}
+            <button key={v} {...ui('chip', { active: v === filter })} type="button" onClick={() => setFilter(v)}
               className={`rounded-full border px-3.5 py-1.5 text-xs transition-colors ${
                 v === filter ? 'border-teal-500/40 bg-teal-500/15 text-teal-300' : 'border-subtle bg-surface-input text-content-secondary hover:text-content'
               }`}>

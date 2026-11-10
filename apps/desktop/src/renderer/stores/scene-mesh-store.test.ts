@@ -12,5 +12,7 @@ describe('scene-mesh-store', () => {
     });
     expect(meshesFor('svt').map((m) => m.id)).toEqual(['both', 'svt']);
     expect(meshesFor('mission3d').map((m) => m.id)).toEqual(['both']);
+    expect(meshesFor('sim').map((m) => m.id)).toEqual(['both']);
+    expect(meshesFor('logs').map((m) => m.id)).toEqual(['both']);
   });
 });

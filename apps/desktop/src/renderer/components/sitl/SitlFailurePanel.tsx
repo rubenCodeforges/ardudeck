@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useSimParam, useResolvedSimParam } from '../../hooks/useSimParam';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { SENSOR_BITS } from '../../../shared/telemetry-types';
+import { ui } from '../ui/ui-hooks';
 
 // --- Failure toggle card ---
 
@@ -28,7 +29,7 @@ function FailureCard({ label, icon, active, available, fcHealthy, onToggle }: Fa
   if (!available) return null;
 
   return (
-    <button
+    <button {...ui('option', { active })}
       onClick={onToggle}
       className={`relative flex flex-col items-center gap-2 p-3 rounded-lg border transition-all ${
         active
@@ -181,7 +182,7 @@ export default function SitlFailurePanel({ bare = false }: { bare?: boolean }) {
           )}
         </div>
         {activeCount > 0 && (
-          <button
+          <button {...ui('button', { variant: 'danger' })}
             onClick={handleResetAll}
             className="px-2 py-1 text-xs text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 rounded transition-colors"
           >

@@ -73,12 +73,51 @@ export function hasLiveRcInput(channels: readonly number[]): boolean {
   return channels.some((v) => v >= 800 && v <= 2200);
 }
 
+export type StickAxis = keyof StickChannelMap;
+
+/** Stick axes the vehicle reads reversed (RCn_REVERSED on the axis' RCMAP channel): there a low pulse means full deflection. */
+export function reversedAxes(map: StickChannelMap, read: (name: string) => number | undefined): Set<StickAxis> {
+  const out = new Set<StickAxis>();
+  for (const axis of ['roll', 'pitch', 'throttle', 'yaw'] as const) {
+    if (read(`RC${map[axis]}_REVERSED`) === 1) out.add(axis);
+  }
+  return out;
+}
+
+/** Stick positions as the pulses a transmitter would send: reversed axes mirror around 1500; RC_OVERRIDE_IGNORE stays. */
+export function applyReversal(sticks: StickValues, reversed: ReadonlySet<StickAxis>): StickValues {
+  const flip = (axis: StickAxis) => {
+    const v = sticks[axis];
+    return reversed.has(axis) && v !== RC_OVERRIDE_IGNORE && v > 0 ? 3000 - v : v;
+  };
+  return { roll: flip('roll'), pitch: flip('pitch'), throttle: flip('throttle'), yaw: flip('yaw') };
+}
+
+/**
+ * Zero-throttle pulse on RC channel `n`: RCn_MIN, or RCn_MAX when reversed, since there a low
+ * pulse is full throttle. Null while any of the three parameters is unknown. Same rule as
+ * the mobile app's throttleLowPwm.
+ */
+export function throttleLowPwm(read: (name: string) => number | undefined, n: number): number | null {
+  const min = read(`RC${n}_MIN`);
+  const max = read(`RC${n}_MAX`);
+  const reversed = read(`RC${n}_REVERSED`);
+  if (min === undefined || max === undefined || reversed === undefined) return null;
+  return Math.round(Math.round(reversed) === 1 ? max : min);
+}
+
 /**
  * One-shot RC_CHANNELS_OVERRIDE sent before arming, standing in for a missing transmitter.
  * Null when a transmitter is live: the override outranks it, and a wrong RCMAP puts 1500 on throttle (#152).
+ * `rcChannels` null means the vehicle sent no RC_CHANNELS lately, so a transmitter cannot be ruled out.
+ * `throttleLow` is the channel's zero-throttle pulse (throttleLowPwm); null skips the seed.
  */
-export function armStandInChannels(map: StickChannelMap | null, rcChannels: readonly number[]): number[] | null {
+export function armStandInChannels(
+  map: StickChannelMap | null,
+  rcChannels: readonly number[] | null,
+  throttleLow: number | null,
+): number[] | null {
   // Unknown RCMAP: a centred stick could land on the real throttle channel, so send nothing.
-  if (!map || hasLiveRcInput(rcChannels)) return null;
-  return overrideChannels({ roll: 1500, pitch: 1500, throttle: 1000, yaw: 1500 }, map);
+  if (!map || !rcChannels || hasLiveRcInput(rcChannels) || throttleLow === null) return null;
+  return overrideChannels({ roll: 1500, pitch: 1500, throttle: throttleLow, yaw: 1500 }, map);
 }

@@ -10,6 +10,7 @@ import { useTranslation, Trans } from 'react-i18next';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useParameterStore } from '../../stores/parameter-store';
 import { firmwareLabel } from '../../../shared/firmware-types';
+import { ui } from '../ui/ui-hooks';
 
 interface ProgressState {
   stage: string;
@@ -324,7 +325,7 @@ export default function ReportBugView() {
         )}
 
         {/* Generate button */}
-        <button
+        <button {...ui('button', { variant: 'primary' })}
           onClick={handleGenerateReport}
           disabled={isGenerating || !hasConsented}
           className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-surface-raised disabled:text-content-secondary text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"

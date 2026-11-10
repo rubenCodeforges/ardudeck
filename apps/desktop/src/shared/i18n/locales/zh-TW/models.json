@@ -1,0 +1,88 @@
+{
+  "layersEntry": {
+    "label": "3D 模型",
+    "tip": "在所有 3D 檢視中加入您自己的 3D 模型（glTF、KMZ、3D Tiles、CityJSON、LAS/LAZ 點雲）"
+  },
+  "dialog": {
+    "title": "3D 模型",
+    "subtitle": "您自己的模型，顯示於所有 3D 檢視中",
+    "import": "匯入",
+    "importing": "正在匯入...",
+    "importTip": "選擇 glTF/GLB、KMZ、3D Tiles tileset.json、CityJSON，或 LAS、LAZ 和 PLY 點雲檔案",
+    "failedTitle_one": "{{count}} 個檔案無法匯入",
+    "failedTitle_other": "{{count}} 個檔案無法匯入",
+    "dismiss": "關閉",
+    "needsPlacementHint_one": "{{count}} 個模型的資料中沒有位置。已放置在您拖放的位置（或地圖中心）。展開以設定其位置。",
+    "needsPlacementHint_other": "{{count}} 個模型的資料中沒有位置。已放置在您拖放的位置（或地圖中心）。展開以設定其位置。",
+    "emptyTitle": "尚無 3D 模型",
+    "emptyHint": "匯入檔案、將檔案拖放到地圖上，或監看一個資料夾。",
+    "warningsTitle_other": "{{count}} 項匯入需檢查",
+    "warningsTitle_one": "{{count}} 項匯入需檢查"
+  },
+  "row": {
+    "collapse": "收合",
+    "editPlacement": "編輯位置",
+    "placedByData": "依資料放置",
+    "placedByHand": "手動放置",
+    "fromFolder": "來自資料夾",
+    "needsPosition": "需要位置",
+    "hide": "在 3D 檢視中隱藏",
+    "show": "在 3D 檢視中顯示",
+    "remove": "移除模型",
+    "confirmRemove": "移除",
+    "removeWatchedTip": "此模型來自監看的資料夾。請移除該資料夾或編輯其表格。",
+    "points_one": "{{formatted}} 個點",
+    "points_other": "{{formatted}} 個點",
+    "pointsThinned": "{{shown}} / {{total}} 個點",
+    "pointsThinnedTip": "大型點雲會被均勻抽稀，以保持所有 3D 檢視流暢"
+  },
+  "editor": {
+    "lat": "緯度",
+    "lng": "經度",
+    "alt": "高度 (m)",
+    "altMode": "高度模式",
+    "altModes": {
+      "amsl": "海拔高度",
+      "agl": "離地高度",
+      "clamp": "貼地"
+    },
+    "yaw": "偏航 (°)",
+    "pitch": "俯仰 (°)",
+    "roll": "橫滾 (°)",
+    "scale": "縮放",
+    "readOnlyNote": "此模型來自監看的資料夾。其位置由表格（models.json、CSV 或 GeoJSON）控制；編輯表格即可移動它。",
+    "placeAtCentre": "放置到地圖中心",
+    "placeAtCentreTip": "將模型移動到您最近使用的地圖中心",
+    "adjustOnMap": "在地圖上調整",
+    "adjustOnMapTip": "在 2D 地圖上拖曳模型原點並旋轉其航向把手"
+  },
+  "watch": {
+    "title": "監看的資料夾",
+    "add": "新增資料夾",
+    "remove": "停止監看",
+    "explain": "將模型與 models.json、CSV 或 GeoJSON 表格放在同一資料夾中：表格決定每個模型的位置。對資料夾或表格的修改會即時重新載入。",
+    "none": "未監看任何資料夾。"
+  },
+  "toast": {
+    "imported_one": "已匯入 {{count}} 個模型",
+    "imported_other": "已匯入 {{count}} 個模型",
+    "failed_one": "{{count}} 個失敗",
+    "failed_other": "{{count}} 個失敗",
+    "needsPlacement_one": "{{count}} 個需要位置",
+    "needsPlacement_other": "{{count}} 個需要位置",
+    "details": "詳細資訊",
+    "warnings_other": "{{count}} 則提醒",
+    "warnings_one": "{{count}} 則提醒"
+  },
+  "adjust": {
+    "hint": "正在調整 {{name}}：拖曳圓點移動，拖曳把手旋轉",
+    "edit": "編輯數值",
+    "done": "完成"
+  },
+  "drop": {
+    "overlay": "拖放以加入 3D 模型"
+  },
+  "format": {
+    "pointCloud": "點雲"
+  }
+}

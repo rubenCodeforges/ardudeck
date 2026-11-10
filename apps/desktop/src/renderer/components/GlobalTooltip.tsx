@@ -144,7 +144,7 @@ export function GlobalTooltip() {
         zIndex: 100000,
         pointerEvents: 'none',
       }}
-      className="px-2 py-1 rounded-md text-[11px] leading-tight bg-surface-solid text-content border border-subtle shadow-lg max-w-[260px] whitespace-normal"
+      className="app-tooltip px-2 py-1 rounded-md text-[11px] leading-tight bg-surface-solid text-content border border-subtle shadow-lg max-w-[260px] whitespace-normal"
     >
       {tip.text}
     </div>,

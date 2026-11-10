@@ -168,7 +168,7 @@ export function DebugConsole() {
   return (
     <div
       className={
-        'bg-surface-overlay backdrop-blur-sm flex flex-col relative ' +
+        'app-console bg-surface-overlay backdrop-blur-sm flex flex-col relative ' +
         (side
           ? `${dock === 'left' ? 'border-r' : 'border-l'} border-subtle h-full shrink-0`
           : 'border-t border-subtle')

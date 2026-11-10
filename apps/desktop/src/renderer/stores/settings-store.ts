@@ -160,6 +160,8 @@ export interface MissionDefaults {
   showSegmentColors: boolean;      // Color-coded path segments on map (camera, ROI, speed, etc.)
   /** Draw the track a fixed wing will actually fly, corners cut at its turn radius. */
   showFlownPath: boolean;
+  /** Colour mission legs by the wind layer's head or tailwind, with ground speed per leg. */
+  showLegWind: boolean;
   /** Bank angle the predicted track is planned around, degrees. */
   flownPathBankDeg: number;
   /** Map legend folded away to a corner button. */
@@ -284,11 +286,31 @@ export interface ConnectionMemory {
  */
 export type DefaultSitlType = 'inav' | 'ardupilot' | 'px4';
 
+/** A theme a cargo registered through host.theme. */
+export type CargoThemeKey = `cargo:${string}`;
+
 /**
  * Theme preference
  * 'dark' = dark theme (default), 'light' = light theme, 'system' = follow OS preference
  */
-export type ThemePreference = 'dark' | 'light' | 'system' | 'bridge';
+export type ThemePreference = 'dark' | 'light' | 'system' | CargoThemeKey;
+
+export const BRIDGE_MOVED_NOTE_KEY = 'ardudeck.bridge-moved-note';
+
+/** Bridge left the core for a cargo: a pilot who had it lands on dark once and is told where it went. */
+export function migrateThemePreference(raw: unknown): ThemePreference {
+  if (raw === 'bridge') {
+    try {
+      if (localStorage.getItem(BRIDGE_MOVED_NOTE_KEY) !== 'done') localStorage.setItem(BRIDGE_MOVED_NOTE_KEY, 'pending');
+    } catch {
+      // The note is a courtesy; the fallback to dark still happens.
+    }
+    return 'dark';
+  }
+  if (raw === 'dark' || raw === 'light' || raw === 'system') return raw;
+  if (typeof raw === 'string' && raw.startsWith('cargo:')) return raw as CargoThemeKey;
+  return 'dark';
+}
 
 /**
  * App-level settings store
@@ -331,6 +353,9 @@ interface SettingsStore {
 
   // Voice announcer
   voiceAlertsMuted: boolean;
+  /** Top-bar voice level, like car navigation: every callout, only important ones (alerts, failsafes, arm), or none. 'off' keeps voiceAlertsMuted true. */
+  voiceAlertLevel: 'all' | 'important' | 'off';
+  setVoiceAlertLevel: (level: 'all' | 'important' | 'off') => void;
   setVoiceAlertsMuted: (muted: boolean) => void;
 
   // Console
@@ -339,6 +364,12 @@ interface SettingsStore {
   /** Answer the autopilot's terrain requests from the map's DEM tiles. */
   serveTerrain: boolean;
   setServeTerrain: (enabled: boolean) => void;
+  recordTlog: boolean;
+  setRecordTlog: (enabled: boolean) => void;
+  /** Voice volume 0-100 while every vehicle is disarmed (setup on the bench) and while one is armed (#165). */
+  voiceVolumeDisarmed: number;
+  voiceVolumeArmed: number;
+  setVoiceVolume: (state: 'armed' | 'disarmed', volume: number) => void;
 
   // MAVLink source system id of this station (1-255). Distinct ids let
   // several GCS share one vehicle without corrupting param/mission transfers.
@@ -498,6 +529,7 @@ const DEFAULT_MISSION_DEFAULTS: MissionDefaults = {
   missionFirmware: 'ardupilot',  // Default firmware for offline mission planning
   showSegmentColors: true,       // Color-coded path segments on by default
   showFlownPath: false,
+  showLegWind: true,
   flownPathBankDeg: 30,
   mapLegendCollapsed: false,
   showLineOrder: true,
@@ -818,9 +850,13 @@ export const useSettingsStore = create<SettingsStore>()(
     set({ tourPromptsEnabled: enabled });
   },
 
+  voiceAlertLevel: 'all',
+  setVoiceAlertLevel: (level) => {
+    set({ voiceAlertLevel: level, voiceAlertsMuted: level === 'off' });
+  },
   voiceAlertsMuted: false,
   setVoiceAlertsMuted: (muted: boolean) => {
-    set({ voiceAlertsMuted: muted });
+    set({ voiceAlertsMuted: muted, voiceAlertLevel: muted ? 'off' : 'all' });
   },
 
   showDebugLogs: false,
@@ -830,6 +866,18 @@ export const useSettingsStore = create<SettingsStore>()(
   serveTerrain: true,
   setServeTerrain: (enabled: boolean) => {
     set({ serveTerrain: enabled });
+    void get()._saveSettings();
+  },
+  recordTlog: true,
+  voiceVolumeDisarmed: 100,
+  voiceVolumeArmed: 100,
+  setVoiceVolume: (state, volume) => {
+    const v = Math.max(0, Math.min(100, Math.round(volume)));
+    set(state === 'armed' ? { voiceVolumeArmed: v } : { voiceVolumeDisarmed: v });
+    void get()._saveSettings();
+  },
+  setRecordTlog: (enabled: boolean) => {
+    set({ recordTlog: enabled });
     void get()._saveSettings();
   },
 
@@ -998,7 +1046,7 @@ export const useSettingsStore = create<SettingsStore>()(
           unitPreferences,
           coordinateFormat: typeof settingsRecord.coordinateFormat === 'string' ? settingsRecord.coordinateFormat : 'decimal',
           coordinatePrecision: (settingsRecord.coordinatePrecision && typeof settingsRecord.coordinatePrecision === 'object' ? settingsRecord.coordinatePrecision : {}) as Record<string, number>,
-          theme: (settingsRecord.theme as ThemePreference) || 'dark',
+          theme: migrateThemePreference(settingsRecord.theme),
           nonDefaultHighlightColor: (settingsRecord.nonDefaultHighlightColor as NonDefaultColorKey) || DEFAULT_NON_DEFAULT_COLOR,
           experienceLevel: (settingsRecord.experienceLevel as ExperienceLevel) || null,
           experienceLevelVersion: (settingsRecord.experienceLevelVersion as string) || null,
@@ -1013,8 +1061,14 @@ export const useSettingsStore = create<SettingsStore>()(
             : 'relative'),
           tourPromptsEnabled: settingsRecord.tourPromptsEnabled !== false,
           voiceAlertsMuted: !!settingsRecord.voiceAlertsMuted,
+          voiceAlertLevel: settingsRecord.voiceAlertsMuted
+            ? 'off'
+            : settingsRecord.voiceAlertLevel === 'important' ? 'important' : 'all',
           showDebugLogs: !!settingsRecord.showDebugLogs,
           serveTerrain: settingsRecord.serveTerrain !== false,
+          recordTlog: settingsRecord.recordTlog !== false,
+          voiceVolumeDisarmed: typeof settingsRecord.voiceVolumeDisarmed === 'number' ? Math.max(0, Math.min(100, settingsRecord.voiceVolumeDisarmed as number)) : 100,
+          voiceVolumeArmed: typeof settingsRecord.voiceVolumeArmed === 'number' ? Math.max(0, Math.min(100, settingsRecord.voiceVolumeArmed as number)) : 100,
           gcsSysid: typeof settingsRecord.gcsSysid === 'number'
             ? Math.min(255, Math.max(1, Math.round(settingsRecord.gcsSysid)))
             : 255,
@@ -1056,6 +1110,9 @@ export const useSettingsStore = create<SettingsStore>()(
         defaultSitlType: state.defaultSitlType,
         preferredFirmwareSource: state.preferredFirmwareSource,
         serveTerrain: state.serveTerrain,
+        recordTlog: state.recordTlog,
+        voiceVolumeDisarmed: state.voiceVolumeDisarmed,
+        voiceVolumeArmed: state.voiceVolumeArmed,
         telemetrySpeed: state.telemetrySpeed,
         unitPreferences: state.unitPreferences,
         coordinateFormat: state.coordinateFormat,
@@ -1070,6 +1127,7 @@ export const useSettingsStore = create<SettingsStore>()(
         defaultCommandAltFrame: state.defaultCommandAltFrame,
         tourPromptsEnabled: state.tourPromptsEnabled,
         voiceAlertsMuted: state.voiceAlertsMuted,
+        voiceAlertLevel: state.voiceAlertLevel,
         showDebugLogs: state.showDebugLogs,
         gcsSysid: state.gcsSysid,
         aiProvider: state.aiProvider,
@@ -1412,6 +1470,7 @@ useSettingsStore.subscribe(
     advancedCommandsUnlocked: state.advancedCommandsUnlocked,
     defaultCommandAltFrame: state.defaultCommandAltFrame,
     voiceAlertsMuted: state.voiceAlertsMuted,
+    voiceAlertLevel: state.voiceAlertLevel,
     showDebugLogs: state.showDebugLogs,
     gcsSysid: state.gcsSysid,
     aiProvider: state.aiProvider,

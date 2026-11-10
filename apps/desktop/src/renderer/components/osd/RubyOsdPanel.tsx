@@ -7,6 +7,7 @@
  * model (via ruby-osd-store); the centre preview shows the resulting layout.
  */
 
+import { ui } from '../ui/ui-hooks';
 import { useTranslation } from 'react-i18next';
 import { Radio, LayoutGrid, SlidersHorizontal, RotateCcw, type LucideIcon } from 'lucide-react';
 import { useRubyOsdStore, getFontSize, getTransparency } from '../../stores/ruby-osd-store';
@@ -58,6 +59,7 @@ export function RubyOsdPanel() {
           {params.screens.map((_, i) => (
             <button
               key={i}
+              {...ui('chip', { active: i === editingScreen })}
               onClick={() => setEditingScreen(i)}
               className={`relative flex-1 h-8 rounded-md text-[11px] font-medium transition-colors ${
                 i === editingScreen ? 'bg-rose-600/80 text-white' : 'text-content-secondary hover:text-content bg-surface-raised'
@@ -77,6 +79,7 @@ export function RubyOsdPanel() {
           </span>
           {!isActive && (
             <button
+              {...ui('button', { variant: 'secondary' })}
               onClick={() => setCurrentScreen(editingScreen)}
               className="text-[10px] font-medium px-2 py-1 rounded bg-surface-raised hover:bg-surface text-content"
             >

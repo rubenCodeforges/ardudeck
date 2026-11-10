@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { useHazardsStore } from './hazards-store';
+import { hazardCrossings } from '../../shared/mission-validation';
 import { t } from '../../shared/i18n/index.js';
 import {
   type MissionItem,
@@ -699,6 +701,27 @@ function applySurveyItems(
 /** What the in-flight upload sends, so its completion can record exactly that as the vehicle's mission. */
 let pendingUpload: { items: MissionItem[]; groups: Group[] } | null = null;
 
+let zoneOverrideOnce = false;
+
+/** After an admin override is logged: the next upload may cross locked zones, once. */
+export function allowHazardCrossingOnce(): void {
+  zoneOverrideOnce = true;
+}
+
+/** Drops an unused override, e.g. when the pilot cancels the upload dialog that followed it. */
+export function clearHazardCrossingOverride(): void {
+  zoneOverrideOnce = false;
+}
+
+function blockedByHazards(items: MissionItem[], home: HomePosition | null): boolean {
+  // The override covers exactly one upload attempt: always spent, never left armed for a later one.
+  const overridden = zoneOverrideOnce;
+  zoneOverrideOnce = false;
+  const zones = useHazardsStore.getState().hazards;
+  if (zones.length === 0 || hazardCrossings(items, zones, home).length === 0) return false;
+  return !overridden;
+}
+
 export const useMissionStore = create<MissionStore>((set, get) => ({
   // Initial state
   missionItems: [],
@@ -870,6 +893,10 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       set({ error: t('stores:missionStore.noWaypointsToUpload') });
       return false;
     }
+    if (blockedByHazards(itemsToUpload, get().homePosition)) {
+      set({ error: t('stores:missionStore.hazardBlocked') });
+      return false;
+    }
 
     // Set initial progress to track operation type
     set({ isLoading: true, error: null, progress: { total: itemsToUpload.length, transferred: 0, operation: 'upload' } });
@@ -921,6 +948,10 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     const itemsToUpload = get().getUploadItemsForGroup(groupId);
     if (itemsToUpload.length === 0) {
       set({ error: t('stores:missionStore.groupEmptyUpload') });
+      return false;
+    }
+    if (blockedByHazards(itemsToUpload, get().homePosition)) {
+      set({ error: t('stores:missionStore.hazardBlocked') });
       return false;
     }
     // Snapshot just this group so the completion handler marks only it as
@@ -978,6 +1009,10 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     const itemsToUpload = get().getUploadItemsForGroup(groupId);
     if (itemsToUpload.length === 0) {
       set({ error: t('stores:missionStore.groupEmptyUpload') });
+      return false;
+    }
+    if (blockedByHazards(itemsToUpload, get().homePosition)) {
+      set({ error: t('stores:missionStore.hazardBlocked') });
       return false;
     }
     // Snapshot this group so the "on vehicle" indicator reflects it on success.

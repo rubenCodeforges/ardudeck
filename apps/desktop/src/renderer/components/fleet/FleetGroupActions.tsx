@@ -5,6 +5,7 @@
  * vehicle is selected.
  */
 
+import { ui } from '../ui/ui-hooks';
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { useActiveVehicleStore } from '../../stores/active-vehicle-store';
@@ -41,7 +42,7 @@ export function FleetGroupActions() {
         <span className="text-[10px] uppercase tracking-wide text-content-secondary">
           {t('fleet:fleetGroupActions.selected', { count: selected.length })}
         </span>
-        <button onClick={() => setSelected([])} className="text-[10px] text-content-tertiary hover:text-content">
+        <button {...ui('button', { variant: 'ghost' })} onClick={() => setSelected([])} className="text-[10px] text-content-tertiary hover:text-content">
           {t('common:clear')}
         </button>
       </div>
@@ -50,18 +51,18 @@ export function FleetGroupActions() {
         <div className="flex flex-col gap-1.5 rounded bg-surface p-2 border border-subtle">
           <span className="text-[11px] text-content">{pending.message}</span>
           <div className="flex gap-1.5">
-            <button disabled={busy} onClick={() => fanOut(pending.cmd)} className={`${btn} bg-red-600/80 hover:bg-red-600 text-white`}>
+            <button {...ui('button', { variant: 'danger' })} disabled={busy} onClick={() => fanOut(pending.cmd)} className={`${btn} bg-red-600/80 hover:bg-red-600 text-white`}>
               {t('common:confirm')}
             </button>
-            <button disabled={busy} onClick={() => setPending(null)} className={btn}>{t('common:cancel')}</button>
+            <button {...ui('button', { variant: 'secondary' })} disabled={busy} onClick={() => setPending(null)} className={btn}>{t('common:cancel')}</button>
           </div>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-1.5">
-          <button disabled={busy} className={btn} onClick={() => confirmThen(t('fleet:fleetGroupActions.confirmArm', { count: selected.length }), { kind: 'arm' })}>{t('fleet:fleetGroupActions.arm')}</button>
-          <button disabled={busy} className={btn} onClick={() => confirmThen(t('fleet:fleetGroupActions.confirmDisarm', { count: selected.length }), { kind: 'disarm' })}>{t('common:disarm')}</button>
-          <button disabled={busy} className={btn} onClick={() => confirmThen(t('fleet:fleetGroupActions.confirmRtl', { count: selected.length }), { kind: 'rtl' })}>RTL</button>
-          <button disabled={busy} className={btn} onClick={() => confirmThen(t('fleet:fleetGroupActions.confirmStart', { count: selected.length }), { kind: 'mission-start' })}>{t('fleet:fleetGroupActions.start')}</button>
+          <button {...ui('button', { variant: 'primary' })} disabled={busy} className={btn} onClick={() => confirmThen(t('fleet:fleetGroupActions.confirmArm', { count: selected.length }), { kind: 'arm' })}>{t('fleet:fleetGroupActions.arm')}</button>
+          <button {...ui('button', { variant: 'secondary' })} disabled={busy} className={btn} onClick={() => confirmThen(t('fleet:fleetGroupActions.confirmDisarm', { count: selected.length }), { kind: 'disarm' })}>{t('common:disarm')}</button>
+          <button {...ui('button', { variant: 'danger' })} disabled={busy} className={btn} onClick={() => confirmThen(t('fleet:fleetGroupActions.confirmRtl', { count: selected.length }), { kind: 'rtl' })}>RTL</button>
+          <button {...ui('button', { variant: 'primary' })} disabled={busy} className={btn} onClick={() => confirmThen(t('fleet:fleetGroupActions.confirmStart', { count: selected.length }), { kind: 'mission-start' })}>{t('fleet:fleetGroupActions.start')}</button>
         </div>
       )}
     </div>

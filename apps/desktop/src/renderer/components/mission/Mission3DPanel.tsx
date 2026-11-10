@@ -29,6 +29,7 @@ import { altitudeForMsl, buildMission3D, homeAltitudeMsl, type GroundAt } from '
 import { loadHeightfield, pickZoom, sampleHeightfield, type Heightfield } from '../camera/svt/svt-dem-tiles';
 import { formatAltitudeFromMeters } from '../../../shared/user-units.js';
 import { MapLayersControl } from '../map/overlays/MapLayersControl';
+import { UserModelsMapLibreDrop } from '../models/UserModelsMapLibreDrop';
 import { ElevationLegend } from '../map/ElevationLegend';
 import type { ElevationRange } from '../map/TerrainOverlayLayer';
 import { terrainColorStops, WATER_THRESHOLD } from '../../utils/terrain-colors';
@@ -78,6 +79,7 @@ import { MAP_LAYERS, mapLayerName, type LayerKey, type MapLayer } from '../../..
 type BaseLayerKey = Exclude<LayerKey, 'dem'>;
 
 const BASE_LAYERS = (Object.keys(MAP_LAYERS) as LayerKey[]).filter((k) => k !== 'dem' && k !== 'openaip' && k !== 'radar');
+const BUILDINGS_FILTER: maplibregl.FilterSpecification = ['!=', ['get', 'hide_3d'], true];
 
 /** MapLibre colour-relief stops for the 2D height scale, over `range` (else absolute), shifted by `ref`. */
 function heightColorExpression(range: ElevationRange | null, ref: number): maplibregl.ExpressionSpecification {
@@ -151,6 +153,28 @@ function getCommandShape(cmd: number): string {
     default:
       return '';
   }
+}
+
+const TILE_MISS_WARN_MS = 60_000;
+let tileMissCount = 0;
+let tileMissSources = new Set<string>();
+let tileMissTimer: ReturnType<typeof setTimeout> | null = null;
+
+function isTileMiss(message: string | undefined): boolean {
+  return !!message && /could not be decoded|could not load image|failed to fetch|AJAXError/i.test(message);
+}
+
+/** One summarised warning per minute instead of one console error per missing tile. */
+function noteTileMiss(sourceId: string): void {
+  tileMissCount++;
+  tileMissSources.add(sourceId);
+  if (tileMissTimer) return;
+  tileMissTimer = setTimeout(() => {
+    console.warn(`[3D] ${tileMissCount} map tiles missing (${[...tileMissSources].join(', ')}), drawn without them`); // i18n-exempt
+    tileMissCount = 0;
+    tileMissSources = new Set();
+    tileMissTimer = null;
+  }, TILE_MISS_WARN_MS);
 }
 
 /** Get tile-cache:// URL template for a layer (MapLibre substitutes {z}/{x}/{y}) */
@@ -359,6 +383,8 @@ export function Mission3DPanel({
     return `${r(minLat - 0.005)},${r(minLon - 0.005)},${r(maxLat + 0.005)},${r(maxLon + 0.005)}`;
   }, [visibleItems, homePosition]);
   const [heightfield, setHeightfield] = useState<Heightfield | null>(null);
+  const heightfieldRef = useRef<Heightfield | null>(null);
+  heightfieldRef.current = heightfield;
   useEffect(() => {
     if (!boundsKey) { setHeightfield(null); return; }
     const [s0, w0, n0, e0] = boundsKey.split(',').map(Number) as [number, number, number, number];
@@ -413,6 +439,9 @@ export function Mission3DPanel({
   // the layer's callbacks are made once, so they read the latest values from here
   const live = useRef({ geometry, ground, homeAlt, altitudeUnit, readOnly: !!isTelemetryMode });
   live.current = { geometry, ground, homeAlt, altitudeUnit, readOnly: !!isTelemetryMode };
+  useEffect(() => {
+    meshLayerRef.current?.setFallbackGround(heightfield ? ground : null);
+  }, [ground, heightfield]);
   const frameTag = useCallback((frame: number) => {
     const f = mavFrameToAltFrame(frame);
     return f === 'asl' ? t('panels:altitudePanel.msl') : f === 'terrain' ? t('panels:altitudePanel.agl') : t('map:elevationLegend.rel');
@@ -614,7 +643,7 @@ export function Mission3DPanel({
         'source-layer': 'building',
         type: 'fill-extrusion',
         minzoom: 14,
-        filter: ['!=', ['get', 'hide_3d'], true],
+        filter: BUILDINGS_FILTER,
         paint: {
           'fill-extrusion-color': [
             'interpolate', ['linear'], ['get', 'render_height'],
@@ -742,7 +771,8 @@ export function Mission3DPanel({
       threeLayerRef.current = threeLayer;
       map.addLayer(threeLayer.layer);
 
-      const meshLayer = createMeshThreeJsLayer();
+      const meshLayer = createMeshThreeJsLayer({ buildings: { layerId: '3d-buildings', baseFilter: BUILDINGS_FILTER } });
+      if (heightfieldRef.current) meshLayer.setFallbackGround(live.current.ground);
       meshLayerRef.current = meshLayer;
       map.addLayer(meshLayer.layer);
       meshLayer.setMeshes(meshesFor('mission3d'), exaggeration);
@@ -780,6 +810,11 @@ export function Mission3DPanel({
     });
 
     map.on('error', (e) => {
+      // A tile that comes back empty or as an error page is a miss, not a fault: the map draws on without it.
+      if ((e as { tile?: unknown }).tile || isTileMiss(e.error?.message)) {
+        noteTileMiss(String((e as { sourceId?: string }).sourceId ?? 'tiles'));
+        return;
+      }
       console.error('[3D] map error:', e.error?.message || e);
     });
 
@@ -1088,6 +1123,7 @@ export function Mission3DPanel({
         </div>
       )}
       <ModulePolygonPickBar />
+      <UserModelsMapLibreDrop map={mapReady ? mapRef.current : null} />
 
       {/* Bottom-left controls: the 2D map's row */}
       <div className="absolute bottom-3 left-3 z-[1000] flex items-center gap-2">

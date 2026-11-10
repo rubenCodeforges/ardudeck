@@ -9,8 +9,8 @@
  * props, so it points to Motor Test (DO_MOTOR_TEST) instead.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { stickMapFrom } from '../../../../shared/rc-map';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { applyReversal, reversedAxes, stickMapFrom, type StickAxis } from '../../../../shared/rc-map';
 import { Gamepad2, Square, AlertTriangle } from 'lucide-react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useParameterStore } from '../../../stores/parameter-store';
@@ -106,6 +106,10 @@ export const StickTestPanel: React.FC = () => {
   const num = (name: string): number | undefined => parameters.get(name)?.value as number | undefined;
   const modeChannel = isRover ? num('MODE_CH') : num('FLTMODE_CH');
   const map = stickMapFrom(num);
+  // Without the real RCMAP the sticks could land on the throttle channel.
+  const rcMapKnown = parameters.has('RCMAP_THROTTLE');
+  const reversedKey = [...reversedAxes(map, num)].join(',');
+  const reversed = useMemo(() => new Set(reversedKey.split(',').filter(Boolean) as StickAxis[]), [reversedKey]);
   const steerCh = map.roll;
   const thrCh = map.throttle;
 
@@ -114,15 +118,16 @@ export const StickTestPanel: React.FC = () => {
 
   const sendOverride = useCallback((r: number, p: number, t: number, y: number) => {
     if (isRover) {
+      const pulses = applyReversal({ roll: r, pitch: 65535, throttle: t, yaw: 65535 }, reversed);
       const channels = new Array(18).fill(65535);
-      channels[steerCh - 1] = r; // steering
-      channels[thrCh - 1] = t;   // throttle
+      channels[steerCh - 1] = pulses.roll; // steering
+      channels[thrCh - 1] = pulses.throttle;
       if (modeChannel && modeChannel >= 5 && modeChannel <= 18) channels[modeChannel - 1] = 1000;
       void window.electronAPI?.rcOverrideSetChannels?.(channels);
     } else {
       void window.electronAPI?.rcOverrideSet?.(r, p, t, y, modeChannel, 1000);
     }
-  }, [isRover, steerCh, thrCh, modeChannel]);
+  }, [isRover, steerCh, thrCh, modeChannel, reversed]);
 
   // Park the throttle slider at the frame's neutral when idle (Rover 1500 = stop).
   useEffect(() => {
@@ -306,7 +311,7 @@ export const StickTestPanel: React.FC = () => {
         ) : (
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || !rcMapKnown}
             onClick={start}
             className="h-9 px-4 inline-flex items-center gap-2 rounded-lg border border-pink-500/40 text-pink-300 bg-pink-500/10 hover:bg-pink-500/20 disabled:opacity-50 text-sm font-medium"
           >
@@ -343,6 +348,12 @@ export const StickTestPanel: React.FC = () => {
       <div className="mt-2 text-[11px] text-content-tertiary">
         {t('mavlink-config:stickTestPanel.fcColumnHint', { channels: isRover ? `RC${steerCh}/RC${thrCh}` : `RC${map.roll}/RC${map.pitch}/RC${map.throttle}/RC${map.yaw}` })}
       </div>
+
+      {!rcMapKnown && (
+        <div className="mt-4 text-xs text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
+          {t('mavlink-config:stickTestPanel.needsRcMap')}
+        </div>
+      )}
 
       {active && (
         <div className="mt-4 text-xs text-pink-400/80 bg-pink-500/5 border border-pink-500/20 rounded-lg p-3">

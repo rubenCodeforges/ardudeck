@@ -12,6 +12,7 @@
  *                       the FC when "Send override" is enabled).
  */
 
+import { ui } from '../ui/ui-hooks';
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -141,6 +142,7 @@ export function OsdLivePanel() {
                     {t('osd:osdLivePanel.sendOverride')}
                   </label>
                   <button
+                    {...ui('button', { variant: 'ghost' })}
                     onClick={handleReset}
                     className="text-[10px] text-blue-400 hover:text-blue-300"
                   >

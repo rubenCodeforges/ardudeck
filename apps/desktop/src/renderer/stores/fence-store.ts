@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { hazardFences } from './hazards-store';
+import { useMissionStore } from './mission-store';
 import { t } from '../../shared/i18n/index.js';
 import {
   type FenceItem,
@@ -136,7 +138,9 @@ export const useFenceStore = create<FenceStore>((set, get) => ({
 
   uploadFence: async () => {
     const { polygons, circles, returnPoint } = get();
-    const items = buildFenceItems(polygons, circles, returnPoint);
+    const home = useMissionStore.getState().homePosition;
+    const locked = hazardFences({ polygons, circles }, home);
+    const items = buildFenceItems([...polygons, ...locked.polygons], [...circles, ...locked.circles], returnPoint);
 
     if (items.length === 0) {
       set({ error: t('stores:fenceStore.nothingToUpload') });

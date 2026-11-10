@@ -8,6 +8,7 @@
  * menus read as one family; the count reflects how many instruments are on
  * screen.
  */
+import { ui } from '../../ui/ui-hooks';
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { useMapInstrumentsStore, resolveInstrumentVisible } from '../../../stores/map-instruments-store';
@@ -30,6 +31,7 @@ export function InstrumentsMenu(): JSX.Element {
   return (
     <>
       <button
+        {...ui('button', { variant: 'secondary' })}
         type="button"
         onClick={() => setOpen(true)}
         data-tip={t('map:instrumentsMenu.tip')}

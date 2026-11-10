@@ -142,6 +142,17 @@
     "right": "R",
     "roll": "ROLL",
     "sats": "{{n}} 顆衛星",
+    "gps2": "GPS2 {{fix}} · {{n}}",
+    "pickWp": "選擇航點",
+    "wpFirst": "首個",
+    "wpCurrent": "目前",
+    "wpLast": "末個",
+    "wpRange": "1 至 {{count}}",
+    "wpGroup": "群組",
+    "pickWpHint": "請選擇航點",
+    "flyToWp": "飛往航點 {{n}}",
+    "flyingToWp": "正在飛往航點 {{n}}",
+    "jumpFailed": "無法切換航點",
     "satsNone": "-- 顆衛星",
     "spd": "SPD",
     "spdShort": "速度",
@@ -192,6 +203,7 @@
     "rangefinder": "測距儀",
     "ekf": "EKF 健康狀態",
     "flightTimer": "飛行計時器",
+    "mavlinkFields": "MAVLink 欄位",
     "proximity": "避障雷達距離"
   },
   "instrumentsCatalog": {
@@ -374,7 +386,7 @@
     "button": "圖層",
     "buttonCount": "圖層 ({{count}})",
     "height": "高度",
-    "modules": "模組",
+    "modules": "Cargo",
     "overlays": "疊加層",
     "tip": "地圖圖層與疊加層"
   },
@@ -601,6 +613,16 @@
     "hint": "綠色框內的所有內容都會被下載。縮小可取得較大的區域。",
     "vehicle": "載具",
     "useThisArea": "使用此區域"
+  },
+  "mavlinkFieldInstrument": {
+    "title": "MAVLink 欄位",
+    "empty": "請在此儀表的設定中選擇欄位。",
+    "noData": "無資料",
+    "pickMessage": "訊息",
+    "pickField": "欄位",
+    "add": "新增",
+    "limit": "最多 {{max}} 個欄位,來自載具目前正在傳送的訊息。",
+    "noMessages": "尚無訊息:請先連接載具。"
   },
   "proximityDiscovery": {
     "add": "新增避障儀表",

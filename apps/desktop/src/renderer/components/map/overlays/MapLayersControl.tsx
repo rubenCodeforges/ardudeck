@@ -13,6 +13,7 @@
  * and scrolls instead of spilling underneath them when the list is long.
  */
 
+import { ui } from '../../ui/ui-hooks';
 import { useTranslation } from 'react-i18next';
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -21,6 +22,7 @@ import { LayerIcon } from '../LayerIcon';
 import { useOverlayStore } from '../../../stores/overlay-store';
 import { OVERLAYS } from './OverlayToggles';
 import { useModuleMapLayerToggles } from '../../panels/ModuleMapLayers';
+import { useUserModelsStore } from '../../../stores/user-models-store';
 
 interface MapLayersControlProps {
   baseLayers: LayerKey[];
@@ -71,6 +73,7 @@ export function MapLayersControl({
           sibling buttons; icon-left/label-after (no justify-center) so the
           whole column shares one left-aligned icon-then-text layout. */}
       <button
+        {...ui('button', { variant: 'secondary' })}
         ref={btnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -129,6 +132,8 @@ export function MapLayersControl({
 
                 <ModuleLayerToggles row={row} />
 
+                <UserModelsEntry row={row} onOpen={() => setOpen(false)} />
+
                 {extra && <div className="p-1 border-t border-subtle">{extra}</div>}
               </div>
             </div>
@@ -163,5 +168,27 @@ function ModuleLayerToggles({ row }: { row: (on: boolean) => string }): JSX.Elem
         ))}
       </div>
     </>
+  );
+}
+
+function UserModelsEntry({ row, onOpen }: { row: (on: boolean) => string; onOpen: () => void }): JSX.Element {
+  const { t } = useTranslation();
+  const count = useUserModelsStore((s) => s.models.length);
+  return (
+    <div className="p-1 border-t border-subtle">
+      <button
+        type="button"
+        onClick={() => { onOpen(); useUserModelsStore.getState().openDialog(); }}
+        data-tip={t('models:layersEntry.tip')}
+        className={row(false)}
+      >
+        <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+          <path d="M3.27 6.96 12 12.01l8.73-5.05M12 22.08V12" />
+        </svg>
+        <span className="flex-1">{t('models:layersEntry.label')}</span>
+        {count > 0 && <span className="text-[10px] text-content-tertiary tabular-nums">{count}</span>}
+      </button>
+    </div>
   );
 }

@@ -42,4 +42,12 @@ describe('building geometry', () => {
     const far: Building = { rings: [square.map(([lon, lat]) => [lon + 0.1, lat] as [number, number])], heightM: 10, minHeightM: 0 };
     expect(buildBuildingsGeometry([far], flat(0), { lat: 47, lon: 8 })).toBeNull();
   });
+
+  it('leaves out buildings a scene model stands in', () => {
+    const b: Building = { rings: [square], heightM: 10, minHeightM: 0 };
+    const model = { rings: [], center: { lat: 47.0001, lng: 8.0001 }, radiusM: 30 };
+    const away = { rings: [], center: { lat: 47.01, lng: 8 }, radiusM: 30 };
+    expect(buildBuildingsGeometry([b], flat(0), { lat: 47, lon: 8 }, undefined, [model])).toBeNull();
+    expect(buildBuildingsGeometry([b], flat(0), { lat: 47, lon: 8 }, undefined, [away])).not.toBeNull();
+  });
 });

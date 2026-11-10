@@ -13,6 +13,7 @@ import {
 } from '../../stores/weather-store';
 import { LocationPickerDialog } from './LocationPickerDialog';
 import { useTranslation } from 'react-i18next';
+import { ui } from '../ui/ui-hooks';
 
 const AUTO_SOURCE_LABEL_KEY: Record<Exclude<WeatherLocationSource, 'override'>, string> = {
   vehicle: 'weather:source.vehicle',
@@ -35,6 +36,7 @@ export function LocationPicker(): JSX.Element {
   return (
     <>
       <button
+        {...ui('button', { variant: 'secondary' })}
         onClick={() => setOpen(true)}
         className="group flex items-center gap-1.5 text-xs text-content-secondary hover:text-content hover:border-default transition-colors px-2 py-1 rounded-md border border-subtle bg-surface"
         data-tip={t('weather:locationPicker.pickTip')}

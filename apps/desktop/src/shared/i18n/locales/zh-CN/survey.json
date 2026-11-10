@@ -10,7 +10,7 @@
     "manualTitle": "无相机：直接设置线距（例如地面车/割草机割幅宽度）",
     "saved": "已保存",
     "searchPlaceholder": "搜索相机...",
-    "sensorSummary": "{{sensorWidth}}x{{sensorHeight}}mm 传感器，{{focalLength}}mm,{{imageWidth}}x{{imageHeight}}px",
+    "sensorSummary": "{{sensorWidth}}x{{sensorHeight}}mm 传感器，{{focalLength}}mm，{{imageWidth}}x{{imageHeight}}px",
     "magnetometerLabel": "磁力计",
     "magnetometerHint": "点传感器：直接设置线距，不拍照",
     "magnetometerSummary": "点传感器：直接设置线距，无相机触发"

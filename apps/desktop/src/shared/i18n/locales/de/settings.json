@@ -279,11 +279,21 @@
       "supports": "{{firmware}} unterstützt nur: {{types}}.",
       "title": "Problem mit der Profilkompatibilität"
     },
+    "telemetryLog": {
+      "title": "Telemetrieprotokoll",
+      "record": "Telemetrie in einer .tlog-Datei aufzeichnen",
+      "recordHint": "Jede Verbindung wird als MAVLink-.tlog im App-Datenordner gespeichert. Sie lässt sich in jedem Tlog-Viewer öffnen. Es bleiben die neuesten 50 Dateien, höchstens 2 GB.",
+      "openFolder": "Protokollordner öffnen"
+    },
     "terrainUplink": {
       "title": "Gelände-Uplink",
       "serve": "Gelände an Fluggeräte senden",
       "serveHint": "Beantwortet die Geländeanfragen des Autopiloten aus den Höhendaten der Karte, einschließlich einer Vermessungsoberfläche aus einem Cargo",
-      "counts": "Gesendete Blöcke: {{served}}, fehlende Daten: {{missing}}"
+      "counts": "Gesendete Blöcke: {{served}}, fehlende Daten: {{missing}}",
+      "unavailable": "{{count}} Blöcke fehlen: Höhenkacheln nicht verfügbar (offline oder blockiert?).",
+      "unavailableHint": "Internetverbindung prüfen und den Kachel-Cache leeren. Ohne Geländedaten kann das Fahrzeug keine geländerelative Höhe nutzen und kehrt eventuell zurück.",
+      "gaps": "{{count}} Blöcken fehlt ein Teil der Höhendaten (Rand der Kartendaten); das Fahrzeug fragt weiter an.",
+      "errors": "{{count}} Blöcke sind mit einem Fehler fehlgeschlagen; siehe Konsolenprotokoll."
     },
     "console": {
       "title": "Konsole",
@@ -557,7 +567,20 @@
       "waveHeight": "Wellenhöhe",
       "windFrom": "Wind aus {{dir}}"
     },
-    "weight": "Gewicht"
+    "weight": "Gewicht",
+    "carto": {
+      "label": "CARTO-API-Schlüssel (Kartenstil Dunkel)",
+      "freeAt": "- ohne Schlüssel verwendet der Stil Dunkel Esri. Schlüssel erhältlich unter",
+      "placeholder": "Fügen Sie Ihren CARTO-API-Schlüssel ein",
+      "configured": "Schlüssel konfiguriert: Der Stil Dunkel verwendet CARTO"
+    },
+    "voiceVolume": {
+      "title": "Sprachlautstärke",
+      "hint": "Getrennte Lautstärke für die Werkbank und den Flug: Leise oder aus beim Einrichten, beim Scharfschalten kommt die Stimme mit der Lautstärke für scharf zurück. Die Stummtaste in der oberen Leiste schaltet weiterhin alles stumm.",
+      "disarmed": "Unscharf",
+      "armed": "Scharf",
+      "silent": "Stumm"
+    }
   },
   "signingSection": {
     "active": "aktiv",
@@ -762,5 +785,7 @@
     "secondDecimals_other": "Sekunden mit {{count}} Nachkommastellen"
   },
   "themeTitle": "Thema",
-  "themeHint": "Ändert die Farben in allen Ansichten."
+  "themeHint": "Ändert die Farben in allen Ansichten.",
+  "themeSettings": "Thema-Einstellungen",
+  "themeSettingsTitle": "Einstellungen für {{name}}"
 }

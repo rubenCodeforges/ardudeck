@@ -14,8 +14,7 @@
     "trainer": "Trainer",
     "locus": "Locus",
     "weatherBriefing": "Weather Briefing",
-    "productionLine": "Production Line",
-    "themeBridge": "Bridge"
+    "productionLine": "Production Line"
   },
   "short": {
     "calibration": "CAL",
@@ -28,7 +27,7 @@
     "logs": "LOGS",
     "lua-graph": "LUA",
     "mission": "MISSION",
-    "modules": "MODS",
+    "modules": "CARGO",
     "osd": "OSD",
     "parameters": "PARAMS",
     "production": "PRODUCE",
@@ -39,7 +38,6 @@
     "sitl": "SITL",
     "telemetry": "TELEM",
     "trainer": "TRAINER",
-    "tribute": "TRIBUTE",
     "vault": "FLEET",
     "weather": "WEATHER"
   }

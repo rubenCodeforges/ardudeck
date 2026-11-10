@@ -519,7 +519,9 @@ class ArduPilotSitlProcessManager {
         }
       }
 
-      const overlayBase = generateDefaultParams(
+      // glider.parm is a complete airframe (no motor, THR_MAX 0, balloon on RC6); the powered-plane
+      // tuning overlay would land after it and turn the glider back into a plane with a motor.
+      const overlayBase = model === 'glider' ? '' : generateDefaultParams(
         config.vehicleType,
         model,
         effBattVoltage,

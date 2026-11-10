@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Compass, AlertTriangle, CheckCircle2, Loader2, Satellite } from 'lucide-react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useTelemetryStore } from '../../stores/telemetry-store';
+import { ui } from '../ui/ui-hooks';
 
 interface LargeVehicleMagCalDialogProps {
   onClose: () => void;
@@ -125,7 +126,7 @@ export function LargeVehicleMagCalDialog({ onClose }: LargeVehicleMagCalDialogPr
               {t('calibration:largeVehicleMagCalDialog.headingLabel')}
             </label>
             <div className="flex gap-2">
-              <input
+              <input {...ui('input')}
                 ref={inputRef}
                 type="number"
                 inputMode="decimal"
@@ -139,7 +140,7 @@ export function LargeVehicleMagCalDialog({ onClose }: LargeVehicleMagCalDialogPr
                 placeholder="0 - 359"
                 className="flex-1 px-3 py-2 text-sm rounded-lg bg-surface border border-subtle focus:border-amber-400/60 focus:outline-none focus:ring-1 focus:ring-amber-400/40 text-content disabled:opacity-50"
               />
-              <button
+              <button {...ui('button', { variant: 'secondary' })}
                 type="button"
                 onClick={useLiveHeading}
                 disabled={run.kind === 'running' || run.kind === 'success'}
@@ -182,14 +183,14 @@ export function LargeVehicleMagCalDialog({ onClose }: LargeVehicleMagCalDialogPr
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-subtle">
-          <button
+          <button {...ui('button', { variant: 'ghost' })}
             onClick={onClose}
             className="px-3 py-1.5 rounded-lg text-xs text-content-secondary hover:text-content hover:bg-surface transition-colors"
           >
             {run.kind === 'success' ? t('common:close') : t('common:cancel')}
           </button>
           {run.kind !== 'success' && (
-            <button
+            <button {...ui('button', { variant: 'primary' })}
               onClick={submit}
               disabled={!headingValid || run.kind === 'running'}
               className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-amber-600 hover:bg-amber-500 disabled:bg-amber-600/40 disabled:cursor-not-allowed transition-colors"

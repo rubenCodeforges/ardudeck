@@ -38,7 +38,7 @@
     },
     "cargo": {
       "title": "Add features with cargo",
-      "blurb": "Mods lists the cargo you can add: install, update or remove each one. Installed cargo brings its own views and cards into the app."
+      "blurb": "The Cargo Bay lists the cargo you can add: install, update or remove each one. Installed cargo brings its own views and cards into the app."
     },
     "adjust": {
       "title": "Adjust while flying",

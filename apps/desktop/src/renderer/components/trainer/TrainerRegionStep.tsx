@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TrainerCatalogue, TrainerRegion } from '../../../shared/trainer-types';
+import { ui } from '../ui/ui-hooks';
 
 /**
  * Where you fly, as the places themselves rather than as a list of names.
@@ -50,6 +51,7 @@ export function TrainerRegionStep({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
+            {...ui('button', { variant: 'secondary' })}
             className="inline-flex items-center gap-1.5 rounded-lg border border-subtle bg-surface-raised px-3 py-1.5 text-sm font-medium text-content transition-colors hover:border-strong hover:bg-surface disabled:opacity-50"
             onClick={onRescan}
             disabled={rescanning}
@@ -58,6 +60,7 @@ export function TrainerRegionStep({
             {t('common:rescan')}
           </button>
           <button
+            {...ui('button', { variant: 'primary' })}
             className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
             onClick={onNew}
             disabled={!catalogue}
@@ -240,6 +243,7 @@ function RegionCard({
                   : t('trainer:trainerRegionStep.deleteThis')}
               </span>
               <button
+                {...ui('button', { variant: 'ghost' })}
                 className="rounded px-2 py-1 text-content-secondary hover:bg-surface-raised"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -249,6 +253,7 @@ function RegionCard({
                 {t('common:cancel')}
               </button>
               <button
+                {...ui('button', { variant: 'danger' })}
                 className="rounded bg-red-500/15 px-2 py-1 font-medium text-red-400 hover:bg-red-500/25"
                 disabled={busy}
                 onClick={(e) => {
@@ -261,6 +266,7 @@ function RegionCard({
             </div>
           ) : (
             <button
+              {...ui('button', { variant: 'ghost' })}
               className="flex items-center gap-1.5 rounded px-2 py-1 text-[11px] text-content-tertiary transition-colors hover:bg-surface-raised hover:text-red-400"
               onClick={(e) => {
                 e.stopPropagation();

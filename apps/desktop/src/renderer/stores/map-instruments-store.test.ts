@@ -2,6 +2,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const KEY = 'map-instrument-layouts';
+// Every test re-imports the store and the instrument registry from cold; under the full parallel run that can pass 5 s.
+const COLD_IMPORT_TIMEOUT_MS = 20_000;
 
 async function loadStoredLayouts(raw: unknown) {
   localStorage.setItem(KEY, JSON.stringify(raw));
@@ -10,7 +12,7 @@ async function loadStoredLayouts(raw: unknown) {
   return mod.useMapInstrumentsStore.getState().savedLayouts;
 }
 
-describe('saved layout display modes', () => {
+describe('saved layout display modes', { timeout: COLD_IMPORT_TIMEOUT_MS }, () => {
   beforeEach(() => {
     localStorage.clear();
   });
@@ -66,7 +68,7 @@ describe('saved layout display modes', () => {
   });
 });
 
-describe('main store proximity migration', () => {
+describe('main store proximity migration', { timeout: COLD_IMPORT_TIMEOUT_MS }, () => {
   beforeEach(() => {
     localStorage.clear();
   });

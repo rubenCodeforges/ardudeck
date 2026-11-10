@@ -23,10 +23,12 @@ function clampRatio(v: number): number {
 interface Persisted {
   target: PanelId | null;
   ratio: number;
+  /** The target covers the whole map area, instruments on top (mobile's single-pane mode). */
+  full: boolean;
 }
 
 function readStored(): Persisted {
-  const fallback: Persisted = { target: null, ratio: DEFAULT_RATIO };
+  const fallback: Persisted = { target: null, ratio: DEFAULT_RATIO, full: false };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return fallback;
@@ -37,7 +39,7 @@ function readStored(): Persisted {
         ? (parsed.target as PanelId)
         : null;
     const ratio = typeof parsed.ratio === 'number' ? clampRatio(parsed.ratio) : DEFAULT_RATIO;
-    return { target, ratio };
+    return { target, ratio, full: target !== null && parsed.full === true };
   } catch {
     return fallback;
   }
@@ -56,6 +58,9 @@ interface MapSplitStore {
   target: PanelId | null;
   /** Map (left) fraction of the content area, MIN..MAX. */
   ratio: number;
+  /** Target fills the map area under the instruments instead of sharing it. */
+  full: boolean;
+  setFull: (full: boolean) => void;
   setTarget: (target: PanelId | null) => void;
   /**
    * Set by a workspace layout, which brings its own cockpit: MapPanel must not swap in the
@@ -74,13 +79,14 @@ const initial = readStored();
 export const useMapSplitStore = create<MapSplitStore>((set, get) => ({
   target: initial.target,
   ratio: initial.ratio,
+  full: initial.full,
   layoutApplyPending: false,
   applyFromLayout: (target, ratio) => {
     const next = target === 'map' ? null : target;
     const flips = (get().target === null) !== (next === null);
     const clamped = clampRatio(ratio);
-    set({ target: next, ratio: clamped, layoutApplyPending: flips });
-    persist({ target: next, ratio: clamped });
+    set({ target: next, ratio: clamped, full: false, layoutApplyPending: flips });
+    persist({ target: next, ratio: clamped, full: false });
   },
   consumeLayoutApply: () => {
     if (!get().layoutApplyPending) return false;
@@ -89,16 +95,22 @@ export const useMapSplitStore = create<MapSplitStore>((set, get) => ({
   },
   setTarget: (target) => {
     const next = target === 'map' ? null : target;
-    set({ target: next });
-    persist({ target: next, ratio: get().ratio });
+    const full = next !== null && get().full;
+    set({ target: next, full });
+    persist({ target: next, ratio: get().ratio, full });
+  },
+  setFull: (full) => {
+    const next = get().target !== null && full;
+    set({ full: next });
+    persist({ target: get().target, ratio: get().ratio, full: next });
   },
   setRatio: (ratio) => {
     const clamped = clampRatio(ratio);
     set({ ratio: clamped });
-    persist({ target: get().target, ratio: clamped });
+    persist({ target: get().target, ratio: clamped, full: get().full });
   },
   clear: () => {
-    set({ target: null });
-    persist({ target: null, ratio: get().ratio });
+    set({ target: null, full: false });
+    persist({ target: null, ratio: get().ratio, full: false });
   },
 }));

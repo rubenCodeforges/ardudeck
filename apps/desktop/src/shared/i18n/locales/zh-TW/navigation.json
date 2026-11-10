@@ -14,8 +14,7 @@
     "trainer": "訓練器",
     "locus": "Locus",
     "weatherBriefing": "氣象簡報",
-    "productionLine": "生產線",
-    "themeBridge": "艦橋"
+    "productionLine": "生產線"
   },
   "short": {
     "calibration": "校正",
@@ -28,7 +27,7 @@
     "logs": "日誌",
     "lua-graph": "LUA",
     "mission": "任務",
-    "modules": "模組",
+    "modules": "CARGO",
     "osd": "OSD",
     "parameters": "參數",
     "production": "生產",
@@ -39,7 +38,6 @@
     "sitl": "SITL",
     "telemetry": "遙測",
     "trainer": "訓練",
-    "tribute": "獻詞",
     "vault": "機隊",
     "weather": "天氣"
   }

@@ -33,6 +33,7 @@ import {
   UNIT_PRECISION,
   weightInputValueFromGrams,
 } from '../../../shared/user-units.js';
+import { ui } from '../ui/ui-hooks';
 
 type EditorMode =
   | { kind: 'closed' }
@@ -390,7 +391,7 @@ export function CustomFramePanel() {
       <div className="rounded-lg border border-subtle bg-surface-raised/40 p-2 space-y-2">
         <div className="flex items-center justify-between">
           <div className="text-[10px] uppercase tracking-wide text-content-tertiary">{t('sitl:customFrame.rotorDiscArea')}</div>
-          <button
+          <button {...ui('button', { variant: 'ghost' })}
             type="button"
             onClick={onEstimateProp}
             className="text-[10px] text-blue-400 hover:text-blue-300 underline"
@@ -404,7 +405,7 @@ export function CustomFramePanel() {
             <label className="block text-[11px] text-content-secondary">
               {t('sitl:customFrame.propDiameter')} <span className="text-content-tertiary ml-1">{propMm != null ? t('sitl:customFrame.propUnitInMm', { mm: propMm.toFixed(0) }) : t('sitl:customFrame.propUnitIn')}</span>
             </label>
-            <input
+            <input {...ui('input')}
               type="text"
               inputMode="decimal"
               value={propDisplay}
@@ -416,7 +417,7 @@ export function CustomFramePanel() {
             <label className="block text-[11px] text-content-secondary">
               disc_area <span className="text-content-tertiary ml-1">{t('sitl:customFrame.discAreaUnit')}</span>
             </label>
-            <input
+            <input {...ui('input')}
               type="text"
               inputMode="decimal"
               value={getFieldDisplayValue('disc_area')}
@@ -434,7 +435,7 @@ export function CustomFramePanel() {
 
   return (
     <div className="bg-surface rounded-xl border border-subtle">
-      <button
+      <button {...ui('button', { variant: 'ghost' })}
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-surface-raised rounded-t-xl"
       >
@@ -460,7 +461,7 @@ export function CustomFramePanel() {
                 {list.find((f) => f.path === customFramePath)?.name ?? t('common:unknown')}
                 {customFrameMotors && <span className="text-content-secondary">{t('sitl:customFrame.motorsSuffix', { count: customFrameMotors })}</span>}
               </div>
-              <button
+              <button {...ui('button', { variant: 'ghost' })}
                 onClick={onDeactivate}
                 className="text-[11px] text-emerald-300 hover:text-emerald-100 underline"
               >
@@ -481,7 +482,7 @@ export function CustomFramePanel() {
                 <option key={k} value={k}>{sitlFrameTemplateName(k)}</option>
               ))}
             </select>
-            <button
+            <button {...ui('button', { variant: 'secondary' })}
               onClick={onImport}
               disabled={busy}
               className="text-xs px-2 py-1 rounded bg-surface-raised border border-subtle hover:border-blue-500/50 text-content flex items-center gap-1 disabled:opacity-50"
@@ -505,7 +506,7 @@ export function CustomFramePanel() {
                         </span>
                       )}
                     </span>
-                    <button
+                    <button {...ui('button', { variant: isActive ? 'secondary' : 'primary' })}
                       onClick={() => isActive ? onDeactivate() : onActivate(item)}
                       className={`shrink-0 px-2 py-1 text-xs rounded font-medium transition-colors ${
                         isActive
@@ -516,16 +517,16 @@ export function CustomFramePanel() {
                     >
                       {isActive ? t('sitl:customFrame.stopUsing') : t('sitl:customFrame.use')}
                     </button>
-                    <button onClick={() => onEdit(item.id)} className="p-1 rounded hover:bg-surface text-content-secondary hover:text-blue-400" title={t('common:edit')}>
+                    <button {...ui('icon-button')} onClick={() => onEdit(item.id)} className="p-1 rounded hover:bg-surface text-content-secondary hover:text-blue-400" title={t('common:edit')}>
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => onDuplicate(item.id)} disabled={busy} className="p-1 rounded hover:bg-surface text-content-secondary hover:text-blue-400 disabled:opacity-50" title={t('sitl:customFrame.duplicateTip')}>
+                    <button {...ui('icon-button')} onClick={() => onDuplicate(item.id)} disabled={busy} className="p-1 rounded hover:bg-surface text-content-secondary hover:text-blue-400 disabled:opacity-50" title={t('sitl:customFrame.duplicateTip')}>
                       <Copy className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => onExport(item.id)} className="p-1 rounded hover:bg-surface text-content-secondary hover:text-blue-400" title={t('sitl:customFrame.exportJson')}>
+                    <button {...ui('icon-button')} onClick={() => onExport(item.id)} className="p-1 rounded hover:bg-surface text-content-secondary hover:text-blue-400" title={t('sitl:customFrame.exportJson')}>
                       <Download className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => onDelete(item.id, item.name)} className="p-1 rounded hover:bg-surface text-content-secondary hover:text-red-400" title={t('sitl:customFrame.delete')}>
+                    <button {...ui('icon-button')} onClick={() => onDelete(item.id, item.name)} className="p-1 rounded hover:bg-surface text-content-secondary hover:text-red-400" title={t('sitl:customFrame.delete')}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -544,21 +545,21 @@ export function CustomFramePanel() {
           {editor.kind !== 'closed' && (
             <div className="space-y-3 border-t border-subtle pt-3">
               <div className="flex items-center gap-2">
-                <input
+                <input {...ui('input')}
                   type="text"
                   value={editor.name}
                   onChange={(e) => setEditor({ ...editor, name: e.target.value })}
                   placeholder={t('sitl:customFrame.namePlaceholder')}
                   className="flex-1 px-2 py-1 text-sm bg-surface-input border border-subtle rounded text-content focus:outline-none focus:border-blue-500"
                 />
-                <button
+                <button {...ui('button', { variant: 'primary' })}
                   onClick={onSave}
                   disabled={busy || !editor.name.trim()}
                   className="text-xs px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50"
                 >
                   {t('common:save')}
                 </button>
-                <button
+                <button {...ui('icon-button')}
                   onClick={() => setEditor({ kind: 'closed' })}
                   className="p-1 rounded hover:bg-surface-raised text-content-secondary"
                 >
@@ -579,7 +580,7 @@ export function CustomFramePanel() {
                             {field}
                             {getFieldHint(field) && <span className="text-content-tertiary ml-1">({getFieldHint(field)})</span>}
                           </label>
-                          <input
+                          <input {...ui('input')}
                             type="text"
                             inputMode="decimal"
                             value={getFieldDisplayValue(field)}

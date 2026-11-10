@@ -154,13 +154,49 @@ export interface OverlayOverhang {
 
 const NO_OVERHANG: OverlayOverhang = { top: 0, right: 0, bottom: 0, left: 0 };
 
+interface Box { x: number; y: number; w: number; h: number; side?: 'below' | 'left' }
+
+/** Map chrome an overlay must never sit under (the Instruments button), parent-relative. */
+function reservedBoxes(parent: HTMLElement): Box[] {
+  const pr = parent.getBoundingClientRect();
+  const out: Box[] = [];
+  for (const node of document.querySelectorAll<HTMLElement>('[data-overlay-reserve]')) {
+    const r = node.getBoundingClientRect();
+    // Only chrome on this map: another map panel's button never overlaps this parent.
+    if (r.width === 0 || r.right <= pr.left || r.left >= pr.right || r.bottom <= pr.top || r.top >= pr.bottom) continue;
+    out.push({ x: r.left - pr.left, y: r.top - pr.top, w: r.width, h: r.height, side: node.dataset.overlayReserve === 'left' ? 'left' : 'below' });
+  }
+  return out;
+}
+
+const RESERVE_GAP = 4;
+
+/** Moves an overlay off reserved chrome: below it, or to its left for a column (left only if there is room). */
+export function avoidReserved(pos: Pos, size: { w: number; h: number }, reserved: Box[]): Pos {
+  let { x, y } = pos;
+  for (const b of reserved) {
+    const overlaps = x < b.x + b.w && x + size.w > b.x && y < b.y + b.h && y + size.h > b.y;
+    if (!overlaps) continue;
+    if (b.side === 'left') {
+      const left = b.x - size.w - RESERVE_GAP;
+      if (left >= 0) x = left;
+    } else {
+      y = b.y + b.h + RESERVE_GAP;
+    }
+  }
+  return { x, y };
+}
+
 function clampToParent(el: HTMLElement, pos: Pos, o: OverlayOverhang = NO_OVERHANG): Pos {
   const parent = el.offsetParent as HTMLElement | null;
   if (!parent) return pos;
-  return {
+  const maxY = parent.clientHeight - el.offsetHeight + o.bottom;
+  const inside = {
     x: Math.max(-o.left, Math.min(parent.clientWidth - el.offsetWidth + o.right, pos.x)),
-    y: Math.max(-o.top, Math.min(parent.clientHeight - el.offsetHeight + o.bottom, pos.y)),
+    y: Math.max(-o.top, Math.min(maxY, pos.y)),
   };
+  const pushed = avoidReserved(inside, { w: el.offsetWidth, h: el.offsetHeight }, reservedBoxes(parent));
+  return { x: pushed.x, y: Math.min(maxY, pushed.y) };
 }
 
 function toAnchor(el: HTMLElement, pos: Pos): OverlayAnchorPos | null {

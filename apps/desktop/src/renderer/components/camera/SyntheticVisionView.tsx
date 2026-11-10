@@ -34,7 +34,8 @@ import {
   type SvtQuality,
 } from './svt/svt-terrain';
 import { loadDrapeRings, recenterDistanceM, validImagery } from './svt/svt-satellite';
-import { loadBuildings, buildBuildingsGeometry, cancelBuildingLoads, BUILDINGS_RECENTER_M } from './svt/svt-buildings';
+import { loadBuildings, buildBuildingsGeometry, cancelBuildingLoads, BUILDINGS_RECENTER_M, type Building } from './svt/svt-buildings';
+import { exclusionZonesFor } from '../../three/scene-model-exclusion';
 import { validBuildings } from './svt/svt-building-sources';
 import {
   eulerRatesFromBody,
@@ -231,6 +232,10 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
   const [buildingsStatus, setBuildingsStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const buildingsShownRef = useRef<string | null>(null);
   const buildingsRequestedRef = useRef<string | null>(null);
+  // the last building set, kept so a model change re-cuts it without a reload
+  const buildingsDataRef = useRef<{ list: Building[]; grid: ElevationGrid; lat: number; lon: number } | null>(null);
+  const [modelsLoaded, setModelsLoaded] = useState(0);
+  const modelExclusions = () => exclusionZonesFor(meshesFor('svt'), (k) => sceneRef.current?.modelRadius(k));
   // The grid the drape follows: state, not a ref, so a new patch re-runs the
   // imagery effect. Quality changes and the toggle do the same.
   const [drapeGrid, setDrapeGrid] = useState<ElevationGrid | null>(null);
@@ -410,7 +415,10 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
     const container = containerRef.current;
     if (!canvas || !container) return;
 
-    const scene = createSvtScene(canvas);
+    const scene = createSvtScene(canvas, {
+      onDirty: () => { dirtyRef.current = true; },
+      onModelsLoaded: () => setModelsLoaded((n) => n + 1),
+    });
     sceneRef.current = scene;
     const cam = useCameraStore.getState();
     scene.setBuildingStyle({ roofImagery: cam.svtRoofImagery, facades: cam.svtFacades });
@@ -560,6 +568,7 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
   // Module meshes ride the terrain grid; re-place them on every mesh or terrain change.
   useEffect(() => {
     sceneRef.current?.setMeshes(meshesFor('svt'));
+    dirtyRef.current = true;
   }, [meshVersion, terrainVersion, terrainStatus]);
 
   // ─── Satellite drape ──────────────────────────────────────────────────────
@@ -621,6 +630,7 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
       buildingsRequestedRef.current = null;
       ++buildingsTokenRef.current;
       buildingsShownRef.current = null;
+      buildingsDataRef.current = null;
       scene.setBuildings(null);
       setBuildingsStatus('idle');
       dirtyRef.current = true;
@@ -639,7 +649,8 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
       try {
         const list = await loadBuildings(buildingsSource, lat, lon);
         if (token !== buildingsTokenRef.current) return;
-        sceneRef.current?.setBuildings(buildBuildingsGeometry(list, grid, { lat, lon }));
+        buildingsDataRef.current = { list, grid, lat, lon };
+        sceneRef.current?.setBuildings(buildBuildingsGeometry(list, grid, { lat, lon }, undefined, modelExclusions()));
         buildingsShownRef.current = buildingsSource;
         setBuildingsStatus('ready');
         dirtyRef.current = true;
@@ -650,6 +661,16 @@ export function SyntheticVisionView({ vehicle, isPrimary, osd, onActivate, strea
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buildingsSource, drapeGrid, buildingsLatKey, buildingsLonKey]);
+
+  // models cut the procedural buildings they stand in; re-cut when the set changes or a model's size becomes known
+  useEffect(() => {
+    const data = buildingsDataRef.current;
+    const scene = sceneRef.current;
+    if (!data || !scene) return;
+    scene.setBuildings(buildBuildingsGeometry(data.list, data.grid, { lat: data.lat, lon: data.lon }, undefined, modelExclusions()));
+    dirtyRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meshVersion, modelsLoaded]);
 
   const overlayAttitude = att ? { roll: att.roll, pitch: att.pitch } : null;
   // The 3D scene already shows a true banked horizon — drop the flat cyan line.

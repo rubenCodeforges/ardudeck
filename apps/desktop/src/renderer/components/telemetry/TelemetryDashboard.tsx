@@ -1115,12 +1115,14 @@ function TelemetryDashboardImpl() {
     // Generate unique panel id (in case the panel is already open)
     const uniqueId = `${id}-${Date.now()}`;
 
-    // Add panel to the currently active group or create new one
+    // Beside the active group, not as one more tab in it; the first panel fills the empty grid.
+    const activeGroup = apiRef.current.activeGroup;
     apiRef.current.addPanel({
       id: uniqueId,
       component,
       title,
       ...(params ? { params } : {}),
+      ...(activeGroup ? { position: { referenceGroup: activeGroup, direction: 'right' as const } } : {}),
     });
   }, []);
 

@@ -17,6 +17,7 @@ import {
   generatorDescription,
 } from './generator-registry';
 import type { SurveyPattern } from './survey-types';
+import { ui } from '../ui/ui-hooks';
 
 interface SurveyType {
   pattern: SurveyPattern;
@@ -119,7 +120,7 @@ export function SurveyStartButton() {
 
   return (
     <div ref={ref} data-survey-menu-root className="relative">
-      <button
+      <button {...ui('button', { variant: 'secondary' })}
         data-tour="mission-survey"
         onClick={() => setOpen(!open)}
         className="px-2.5 py-1.5 rounded text-xs font-medium bg-surface-solid border border-purple-400 shadow-sm text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1.5"

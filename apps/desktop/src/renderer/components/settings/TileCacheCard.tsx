@@ -5,6 +5,7 @@ import { MAP_LAYERS, type LayerKey } from '../../../shared/map-layers';
 import type { TileCacheStats, TileCacheDownloadProgress, TileCacheSettings, TileCacheDownloadRegion } from '../../../shared/ipc-channels';
 import { useTileCacheStore } from '../../stores/tile-cache-store';
 import { Map as MapIcon } from 'lucide-react';
+import { ui } from '../ui/ui-hooks';
 import { MapAreaPickerDialog, formatAreaSize } from '../map/MapAreaPickerDialog';
 
 const api = (window as any).electronAPI;
@@ -200,6 +201,7 @@ export function TileCacheCard() {
       {stats && Object.keys(stats.layers).length > 0 && (
         <div className="mb-4">
           <button
+            {...ui('button', { variant: 'ghost' })}
             onClick={() => setShowPerLayer(!showPerLayer)}
             className="text-xs text-content-secondary hover:text-content transition-colors flex items-center gap-1"
           >
@@ -220,6 +222,7 @@ export function TileCacheCard() {
                     </span>
                     {confirmLayer === layer ? (
                       <button
+                        {...ui('button', { variant: 'danger' })}
                         onClick={() => {
                           setConfirmLayer(null);
                           handleClearLayer(layer);
@@ -231,6 +234,7 @@ export function TileCacheCard() {
                       </button>
                     ) : (
                       <button
+                        {...ui('icon-button')}
                         onClick={() => setConfirmLayer(layer)}
                         disabled={clearLayer === layer}
                         className="text-red-400/60 hover:text-red-400 transition-colors disabled:opacity-50"
@@ -252,6 +256,7 @@ export function TileCacheCard() {
       {/* Actions */}
       <div className="flex items-center gap-2 mb-4">
         <button
+          {...ui('button', { variant: 'danger' })}
           onClick={() => {
             if (confirmClearAll) {
               setConfirmClearAll(false);
@@ -274,6 +279,7 @@ export function TileCacheCard() {
               : t('settings:tileCacheCard.clearAll')}
         </button>
         <button
+          {...ui('chip', { active: showDownload })}
           onClick={() => setShowDownload(!showDownload)}
           className={`px-3 py-1.5 text-xs rounded transition-colors border ${
             showDownload
@@ -284,6 +290,7 @@ export function TileCacheCard() {
           {t('settings:tileCacheCard.downloadRegion')}
         </button>
         <button
+          {...ui('button', { variant: 'secondary' })}
           onClick={refreshStats}
           className="px-3 py-1.5 text-xs rounded bg-surface-raised text-content hover:bg-surface-raised border border-subtle transition-colors"
         >
@@ -309,6 +316,7 @@ export function TileCacheCard() {
               )}
             </div>
             <button
+              {...ui('button', { variant: 'primary' })}
               onClick={() => setPickingArea(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-500 transition-colors shrink-0"
             >
@@ -331,6 +339,7 @@ export function TileCacheCard() {
             <div className="flex flex-wrap gap-1.5">
               {DOWNLOADABLE_LAYERS.map((key) => (
                 <button
+                  {...ui('chip', { active: dlLayers.has(key) })}
                   key={key}
                   onClick={() => toggleDlLayer(key)}
                   className={`px-2 py-0.5 text-xs rounded transition-colors ${
@@ -344,6 +353,7 @@ export function TileCacheCard() {
               ))}
               {/* DEM option */}
               <button
+                {...ui('chip', { active: dlLayers.has('dem') })}
                 onClick={() => toggleDlLayer('dem')}
                 className={`px-2 py-0.5 text-xs rounded transition-colors ${
                   dlLayers.has('dem')
@@ -415,6 +425,7 @@ export function TileCacheCard() {
               </div>
               {dlProgress.status === 'downloading' ? (
                 <button
+                  {...ui('button', { variant: 'danger' })}
                   onClick={handleCancelDownload}
                   className="px-3 py-1.5 text-xs rounded bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-600/30 transition-colors"
                 >
@@ -428,6 +439,7 @@ export function TileCacheCard() {
             </div>
           ) : (
             <button
+              {...ui('button', { variant: 'primary' })}
               onClick={handleStartDownload}
               disabled={dlLayers.size === 0 || (dlBounds.north === 0 && dlBounds.south === 0)}
               className="px-3 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -516,6 +528,7 @@ function SavedRegions() {
   return (
     <div className="mb-4">
       <button
+        {...ui('button', { variant: 'ghost' })}
         onClick={() => setExpanded(!expanded)}
         className="text-xs text-content-secondary hover:text-content transition-colors flex items-center gap-1"
       >
@@ -536,6 +549,7 @@ function SavedRegions() {
                 </div>
               </div>
               <button
+                {...ui('icon-button')}
                 onClick={() => deleteRegion(r.id)}
                 className="text-red-400/60 hover:text-red-400 transition-colors shrink-0 ml-2"
                 title={t('settings:tileCacheCard.removeRegion')}
@@ -549,6 +563,7 @@ function SavedRegions() {
 
           {regions.length > 1 && (
             <button
+              {...ui('button', { variant: 'danger' })}
               onClick={async () => {
                 const api = (window as any).electronAPI;
                 for (const r of regions) {

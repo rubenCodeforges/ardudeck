@@ -13,12 +13,14 @@ import { readFile, writeFile, mkdir, readdir, stat, unlink } from 'fs/promises';
 import { setMaxListeners } from 'events';
 import Store from 'electron-store';
 import { IPC_CHANNELS, type TileCacheStats, type TileCacheDownloadProgress, type TileCacheSettings, type TileCacheDownloadRegion } from '../shared/ipc-channels.js';
-import { resolveTileUrl, MAP_LAYERS, type LayerKey } from '../shared/map-layers.js';
+import { resolveTileUrl, MAP_LAYERS, CARTO_DARK_URL, CARTO_KEY_SERVICE, DARK_LABELS_LAYER, ESRI_CANVAS_MAX_NATIVE_ZOOM, ESRI_DARK_LABELS_URL, type LayerKey } from '../shared/map-layers.js';
+import { createHash } from 'crypto';
 import { getApiKey } from './overlays/overlay-ipc-handlers.js';
 import { demSourcesForTile, listTileSources, rasterSourceByKey, subscribeTileSources } from './terrain/tile-source-registry.js';
 import { composeDem, encodePng, readSourceTile, type Rgba } from './terrain/dem-tiles.js';
 import { listSceneMeshes, subscribeSceneMeshes } from './terrain/scene-mesh-registry.js';
 import { TILE_SOURCE_LAYER_PREFIX } from '../shared/tile-source-types.js';
+import { isImageBytes } from './tile-image.js';
 
 // ─── Settings Store ──────────────────────────────────────────────────────────
 
@@ -165,6 +167,8 @@ async function resolveDefaultTileBytes(
       }
     }
 
+    if (layer === 'dark' || layer === DARK_LABELS_LAYER) return await resolveDarkTile(layer, z, x, y);
+
     // Check if layer is valid (support radar-{path} dynamic layers)
     const isRadarLayer = layer.startsWith('radar-');
     if (!(layer in MAP_LAYERS) && !isRadarLayer) {
@@ -186,11 +190,14 @@ async function resolveDefaultTileBytes(
     }
 
     const tilePath = getTilePath(layer, fetchZ, fetchX, fetchY);
+    await purgeOutdatedLayerCache(layer);
 
     // 1. Try disk cache first
     try {
       const data = await readFile(tilePath);
-      return { status: 200, body: toArrayBuffer(data) };
+      if (isImageBytes(data)) return { status: 200, body: toArrayBuffer(data) };
+      // An error page or empty body cached by an older build: drop it and fetch again.
+      unlink(tilePath).catch(() => { /* ignore */ });
     } catch {
       // Cache miss — continue to network
     }
@@ -223,6 +230,8 @@ async function resolveDefaultTileBytes(
       }
 
       const buffer = Buffer.from(await response.arrayBuffer());
+      // Throttled servers answer 200 with an HTML page or nothing; that is a miss, never a tile.
+      if (!isImageBytes(buffer)) return { status: 200, body: toArrayBuffer(TRANSPARENT_PNG) };
 
       // Save to disk cache (fire-and-forget, don't block response)
       const dir = join(getCacheDir(), layer, String(fetchZ), String(fetchX));
@@ -335,6 +344,68 @@ async function clearCache(layerKey?: string): Promise<void> {
     }
     regionsStore.set('regions', []);
   }
+}
+
+// md5 of the tile Carto serves for every request without a valid key.
+const CARTO_PLACEHOLDER_MD5 = 'df9307c738f2c6dbc0f8d31837019f98';
+
+async function fetchTileInto(cacheLayer: string, z: number, x: number, y: number, url: string): Promise<Buffer | null> {
+  const tilePath = getTilePath(cacheLayer, z, x, y);
+  try {
+    const data = await readFile(tilePath);
+    if (isImageBytes(data)) return data;
+  } catch {
+    // cache miss
+  }
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (!isImageBytes(buffer)) return null;
+    if (createHash('md5').update(buffer).digest('hex') === CARTO_PLACEHOLDER_MD5) return null;
+    mkdir(join(getCacheDir(), cacheLayer, String(z), String(x)), { recursive: true })
+      .then(() => writeFile(tilePath, buffer))
+      .catch(() => { /* ignore write errors */ });
+    return buffer;
+  } catch {
+    return null;
+  }
+}
+
+/** The dark basemap: Carto with the user's key, else Esri Canvas plus its label overlay. Never Carto's key placeholder. */
+async function resolveDarkTile(layer: string, z: number, x: number, y: number): Promise<{ status: number; body: ArrayBuffer | null }> {
+  const transparent = { status: 200, body: toArrayBuffer(TRANSPARENT_PNG) };
+  const cartoKey = getApiKey(CARTO_KEY_SERVICE);
+  if (layer === DARK_LABELS_LAYER && cartoKey) return transparent;
+  if (layer === 'dark' && cartoKey) {
+    const url = CARTO_DARK_URL.replace('{z}', String(z)).replace('{x}', String(x)).replace('{y}', String(y)).replace('{key}', encodeURIComponent(cartoKey));
+    const carto = await fetchTileInto('dark-carto', z, x, y, url);
+    if (carto) return { status: 200, body: toArrayBuffer(carto) };
+  }
+  await purgeOutdatedLayerCache(layer);
+  const shift = Math.max(0, z - ESRI_CANVAS_MAX_NATIVE_ZOOM);
+  const [fz, fx, fy] = [z - shift, x >> shift, y >> shift];
+  const template = layer === DARK_LABELS_LAYER ? ESRI_DARK_LABELS_URL : MAP_LAYERS.dark.url;
+  const url = template.replace('{z}', String(fz)).replace('{y}', String(fy)).replace('{x}', String(fx));
+  const esri = await fetchTileInto(layer, fz, fx, fy, url);
+  return esri ? { status: 200, body: toArrayBuffer(esri) } : transparent;
+}
+
+/** Bumped when a layer moves to another tile provider: its old tiles are dropped once instead of mixing in. */
+const LAYER_CACHE_VERSIONS: Partial<Record<string, number>> = { dark: 2 };
+const checkedLayers = new Set<string>();
+
+async function purgeOutdatedLayerCache(layer: string): Promise<void> {
+  const version = LAYER_CACHE_VERSIONS[layer];
+  if (version === undefined || checkedLayers.has(layer)) return;
+  checkedLayers.add(layer);
+  const layerPath = join(getCacheDir(), layer);
+  const marker = join(layerPath, '.cache-version');
+  const current = await readFile(marker, 'utf-8').catch(() => '');
+  if (current.trim() === String(version)) return;
+  await removeDir(layerPath).catch(() => undefined);
+  await mkdir(layerPath, { recursive: true });
+  await writeFile(marker, String(version), 'utf-8');
 }
 
 async function removeDir(dirPath: string): Promise<void> {

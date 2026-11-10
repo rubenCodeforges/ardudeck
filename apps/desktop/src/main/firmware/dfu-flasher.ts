@@ -7,7 +7,8 @@ import * as fs from 'fs/promises';
 import * as zlib from 'zlib';
 import { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
-import type { DetectedBoard, FlashProgress, FlashResult } from '../../shared/firmware-types.js';
+import type { DetectedBoard, FlashOptions, FlashProgress, FlashResult } from '../../shared/firmware-types.js';
+import { hasBootloaderImage } from '../../shared/flash-route.js';
 import {
   DfuDevice,
   parseDfuFile,
@@ -122,10 +123,17 @@ export async function flashWithDfu(
   firmwarePath: string,
   board: DetectedBoard,
   window: BrowserWindow | null,
-  abortController?: AbortController
+  abortController?: AbortController,
+  options?: FlashOptions,
 ): Promise<FlashResult> {
   const startTime = Date.now();
   let device: DfuDevice | null = null;
+  const fullErase = !!options?.fullChipErase;
+
+  // A mass erase also removes the bootloader; only an image that brings its own may follow it.
+  if (fullErase && !hasBootloaderImage(firmwarePath)) {
+    return { success: false, error: t('main:flasher.fullEraseNeedsBootloaderImage'), duration: Date.now() - startTime };
+  }
 
   // BSOD FIX: Acquire flash lock to prevent concurrent operations
   if (!acquireFlashLock('dfu')) {
@@ -274,8 +282,10 @@ export async function flashWithDfu(
 
     // Flash with progress callback
     sendLog(window, 'info', 'Starting flash operation...'); // i18n-exempt
+    if (fullErase) sendLog(window, 'warn', 'Full chip erase: bootloader and parameter storage are wiped'); // i18n-exempt
     await device.flash(firmware, {
       verify: true,
+      forceFullErase: fullErase,
       onProgress: (progress) => {
         // Map progress phases to overall percentage
         let overallProgress = 15;

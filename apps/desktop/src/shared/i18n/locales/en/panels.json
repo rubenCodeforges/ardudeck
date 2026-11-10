@@ -225,7 +225,9 @@
     "toggleHeadingLine": "Toggle heading line",
     "toggleMission": "Toggle mission overlays",
     "toggleMissionFull": "Toggle mission overlays (waypoints, geofence, rally)",
-    "toggleTerrain": "Toggle terrain elevation"
+    "toggleTerrain": "Toggle terrain elevation",
+    "fillWith": "Fill with {{panel}}",
+    "shareWithMap": "Share with map"
   },
   "messagesPanel": {
     "count_one": "{{count}} message",

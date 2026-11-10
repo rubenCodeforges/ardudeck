@@ -8,6 +8,7 @@ import { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useObjectsStore } from './objects-store';
+import { HazardForm, HazardsSection } from './HazardsSection';
 import { colorForIndex } from './objects-geo';
 import { isVertexEditable, objectWorldRing, type EditorObjectType } from './area-object';
 import { GROUP_COLOR_PALETTE } from '../../shared/mission-group-types';
@@ -290,6 +291,8 @@ export function ObjectsPanel(): JSX.Element {
         )}
       </div>
 
+      <HazardsSection />
+
       {(() => {
         const sel = objects.find((o) => o.id === selectedId);
         const canFence = sel && sel.type !== 'corridor';
@@ -323,6 +326,8 @@ export function ObjectsPanel(): JSX.Element {
                 </div>
               </div>
             )}
+
+            {canFence && <HazardForm key={sel!.id} obj={sel!} />}
 
             {canFence && (
               <div className="px-3 pb-2 space-y-1.5">

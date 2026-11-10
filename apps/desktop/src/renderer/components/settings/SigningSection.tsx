@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useSigningStore, initSigningListener } from '../../stores/signing-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { SecureLinkCompliance } from './SecureLinkCompliance';
+import { ui } from '../ui/ui-hooks';
 
 export function SigningSection() {
   const { t } = useTranslation();
@@ -177,6 +178,7 @@ export function SigningSection() {
                   {keyBase64}
                 </code>
                 <button
+                  {...ui('button', { variant: 'secondary' })}
                   type="button"
                   onClick={() => {
                     navigator.clipboard.writeText(keyBase64);
@@ -232,6 +234,7 @@ export function SigningSection() {
                 </button>
               </div>
               <button
+                {...ui('button', { variant: 'primary' })}
                 onClick={handleSetKey}
                 disabled={loading || !passphrase.trim()}
                 className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:bg-surface-raised disabled:text-content-secondary text-white text-xs rounded-lg transition-colors"
@@ -281,6 +284,7 @@ export function SigningSection() {
             <span className="text-xs font-medium text-content">{t('settings:signingSection.step2')}</span>
             {hasKey && (
               <button
+                {...ui('button', { variant: 'primary' })}
                 onClick={handleSendToFc}
                 disabled={loading || !hasKey}
                 className="ml-auto px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:bg-surface-raised disabled:text-content-secondary text-white text-[11px] rounded-lg transition-colors"
@@ -343,6 +347,7 @@ export function SigningSection() {
               </p>
               <div className="flex gap-2">
                 <button
+                  {...ui('button', { variant: 'danger' })}
                   onClick={handleDisableSigning}
                   disabled={loading}
                   className="px-3 py-1.5 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs rounded-lg transition-colors"
@@ -350,6 +355,7 @@ export function SigningSection() {
                   {t('settings:signingSection.confirmDisable')}
                 </button>
                 <button
+                  {...ui('button', { variant: 'secondary' })}
                   onClick={() => setConfirmDisable(false)}
                   className="px-3 py-1.5 bg-surface-raised hover:bg-surface-raised text-content text-xs rounded-lg transition-colors"
                 >
@@ -359,6 +365,7 @@ export function SigningSection() {
             </div>
           ) : (
             <button
+              {...ui('button', { variant: 'ghost' })}
               onClick={() => setConfirmDisable(true)}
               disabled={loading}
               className="w-full px-3 py-2 rounded-lg border border-subtle bg-surface text-xs text-content-secondary hover:text-red-400 hover:border-red-500/30 transition-colors disabled:opacity-50"

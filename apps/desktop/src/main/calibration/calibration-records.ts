@@ -43,7 +43,10 @@ export async function verifyCalibrationRecords(
     store.set('boards', boards);
   }
 
-  const unchecked = records.filter((r) => r.persistence === null);
+  // Anything not yet verified is read again, failures included: a record wrongly condemned once (a dropped
+  // reply, a read taken before the FC finished writing) heals on the next connect, a real loss stays flagged.
+  const needsCheck = (r: CalibrationRecord): boolean => r.persistence === null || r.persistence.state !== 'verified';
+  const unchecked = records.filter(needsCheck);
   if (unchecked.length === 0) return records;
 
   const names = [...new Set(unchecked.flatMap((r) => Object.keys(r.written)))];
@@ -51,7 +54,7 @@ export async function verifyCalibrationRecords(
   const checkedAt = Date.now();
 
   boards[boardUid] = records.map((record) => {
-    if (record.persistence !== null) return record;
+    if (!needsCheck(record)) return record;
     const result = verifyCalibrationPersisted(record.written, readBack);
     if (result.state === 'unverified') return record;
     const settled = { ...record, persistence: { ...result, checkedAt } };

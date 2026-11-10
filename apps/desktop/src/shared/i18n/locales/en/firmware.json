@@ -121,7 +121,12 @@
     "unplugReconnect": "Unplug and reconnect your board to start using the new firmware.",
     "usbSerialChip": "Your <b>{{board}}</b> uses a USB-serial chip and can't enter bootloader via software. Don't worry - the wizard will guide you through it!",
     "vehicleNotSupported": "{{vehicle}} not supported by {{source}}",
-    "vtol": "VTOL"
+    "vtol": "VTOL",
+    "heli": "Traditional helicopter",
+    "fullChipEraseUnavailable": "Not possible on this board: the ArduPilot bootloader keeps the parameter storage. Use Reset all parameters on the Parameters screen.",
+    "fullChipEraseAlways": "Always on here: this bootloader erases the whole chip, parameters included.",
+    "fullChipEraseOptional": "Also wipes the bootloader and all parameters; this image puts the bootloader back.",
+    "fullChipEraseNeedsBl": "Needs a *_with_bl.hex image: a full erase removes the bootloader."
   },
   "radioSdView": {
     "afterInstallNote": "After installing: eject the SD volume, unplug USB, then on the radio add the widget to a model screen (long-press TELE, full-screen widget). Packages are downloaded from their official repositories at install time.",

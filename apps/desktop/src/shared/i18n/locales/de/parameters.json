@@ -743,6 +743,7 @@
     "savedCountToFile_other": "{{count}} Parameter in Datei gespeichert",
     "savedToFile": "Parameter in Datei gespeichert",
     "savedToFlash": "Parameter erfolgreich im Flash gespeichert",
+    "savedUnconfirmed": "Parameter gesendet und bestätigt, aber der Flugcontroller hat das Schreiben in den Flash nicht quittiert. Starten Sie neu und prüfen Sie die Werte vor dem Flug.",
     "searchPlaceholder": "Parameter suchen... (Regex unterstützt)",
     "selectedCount": "{{selected}} von {{total}} ausgewählt",
     "showAllParameters": "Alle Parameter anzeigen",
@@ -1024,5 +1025,9 @@
   "paramsValidBitmask": "Der Bitmaskenwert muss eine nicht negative ganze Zahl sein",
   "paramsValidUnknownValue": "Wert {{value}} steht nicht in der Liste der bekannten Werte",
   "paramsValidRange": "Der Wert muss zwischen {{min}} und {{max}}{{units}} liegen",
-  "paramsValidIncrement": "Der Wert sollte ein Vielfaches von {{increment}} sein"
+  "paramsValidIncrement": "Der Wert sollte ein Vielfaches von {{increment}} sein",
+  "defaultColumn": {
+    "header": "Standard",
+    "reset": "Auf Standard zurücksetzen ({{value}}). In den Flash schreiben, um ihn zu behalten."
+  }
 }

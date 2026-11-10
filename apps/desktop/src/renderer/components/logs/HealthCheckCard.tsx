@@ -1,5 +1,6 @@
 import type { HealthCheckResult, CheckStatus } from '@ardudeck/dataflash-parser';
 import { useTranslation } from 'react-i18next';
+import { ui } from '../ui/ui-hooks';
 
 const STATUS_STYLES: Record<CheckStatus, { bg: string; border: string; icon: string; text: string }> = {
   pass: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', icon: 'text-emerald-400', text: 'text-emerald-400' },
@@ -55,7 +56,7 @@ export function HealthCheckCard({ result, onViewData, onAskAi, aiLabel }: { resu
   const style = STATUS_STYLES[result.status]!;
 
   return (
-    <div className={`${style.bg} rounded-xl border ${style.border} p-4`}>
+    <div {...ui('card', { status: result.status === 'skip' ? undefined : result.status })} className={`${style.bg} rounded-xl border ${style.border} p-4`}>
       <div className="flex items-center gap-3 mb-2">
         <StatusIcon status={result.status} />
         <div className="flex-1 min-w-0">
@@ -76,6 +77,7 @@ export function HealthCheckCard({ result, onViewData, onAskAi, aiLabel }: { resu
         <div className="flex gap-2 mt-3">
           {onViewData && result.explorerPreset && (
             <button
+              {...ui('button', { variant: 'secondary' })}
               onClick={onViewData}
               className="text-xs px-3 py-1.5 bg-surface hover:bg-surface-raised text-content hover:text-content rounded-md transition-colors"
             >

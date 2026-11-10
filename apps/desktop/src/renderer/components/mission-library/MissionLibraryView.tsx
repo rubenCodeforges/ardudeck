@@ -15,6 +15,7 @@ import { useSurveyAreaStore } from '../../stores/survey-area-store';
 import { BackupTargetDialog } from './BackupTargetDialog';
 import type { MissionItem } from '../../../shared/mission-types';
 import { formatDistanceFromMeters } from '../../../shared/user-units.js';
+import { ui } from '../ui/ui-hooks';
 
 const SORT_OPTIONS: { value: MissionSortField; labelKey: string }[] = [
   { value: 'updatedAt', labelKey: 'mission-library:missionLibraryView.sortLastModified' },
@@ -123,9 +124,9 @@ export function MissionLibraryView() {
   };
 
   const tabs = (
-    <div className="flex items-center bg-surface border border-subtle rounded-lg overflow-hidden" data-tour="library-tabs">
+    <div {...ui('segmented')} className="flex items-center bg-surface border border-subtle rounded-lg overflow-hidden" data-tour="library-tabs">
       {(['missions', 'areas', 'projects'] as const).map((id) => (
-        <button
+        <button {...ui('segment', { active: tab === id })}
           key={id}
           onClick={() => setTab(id)}
           className={`px-3 py-1.5 text-xs font-medium transition-colors ${
@@ -162,7 +163,7 @@ export function MissionLibraryView() {
           {tabs}
 
           {/* Import from file */}
-          <button
+          <button {...ui('button', { variant: 'secondary' })}
             onClick={handleImportFile}
             className="px-3 py-1.5 text-xs font-medium bg-surface-raised hover:bg-surface-raised text-content rounded-lg transition-colors flex items-center gap-1.5"
           >
@@ -172,7 +173,7 @@ export function MissionLibraryView() {
             {t('mission-library:missionLibraryView.importFile')}
           </button>
 
-          <button
+          <button {...ui('button', { variant: 'secondary' })}
             onClick={() => void store.importMissionFile()}
             data-tip={t('mission-library:missionLibraryView.openMissionFileTip')}
             className="px-3 py-1.5 text-xs font-medium bg-surface-raised hover:brightness-125 text-content rounded-lg transition-colors flex items-center gap-1.5"
@@ -187,7 +188,7 @@ export function MissionLibraryView() {
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-content-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <input
+              <input {...ui('input')}
                 type="text"
                 value={searchInput}
                 onChange={e => setSearchInput(e.target.value)}
@@ -237,7 +238,7 @@ export function MissionLibraryView() {
           </select>
 
           {/* Sort direction toggle */}
-          <button
+          <button {...ui('icon-button')}
             onClick={() => store.setSort(store.sort.field, store.sort.direction === 'asc' ? 'desc' : 'asc')}
             className="p-1.5 rounded-md bg-surface border border-subtle text-content-secondary hover:text-content transition-colors"
             title={store.sort.direction === 'asc' ? t('mission-library:missionLibraryView.ascending') : t('mission-library:missionLibraryView.descending')}
@@ -248,8 +249,8 @@ export function MissionLibraryView() {
           </button>
 
           {/* Grid/List toggle */}
-          <div className="flex items-center bg-surface border border-subtle rounded-lg overflow-hidden">
-            <button
+          <div {...ui('segmented')} className="flex items-center bg-surface border border-subtle rounded-lg overflow-hidden">
+            <button {...ui('segment', { active: store.viewMode === 'grid' })}
               onClick={() => store.setViewMode('grid')}
               className={`p-1.5 transition-colors ${store.viewMode === 'grid' ? 'bg-surface-raised text-content' : 'text-content-secondary hover:text-content'}`}
               title={t('mission-library:missionLibraryView.gridView')}
@@ -258,7 +259,7 @@ export function MissionLibraryView() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
               </svg>
             </button>
-            <button
+            <button {...ui('segment', { active: store.viewMode === 'list' })}
               onClick={() => store.setViewMode('list')}
               className={`p-1.5 transition-colors ${store.viewMode === 'list' ? 'bg-surface-raised text-content' : 'text-content-secondary hover:text-content'}`}
               title={t('mission-library:missionLibraryView.listView')}
@@ -294,7 +295,7 @@ export function MissionLibraryView() {
               {t('mission-library:missionLibraryView.emptyBody')}
             </p>
             <div className="flex items-center gap-2">
-              <button
+              <button {...ui('button', { variant: 'secondary' })}
                 onClick={() => setView('mission')}
                 className="px-3 py-1.5 text-xs font-medium bg-surface-raised hover:brightness-125 text-content rounded-lg transition-colors flex items-center gap-1.5"
               >
@@ -303,7 +304,7 @@ export function MissionLibraryView() {
                 </svg>
                 {t('mission-library:missionLibraryView.openMissionPlanning')}
               </button>
-              <button
+              <button {...ui('button', { variant: 'secondary' })}
                 onClick={() => { window.electronAPI?.openAreaEditor?.().catch(() => undefined); }}
                 className="px-3 py-1.5 text-xs font-medium bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 rounded-lg transition-colors flex items-center gap-1.5"
               >

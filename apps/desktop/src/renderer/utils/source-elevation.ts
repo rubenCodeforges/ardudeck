@@ -82,3 +82,44 @@ export async function sourceElevation(
   const h = sampleTile(tile, (tx - x) * TILE, (ty - y) * TILE);
   return Number.isNaN(h) ? null : h;
 }
+
+const TERRAIN_MAX_ZOOM = 12;
+const TERRAIN_MIN_ZOOM = 6;
+/** A long leg drops zoom until its points fit in this many tiles. */
+export const TERRAIN_MAX_TILES = 48;
+
+/** The deepest zoom whose tiles covering every point stay within maxTiles. */
+export function terrainZoomFor(points: Array<{ lat: number; lon: number }>, maxTiles = TERRAIN_MAX_TILES): number {
+  for (let z = TERRAIN_MAX_ZOOM; z > TERRAIN_MIN_ZOOM; z--) {
+    const tiles = new Set<string>();
+    for (const p of points) {
+      tiles.add(`${Math.floor(lonToTileX(p.lon, z))}/${Math.floor(latToTileY(p.lat, z))}`);
+      if (tiles.size > maxTiles) break;
+    }
+    if (tiles.size <= maxTiles) return z;
+  }
+  return TERRAIN_MIN_ZOOM;
+}
+
+/**
+ * Heights from the app's own terrain tiles (tile-cache://dem, cached on disk), so most
+ * lookups never reach a rate-limited elevation API. null where a tile is missing.
+ */
+export async function terrainTileElevations(
+  points: Array<{ lat: number; lon: number }>,
+  loadTile: (z: number, x: number, y: number) => Promise<Float32Array | null> = loadTileHeights,
+): Promise<Array<number | null>> {
+  if (points.length === 0) return [];
+  if (loadTile === loadTileHeights && (typeof Image === 'undefined' || typeof document === 'undefined')) {
+    return points.map(() => null);
+  }
+  const z = terrainZoomFor(points);
+  return Promise.all(points.map(async (p) => {
+    const tx = lonToTileX(p.lon, z), ty = latToTileY(p.lat, z);
+    const x = Math.floor(tx), y = Math.floor(ty);
+    const tile = await loadTile(z, x, y);
+    if (!tile) return null;
+    const h = sampleTile(tile, (tx - x) * TILE, (ty - y) * TILE);
+    return Number.isNaN(h) ? null : h;
+  }));
+}

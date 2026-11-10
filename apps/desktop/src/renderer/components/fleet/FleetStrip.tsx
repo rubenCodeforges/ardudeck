@@ -7,6 +7,7 @@
  * theme. Renders nothing for a single vehicle.
  */
 
+import { ui } from '../ui/ui-hooks';
 import { useTranslation } from 'react-i18next';
 import { useState, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -64,6 +65,7 @@ function FleetCard({ v, role, count = 0 }: { v: FleetVehicle; role?: 'leader' | 
 
   return (
     <div
+      {...ui('option', { active: v.isActive })}
       draggable
       onDragStart={(e) => { e.stopPropagation(); startVehicleDrag(e, v.key); }}
       onClick={() => (v.isActive ? deselectActiveVehicle() : selectActiveVehicle(v.key, v.transportId))}
@@ -208,7 +210,7 @@ export function FleetStrip() {
   if (collapsed) {
     return (
       <div className="shrink-0 w-8 border-r border-subtle bg-surface-nav flex flex-col items-center py-2 gap-2">
-        <button onClick={() => setCollapsed(false)} className="text-content-secondary hover:text-content text-xs" data-tip={t('fleet:fleetStrip.expandFleet')}>{'»'}</button>
+        <button {...ui('icon-button')} onClick={() => setCollapsed(false)} className="text-content-secondary hover:text-content text-xs" data-tip={t('fleet:fleetStrip.expandFleet')}>{'»'}</button>
         {vehicles.map((v) => (
           <span
             key={v.key}
@@ -244,7 +246,7 @@ export function FleetStrip() {
         <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-content-secondary">
           {t('fleet:fleetStrip.fleet')} <span className="text-content-tertiary">·</span> <span className="font-mono text-content">{vehicles.length}</span>
         </span>
-        <button onClick={() => setCollapsed(true)} className="text-content-secondary hover:text-content text-xs" data-tip={t('fleet:fleetStrip.collapseFleet')}>{'«'}</button>
+        <button {...ui('icon-button')} onClick={() => setCollapsed(true)} className="text-content-secondary hover:text-content text-xs" data-tip={t('fleet:fleetStrip.collapseFleet')}>{'«'}</button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-1.5 flex flex-col gap-1">

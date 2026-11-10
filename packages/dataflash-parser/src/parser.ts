@@ -3,8 +3,10 @@ import type {
   FMTMessage,
   DataFlashMessage,
   DataFlashLog,
+  DataFlashParserOptions,
   DataFlashStreamParser,
   LogMetadata,
+  MessageColumns,
 } from './types.js';
 
 const HEADER_BYTE_1 = 0xA3;
@@ -68,9 +70,68 @@ function parseFmtPayload(payload: DataView): FMTMessage {
   return { id, name, length, format, fields };
 }
 
-export function createDataFlashParser(): DataFlashStreamParser {
+/** Grows one type's columns as records arrive; the first record fixes which fields are numeric. */
+class ColumnBuilder {
+  private count = 0;
+  private timeUs: Float64Array;
+  private readonly num: Record<string, Float64Array> = {};
+  private readonly txt: Record<string, string[]> = {};
+  private readonly numNames: string[] = [];
+  private readonly txtNames: string[] = [];
+
+  constructor(first: DataFlashMessage) {
+    const cap = 1024;
+    this.timeUs = new Float64Array(cap);
+    for (const [name, value] of Object.entries(first.fields)) {
+      if (typeof value === 'number') {
+        this.num[name] = new Float64Array(cap);
+        this.numNames.push(name);
+      } else {
+        this.txt[name] = [];
+        this.txtNames.push(name);
+      }
+    }
+  }
+
+  push(msg: DataFlashMessage): void {
+    if (this.count === this.timeUs.length) this.grow();
+    const i = this.count++;
+    this.timeUs[i] = msg.timeUs;
+    for (const name of this.numNames) {
+      const v = msg.fields[name];
+      this.num[name]![i] = typeof v === 'number' ? v : Number.NaN;
+    }
+    for (const name of this.txtNames) {
+      const v = msg.fields[name];
+      this.txt[name]!.push(typeof v === 'string' ? v : v === undefined ? '' : String(v));
+    }
+  }
+
+  finish(): MessageColumns {
+    const n = this.count;
+    const num: Record<string, Float64Array> = {};
+    for (const name of this.numNames) num[name] = this.num[name]!.slice(0, n);
+    return { count: n, timeUs: this.timeUs.slice(0, n), num, txt: this.txt };
+  }
+
+  private grow(): void {
+    const cap = this.timeUs.length * 2;
+    const bigger = (a: Float64Array) => {
+      const b = new Float64Array(cap);
+      b.set(a);
+      return b;
+    };
+    this.timeUs = bigger(this.timeUs);
+    for (const name of this.numNames) this.num[name] = bigger(this.num[name]!);
+  }
+}
+
+export function createDataFlashParser(options: DataFlashParserOptions = {}): DataFlashStreamParser {
+  const columnar = options.columnar === true;
+  const keepRows = options.keepRows ?? new Set<string>();
   const formats = new Map<number, FMTMessage>();
   const messages = new Map<string, DataFlashMessage[]>();
+  const builders = new Map<string, ColumnBuilder>();
   const metadata: LogMetadata = {
     vehicleType: '',
     firmwareVersion: '',
@@ -165,12 +226,13 @@ export function createDataFlashParser(): DataFlashStreamParser {
     let pos = 0;
 
     while (pos < buffer.length) {
+      // A chunk can end inside a header; wait for the next one instead of skipping the byte and losing the record.
+      if (pos + 3 > buffer.length) break;
+
       if (buffer[pos] !== HEADER_BYTE_1 || buffer[pos + 1] !== HEADER_BYTE_2) {
         pos++;
         continue;
       }
-
-      if (pos + 3 > buffer.length) break;
 
       const typeId = buffer[pos + 2]!;
 
@@ -211,13 +273,27 @@ export function createDataFlashParser(): DataFlashStreamParser {
         extractMetadata(msg);
         extractUnitsMetadata(msg);
 
+        if (columnar) {
+          const builder = builders.get(msg.type);
+          if (builder) builder.push(msg);
+          else {
+            const b = new ColumnBuilder(msg);
+            b.push(msg);
+            builders.set(msg.type, b);
+          }
+          if (!keepRows.has(msg.type)) {
+            pos += msgLength;
+            continue;
+          }
+        }
+
         let arr = messages.get(msg.type);
         if (!arr) {
           arr = [];
           messages.set(msg.type, arr);
         }
         arr.push(msg);
-        parsed.push(msg);
+        if (!columnar) parsed.push(msg);
       }
 
       pos += msgLength;
@@ -244,6 +320,13 @@ export function createDataFlashParser(): DataFlashStreamParser {
     finalize(): DataFlashLog {
       processBuffer();
 
+      let columns: Map<string, MessageColumns> | undefined;
+      if (columnar) {
+        columns = new Map();
+        for (const [type, b] of builders) columns.set(type, b.finish());
+        builders.clear();
+      }
+
       return {
         format: 'dataflash',
         formats,
@@ -253,9 +336,10 @@ export function createDataFlashParser(): DataFlashStreamParser {
           startUs: minTimeUs === Infinity ? 0 : minTimeUs,
           endUs: maxTimeUs,
         },
-        messageTypes: Array.from(messages.keys()).sort(),
+        messageTypes: Array.from(columns ? columns.keys() : messages.keys()).sort(),
         unitLabels,
         multValues,
+        ...(columns ? { columns } : {}),
       };
     },
   };

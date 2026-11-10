@@ -19,6 +19,9 @@ export interface HealthLike {
   summary: string;
 }
 
+/** Message types the summary reads as rows; a columnar parse must keep these. */
+export const SUMMARY_LOG_TYPES: ReadonlySet<string> = new Set(['PARM', 'GPS', 'BAT', 'VIBE']);
+
 const EARTH_R = 6371000;
 
 function haversine(aLat: number, aLon: number, bLat: number, bLon: number): number {

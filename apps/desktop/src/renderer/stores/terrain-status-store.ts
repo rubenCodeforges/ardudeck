@@ -1,11 +1,9 @@
 /**
- * Terrain data availability per vehicle, fed by TERRAIN_REPORT (136).
- *
- * ArduDeck does not implement the GCS terrain uplink (TERRAIN_REQUEST ->
- * TERRAIN_DATA), so a vehicle only has terrain data if it carries it on SD
- * or another GCS uploaded it. `loaded > 0` is the signal that terrain-relative
- * commands can work; no report at all means TERRAIN_ENABLE is off or the
- * vehicle predates the message, and the FC will reject terrain frames.
+ * Terrain state per vehicle: availability from TERRAIN_REPORT (136) and the
+ * GCS terrain uplink counters (TERRAIN_REQUEST -> TERRAIN_DATA, main process).
+ * `loaded > 0` is the signal that terrain-relative commands can work; no report
+ * at all means TERRAIN_ENABLE is off or the vehicle predates the message, and
+ * the FC will reject terrain frames.
  */
 import { create } from 'zustand';
 import type { TerrainUplinkStatus } from '../../shared/tile-source-types';
@@ -18,7 +16,7 @@ export interface TerrainStatus {
 
 interface TerrainStatusStore {
   bySysid: Record<number, TerrainStatus>;
-  /** GCS terrain uplink counters per vehicle (blocks served, blocks with missing data, ignored requests). */
+  /** GCS terrain uplink counters per vehicle (blocks served, blocks with missing data and why, ignored requests). */
   uplink: Record<number, TerrainUplinkStatus>;
   setUplink: (sysid: number, status: TerrainUplinkStatus) => void;
   setStatus: (sysid: number, status: TerrainStatus) => void;
