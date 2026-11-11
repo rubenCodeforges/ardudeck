@@ -12,7 +12,7 @@ import { OfflineBuildingsBake } from './OfflineBuildingsBake';
 
 const api = (window as any).electronAPI;
 
-const BASE_LAYERS: LayerKey[] = ['osm', 'satellite', 'googleSat', 'googleHybrid', 'bingSat', 'bingHybrid', 'terrain', 'dark'];
+const BASE_LAYERS: LayerKey[] = ['osm', 'satellite', 'googleSat', 'googleHybrid', 'bingSat', 'bingHybrid', 'terrain', 'dark', 'tiandituVec', 'tiandituImg', 'tiandituHybrid'];
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;

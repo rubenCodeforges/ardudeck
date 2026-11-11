@@ -8,7 +8,7 @@ describe('map credits', () => {
     expect(layerAttribution('osm', true)).toBe('© OpenStreetMap contributors');
   });
   it('gives every base layer a credit', () => {
-    for (const key of ['osm', 'satellite', 'googleSat', 'googleHybrid', 'bingSat', 'bingHybrid', 'terrain', 'dark'] as const) {
+    for (const key of ['osm', 'satellite', 'googleSat', 'googleHybrid', 'bingSat', 'bingHybrid', 'terrain', 'dark', 'tiandituVec', 'tiandituImg', 'tiandituHybrid'] as const) {
       expect(MAP_LAYERS[key].attribution, key).toBeTruthy();
     }
   });

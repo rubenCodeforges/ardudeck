@@ -417,7 +417,7 @@
       "title": "設定"
     },
     "mapOverlays": "地圖疊加層",
-    "mapOverlaysHint": "空域與機場資料的 API 金鑰",
+    "mapOverlaysHint": "空域、機場與底圖資料的 API 金鑰",
     "mavlink": {
       "sysid": "地面站系統 ID",
       "sysidHint": "此地面站傳送時使用的 MAVLink 系統 ID(1 到 255,預設 255)。共用連結上的每個地面站請使用各自的 ID,否則參數與任務傳輸會在各站之間交錯。",
@@ -449,6 +449,12 @@
       "freeAt": "- 免費,網址:",
       "label": "OpenAIP API 金鑰",
       "placeholder": "貼上你的 API 金鑰"
+    },
+    "tianditu": {
+      "configured": "金鑰已設定:天地圖底圖可用",
+      "freeAt": "- 沒有金鑰時天地圖圖層為空白。免費申請,網址:",
+      "label": "天地圖 API 金鑰(中國底圖)",
+      "placeholder": "貼上你的天地圖 API 金鑰"
     },
     "perf": {
       "hint": "護欄,讓地圖在匯入大型邊界與大型任務時仍能保持回應。全域適用。",

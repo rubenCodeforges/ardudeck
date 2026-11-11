@@ -78,7 +78,9 @@ import { MAP_LAYERS, mapLayerName, type LayerKey, type MapLayer } from '../../..
 // Exclude 'dem' from the layer picker (it's a data layer, not a base map)
 type BaseLayerKey = Exclude<LayerKey, 'dem'>;
 
-const BASE_LAYERS = (Object.keys(MAP_LAYERS) as LayerKey[]).filter((k) => k !== 'dem' && k !== 'openaip' && k !== 'radar');
+// The 3D view draws the base raster only, never the annotation overlay, so the
+// Tianditu hybrid would be indistinguishable from its plain imagery: keep it out.
+const BASE_LAYERS = (Object.keys(MAP_LAYERS) as LayerKey[]).filter((k) => k !== 'dem' && k !== 'openaip' && k !== 'radar' && k !== 'tiandituHybrid');
 const BUILDINGS_FILTER: maplibregl.FilterSpecification = ['!=', ['get', 'hide_3d'], true];
 
 /** MapLibre colour-relief stops for the 2D height scale, over `range` (else absolute), shifted by `ref`. */

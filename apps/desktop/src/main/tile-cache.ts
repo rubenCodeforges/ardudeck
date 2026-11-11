@@ -13,7 +13,7 @@ import { readFile, writeFile, mkdir, readdir, stat, unlink } from 'fs/promises';
 import { setMaxListeners } from 'events';
 import Store from 'electron-store';
 import { IPC_CHANNELS, type TileCacheStats, type TileCacheDownloadProgress, type TileCacheSettings, type TileCacheDownloadRegion } from '../shared/ipc-channels.js';
-import { resolveTileUrl, MAP_LAYERS, CARTO_DARK_URL, CARTO_KEY_SERVICE, DARK_LABELS_LAYER, ESRI_CANVAS_MAX_NATIVE_ZOOM, ESRI_DARK_LABELS_URL, type LayerKey } from '../shared/map-layers.js';
+import { resolveLayerTileUrl, MAP_LAYERS, CARTO_DARK_URL, CARTO_KEY_SERVICE, DARK_LABELS_LAYER, ESRI_CANVAS_MAX_NATIVE_ZOOM, ESRI_DARK_LABELS_URL, TIANDITU_LABEL_LAYERS, type LayerKey, type MapLayer } from '../shared/map-layers.js';
 import { createHash } from 'crypto';
 import { getApiKey } from './overlays/overlay-ipc-handlers.js';
 import { demSourcesForTile, listTileSources, rasterSourceByKey, subscribeTileSources } from './terrain/tile-source-registry.js';
@@ -136,6 +136,13 @@ export async function resolveTileBytes(requestUrl: string): Promise<{ status: nu
   return { status: 200, body: bytes };
 }
 
+/**
+ * Keyed providers explain a rejected request in the response body (Tianditu
+ * answers 403 with {"code":301012,...}). Surface it once per layer so a wrong
+ * key type does not just look like an empty map.
+ */
+const warnedKeyedLayers = new Set<string>();
+
 async function resolveDefaultTileBytes(
   requestUrl: string,
 ): Promise<{ status: number; body: ArrayBuffer | null }> {
@@ -169,22 +176,33 @@ async function resolveDefaultTileBytes(
 
     if (layer === 'dark' || layer === DARK_LABELS_LAYER) return await resolveDarkTile(layer, z, x, y);
 
-    // Check if layer is valid (support radar-{path} dynamic layers)
+    // Check if layer is valid (support radar-{path} dynamic layers and the
+    // Tianditu annotation layers, which live outside MAP_LAYERS)
     const isRadarLayer = layer.startsWith('radar-');
-    if (!(layer in MAP_LAYERS) && !isRadarLayer) {
+    const isLabelLayer = layer in TIANDITU_LABEL_LAYERS;
+    if (!(layer in MAP_LAYERS) && !isRadarLayer && !isLabelLayer) {
       return { status: 404, body: null };
     }
 
     const layerKey = isRadarLayer ? 'radar' : layer;
-    const layerDef = MAP_LAYERS[layerKey as LayerKey];
+    const layerDef: MapLayer = isLabelLayer
+      ? TIANDITU_LABEL_LAYERS[layer]!
+      : MAP_LAYERS[layerKey as LayerKey];
+
+    // Layers with a stored key (Tianditu) stay blank until Settings > Maps has one.
+    const layerApiKey = layerDef.keyService ? getApiKey(layerDef.keyService) : null;
+    if (layerDef.keyService && !layerApiKey) {
+      return { status: 200, body: toArrayBuffer(TRANSPARENT_PNG) };
+    }
 
     // Clamp zoom to maxNativeZoom — fetch parent tile if beyond native range
     let fetchZ = z;
     let fetchX = x;
     let fetchY = y;
-    if ('maxNativeZoom' in layerDef && z > layerDef.maxNativeZoom) {
-      const zDiff = z - layerDef.maxNativeZoom;
-      fetchZ = layerDef.maxNativeZoom;
+    const nativeZoom = layerDef.maxNativeZoom;
+    if (nativeZoom !== undefined && z > nativeZoom) {
+      const zDiff = z - nativeZoom;
+      fetchZ = nativeZoom;
       fetchX = x >> zDiff;
       fetchY = y >> zDiff;
     }
@@ -213,10 +231,10 @@ async function resolveDefaultTileBytes(
         const colorScheme = parts[1] ?? '6';
         realUrl = `https://tilecache.rainviewer.com/v2/radar/${pathId}/256/${fetchZ}/${fetchX}/${fetchY}/${colorScheme}/1_1.png`;
       } else {
-        realUrl = resolveTileUrl(layerKey as LayerKey, fetchZ, fetchX, fetchY);
+        realUrl = resolveLayerTileUrl(layerDef, fetchZ, fetchX, fetchY, layerApiKey);
       }
       const fetchHeaders: Record<string, string> = {};
-      if ('headers' in layerDef) Object.assign(fetchHeaders, layerDef.headers);
+      if (layerDef.headers) Object.assign(fetchHeaders, layerDef.headers);
       // Inject API key for OpenAIP tiles as query parameter
       if (isOpenAipLayer) {
         const apiKey = getApiKey('openaip');
@@ -225,6 +243,16 @@ async function resolveDefaultTileBytes(
       const response = await fetch(realUrl, { headers: fetchHeaders });
 
       if (!response.ok) {
+        // A keyed provider usually says why (bad key type, expired key, quota).
+        if (layerDef.keyService && !warnedKeyedLayers.has(layer)) {
+          warnedKeyedLayers.add(layer);
+          response.clone().text()
+            .then((text) => {
+              const msg = text.replace(/\s+/g, ' ').trim().slice(0, 200);
+              console.warn(`[tile-cache] ${layer} rejected the key: HTTP ${response.status} ${msg}`);
+            })
+            .catch(() => { /* body not readable — status is enough */ });
+        }
         // Return transparent PNG instead of error status to avoid black tiles
         return { status: 200, body: toArrayBuffer(TRANSPARENT_PNG) };
       }
@@ -557,10 +585,16 @@ async function runDownload(
       }
 
       try {
-        const layerDef = MAP_LAYERS[job.layer];
-        const realUrl = resolveTileUrl(job.layer, job.z, job.x, job.y);
+        const layerDef: MapLayer = MAP_LAYERS[job.layer];
+        // A keyed layer (Tianditu) downloads nothing until Settings > Maps has a key.
+        const apiKey = layerDef.keyService ? getApiKey(layerDef.keyService) : null;
+        if (layerDef.keyService && !apiKey) {
+          failedTiles++;
+          continue;
+        }
+        const realUrl = resolveLayerTileUrl(layerDef, job.z, job.x, job.y, apiKey);
         const fetchHeaders: Record<string, string> = {};
-        if ('headers' in layerDef) Object.assign(fetchHeaders, layerDef.headers);
+        if (layerDef.headers) Object.assign(fetchHeaders, layerDef.headers);
         const response = await fetch(realUrl, { signal: controller.signal, headers: fetchHeaders });
 
         if (response.ok) {

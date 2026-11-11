@@ -76,7 +76,7 @@ import { buildSegmentedPath } from './mission-path';
 import { computeCameraTriggerPoints, photographedSeqs } from './camera-triggers';
 
 // Shared map layer definitions (centralized)
-import { MAP_LAYERS, DARK_LABELS_LAYER, ESRI_CANVAS_MAX_NATIVE_ZOOM, layerAttribution, type LayerKey, type MapLayer } from '../../../shared/map-layers';
+import { MAP_LAYERS, DARK_LABELS_LAYER, ESRI_CANVAS_MAX_NATIVE_ZOOM, layerAttribution, TIANDITU_VEC_LABELS_LAYER, TIANDITU_IMG_LABELS_LAYER, type LayerKey, type MapLayer } from '../../../shared/map-layers';
 import { useMapKeysStore } from '../../stores/map-keys-store';
 import { MapSearchControl } from '../map/MapSearchControl';
 import { EnginePlanLegend } from '../survey/EnginePlanLegend';
@@ -960,6 +960,12 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
 
   const layer = MAP_LAYERS[activeLayer];
   const cartoKey = useMapKeysStore((s) => s.carto);
+  const tiandituKey = useMapKeysStore((s) => s.tianditu);
+  // Remount the basemap when the Tianditu key arrives, so a newly saved key
+  // takes effect without switching layers (tiles fetched keyless are blank).
+  const baseTileKey = activeLayer === 'tiandituVec' || activeLayer === 'tiandituImg' || activeLayer === 'tiandituHybrid'
+    ? `${activeLayer}-${tiandituKey ? 'keyed' : 'keyless'}`
+    : activeLayer;
 
   // Build colored path segments from visible mission items (includes DO_* state
   // changes). Hidden groups are excluded so their legs vanish with their WPs.
@@ -1121,7 +1127,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
         <CenterOnVehicle trigger={centerOnVehicleTrigger} />
 
         <TileLayer
-          key={activeLayer}
+          key={baseTileKey}
           url={`tile-cache://${activeLayer}/{z}/{x}/{y}.png`}
           attribution={layerAttribution(activeLayer, cartoKey)}
           maxZoom={layer.maxZoom}
@@ -1132,6 +1138,25 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
             url={`tile-cache://${DARK_LABELS_LAYER}/{z}/{x}/{y}.png`}
             maxZoom={layer.maxZoom}
             maxNativeZoom={ESRI_CANVAS_MAX_NATIVE_ZOOM}
+            zIndex={2}
+          />
+        )}
+
+        {/* Tianditu labels ship as a separate WMTS layer: cva over the vector
+            base, cia over the hybrid (imagery + labels) base. */}
+        {activeLayer === 'tiandituVec' && tiandituKey && (
+          <TileLayer
+            url={`tile-cache://${TIANDITU_VEC_LABELS_LAYER}/{z}/{x}/{y}.png`}
+            maxZoom={layer.maxZoom}
+            maxNativeZoom={(layer as MapLayer).maxNativeZoom ?? layer.maxZoom}
+            zIndex={2}
+          />
+        )}
+        {activeLayer === 'tiandituHybrid' && tiandituKey && (
+          <TileLayer
+            url={`tile-cache://${TIANDITU_IMG_LABELS_LAYER}/{z}/{x}/{y}.png`}
+            maxZoom={layer.maxZoom}
+            maxNativeZoom={(layer as MapLayer).maxNativeZoom ?? layer.maxZoom}
             zIndex={2}
           />
         )}

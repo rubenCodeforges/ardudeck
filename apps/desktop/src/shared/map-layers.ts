@@ -7,6 +7,11 @@ import { t } from './i18n/index.js';
 
 export interface MapLayer {
   name: string;
+  /**
+   * Tile URL template. Tokens: {s} subdomain, {q} quadkey, {z}/{x}/{y} tile
+   * coordinates and {key} the user's API key for keyService layers (filled in
+   * by the tile-cache, see resolveLayerTileUrl).
+   */
   url: string;
   subdomains: readonly string[];
   maxZoom: number;
@@ -16,7 +21,29 @@ export interface MapLayer {
   headers?: Record<string, string>;
   /** Credit the tile provider requires, shown in the map's attribution corner. */
   attribution?: string;
+  /**
+   * Stored API key this layer needs, as saved by Settings > Maps. While no key
+   * is set the tile-cache serves blank tiles for it instead of hitting the
+   * server, exactly like OpenAIP does.
+   */
+  keyService?: string;
 }
+
+/** Tianditu (天地图) tile servers; the {s} token rotates between them. */
+export const TIANDITU_SUBDOMAINS = ['0', '1', '2', '3', '4', '5', '6', '7'] as const;
+/** API key service name for Tianditu basemaps, as stored by Settings > Maps. */
+export const TIANDITU_KEY_SERVICE = 'tianditu';
+export const TIANDITU_ATTRIBUTION = '© 天地图'; // i18n-exempt
+/**
+ * Tianditu issues keys of two kinds: server-side keys work from any client, but
+ * browser-side ("浏览器端") keys — the default the console creates — are
+ * rejected with 301012 "Key权限类型为:浏览器端" unless the request looks like a
+ * browser. Sending a browser User-Agent makes both kinds work, the way the
+ * Google layers already send their Referer.
+ */
+export const TIANDITU_TILE_HEADERS: Record<string, string> = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
+};
 
 export const MAP_LAYERS = {
   osm: {
@@ -108,9 +135,88 @@ export const MAP_LAYERS = {
     maxZoom: 22,
     maxNativeZoom: 14,
   },
+  // Tianditu (天地图) — the official Chinese WMTS basemap. Keyless requests are
+  // rejected, so a free key from console.tianditu.gov.cn is required
+  // (Settings > Maps). Chinese imagery is far sharper here than on the world
+  // basemaps, and it is the one provider that is always reachable in China.
+  // Labels travel as their own annotation layers (cva_w / cia_w, see
+  // TIANDITU_LABEL_LAYERS below) because WMTS has no combined vec+cva tile.
+  tiandituVec: {
+    name: 'Tianditu Street', // i18n-exempt
+    url: 'https://t{s}.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk={key}',
+    subdomains: TIANDITU_SUBDOMAINS,
+    maxZoom: 18,
+    maxNativeZoom: 18,
+    attribution: TIANDITU_ATTRIBUTION,
+    keyService: TIANDITU_KEY_SERVICE,
+    headers: TIANDITU_TILE_HEADERS,
+  },
+  // Pure imagery, no annotation — pair with tiandituHybrid when labels are wanted.
+  tiandituImg: {
+    name: 'Tianditu Satellite', // i18n-exempt
+    url: 'https://t{s}.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk={key}',
+    subdomains: TIANDITU_SUBDOMAINS,
+    maxZoom: 18,
+    maxNativeZoom: 18,
+    attribution: TIANDITU_ATTRIBUTION,
+    keyService: TIANDITU_KEY_SERVICE,
+    headers: TIANDITU_TILE_HEADERS,
+  },
+  // Same imagery as tiandituImg, kept as its own layer because the map draws
+  // the cia_w annotation on top of this one only — the Tianditu counterpart of
+  // Satellite vs Hybrid. Its tiles cache separately, like dark and dark-carto.
+  tiandituHybrid: {
+    name: 'Tianditu Hybrid', // i18n-exempt
+    url: 'https://t{s}.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk={key}',
+    subdomains: TIANDITU_SUBDOMAINS,
+    maxZoom: 18,
+    maxNativeZoom: 18,
+    attribution: TIANDITU_ATTRIBUTION,
+    keyService: TIANDITU_KEY_SERVICE,
+    headers: TIANDITU_TILE_HEADERS,
+  },
 } as const satisfies Record<string, MapLayer>;
 
 export type LayerKey = keyof typeof MAP_LAYERS;
+
+/**
+ * Annotation (label) tiles for the Tianditu basemaps. WMTS serves the vector
+ * geometry and its labels as separate layers, so these are drawn over the base
+ * tile the way the dark style draws its own label overlay. They are cached
+ * under their own cache key and never appear in the base-map pickers.
+ */
+export const TIANDITU_VEC_LABELS_LAYER = 'tianditu-vec-labels';
+export const TIANDITU_IMG_LABELS_LAYER = 'tianditu-img-labels';
+
+function tiandituLabelUrl(layer: string): string {
+  return `https://t{s}.tianditu.gov.cn/${layer}_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=${layer}&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk={key}`;
+}
+
+export const TIANDITU_VEC_LABELS: MapLayer = {
+  name: 'Tianditu Labels', // i18n-exempt
+  url: tiandituLabelUrl('cva'),
+  subdomains: TIANDITU_SUBDOMAINS,
+  maxZoom: 18,
+  maxNativeZoom: 18,
+  keyService: TIANDITU_KEY_SERVICE,
+  headers: TIANDITU_TILE_HEADERS,
+};
+
+export const TIANDITU_IMG_LABELS: MapLayer = {
+  name: 'Tianditu Labels', // i18n-exempt
+  url: tiandituLabelUrl('cia'),
+  subdomains: TIANDITU_SUBDOMAINS,
+  maxZoom: 18,
+  maxNativeZoom: 18,
+  keyService: TIANDITU_KEY_SERVICE,
+  headers: TIANDITU_TILE_HEADERS,
+};
+
+/** Label overlay per label cache-layer name, resolved by the tile-cache. */
+export const TIANDITU_LABEL_LAYERS: Record<string, MapLayer> = {
+  [TIANDITU_VEC_LABELS_LAYER]: TIANDITU_VEC_LABELS,
+  [TIANDITU_IMG_LABELS_LAYER]: TIANDITU_IMG_LABELS,
+};
 
 export function mapLayerName(layerKey: LayerKey): string {
   return t(`shared:mapLayers.${layerKey}`);
@@ -133,12 +239,17 @@ export function tileToQuadkey(z: number, x: number, y: number): string {
 }
 
 /**
- * Resolve the real HTTP tile URL for a given layer/z/x/y.
- * Handles subdomain rotation and different URL patterns (Esri {z}/{y}/{x},
- * Bing {q} quadkeys).
+ * Resolve the real HTTP tile URL for a layer definition at a given z/x/y.
+ * Handles subdomain rotation, the Bing quadkey token, the {key} API-key token
+ * (keyed providers such as Tianditu) and the Esri {z}/{y}/{x} order.
  */
-export function resolveTileUrl(layerKey: LayerKey, z: number, x: number, y: number): string {
-  const layer = MAP_LAYERS[layerKey];
+export function resolveLayerTileUrl(
+  layer: MapLayer,
+  z: number,
+  x: number,
+  y: number,
+  apiKey?: string | null,
+): string {
   let url: string = layer.url;
 
   // Rotate subdomains deterministically based on (x + y) to spread load
@@ -146,12 +257,23 @@ export function resolveTileUrl(layerKey: LayerKey, z: number, x: number, y: numb
     const idx = (x + y) % layer.subdomains.length;
     url = url.replace('{s}', layer.subdomains[idx]!);
   }
+  if (apiKey) url = url.replace('{key}', encodeURIComponent(apiKey));
 
   return url
     .replace('{q}', tileToQuadkey(z, x, y))
     .replace('{z}', String(z))
     .replace('{x}', String(x))
     .replace('{y}', String(y));
+}
+
+/**
+ * Resolve the real HTTP tile URL for a given layer/z/x/y.
+ * Keyed layers (Tianditu) need their key from the tile-cache; resolving them
+ * here leaves the {key} token in place, which the server rejects, so always go
+ * through resolveLayerTileUrl when a key might be involved.
+ */
+export function resolveTileUrl(layerKey: LayerKey, z: number, x: number, y: number): string {
+  return resolveLayerTileUrl(MAP_LAYERS[layerKey], z, x, y);
 }
 
 /**

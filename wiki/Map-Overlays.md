@@ -44,6 +44,17 @@ Color-coded terrain elevation overlay using Mapzen Terrarium DEM tiles.
 - **AMSL / Relative toggle** - Switch between absolute and relative elevation display
 - Water areas rendered as transparent
 
+## Tianditu Basemaps (天地图)
+
+Vector and satellite basemaps from China's official [Tianditu](https://www.tianditu.gov.cn/) service. Requires a free key from [console.tianditu.gov.cn](https://console.tianditu.gov.cn/api/key).
+
+- **Tianditu Street** (`vec_w`), **Tianditu Satellite** (`img_w`) and **Tianditu Hybrid** (`img_w` + `cia_w`) appear in the base map selector of the telemetry, mission planning and 3D maps
+- Labels come from Tianditu's own annotation layers: `cva_w` over the vector base and `cia_w` over the hybrid base, drawn the same way the Dark style draws its label overlay. Plain Satellite stays label-free
+- Tiles are cached to disk through the tile-cache protocol and can be pre-downloaded under **Settings > Offline Maps**
+- Without a key the layers stay blank instead of throwing errors
+- The key is entered under **Settings > Maps**, in the Map Overlays card next to the OpenAIP and CARTO keys
+- Keys created in the Tianditu console default to the **browser-side (浏览器端)** type, which the service refuses for non-browser clients (`301012 Key权限类型为:浏览器端`). ArduDeck sends a browser User-Agent so both key types work; if a request is still refused the main-process console logs the provider's message
+
 ## Setting Up API Keys
 
 Airspace Zones and Aviation Charts require a free OpenAIP API key:
@@ -52,3 +63,9 @@ Airspace Zones and Aviation Charts require a free OpenAIP API key:
 2. Navigate to your account settings to find your API key
 3. In ArduDeck, go to **Settings > Map Overlays** and paste your key
 4. Alternatively, the API key dialog appears automatically when you first enable an OpenAIP overlay
+
+The Tianditu basemaps need their own free key:
+
+1. Go to [console.tianditu.gov.cn](https://console.tianditu.gov.cn/api/key), register and create an application key
+2. Paste it into the **Tianditu API key** field in the Map Overlays card under **Settings > Maps** and press **Save**
+3. Pick **Tianditu Street**, **Tianditu Satellite** or **Tianditu Hybrid** in the map's layer selector

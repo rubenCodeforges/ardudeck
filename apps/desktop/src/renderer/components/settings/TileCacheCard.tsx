@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { MAP_LAYERS, type LayerKey } from '../../../shared/map-layers';
+import { MAP_LAYERS, TIANDITU_LABEL_LAYERS, type LayerKey } from '../../../shared/map-layers';
 import type { TileCacheStats, TileCacheDownloadProgress, TileCacheSettings, TileCacheDownloadRegion } from '../../../shared/ipc-channels';
 import { useTileCacheStore } from '../../stores/tile-cache-store';
 import { Map as MapIcon } from 'lucide-react';
@@ -215,7 +215,7 @@ export function TileCacheCard() {
             <div className="mt-2 space-y-1.5">
               {Object.entries(stats.layers).map(([layer, data]) => (
                 <div key={layer} className="flex items-center justify-between text-xs">
-                  <span className="text-content">{MAP_LAYERS[layer as LayerKey]?.name ?? layer}</span>
+                  <span className="text-content">{MAP_LAYERS[layer as LayerKey]?.name ?? TIANDITU_LABEL_LAYERS[layer]?.name ?? layer}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-content-secondary font-mono">
                       {t('settings:tileCacheCard.tilesBytes', { tiles: data.tiles.toLocaleString(), size: formatBytes(data.bytes) })}

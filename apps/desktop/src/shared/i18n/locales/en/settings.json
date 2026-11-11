@@ -417,7 +417,7 @@
       "title": "Settings"
     },
     "mapOverlays": "Map Overlays",
-    "mapOverlaysHint": "API keys for airspace and airport data",
+    "mapOverlaysHint": "API keys for airspace, airport and basemap data",
     "mavlink": {
       "sysid": "GCS System ID",
       "sysidHint": "The MAVLink system id this station transmits as (1 to 255, default 255). Give each station on a shared link its own id, or parameter and mission transfers interleave between stations.",
@@ -449,6 +449,12 @@
       "freeAt": "- free at",
       "label": "OpenAIP API Key",
       "placeholder": "Paste your API key"
+    },
+    "tianditu": {
+      "configured": "Key configured: the Tianditu basemaps can be used",
+      "freeAt": "- without one the Tianditu layers stay blank. Get a key at",
+      "label": "Tianditu API key (Chinese basemaps)",
+      "placeholder": "Paste your Tianditu API key"
     },
     "perf": {
       "hint": "Guardrails that keep the map responsive with large imported boundaries and big missions. Applies everywhere.",

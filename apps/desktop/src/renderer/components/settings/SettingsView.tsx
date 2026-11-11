@@ -13,7 +13,7 @@ import { TrafficSettingsCard } from './TrafficSettingsCard';
 import { GroupShapeCard } from './GroupShapeCard';
 import { useSettingsStore, type VehicleProfile, type VehicleType, type ExperienceLevel, type UiVisibility } from '../../stores/settings-store';
 import { useMapKeysStore } from '../../stores/map-keys-store';
-import { CARTO_KEY_SERVICE } from '../../../shared/map-layers';
+import { CARTO_KEY_SERVICE, TIANDITU_KEY_SERVICE } from '../../../shared/map-layers';
 import { useTerrainStatusStore } from '../../stores/terrain-status-store';
 import { useRenderGovernor } from '../../perf/render-governor';
 import { useParameterStore } from '../../stores/parameter-store';
@@ -2037,6 +2037,15 @@ export function SettingsView() {
                 onSaved={() => void useMapKeysStore.getState().refresh()}
               />
             </div>
+            <div className="mt-4">
+              <ApiKeyInput
+                service={TIANDITU_KEY_SERVICE}
+                ns="tianditu"
+                href="https://console.tianditu.gov.cn/api/key"
+                linkLabel="tianditu.gov.cn"
+                onSaved={() => void useMapKeysStore.getState().refresh()}
+              />
+            </div>
           </div>
 
           <TrafficSettingsCard />
@@ -2070,7 +2079,7 @@ export function SettingsView() {
 function ApiKeyInput({ service, ns, href, linkLabel, onSaved }: {
   service: string;
   /** i18n group under settings:settingsView with label, freeAt, placeholder and configured. */
-  ns: 'openAip' | 'carto';
+  ns: 'openAip' | 'carto' | 'tianditu';
   href: string;
   linkLabel: string;
   onSaved?: () => void;

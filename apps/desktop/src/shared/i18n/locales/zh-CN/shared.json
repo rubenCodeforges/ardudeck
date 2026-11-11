@@ -138,7 +138,10 @@
     "osm": "街道",
     "radar": "雷达",
     "satellite": "卫星",
-    "terrain": "地形"
+    "terrain": "地形",
+    "tiandituHybrid": "天地图混合",
+    "tiandituImg": "天地图影像",
+    "tiandituVec": "天地图矢量"
   },
   "mavlinkChannels": {
     "rateGroup": {

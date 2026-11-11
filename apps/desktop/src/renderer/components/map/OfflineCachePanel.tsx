@@ -13,7 +13,7 @@ import { useTileCacheStore } from '../../stores/tile-cache-store';
 import { useTileCacheAreaStore } from '../../stores/tile-cache-area-store';
 
 const api = (window as any).electronAPI;
-const BASE_LAYERS: LayerKey[] = ['osm', 'satellite', 'googleSat', 'googleHybrid', 'terrain', 'dark'];
+const BASE_LAYERS: LayerKey[] = ['osm', 'satellite', 'googleSat', 'googleHybrid', 'terrain', 'dark', 'tiandituVec', 'tiandituImg', 'tiandituHybrid'];
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;

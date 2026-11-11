@@ -3,6 +3,7 @@ export function LayerIcon({ layerKey }: { layerKey: string }) {
   const cls = "w-3.5 h-3.5 shrink-0";
   switch (layerKey) {
     case 'osm':
+    case 'tiandituVec':
       return (
         <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -10,6 +11,7 @@ export function LayerIcon({ layerKey }: { layerKey: string }) {
       );
     case 'satellite':
     case 'googleSat':
+    case 'tiandituImg':
       return (
         <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <circle cx="12" cy="12" r="10" />
@@ -18,6 +20,7 @@ export function LayerIcon({ layerKey }: { layerKey: string }) {
         </svg>
       );
     case 'googleHybrid':
+    case 'tiandituHybrid':
       return (
         <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <circle cx="12" cy="12" r="10" />

@@ -138,7 +138,10 @@
     "osm": "Street",
     "radar": "Radar",
     "satellite": "Satellite",
-    "terrain": "Terrain"
+    "terrain": "Terrain",
+    "tiandituHybrid": "Tianditu Hybrid",
+    "tiandituImg": "Tianditu Satellite",
+    "tiandituVec": "Tianditu Street"
   },
   "mavlinkChannels": {
     "rateGroup": {

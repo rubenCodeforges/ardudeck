@@ -63,7 +63,7 @@ import { ElevationLegend } from '../map/ElevationLegend';
 import { CachedAreaOverlay } from '../map/CachedAreaOverlay';
 
 // Shared map layer definitions (centralized)
-import { MAP_LAYERS, DARK_LABELS_LAYER, ESRI_CANVAS_MAX_NATIVE_ZOOM, layerAttribution, mapLayerName, type LayerKey, type MapLayer } from '../../../shared/map-layers';
+import { MAP_LAYERS, DARK_LABELS_LAYER, ESRI_CANVAS_MAX_NATIVE_ZOOM, layerAttribution, mapLayerName, TIANDITU_VEC_LABELS_LAYER, TIANDITU_IMG_LABELS_LAYER, type LayerKey, type MapLayer } from '../../../shared/map-layers';
 import { useMapKeysStore } from '../../stores/map-keys-store';
 
 // Map overlays (weather radar, aviation, airspace zones)
@@ -105,6 +105,9 @@ const TELEMETRY_LAYERS = {
   bingHybrid: MAP_LAYERS.bingHybrid,
   terrain: MAP_LAYERS.terrain,
   dark: MAP_LAYERS.dark,
+  tiandituVec: MAP_LAYERS.tiandituVec,
+  tiandituImg: MAP_LAYERS.tiandituImg,
+  tiandituHybrid: MAP_LAYERS.tiandituHybrid,
 } as const;
 
 type TelemetryLayerKey = keyof typeof TELEMETRY_LAYERS;
@@ -2764,6 +2767,12 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
 
   const layer = TELEMETRY_LAYERS[currentLayer];
   const cartoKey = useMapKeysStore((s) => s.carto);
+  const tiandituKey = useMapKeysStore((s) => s.tianditu);
+  // Remount the basemap when the Tianditu key arrives, so a newly saved key
+  // takes effect without switching layers (tiles fetched keyless are blank).
+  const baseTileKey = currentLayer === 'tiandituVec' || currentLayer === 'tiandituImg' || currentLayer === 'tiandituHybrid'
+    ? `${currentLayer}-${tiandituKey ? 'keyed' : 'keyless'}`
+    : currentLayer;
 
   return (
     <div ref={containerRef} data-tour="telemetry-map" className="h-full w-full flex flex-col bg-surface-base relative">
@@ -2881,7 +2890,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
         <TelemetryViewportSync />
         <MapBoundsTracker onBoundsChange={handleBoundsChange} />
         <TileLayer
-          key={currentLayer}
+          key={baseTileKey}
           url={`tile-cache://${currentLayer}/{z}/{x}/{y}.png`}
           attribution={layerAttribution(currentLayer, cartoKey)}
           maxZoom={layer.maxZoom}
@@ -2892,6 +2901,27 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
             url={`tile-cache://${DARK_LABELS_LAYER}/{z}/{x}/{y}.png`}
             maxZoom={layer.maxZoom}
             maxNativeZoom={ESRI_CANVAS_MAX_NATIVE_ZOOM}
+            zIndex={2}
+          />
+        )}
+
+        {/* Tianditu serves geometry and labels as separate WMTS layers, so the
+            matching annotation layer is drawn on top: cva over the vector base,
+            cia over the hybrid (imagery + labels) base. Pure imagery stays
+            label-free so it can be used for inspection. */}
+        {currentLayer === 'tiandituVec' && tiandituKey && (
+          <TileLayer
+            url={`tile-cache://${TIANDITU_VEC_LABELS_LAYER}/{z}/{x}/{y}.png`}
+            maxZoom={layer.maxZoom}
+            maxNativeZoom={(layer as MapLayer).maxNativeZoom ?? layer.maxZoom}
+            zIndex={2}
+          />
+        )}
+        {currentLayer === 'tiandituHybrid' && tiandituKey && (
+          <TileLayer
+            url={`tile-cache://${TIANDITU_IMG_LABELS_LAYER}/{z}/{x}/{y}.png`}
+            maxZoom={layer.maxZoom}
+            maxNativeZoom={(layer as MapLayer).maxNativeZoom ?? layer.maxZoom}
             zIndex={2}
           />
         )}

@@ -417,7 +417,7 @@
       "title": "Einstellungen"
     },
     "mapOverlays": "Karten-Overlays",
-    "mapOverlaysHint": "API-Schlüssel für Luftraum- und Flughafendaten",
+    "mapOverlaysHint": "API-Schlüssel für Luftraum-, Flughafen- und Basiskartendaten",
     "mavlink": {
       "sysid": "Bodenstations-System-ID",
       "sysidHint": "Die MAVLink-System-ID, mit der diese Station sendet (1 bis 255, Standard 255). Geben Sie jeder Station auf einer gemeinsamen Verbindung eine eigene ID, sonst vermischen sich Parameter- und Missionsübertragungen zwischen den Stationen.",
@@ -449,6 +449,12 @@
       "freeAt": "- kostenlos unter",
       "label": "OpenAIP-API-Schlüssel",
       "placeholder": "API-Schlüssel einfügen"
+    },
+    "tianditu": {
+      "configured": "Schlüssel konfiguriert: die Tianditu-Basiskarten sind nutzbar",
+      "freeAt": "- ohne Schlüssel bleiben die Tianditu-Karten leer. Schlüssel erhältlich unter",
+      "label": "Tianditu-API-Schlüssel (chinesische Basiskarten)",
+      "placeholder": "Tianditu-API-Schlüssel einfügen"
     },
     "perf": {
       "hint": "Schutzgrenzen, die die Karte bei großen importierten Begrenzungen und umfangreichen Missionen reaktionsfähig halten. Gilt überall.",

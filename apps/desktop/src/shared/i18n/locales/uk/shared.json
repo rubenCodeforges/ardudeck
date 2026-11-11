@@ -140,7 +140,10 @@
     "osm": "Вулиці",
     "radar": "Радар",
     "satellite": "Супутник",
-    "terrain": "Рельєф"
+    "terrain": "Рельєф",
+    "tiandituHybrid": "Tianditu Гібрид",
+    "tiandituImg": "Tianditu Супутник",
+    "tiandituVec": "Tianditu Вулиці"
   },
   "mavlinkChannels": {
     "rateGroup": {
