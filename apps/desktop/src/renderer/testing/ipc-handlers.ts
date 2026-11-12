@@ -264,6 +264,20 @@ async function init(): Promise<void> {
     return proposeParameterChanges(params?.proposals ?? [], params?.timeout);
   });
 
+  register(TESTING_CHANNELS.GET_MISSION, async () => (await import('./agent-planning')).getMission());
+  register(TESTING_CHANNELS.PROPOSE_MISSION, async (params) => (await import('./agent-planning')).agentProposeMission(params));
+  register(TESTING_CHANNELS.PROPOSE_SURVEY, async (params) => (await import('./agent-planning')).agentProposeSurvey(params));
+  register(TESTING_CHANNELS.LIST_SURVEY_OPTIONS, async () => (await import('./agent-planning')).listSurveyOptions());
+  register(TESTING_CHANNELS.DRAW_AREA, async (params) => (await import('./agent-planning')).agentDrawArea(params));
+  register(TESTING_CHANNELS.LIST_AREAS, async () => (await import('./agent-planning')).agentListAreas());
+  register(TESTING_CHANNELS.DELETE_AREA, async (params) => (await import('./agent-planning')).agentDeleteArea(params));
+  register(TESTING_CHANNELS.SURVEY_AREA, async (params) => (await import('./agent-planning')).agentSurveyArea(params));
+  register(TESTING_CHANNELS.FIT_MISSION, async (params) => (await import('./agent-planning')).agentFitMission(params));
+  register(TESTING_CHANNELS.SET_HOME, async (params) => (await import('./agent-planning')).agentSetHome(params));
+  register(TESTING_CHANNELS.SET_VEHICLE_PROFILE, async (params) => (await import('./agent-planning')).agentSetVehicleProfile(params));
+  register(TESTING_CHANNELS.GET_FLIGHT_ESTIMATE, async (params) => (await import('./agent-planning')).agentFlightEstimate(params));
+  register(TESTING_CHANNELS.PROPOSE_FENCE, async (params) => (await import('./agent-planning')).agentProposeFence(params));
+
   // Signal that the test driver is ready
   window.__testing.signalReady();
   console.log('[test-driver] All IPC handlers registered and ready');

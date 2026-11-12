@@ -20,7 +20,8 @@ import { SHAPE_OPTIONS, FormationGlyph } from './FormationGlyphs';
 import { FleetChevron, FleetCountHeader } from './FleetDisclosure';
 import { tacButton } from './tactical';
 
-export function FleetCoordination() {
+/** compact: one line per fleet (take off only), no shape grid or per-fleet start. */
+export function FleetCoordination({ compact = false }: { compact?: boolean } = {}) {
   const { t } = useTranslation();
   const { hasServer, vehicles, canTakeoff, canFollow, formations, configFor, busy, takeOffAll, takeOffFleet, startLeaderMission, startAssignedMissions, reshapeFleet } = useFormationControl();
   const uiOverrides = useFleetUiStore((s) => s.overrides);
@@ -106,15 +107,15 @@ export function FleetCoordination() {
         </button>
       )}
 
-      <FleetCountHeader leaderKeys={leaderKeys} className="px-0.5" />
+      {!compact && <FleetCountHeader leaderKeys={leaderKeys} className="px-0.5" />}
 
       {groups.map((g) => {
-        const expanded = isFleetExpanded(uiOverrides, g.leader.key, leaderKeys.length);
+        const expanded = !compact && isFleetExpanded(uiOverrides, g.leader.key, leaderKeys.length);
         return (
           <div key={g.leader.key} className="rounded-md border border-subtle bg-surface p-1.5 flex flex-col gap-1.5">
             {/* One-line fleet header: chevron, label +N, quick take off. */}
             <div className="flex items-center gap-1.5 text-[10px]">
-              <button
+              {!compact && <button
                 {...ui('icon-button', { active: expanded })}
                 type="button"
                 onClick={() => toggleFleet(g.leader.key, expanded)}
@@ -122,7 +123,7 @@ export function FleetCoordination() {
                 data-tip={expanded ? t('fleet:fleetCoordination.collapseFleet') : t('fleet:fleetCoordination.expandFleet')}
               >
                 <FleetChevron open={expanded} />
-              </button>
+              </button>}
               <span className="font-semibold uppercase tracking-[0.12em] text-cyan-500/90">{t('fleet:fleetCoordination.fleet')}</span>
               <span className="font-mono text-content-secondary truncate flex-1">{g.leader.label} +{g.wingmen}</span>
               <span className="font-mono text-content-tertiary truncate max-w-[64px]" data-tip={t('fleet:fleetCoordination.leaderModeTip', { label: g.leader.label })}>{g.leader.mode}</span>

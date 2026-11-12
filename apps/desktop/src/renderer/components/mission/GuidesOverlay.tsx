@@ -5,10 +5,54 @@
  * survey itself then uses whichever engine the panel has selected.
  */
 import { useTranslation } from 'react-i18next';
-import { useEffect, useRef } from 'react';
-import { Marker, Polygon, Polyline, Popup, useMap } from 'react-leaflet';
+import { useEffect, useMemo, useRef } from 'react';
+import { CircleMarker, Marker, Polygon, Polyline, Popup, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { useGuideStore } from '../../stores/guide-store';
+import { useGuideStore, type MapGuide } from '../../stores/guide-store';
+import { useMissionStore } from '../../stores/mission-store';
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+}
+
+// A small dark chip just above its anchor, so a name never covers the middle of a shape or the flight lines.
+function chipIcon(name: string, color: string): L.DivIcon {
+  return L.divIcon({
+    className: '',
+    iconSize: [0, 0],
+    html: `<div style="transform:translate(-50%,calc(-100% - 6px));display:inline-flex;align-items:center;gap:5px;white-space:nowrap;padding:2px 7px 2px 6px;border-radius:6px;background:rgba(15,23,42,.82);color:#f8fafc;font:600 11px/16px system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,.35);pointer-events:none"><span style="width:7px;height:7px;border-radius:9999px;background:${color}"></span>${escapeHtml(name)}</div>`,
+  });
+}
+
+function labelAnchor(g: MapGuide): [number, number] | null {
+  if (g.polygon.length === 0) return null;
+  if (g.kind === 'line') {
+    const m = g.polygon[Math.floor(g.polygon.length / 2)]!;
+    return [m.lat, m.lng];
+  }
+  const top = g.polygon.reduce((best, p) => (p.lat > best.lat ? p : best), g.polygon[0]!);
+  return [top.lat, top.lng];
+}
+
+function GuideLabel({ guide }: { guide: MapGuide }) {
+  const anchor = labelAnchor(guide);
+  const icon = useMemo(() => chipIcon(guide.name, guide.color), [guide.name, guide.color]);
+  if (!anchor) return null;
+  return <Marker position={anchor} icon={icon} interactive={false} keyboard={false} />;
+}
+
+/** Plain areas and notes are reference outlines; the rest are filled so they read as what they are. */
+function polygonStyle(g: MapGuide): L.PathOptions {
+  const outlineOnly = !g.role || g.role === 'area' || g.role === 'note';
+  return {
+    color: g.color,
+    weight: outlineOnly ? 1.5 : 2.5,
+    dashArray: outlineOnly ? '5, 6' : undefined,
+    opacity: 0.95,
+    fillColor: g.color,
+    fillOpacity: outlineOnly ? 0.03 : g.role === 'nofly' ? 0.22 : 0.14,
+  };
+}
 import { useCoordinateFormat } from '../../utils/coordinate-format';
 
 // Numbered survey-point marker in the guide's colour, white halo for
@@ -43,6 +87,7 @@ export function GuidesOverlay() {
   const { t } = useTranslation();
   const { format: formatPos } = useCoordinateFormat();
   const guides = useGuideStore((s) => s.guides);
+  const showLabels = useGuideStore((s) => s.showLabels);
   const toggleGuide = useGuideStore((s) => s.toggleGuide);
   const startSurveyFromGuide = useGuideStore((s) => s.startSurveyFromGuide);
 
@@ -57,6 +102,32 @@ export function GuidesOverlay() {
       <GuideFocusHandler />
       {pointSets.map((g) =>
         g.polygon.map((p, i) => {
+          // Many points (soil samples, a grid of checkpoints) read better as small dots with a hover label.
+          if (g.role === 'poi' || g.role === 'takeoff' || g.polygon.length > 30) {
+            const label = g.pointLabels?.[i] ?? t('mission:guidesOverlay.pointN', { n: i + 1 });
+            return (
+              <CircleMarker
+                key={`${g.id}-${i}`}
+                center={[p.lat, p.lng]}
+                radius={g.role === 'takeoff' ? 6 : 3.5}
+                pathOptions={{ color: '#0f172a', weight: 1, opacity: 0.9, fillColor: g.color, fillOpacity: 1 }}
+              >
+                <Tooltip direction="top">{`${g.name}: ${label}`}</Tooltip>
+                <Popup>
+                  <div className="space-y-1 min-w-[10rem]">
+                    <div className="text-xs font-medium">{g.name} · {label}</div>
+                    <div className="text-[10px] font-mono text-gray-500">{formatPos(p.lat, p.lng)}</div>
+                    <button
+                      onClick={() => useMissionStore.getState().setHomePosition(p.lat, p.lng)}
+                      className="w-full px-2 py-1 rounded text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 transition-colors"
+                    >
+                      {t('mission:guidesOverlay.setHomeHere')}
+                    </button>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            );
+          }
           // Long labels don't fit the 20px badge - number there, label in popup.
           const lbl = g.pointLabels?.[i];
           const badge = lbl && lbl.length <= 3 ? lbl : String(i + 1);
@@ -90,7 +161,7 @@ export function GuidesOverlay() {
         <Polyline
           key={g.id}
           positions={g.polygon.map((p) => [p.lat, p.lng] as [number, number])}
-          pathOptions={{ color: g.color, weight: 3, dashArray: '10, 6', opacity: 0.85 }}
+          pathOptions={{ color: g.color, weight: 3, dashArray: g.role && g.role !== 'area' ? undefined : '10, 6', opacity: 0.9 }}
         >
           <Popup>
             <div className="space-y-1.5 min-w-[10rem]">
@@ -125,14 +196,7 @@ export function GuidesOverlay() {
           <Polygon
             key={g.id}
             positions={positions}
-            pathOptions={{
-              color: g.color,
-              weight: 2,
-              dashArray: '6, 8',
-              opacity: 0.8,
-              fillColor: g.color,
-              fillOpacity: 0.04,
-            }}
+            pathOptions={polygonStyle(g)}
           >
             <Popup>
               <div className="space-y-1.5 min-w-[10rem]">
@@ -154,6 +218,7 @@ export function GuidesOverlay() {
           </Polygon>
         );
       })}
+      {showLabels && [...visible, ...lines].map((g) => <GuideLabel key={`label-${g.id}`} guide={g} />)}
     </>
   );
 }

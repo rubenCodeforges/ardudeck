@@ -46,7 +46,8 @@ function BatteryPip({ pct }: { pct: number | null }) {
 function WingmenRail({ leaderKey, leaderSysid, children }: { leaderKey: string; leaderSysid: number; children: ReactNode }) {
   const leaderColor = useVehicleColor(leaderKey, leaderSysid);
   return (
-    <div className="ml-4 pl-2 border-l-2 flex flex-col gap-1" style={{ borderColor: leaderColor }}>
+    // ml = chevron w-4 + gap-0.5 + 8px, so the rail hangs under the leader card, not under the chevron.
+    <div className="ml-[26px] pl-2 border-l-2 flex flex-col gap-1" style={{ borderColor: leaderColor }}>
       {children}
     </div>
   );

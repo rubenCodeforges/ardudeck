@@ -7,7 +7,7 @@
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { History, AlertTriangle, RotateCw, Loader2, Star, CheckCircle, XCircle, Info, ExternalLink, Cpu, Pencil, Check } from 'lucide-react';
+import { History, AlertTriangle, RotateCw, RotateCcw, Undo2, Loader2, Star, CheckCircle, XCircle, Info, ExternalLink, Cpu, Pencil, Check } from 'lucide-react';
 import { useTranslation, Trans } from 'react-i18next';
 import { useParameterStore, type SortColumn } from '../../stores/parameter-store';
 import { useFleetRepoStore } from '../../stores/fleet-repo-store';
@@ -26,9 +26,13 @@ import { Tooltip } from '../ui/Tooltip';
 import { ui } from '../ui/ui-hooks';
 import { NON_DEFAULT_COLORS, getNonDefaultColor } from '../parameters/non-default-palette';
 import { DefaultValueCell } from '../parameters/DefaultValueCell';
+import { describeParamValue } from '../../../shared/param-value-label';
 import { wiringStepFor } from '../../lib/wiring-checks';
 import { detectSetupVehicle } from '../../../shared/vehicle-setup/plans';
 import { useOwnsCompareModal } from '../parameters/compare-modal-host';
+import { useTelemetryStore } from '../../stores/telemetry-store';
+import { ResetChangedDialog } from './ResetChangedDialog';
+import { ResetParamsDialog } from './ResetParamsDialog';
 
 // Toast notification state
 type ToastType = 'success' | 'error' | 'info';
@@ -168,6 +172,11 @@ const ParameterTable: React.FC = () => {
   const saveDropdownRef = useRef<HTMLDivElement>(null);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const colorPickerRef = useRef<HTMLDivElement>(null);
+  const [resetMenuOpen, setResetMenuOpen] = useState(false);
+  const resetMenuRef = useRef<HTMLDivElement>(null);
+  const [showResetChanged, setShowResetChanged] = useState(false);
+  const [showFactoryReset, setShowFactoryReset] = useState(false);
+  const armed = useTelemetryStore((s) => s.flight.armed);
 
   // Reboot cycle state
   const rebootCycleRef = useRef<{
@@ -228,6 +237,15 @@ const ParameterTable: React.FC = () => {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [saveDropdownOpen]);
+
+  useEffect(() => {
+    if (!resetMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (resetMenuRef.current && !resetMenuRef.current.contains(e.target as Node)) setResetMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [resetMenuOpen]);
 
   // Close color picker on outside click
   useEffect(() => {
@@ -324,6 +342,25 @@ const ParameterTable: React.FC = () => {
       showToast(t('mavlink-config:parameterTable.rebootFailed'), 'error');
     }
   }, [showToast, rebootRequiredParams, t]);
+
+  const handleFactoryReset = useCallback(async (): Promise<boolean> => {
+    const result = await window.electronAPI?.mavlinkResetParams();
+    if (!result?.success) {
+      showToast(result?.error ?? t('mavlink-config:resetParams.failed'), 'error');
+      return false;
+    }
+    showToast(t('mavlink-config:resetParams.erased'), 'success');
+    setShowFactoryReset(false);
+    await handleReboot();
+    return true;
+  }, [showToast, handleReboot, t]);
+
+  const handleResetChangedDone = useCallback((count: number) => {
+    setShowResetChanged(false);
+    if (count === 0) return;
+    if (!useParameterStore.getState().showOnlyModified) toggleShowOnlyModified();
+    showToast(t('mavlink-config:resetChanged.staged', { count }), 'info');
+  }, [showToast, toggleShowOnlyModified, t]);
 
   // Watch for reconnection completion after a reboot we initiated
   useEffect(() => {
@@ -477,13 +514,13 @@ const ParameterTable: React.FC = () => {
       let params = Array.from(parameters.values())
         .filter(p => !p.isReadOnly)
         .sort((a, b) => a.id.localeCompare(b.id))
-        .map(p => ({ id: p.id, value: p.value }));
+        .map(p => ({ id: p.id, value: p.value, type: p.type }));
 
       if (changedOnly) {
         params = Array.from(parameters.values())
           .filter(p => !p.isReadOnly && p.isModified)
           .sort((a, b) => a.id.localeCompare(b.id))
-          .map(p => ({ id: p.id, value: p.value }));
+          .map(p => ({ id: p.id, value: p.value, type: p.type }));
       }
 
       if (params.length === 0) {
@@ -704,6 +741,55 @@ const ParameterTable: React.FC = () => {
             <History className="w-4 h-4" />
             {t('mavlink-config:parameterTable.history')}
           </button>
+
+          <div className="relative" ref={resetMenuRef}>
+            <button
+              {...ui('button', { variant: 'secondary' })}
+              onClick={() => setResetMenuOpen((o) => !o)}
+              disabled={paramCount === 0}
+              aria-haspopup="menu"
+              aria-expanded={resetMenuOpen}
+              className="px-3 py-2 bg-surface-raised hover:bg-surface disabled:bg-surface text-content disabled:text-content-tertiary rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              data-tip={t('mavlink-config:parameterTable.resetTip')}
+            >
+              <RotateCcw className="w-4 h-4" />
+              {t('mavlink-config:parameterTable.reset')}
+            </button>
+            {resetMenuOpen && (
+              <div role="menu" className="absolute top-full left-0 mt-1 w-72 bg-surface-solid border border-subtle rounded-lg shadow-xl z-50 py-1">
+                <button
+                  role="menuitem"
+                  onClick={() => { setResetMenuOpen(false); setShowResetChanged(true); }}
+                  disabled={!hasDefaults}
+                  className="w-full px-3 py-2 text-left flex items-start gap-2.5 hover:bg-surface-raised disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
+                >
+                  <Undo2 className="w-4 h-4 mt-0.5 shrink-0 text-blue-400" />
+                  <span className="min-w-0">
+                    <span className="block text-sm text-content">{t('mavlink-config:resetChanged.menu')}</span>
+                    <span className="block text-xs text-content-tertiary">
+                      {hasDefaults ? t('mavlink-config:resetChanged.menuDesc') : t('mavlink-config:resetChanged.noDefaults')}
+                    </span>
+                  </span>
+                </button>
+                {(connectionState.firmware === 'ardupilot' || connectionState.firmware === 'px4') && (
+                  <button
+                    role="menuitem"
+                    onClick={() => { setResetMenuOpen(false); setShowFactoryReset(true); }}
+                    disabled={armed || rebooting}
+                    className="w-full px-3 py-2 text-left flex items-start gap-2.5 hover:bg-surface-raised disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
+                  >
+                    <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-red-400" />
+                    <span className="min-w-0">
+                      <span className="block text-sm text-red-400">{t('mavlink-config:resetParams.menu')}</span>
+                      <span className="block text-xs text-content-tertiary">
+                        {armed ? t('mavlink-config:resetParams.disarmFirst') : t('mavlink-config:resetParams.menuDesc')}
+                      </span>
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
           {favouriteCount() > 0 && (
             <button
@@ -1112,6 +1198,11 @@ const ParameterTable: React.FC = () => {
                               {meta?.units && (
                                 <span className="text-[11px] text-content-tertiary ml-1 truncate">{meta.units}</span>
                               )}
+                              {hasBitmask && (() => {
+                                const d = describeParamValue(param.value, meta);
+                                const text = d?.text || t('mavlink-config:parameterTable.noBitsSet');
+                                return <span className="text-[11px] text-content-secondary ml-1.5 truncate min-w-0" data-tip={text}>{text}</span>;
+                              })()}
                             </>
                           )}
                           {hasBitmask && (
@@ -1342,6 +1433,20 @@ const ParameterTable: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showResetChanged && (
+        <ResetChangedDialog onCancel={() => setShowResetChanged(false)} onDone={handleResetChangedDone} />
+      )}
+
+      {showFactoryReset && (
+        <ResetParamsDialog
+          armed={armed}
+          firmware={connectionState.firmware}
+          vehicleType={connectionState.vehicleType || connectionState.fcVariant}
+          onCancel={() => setShowFactoryReset(false)}
+          onReset={handleFactoryReset}
+        />
       )}
 
       {/* Parameter History Modal */}

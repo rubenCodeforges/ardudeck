@@ -20,6 +20,8 @@ import { AltitudeProfilePanel } from './AltitudeProfilePanel';
 import { FlightPreviewPanel } from './FlightPreviewPanel';
 import { useFlightPreviewStore } from '../../stores/flight-preview-store';
 import { FlightInfoPanel } from './FlightInfoPanel';
+import { GuidesPanel } from './GuidesPanel';
+import { useMissionPanelRequestStore } from '../../stores/mission-panel-request-store';
 import { SurveyConfigPanel } from '../survey/SurveyConfigPanel';
 import {
   getModuleMissionPanels,
@@ -56,6 +58,7 @@ const components: Record<string, React.FC<IDockviewPanelProps>> = {
   WaypointTablePanel: () => <ErrorBoundary label={translate('mission:missionPlanningView.boundaryWaypointList')}><WaypointTablePanel /></ErrorBoundary>,
   AltitudeProfilePanel: () => <ErrorBoundary label={translate('mission:missionPlanningView.boundaryAltitudeProfile')}><AltitudeProfilePanel /></ErrorBoundary>,
   FlightInfoPanel: () => <ErrorBoundary label={translate('mission:missionPlanningView.boundaryFlightInfo')}><FlightInfoPanel /></ErrorBoundary>,
+  GuidesPanel: () => <ErrorBoundary label={translate('mission:guidesPanel.title')}><GuidesPanel /></ErrorBoundary>,
   SurveyConfigPanel: () => <ErrorBoundary label={translate('mission:missionPlanningView.boundarySurveyPanel')}><SurveyConfigPanel /></ErrorBoundary>,
   FlightPreviewPanel: () => <ErrorBoundary label={translate('mission:missionPlanningView.boundaryFlightPreview')}><FlightPreviewPanel /></ErrorBoundary>,
 };
@@ -96,6 +99,20 @@ function ensureFlightInfoPanel(api: DockviewApi): void {
   api.getPanel('waypointTable')?.api.setActive();
 }
 
+export const GUIDES_PANEL_ID = 'guides';
+
+function ensureGuidesPanel(api: DockviewApi): void {
+  if (api.getPanel(GUIDES_PANEL_ID)) return;
+  const refGroup = api.getPanel('waypointTable')?.group;
+  api.addPanel({
+    id: GUIDES_PANEL_ID,
+    component: 'GuidesPanel',
+    title: translate('mission:guidesPanel.title'),
+    ...(refGroup ? { position: { referenceGroup: refGroup } } : {}),
+  });
+  api.getPanel('waypointTable')?.api.setActive();
+}
+
 // Stable panel id for the Survey tab — opened/closed dynamically based on
 // whether survey mode is active. Lives as a sibling tab next to Waypoints.
 const SURVEY_PANEL_ID = 'surveyConfig';
@@ -133,8 +150,9 @@ function createDefaultLayout(api: DockviewApi): void {
     position: { referenceGroup: bottomGroup },
   });
 
-  // Flight Info as a sibling tab of Waypoints.
+  // Flight Info and Guides as sibling tabs of Waypoints.
   ensureFlightInfoPanel(api);
+  ensureGuidesPanel(api);
 }
 
 // Component for when mission planning is not available
@@ -565,6 +583,14 @@ export function MissionPlanningView() {
     }
   }, [connectionState.isConnected, missionItems.length, isLoading, missionPlanningUnavailable, fetchMission]);
 
+  const panelRequest = useMissionPanelRequestStore((s) => s.request);
+  useEffect(() => {
+    const api = apiRef.current;
+    if (!panelRequest || !api) return;
+    if (panelRequest.id === GUIDES_PANEL_ID) ensureGuidesPanel(api);
+    api.getPanel(panelRequest.id)?.api.setActive();
+  }, [panelRequest]);
+
   const onReady = useCallback(async (event: DockviewReadyEvent) => {
     apiRef.current = event.api;
 
@@ -575,6 +601,7 @@ export function MissionPlanningView() {
         event.api.fromJSON(savedLayout.data as SerializedDockview);
         // Saved layouts from before this panel existed won't include it.
         ensureFlightInfoPanel(event.api);
+        ensureGuidesPanel(event.api);
         setLayoutLoaded(true);
         return;
       }

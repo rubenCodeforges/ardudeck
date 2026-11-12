@@ -293,7 +293,10 @@
     "sensorSpacingHint": "Abstand zwischen den Messlinien. Magnetometer-Vermessungen fliegen typischerweise 10 bis 50 m.",
     "tieLines": "Kontrolllinien",
     "tieLinesHint": "Eine Kontrolllinie quer dazu alle {{every}} Messlinien, nach ihnen geflogen. Damit werden die Linien untereinander abgeglichen.",
-    "tieLinesOff": "Aus. Magnetometer-Vermessungen setzen meist alle 5 bis 10 Linien eine."
+    "tieLinesOff": "Aus. Magnetometer-Vermessungen setzen meist alle 5 bis 10 Linien eine.",
+    "surveyNamePrefix": "Vermessung",
+    "sectionWord": "Abschnitt",
+    "flightWord": "Flug"
   },
   "surveyMapOverlay": {
     "clickToAddControlPoint": "Klicken, um einen Kontrollpunkt hinzuzufügen",

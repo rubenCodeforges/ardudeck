@@ -57,6 +57,7 @@ import { NumericReadout } from './NumericReadout';
 import { LinkInstrument } from './LinkInstrument';
 import { useTelemetryFresh } from './useTelemetryFresh';
 import { RtkInstrument } from './RtkInstrument';
+import { FleetMatrixInstrument, FleetBatteryInstrument, FleetSeparationInstrument, FleetOpsInstrument, FleetRadarInstrument, FleetMatrixCompact, FleetBatteryCompact, FleetSeparationCompact, FleetOpsCompact } from './FleetInstruments';
 import { useCoordinateFormat } from '../../../utils/coordinate-format';
 
 /** An alternative rendering of an instrument, chosen per-instrument and
@@ -1425,6 +1426,11 @@ export const MAP_INSTRUMENTS: MapInstrumentDef[] = [
   { id: 'sticks', labelKey: 'map:instrumentRegistry.sticks', defaultClassName: 'absolute left-[124px] top-[600px] z-[1000]', defaultVisible: false, Component: SticksInstrument, variants: [
     { id: 'compact', labelKey: 'map:instrumentDisplay.compact', Component: () => <SticksInstrument variant="compact" /> },
   ] },
+  { id: 'fleet-matrix', labelKey: 'map:instrumentRegistry.fleetMatrix', defaultClassName: 'absolute right-3 top-28 z-[1000]', defaultVisible: false, Component: FleetMatrixInstrument, variants: [{ id: 'compact', labelKey: 'map:instrumentDisplay.compact', Component: FleetMatrixCompact }] },
+  { id: 'fleet-separation', labelKey: 'map:instrumentRegistry.fleetSeparation', defaultClassName: 'absolute right-3 top-[340px] z-[1000]', defaultVisible: false, Component: FleetSeparationInstrument, variants: [{ id: 'compact', labelKey: 'map:instrumentDisplay.compact', Component: FleetSeparationCompact }] },
+  { id: 'fleet-ops', labelKey: 'map:instrumentRegistry.fleetOps', defaultClassName: 'absolute right-3 bottom-3 z-[1000]', defaultVisible: false, Component: FleetOpsInstrument, variants: [{ id: 'compact', labelKey: 'map:instrumentDisplay.compact', Component: FleetOpsCompact }] },
+  { id: 'fleet-radar', labelKey: 'map:instrumentRegistry.fleetRadar', defaultClassName: 'absolute right-[260px] bottom-3 z-[1000]', defaultVisible: false, Component: FleetRadarInstrument },
+  { id: 'fleet-battery', labelKey: 'map:instrumentRegistry.fleetBattery', defaultClassName: 'absolute right-3 top-[480px] z-[1000]', defaultVisible: false, Component: FleetBatteryInstrument, variants: [{ id: 'compact', labelKey: 'map:instrumentDisplay.compact', Component: FleetBatteryCompact }] },
   { id: 'in-flight-adjust', profiles: ['air'], labelKey: 'map:instrumentRegistry.inFlightAdjust', defaultClassName: 'absolute left-[124px] top-[540px] z-[1000]', defaultVisible: false, Component: InFlightAdjustInstrument, variants: [
     { id: 'compact', labelKey: 'map:instrumentDisplay.compact', Component: () => <InFlightAdjustInstrument variant="compact" /> },
     { id: 'bar', labelKey: 'map:instrumentDisplay.bar', Component: () => <InFlightAdjustInstrument variant="bar" /> },

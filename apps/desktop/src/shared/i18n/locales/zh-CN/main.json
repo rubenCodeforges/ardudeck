@@ -148,7 +148,9 @@
     "waypoints": "航点",
     "workspaceLayout": "ArduDeck 工作区布局",
     "xplaneExecutable": "X-Plane 可执行文件",
-    "zipArchive": "Zip 压缩包"
+    "zipArchive": "Zip 压缩包",
+    "qgcParameterFiles": "QGroundControl 参数文件",
+    "allParameterFiles": "参数文件（.param、.params）"
   },
   "firmwareDownloader": {
     "aborted": "下载已中止",
@@ -315,14 +317,20 @@
     "writeProbeRejected": "飞控拒绝了写入探测：{{error}}",
     "inavNoParams": "此飞控没有 MAVLink 参数（INAV）。请通过 MSP 设置。",
     "pickFolderTitle": "选择文件夹",
-    "resetParamsArduPilotOnly": "仅 ArduPilot 支持重置所有参数。",
+    "resetParamsArduPilotOnly": "仅 ArduPilot 和 PX4 支持重置所有参数。",
     "resetParamsDisarmFirst": "重置参数前载具必须处于上锁状态。",
     "resetParamsFailed": "飞控未接受参数重置。",
     "rcMapUnknown": "在载具参数加载之前，摇杆覆盖保持关闭（RCMAP 决定哪个通道是油门）。",
     "paramNoEcho": "{{param}}：飞控未确认写入。请检查链路后重试。",
     "paramRejected": "{{param}}：飞控保留了 {{value}}，未接受新值。",
     "flashWriteRejected": "飞控拒绝了闪存写入（结果 {{result}}）。",
-    "calibrationLost": "{{type}} 校准在重启后未保留。飞行前请重新校准。"
+    "calibrationLost": "{{type}} 校准在重启后未保留。飞行前请重新校准。",
+    "replayFileRequired": "请选择要回放的 .tlog 文件",
+    "replayTransportName": "回放 {{file}}",
+    "replayPickTitle": "回放飞行",
+    "replayEmpty": "此文件不包含 ArduDeck 可回放的飞行数据",
+    "replayFilterTlog": "遥测日志 (.tlog)",
+    "replayFilterBin": "机载日志 (.bin)"
   },
   "licenseValidator": {
     "invalidKeyFormat": "密钥格式无效",

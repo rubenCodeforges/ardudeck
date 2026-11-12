@@ -13,9 +13,11 @@ export interface ResetDefaultsDeps {
 export type ResetMethod = 'preflight-storage' | 'format-version';
 
 /** Erases stored parameters; the caller reboots. Fallback: FORMAT_VERSION = 0 fails the boot-time format check, which erases too. */
-export async function eraseAllParameters(deps: ResetDefaultsDeps, ackTimeoutMs = 3000): Promise<{ ok: true; method: ResetMethod } | { ok: false }> {
+/** PX4 answers param1 = 2 with ResetAllConfig, which keeps CAL_* calibration; it has no FORMAT_VERSION, so no fallback there. */
+export async function eraseAllParameters(deps: ResetDefaultsDeps, ackTimeoutMs = 3000, formatVersionFallback = true): Promise<{ ok: true; method: ResetMethod } | { ok: false }> {
   const ack = deps.awaitAck(MAV_CMD_PREFLIGHT_STORAGE, ackTimeoutMs);
   await deps.sendCommand(MAV_CMD_PREFLIGHT_STORAGE, PREFLIGHT_STORAGE_RESET);
   if ((await ack) === MAV_RESULT_ACCEPTED) return { ok: true, method: 'preflight-storage' };
+  if (!formatVersionFallback) return { ok: false };
   return (await deps.setParam('FORMAT_VERSION', 0)) ? { ok: true, method: 'format-version' } : { ok: false };
 }

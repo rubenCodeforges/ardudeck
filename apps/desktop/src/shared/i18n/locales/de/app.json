@@ -67,6 +67,8 @@
     "firmwareFlashDesc": "Firmware über USB oder DFU flashen",
     "flightLogAnalysis": "Flug-Log-Analyse",
     "flightLogAnalysisDesc": "KI-gestützte Auswertung von Flug-Logs",
+    "flightReplay": "Flug-Wiedergabe",
+    "flightReplayDesc": "Einen aufgezeichneten Flug abspielen (.tlog oder .bin)",
     "intro": "Verbinden Sie sich über das Panel links mit Ihrem Flugcontroller oder springen Sie direkt zu einem der Werkzeuge unten.",
     "missionLibraryDesc": "Gespeicherte Pläne durchsuchen und verwalten",
     "radioHudDesc": "ArduDeck-Telemetrieanzeige auf Ihrer EdgeTX-Fernsteuerung",

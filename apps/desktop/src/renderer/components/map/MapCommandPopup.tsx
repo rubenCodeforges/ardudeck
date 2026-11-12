@@ -39,6 +39,9 @@ import { useCoordinateFormat } from '../../utils/coordinate-format';
 interface MapCommandPopupProps {
   lat: number;
   lon: number;
+  /** Start from this altitude instead of the vehicle's (reopening the card on an existing target). */
+  initialAltitude?: number;
+  initialAltFrame?: AltReferenceFrame;
   distanceMeters: number;
   currentAltAgl: number;
   currentMode: string;
@@ -158,6 +161,8 @@ const ACCENT: Record<Accent, { tile: string; icon: string; btn: string; pill: st
 export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
   lat,
   lon,
+  initialAltitude,
+  initialAltFrame,
   distanceMeters,
   currentAltAgl,
   currentMode,
@@ -173,7 +178,7 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
 
   // Parameter state persists while the popup is open, and defaults are sane,
   // so Enter always fires with what the row summary shows.
-  const [altitude, setAltitude] = useState(Math.max(Math.round(currentAltAgl), 10));
+  const [altitude, setAltitude] = useState(initialAltitude != null ? Math.round(initialAltitude) : Math.max(Math.round(currentAltAgl), 10));
   const [radius, setRadius] = useState(50);
   // 0 = leave the vehicle's configured cruise alone, which is the old behaviour.
   const [cruiseSpeed, setCruiseSpeed] = useState(0);
@@ -196,7 +201,7 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
   // it; the Lua-script commands stay home-relative (see label below).
   const defaultCommandAltFrame = useSettingsStore(s => s.defaultCommandAltFrame);
   const setDefaultCommandAltFrame = useSettingsStore(s => s.setDefaultCommandAltFrame);
-  const [altFrame, setAltFrame] = useState<AltReferenceFrame>(defaultCommandAltFrame);
+  const [altFrame, setAltFrame] = useState<AltReferenceFrame>(initialAltFrame ?? defaultCommandAltFrame);
   const chooseAltFrame = useCallback((f: AltReferenceFrame) => {
     setAltFrame(f);
     // Terrain never becomes the sticky default from here: most vehicles carry

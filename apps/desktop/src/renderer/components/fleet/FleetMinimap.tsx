@@ -1,5 +1,5 @@
 /**
- * Fleet radar - a compact overview of the whole fleet, embedded in the Fleet Ops panel.
+ * Fleet radar - a compact overview of the whole fleet, shown as the Fleet radar map instrument.
  * Every vehicle is an identity-coloured blip (active = cyan ring, leader = amber ring);
  * the dashed rectangle is the main map's current viewport. Click a blip to command that
  * vehicle. Self-gates to 2+ vehicles.
@@ -7,6 +7,7 @@
 
 import { useFleetVehicles, selectActiveVehicle, type FleetVehicle } from '../../hooks/useFleet';
 import { useActiveVehicleStore } from '../../stores/active-vehicle-store';
+import { useFormationStore } from '../../stores/formation-store';
 import { useVehicleColor } from '../../stores/vehicle-appearance-store';
 import { useTelemMapBoundsStore } from '../../stores/telem-map-bounds-store';
 
@@ -19,6 +20,7 @@ function MinimapBlip({ v, x, y, isActive, isLeader }: { v: FleetVehicle; x: numb
     <g
       className="cursor-pointer"
       onClick={(e) => { e.stopPropagation(); selectActiveVehicle(v.key, v.transportId); }}
+      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); useFormationStore.getState().openContextMenu({ x: e.clientX, y: e.clientY, vehicleKey: v.key }); }}
       data-tip={`${v.label} - ${v.mode}`}
     >
       <circle cx={x} cy={y} r={8} fill="transparent" />

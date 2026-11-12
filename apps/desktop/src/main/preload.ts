@@ -44,6 +44,7 @@ import type { CalibrationData, CalibrationProgressEvent, CalibrationCompleteEven
 import type { MissionSummary, StoredMission, SaveMissionPayload, FlightLog, MissionListFilter, MissionSortOptions } from '../shared/mission-library-types.js';
 import type { SurveyDocument, SurveyDocumentSummary, SaveSurveyAreaPayload } from '../shared/survey-document-types.js';
 import type { VaultMission, VaultSurveyArea } from '../shared/ipc-channels.js';
+import type { ReplayControl, ReplayStatusIpc } from '../shared/ipc-channels.js';
 import type { VehicleProfile } from '../shared/vehicle-profile.js';
 import type { DroneBridgeInfo, DroneBridgeStats, DroneBridgeSettings, DroneBridgeClients, DroneBridgeDetected } from '../shared/dronebridge-types.js';
 import type { RainViewerMeta, AirspaceData, AirportData, GeocodeResult } from '../shared/overlay-types.js';
@@ -803,13 +804,13 @@ const api = {
   writeParamsToFlash: (): Promise<{ success: boolean; unconfirmed?: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.PARAM_WRITE_FLASH),
 
-  saveParamsToFile: (params: Array<{ id: string; value: number }>, vehicleType?: string): Promise<{ success: boolean; error?: string; filePath?: string }> =>
+  saveParamsToFile: (params: Array<{ id: string; value: number; type?: number }>, vehicleType?: string): Promise<{ success: boolean; error?: string; filePath?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.PARAM_SAVE_FILE, params, vehicleType),
 
   loadParamsFromFile: (): Promise<{ success: boolean; error?: string; params?: Array<{ id: string; value: number }>; vehicleType?: string; filePath?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.PARAM_LOAD_FILE),
 
-  saveParamsToPath: (params: Array<{ id: string; value: number }>, filePath: string, vehicleType?: string): Promise<{ success: boolean; error?: string }> =>
+  saveParamsToPath: (params: Array<{ id: string; value: number; type?: number }>, filePath: string, vehicleType?: string): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.PARAM_SAVE_TO_PATH, params, filePath, vehicleType),
 
   // Parameter history (version control)
@@ -1025,6 +1026,11 @@ const api = {
     return () => ipcRenderer.removeListener(IPC_CHANNELS.MISSION_COMPLETE, handler);
   },
 
+  onMissionNoSpace: (callback: (itemCount: number) => void) => {
+    const handler = (_: unknown, count: number) => callback(count);
+    ipcRenderer.on(IPC_CHANNELS.MISSION_NO_SPACE, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.MISSION_NO_SPACE, handler);
+  },
   onMissionError: (callback: (error: string) => void) => {
     const handler = (_: unknown, error: string) => callback(error);
     ipcRenderer.on(IPC_CHANNELS.MISSION_ERROR, handler);
@@ -1228,6 +1234,18 @@ const api = {
 
   tlogOpenFolder: (): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.TLOG_OPEN_FOLDER),
+
+  tlogReplayPick: (kind: 'tlog' | 'bin'): Promise<string | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TLOG_REPLAY_PICK, kind),
+
+  tlogReplayControl: (control: ReplayControl): Promise<ReplayStatusIpc | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.TLOG_REPLAY_CONTROL, control),
+
+  onTlogReplayStatus: (callback: (status: ReplayStatusIpc) => void) => {
+    const handler = (_: unknown, status: ReplayStatusIpc) => callback(status);
+    ipcRenderer.on(IPC_CHANNELS.TLOG_REPLAY_STATUS, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.TLOG_REPLAY_STATUS, handler);
+  },
 
   logStorageInfo: (): Promise<{ totalBytes: number; usedBytes: number; availableBytes: number } | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.LOG_STORAGE_INFO),

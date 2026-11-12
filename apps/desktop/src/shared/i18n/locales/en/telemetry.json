@@ -94,5 +94,23 @@
     "telemetryRate": "Telemetry rate",
     "telemetryRateHint": "How often the vehicle streams telemetry. FC leaves the flight controller's own rates untouched.",
     "cargoPanelMissing": "This panel comes from a cargo that is not loaded right now."
+  },
+  "replay": {
+    "badge": "REPLAY",
+    "badgeTip": "Playing back a recorded flight. Nothing is sent to any vehicle.",
+    "pause": "Pause",
+    "play": "Play",
+    "restart": "Play from the start",
+    "seek": "Position in the flight",
+    "speedTip": "Playback speed",
+    "speed": "{{speed}}x",
+    "stop": "Stop replay",
+    "chooseTitle": "Replay a flight",
+    "chooseIntro": "Which recording do you want to play back?",
+    "chooseBusy": "Disconnect the vehicle first.",
+    "chooseTlog": "Telemetry log (.tlog)",
+    "chooseTlogDesc": "What ArduDeck received over the radio link. Recorded automatically; as smooth as the telemetry rate was.",
+    "chooseBin": "Onboard log (.bin)",
+    "chooseBinDesc": "The flight controller's own recording from its SD card. Usually much smoother; download it from the vehicle first."
   }
 }

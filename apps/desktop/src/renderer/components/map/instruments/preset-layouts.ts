@@ -264,10 +264,69 @@ const ROVER_COCKPIT: InstrumentLayoutSnapshot = {
   },
 };
 
+/** Swarm: the fleet column (matrix, separation, batteries) on the right, fleet
+ * radar and ops bottom right, a slim cockpit for the selected vehicle on the left. */
+const SWARM_COCKPIT: InstrumentLayoutSnapshot = {
+  visible: {
+    attitude: true,
+    'flight-data': true,
+    battery: false,
+    gps: false,
+    altitude: false,
+    speed: false,
+    heading: false,
+    vsi: false,
+    home: false,
+    'flight-mode': true,
+    link: true,
+    mission: true,
+    annunciator: true,
+    rtk: false,
+    controls: true,
+    'fleet-matrix': true,
+    'fleet-separation': true,
+    'fleet-battery': true,
+    'fleet-ops': true,
+    'fleet-radar': true,
+  },
+  scale: { attitude: 0.8 },
+  opacity: 1,
+  instrumentOpacity: {},
+  displayMode: { 'fleet-matrix': 'compact', 'fleet-separation': 'compact', 'fleet-battery': 'compact', 'fleet-ops': 'compact' },
+  groups: {
+    d1: { members: ['fleet-matrix', 'fleet-separation', 'fleet-battery'], orientation: 'col' },
+    d2: { members: ['flight-data', 'annunciator', 'controls'], orientation: 'col' },
+    d3: { members: ['flight-mode', 'mission', 'link'], orientation: 'row' },
+    d4: { members: ['fleet-radar', 'fleet-ops'], orientation: 'row' },
+  },
+  positions: {
+    'instrument:attitude': { ax: 'center', ay: 'bottom', dx: 0, dy: 4, v: 4 },
+    'instrument:fleet-ops': { ax: 'right', ay: 'bottom', dx: 64, dy: 8, v: 4 },
+    'instrument:fleet-radar': { ax: 'right', ay: 'bottom', dx: 312, dy: 8, v: 4 },
+    'instrument:group:d4': { ax: 'right', ay: 'bottom', dx: 64, dy: 8, v: 4 },
+    'instrument:fleet-matrix': { ax: 'right', ay: 'top', dx: 64, dy: 56, v: 4 },
+    'instrument:fleet-separation': { ax: 'right', ay: 'top', dx: 64, dy: 300, v: 4 },
+    'instrument:fleet-battery': { ax: 'right', ay: 'top', dx: 64, dy: 440, v: 4 },
+    'instrument:flight-mode': { ax: 'center', ay: 'top', dx: -200, dy: 8, v: 4 },
+    'instrument:mission': { ax: 'center', ay: 'top', dx: 0, dy: 10, v: 4 },
+    'instrument:link': { ax: 'center', ay: 'top', dx: 216, dy: 8, v: 4 },
+    'instrument:flight-data': { ax: 'left', ay: 'middle', dx: 10, dy: -110, v: 4 },
+    'instrument:annunciator': { ax: 'left', ay: 'middle', dx: 8, dy: 45.5, v: 4 },
+    'instrument:controls': { ax: 'left', ay: 'bottom', dx: 16, dy: 4, v: 4 },
+    'instrument:group:d1': { ax: 'right', ay: 'top', dx: 64, dy: 56, v: 4 },
+    'instrument:group:d2': { ax: 'left', ay: 'top', dx: 0, dy: 64, v: 4 },
+    'instrument:group:d3': { ax: 'center', ay: 'top', dx: -13.5, dy: 0, v: 4 },
+  },
+};
+
+/** Persisted name of the swarm preset; the fleet prompt checks it. */
+export const SWARM_PRESET_NAME = 'Swarm'; // i18n-exempt: name is an identifier
+
 export const PRESET_INSTRUMENT_LAYOUTS: PresetInstrumentLayout[] = [
   { name: 'Pilot cockpit', nameKey: 'map:presetLayouts.pilotName', descriptionKey: 'map:presetLayouts.pilotDesc', accent: 'green', layout: PILOT_COCKPIT }, // i18n-exempt: name is an identifier
   { name: 'Minimal', nameKey: 'map:presetLayouts.minimalName', descriptionKey: 'map:presetLayouts.minimalDesc', accent: 'blue', layout: MINIMAL },
   { name: 'Strips only', nameKey: 'map:presetLayouts.stripsName', descriptionKey: 'map:presetLayouts.stripsDesc', accent: 'amber', layout: STRIPS_ONLY }, // i18n-exempt: name is an identifier
   { name: 'Split cockpit', nameKey: 'map:presetLayouts.splitName', descriptionKey: 'map:presetLayouts.splitDesc', accent: 'violet', layout: SPLIT_COCKPIT }, // i18n-exempt: name is an identifier
   { name: 'Rover', nameKey: 'map:presetLayouts.roverName', descriptionKey: 'map:presetLayouts.roverDesc', accent: 'amber', layout: ROVER_COCKPIT },
+  { name: SWARM_PRESET_NAME, nameKey: 'map:presetLayouts.swarmName', descriptionKey: 'map:presetLayouts.swarmDesc', accent: 'violet', layout: SWARM_COCKPIT },
 ];

@@ -50,7 +50,24 @@ export interface PendingLanding extends PendingBase {
   refusal: string | null;
 }
 
-export type PendingProposal = PendingFence | PendingMission | PendingLanding;
+/** A survey area to plan with the host's own survey generator. Agents propose these; modules use registerSurveyGenerator instead. */
+export interface SurveyProposal {
+  name: string;
+  reason: string;
+  /** Closed boundary, or the centerline for the corridor pattern. */
+  polygon: { lat: number; lng: number }[];
+  pattern: string;
+  altitudeM: number;
+  /** Ground area of a closed boundary in square metres, 0 for a corridor. */
+  areaM2: number;
+}
+
+export interface PendingSurvey extends PendingBase {
+  kind: 'survey';
+  proposal: SurveyProposal;
+}
+
+export type PendingProposal = PendingFence | PendingMission | PendingLanding | PendingSurvey;
 
 let pending: PendingProposal | null = null;
 const listeners = new Set<() => void>();
@@ -92,7 +109,7 @@ export function proposeFence(
   return queue({ kind: 'fence', slug, from, proposal, existing });
 }
 
-function queue(p: Omit<PendingFence, 'key' | 'resolve'> | Omit<PendingMission, 'key' | 'resolve'> | Omit<PendingLanding, 'key' | 'resolve'>): Promise<ProposalResult> {
+function queue(p: Omit<PendingFence, 'key' | 'resolve'> | Omit<PendingMission, 'key' | 'resolve'> | Omit<PendingLanding, 'key' | 'resolve'> | Omit<PendingSurvey, 'key' | 'resolve'>): Promise<ProposalResult> {
   return new Promise<ProposalResult>((resolve) => {
     pending = {
       ...p,
@@ -118,6 +135,14 @@ export function proposeLanding(slug: string, from: string, proposal: LandingProp
   if (pending) return Promise.resolve({ accepted: false, error: t('modules:moduleProposal.alreadyOpen') });
   if (!Number.isFinite(proposal?.at?.lat) || !Number.isFinite(proposal?.at?.lng)) return Promise.resolve({ accepted: false, error: t('modules:moduleProposal.needsPoint') });
   return queue({ kind: 'landing', slug, from, proposal, refusal });
+}
+
+export function proposeSurvey(slug: string, from: string, proposal: SurveyProposal): Promise<ProposalResult> {
+  if (pending) return Promise.resolve({ accepted: false, error: t('modules:moduleProposal.alreadyOpen') });
+  const min = proposal?.pattern === 'corridor' || proposal?.pattern === 'panorama' ? 2 : 3;
+  const ok = Array.isArray(proposal?.polygon) && proposal.polygon.length >= min && proposal.polygon.every((p) => Number.isFinite(p?.lat) && Number.isFinite(p?.lng));
+  if (!ok) return Promise.resolve({ accepted: false, error: t('modules:moduleProposal.needsThreePoints') });
+  return queue({ kind: 'survey', slug, from, proposal });
 }
 
 /** Withdraw anything a module has waiting, for unload. */

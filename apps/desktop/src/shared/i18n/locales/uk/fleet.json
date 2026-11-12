@@ -1,8 +1,5 @@
 {
   "draggableFleetActions": {
-    "collapseAria": "Згорнути панель операцій флоту",
-    "dragTip": "Перетягніть, щоб перемістити - примагнічується до країв панелей і вікна",
-    "expandAria": "Розгорнути панель операцій флоту",
     "title": "Операції флоту"
   },
   "fleetContextMenu": {
@@ -14,9 +11,9 @@
     "currentShape": "{{label}} (поточна)",
     "disband": "Розформувати флот",
     "disbandTip": "Розформовує цей флот - ведені повертаються до ручного керування",
-    "formUp_one": "Зібрати в стрій {{count}} вільний дрон",
     "formUp_few": "Зібрати в стрій {{count}} вільні дрони",
     "formUp_many": "Зібрати в стрій {{count}} вільних дронів",
+    "formUp_one": "Зібрати в стрій {{count}} вільний дрон",
     "formUp_other": "Зібрати в стрій {{count}} вільного дрона",
     "formationShape": "Форма строю",
     "gap": "інтервал",
@@ -24,7 +21,9 @@
     "leadsFleet": "Веде флот",
     "leave": "Вийти з флоту",
     "leaveTip": "Вилучити {{label}} з флоту - решта тримає стрій",
-    "reformShape": "Перешикувати: {{label}}"
+    "reformShape": "Перешикувати: {{label}}",
+    "startMission": "Почати місію",
+    "takeOffFleet": "Зліт флоту"
   },
   "fleetCoordination": {
     "alt": "вис.",

@@ -124,7 +124,10 @@
     "alreadyOpen": "已有另一項提案開啟中",
     "needsItems": "A mission proposal needs at least one waypoint with a position and an altitude.",
     "needsPoint": "A landing proposal needs a position.",
-    "needsThreePoints": "圍欄至少需要三個點"
+    "needsThreePoints": "圍欄至少需要三個點",
+    "agentName": "AI 代理",
+    "agentArmed": "載具已解鎖。只有在上鎖狀態下才能提議計畫。",
+    "lineSensor": "線掃感測器"
   },
   "moduleProposalDialog": {
     "addToMission": "Add to mission",
@@ -148,7 +151,13 @@
     "replacesFence_one": "This replaces the inclusion fence already held ({{count}} shape, {{points}} points). It will no longer apply.",
     "replacesFence_other": "這會取代目前已有的允許圍欄({{count}} 個形狀,{{points}} 個點)。它將不再生效。",
     "returnPoint": "返航點",
-    "writeToAircraft": "寫入飛行器"
+    "writeToAircraft": "寫入飛行器",
+    "asksToSurvey": "{{from}} 請求新增測繪任務",
+    "surveySummary": "{{pattern}}，高度 {{alt}} 公尺，{{area}}，{{extent}}",
+    "surveyCorridor": "沿 {{count}} 個點的走廊，高度 {{alt}} 公尺，{{extent}}",
+    "surveyNote": "ArduDeck 會規劃航線，你可以在測繪面板中調整。上傳之前不會向飛行器傳送任何內容。",
+    "areaHa": "{{value}} 公頃",
+    "areaM2": "{{value}} 平方公尺"
   },
   "production": {
     "notConnected": "請先連接載具",

@@ -283,7 +283,10 @@
       "title": "Telemetry log",
       "record": "Record telemetry to a .tlog file",
       "recordHint": "Every connection is saved as a MAVLink .tlog in the app data folder. Open it in any tlog viewer. The newest 50 files, up to 2 GB, are kept.",
-      "openFolder": "Open log folder"
+      "openFolder": "Open log folder",
+      "replay": "Replay a flight",
+      "replayTip": "Play a recorded .tlog or onboard .bin back through the cockpit: map, instruments, HUD and Vision.",
+      "replayBusy": "Disconnect the vehicle first"
     },
     "terrainUplink": {
       "title": "Terrain uplink",

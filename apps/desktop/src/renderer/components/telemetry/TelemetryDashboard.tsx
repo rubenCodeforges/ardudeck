@@ -17,9 +17,9 @@ import 'dockview-react/dist/styles/dockview.css';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useActiveVehicleStore } from '../../stores/active-vehicle-store';
 import { FleetStrip } from '../fleet/FleetStrip';
-import { DraggableFleetActions } from '../fleet/DraggableFleetActions';
 import { useLayoutStore } from '../../stores/layout-store';
 import { useConnectionStore } from '../../stores/connection-store';
+import { ReplayBar } from './ReplayBar';
 import { useSettingsStore } from '../../stores/settings-store';
 import { useEditModeStore } from '../../stores/edit-mode-store';
 import { useTileCacheAreaStore } from '../../stores/tile-cache-area-store';
@@ -980,7 +980,8 @@ function TelemetryDashboardImpl() {
     const handleLayoutChange = () => {
       const api = apiRef.current;
       if (!api) return;
-      window.electronAPI?.saveLayout(TELEMETRY_AUTOSAVE_NAME, api.toJSON());
+      // A grid torn down by a crash or unmount must not overwrite the last real layout.
+      if (api.panels.length > 0) window.electronAPI?.saveLayout(TELEMETRY_AUTOSAVE_NAME, api.toJSON());
       const mapPresent = api.panels.some((p) => p.id === 'map' || p.id.startsWith('map-'));
       setHasMapPanel(mapPresent);
       // Caching needs the map; close the mode if the panel is gone.
@@ -1005,8 +1006,11 @@ function TelemetryDashboardImpl() {
       const autoSaved = await window.electronAPI?.getLayout(TELEMETRY_AUTOSAVE_NAME);
       if (autoSaved?.data) {
         event.api.fromJSON(dockOf(autoSaved.data));
-        setLayoutLoaded(true);
-        return;
+        if (event.api.panels.length > 0) {
+          setLayoutLoaded(true);
+          return;
+        }
+        event.api.clear();
       }
     } catch (e) {
       console.warn('Failed to load auto-saved layout:', e);
@@ -1204,6 +1208,8 @@ function TelemetryDashboardImpl() {
         }
       />
 
+      <ReplayBar />
+
       {/* Fleet strip (left) + dockview container. The strip renders nothing for
           a single vehicle, so single-vehicle layout is unchanged. */}
       <div className="flex-1 flex flex-row min-h-0">
@@ -1218,7 +1224,6 @@ function TelemetryDashboardImpl() {
           />
         </div>
       </div>
-      <DraggableFleetActions />
     </div>
   );
 }

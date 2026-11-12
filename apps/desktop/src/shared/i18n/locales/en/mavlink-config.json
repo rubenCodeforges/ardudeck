@@ -1091,7 +1091,10 @@
     "writeBody": "The following {{count}} parameter(s) will be saved permanently to the flight controller.",
     "writeRebootWarning": "Some parameters require a reboot to take effect.",
     "writeTitle": "Write Parameters to Flash",
-    "writeToFlash": "Write to Flash"
+    "writeToFlash": "Write to Flash",
+    "reset": "Reset",
+    "resetTip": "Reset parameters to their firmware defaults",
+    "noBitsSet": "No bits set"
   },
   "pidTuningTab": {
     "accelDesc": "Max rotational acceleration per axis (deg/s²). Set by Initial Parameters and Autotune.",
@@ -2501,6 +2504,29 @@
     "confirm": "Reset and reboot",
     "disarmFirst": "Disarm the vehicle first.",
     "erased": "Parameters erased. Rebooting to load the defaults.",
-    "failed": "The parameter reset did not go through."
+    "failed": "The parameter reset did not go through.",
+    "menu": "Factory reset",
+    "menuDesc": "Erase all stored parameters and reboot.",
+    "calibrationWarningPx4": "Calibration is kept, but the airframe setup, tuning and every other setting are erased. Check the setup again before the vehicle flies."
+  },
+  "resetChanged": {
+    "menu": "Reset changed values",
+    "menuDesc": "Return every value that differs from its default. You review the list before writing to flash.",
+    "noDefaults": "Needs the firmware defaults, which this flight controller did not provide.",
+    "title": "Reset changed values to default?",
+    "body": "These parameters differ from their firmware default and go back to it. The values are staged only: review them, then use Write to Flash.",
+    "keep": "Keep calibration, sensor IDs, frame and serial ports",
+    "keptCount_one": "{{count}} protected value stays as it is.",
+    "keptCount_other": "{{count}} protected values stay as they are.",
+    "keepOffWarning": "Calibration, frame and link settings are reset too. The vehicle needs calibrating again and the link can drop.",
+    "nothing": "Nothing to reset: every value is at its default.",
+    "colParam": "Parameter",
+    "colCurrent": "Current",
+    "colDefault": "Default",
+    "flashNote": "Nothing is sent until Write to Flash.",
+    "confirm_one": "Reset {{count}} value",
+    "confirm_other": "Reset {{count}} values",
+    "staged_one": "{{count}} value set back to default. Review it, then Write to Flash.",
+    "staged_other": "{{count}} values set back to default. Review them, then Write to Flash."
   }
 }

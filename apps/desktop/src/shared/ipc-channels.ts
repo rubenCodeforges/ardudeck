@@ -304,6 +304,7 @@ export const IPC_CHANNELS = {
   MISSION_UPLOAD_COMPLETE: 'mission:upload-complete',
   MISSION_CLEAR_COMPLETE: 'mission:clear-complete',
   MISSION_ERROR: 'mission:error',
+  MISSION_NO_SPACE: 'mission:no-space',
   MISSION_CURRENT: 'mission:current',
   MISSION_REACHED: 'mission:reached',
   MISSION_SAVE_FILE: 'mission:save-file',
@@ -978,6 +979,9 @@ export const IPC_CHANNELS = {
   LOG_DOWNLOAD_CANCEL: 'log:download-cancel',
   LOG_ERASE_ALL: 'log:erase-all',
   TLOG_OPEN_FOLDER: 'tlog:open-folder',
+  TLOG_REPLAY_PICK: 'tlog:replay-pick',
+  TLOG_REPLAY_CONTROL: 'tlog:replay-control',
+  TLOG_REPLAY_STATUS: 'tlog:replay-status',
   LOG_STORAGE_INFO: 'log:storage-info',
   LOG_FORMAT_SD: 'log:format-sd',
   /** Show open-file dialog only (no read). Returns just the chosen path so
@@ -1139,11 +1143,29 @@ export interface FrameBlueprintRequest {
 // preload bridge and renderer can import them alongside the other IPC types.
 export * from './camera-types';
 
+/** Playback state of a .tlog replay connection. */
+export interface ReplayStatusIpc {
+  file: string;
+  playing: boolean;
+  speed: number;
+  positionMs: number;
+  durationMs: number;
+  ended: boolean;
+}
+
+export type ReplayControl =
+  | { action: 'play' }
+  | { action: 'pause' }
+  | { action: 'seek'; ms: number }
+  | { action: 'speed'; speed: number };
+
 /**
  * Connection options for comms:connect
  */
 export interface ConnectOptions {
-  type: 'serial' | 'tcp' | 'udp';
+  type: 'serial' | 'tcp' | 'udp' | 'replay';
+  /** Replay only: the .tlog to play back. */
+  replayPath?: string;
   port?: string;
   baudRate?: number;
   /** Serial only: hardware flow control (RTS/CTS), for radios such as RFD900/868 set to RTSCTS. */
@@ -1183,7 +1205,7 @@ export interface ConnectOptions {
 export interface TransportInfoIpc {
   id: string;
   /** Connection kind, from the original config. */
-  kind: 'serial' | 'tcp' | 'udp';
+  kind: 'serial' | 'tcp' | 'udp' | 'replay';
   /** Human-readable label for display (e.g. "UDP :14550", "/dev/ttyACM0"). */
   label: string;
   packetsRx: number;
@@ -1414,7 +1436,7 @@ export interface ConnectionState {
   /** Unique board identifier from AUTOPILOT_VERSION uid/uid2 (hex string) */
   boardUid?: string;
   /** Connection type for transport-aware logic (signing, reconnect, etc.) */
-  connectionType?: 'serial' | 'tcp' | 'udp';
+  connectionType?: 'serial' | 'tcp' | 'udp' | 'replay';
   // MAVLink signing
   signingEnabled?: boolean;
   /** True when we detect the FC is sending signed packets back */

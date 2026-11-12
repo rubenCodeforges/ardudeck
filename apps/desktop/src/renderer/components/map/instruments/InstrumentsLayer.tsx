@@ -31,6 +31,7 @@ import { useAllMapInstruments, instrumentLabel, defaultDisplayOption, type MapIn
 import { useModuleMapInstrumentsStore, openModuleInstrumentSettings, closeModuleInstrumentSettings } from '../../../modules/module-map-instruments';
 import { ErrorBoundary } from '../../ui/ErrorBoundary';
 import { DockedGroup } from './DockedGroup';
+import { SwarmLayoutPrompt } from './SwarmLayoutPrompt';
 import { variantGlyph } from './variant-glyphs';
 import { useDockPreviewStore, measureDockCandidate, commitDock, type MeasuredCandidate } from './dock-tracking';
 
@@ -481,6 +482,7 @@ export function InstrumentsLayer(): JSX.Element {
         <DockedGroup key={gid + ':' + layoutRev} gid={gid} group={group} />
       ))}
       <DockPreview />
+      <SwarmLayoutPrompt />
       <CargoInstrumentSettingsDialog />
     </>
   );

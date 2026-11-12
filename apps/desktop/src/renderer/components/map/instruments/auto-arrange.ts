@@ -133,6 +133,31 @@ export const INSTRUMENT_SEMANTICS: Record<string, InstrumentSemantics> = {
     priority: 60,
     idealSectors: ['A2', 'B1'],
   },
+  'fleet-matrix': {
+    role: 'summary',
+    priority: 80,
+    idealSectors: ['F1', 'F2'],
+  },
+  'fleet-separation': {
+    role: 'status',
+    priority: 78,
+    idealSectors: ['F2', 'F3'],
+  },
+  'fleet-ops': {
+    role: 'command',
+    priority: 82,
+    idealSectors: ['F4', 'E4'],
+  },
+  'fleet-radar': {
+    role: 'navigation',
+    priority: 74,
+    idealSectors: ['E4', 'F3'],
+  },
+  'fleet-battery': {
+    role: 'power',
+    priority: 76,
+    idealSectors: ['F3', 'E4'],
+  },
   'flight-timer': {
     role: 'power',
     priority: 57,

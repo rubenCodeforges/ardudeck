@@ -277,6 +277,63 @@ export async function proposeParametersTool(params: {
   return callRenderer(TESTING_CHANNELS.PROPOSE_PARAMETERS, params, reviewMs + 10_000);
 }
 
+// --- Mission planning ---------------------------------------------------------
+
+/** The proposal tools block on a person reviewing the plan in ArduDeck. */
+const PLAN_REVIEW_MS = 10 * 60 * 1000;
+
+export async function getMissionTool(): Promise<any> {
+  return callRenderer(TESTING_CHANNELS.GET_MISSION, {});
+}
+
+export async function proposeMissionTool(params: unknown): Promise<any> {
+  return callRenderer(TESTING_CHANNELS.PROPOSE_MISSION, params, PLAN_REVIEW_MS);
+}
+
+export async function proposeSurveyTool(params: unknown): Promise<any> {
+  return callRenderer(TESTING_CHANNELS.PROPOSE_SURVEY, params, PLAN_REVIEW_MS);
+}
+
+export async function listSurveyOptionsTool(): Promise<any> {
+  return callRenderer(TESTING_CHANNELS.LIST_SURVEY_OPTIONS, {});
+}
+
+export async function fitMissionTool(params: unknown): Promise<any> {
+  return callRenderer(TESTING_CHANNELS.FIT_MISSION, params, PLAN_REVIEW_MS);
+}
+
+export async function drawAreaTool(params: unknown): Promise<any> {
+  return callRenderer(TESTING_CHANNELS.DRAW_AREA, params);
+}
+
+export async function listAreasTool(): Promise<any> {
+  return callRenderer(TESTING_CHANNELS.LIST_AREAS, {});
+}
+
+export async function deleteAreaTool(params: unknown): Promise<any> {
+  return callRenderer(TESTING_CHANNELS.DELETE_AREA, params);
+}
+
+export async function surveyAreaTool(params: unknown): Promise<any> {
+  return callRenderer(TESTING_CHANNELS.SURVEY_AREA, params, PLAN_REVIEW_MS);
+}
+
+export async function setHomeTool(params: unknown): Promise<any> {
+  return callRenderer(TESTING_CHANNELS.SET_HOME, params);
+}
+
+export async function setVehicleProfileTool(params: unknown): Promise<any> {
+  return callRenderer(TESTING_CHANNELS.SET_VEHICLE_PROFILE, params);
+}
+
+export async function getFlightEstimateTool(params: unknown): Promise<any> {
+  return callRenderer(TESTING_CHANNELS.GET_FLIGHT_ESTIMATE, params);
+}
+
+export async function proposeFenceTool(params: unknown): Promise<any> {
+  return callRenderer(TESTING_CHANNELS.PROPOSE_FENCE, params, PLAN_REVIEW_MS);
+}
+
 // --- Control flow -----------------------------------------------------------
 
 export async function waitForIdleTool(params?: { timeout?: number }): Promise<any> {

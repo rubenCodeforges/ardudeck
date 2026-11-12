@@ -293,7 +293,10 @@
     "sensorSpacingHint": "Distance between survey lines. Typical magnetometer surveys fly 10 to 50 m.",
     "tieLines": "Tie lines",
     "tieLinesHint": "One perpendicular tie line every {{every}} survey lines, flown after them. Used to level the lines against each other.",
-    "tieLinesOff": "Off. Magnetometer surveys usually add one every 5 to 10 lines."
+    "tieLinesOff": "Off. Magnetometer surveys usually add one every 5 to 10 lines.",
+    "surveyNamePrefix": "Survey",
+    "sectionWord": "Section",
+    "flightWord": "Flight"
   },
   "surveyMapOverlay": {
     "clickToAddControlPoint": "Click to add a control point",

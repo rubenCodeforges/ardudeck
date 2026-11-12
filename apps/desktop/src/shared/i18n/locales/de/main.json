@@ -148,7 +148,9 @@
     "waypoints": "Wegpunkte",
     "workspaceLayout": "ArduDeck-Arbeitsbereich-Layout",
     "xplaneExecutable": "X-Plane-Programmdatei",
-    "zipArchive": "Zip-Archiv"
+    "zipArchive": "Zip-Archiv",
+    "qgcParameterFiles": "QGroundControl-Parameterdateien",
+    "allParameterFiles": "Parameterdateien (.param, .params)"
   },
   "firmwareDownloader": {
     "aborted": "Download abgebrochen",
@@ -315,14 +317,20 @@
     "writeProbeRejected": "Der FC hat den Schreibtest abgelehnt: {{error}}",
     "inavNoParams": "Dieser Flugcontroller hat keine MAVLink-Parameter (INAV). Über MSP konfigurieren.",
     "pickFolderTitle": "Ordner wählen",
-    "resetParamsArduPilotOnly": "Das Zurücksetzen aller Parameter ist nur für ArduPilot verfügbar.",
+    "resetParamsArduPilotOnly": "Das Zurücksetzen aller Parameter ist nur für ArduPilot und PX4 verfügbar.",
     "resetParamsDisarmFirst": "Das Fahrzeug muss disarmt sein, bevor du seine Parameter zurücksetzt.",
     "resetParamsFailed": "Der Flugcontroller hat das Zurücksetzen der Parameter nicht angenommen.",
     "rcMapUnknown": "Die Stick-Übersteuerung bleibt aus, bis die Fahrzeugparameter geladen sind (RCMAP bestimmt, welcher Kanal Gas ist).",
     "paramNoEcho": "{{param}}: Der Flugcontroller hat das Schreiben nicht bestätigt. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
     "paramRejected": "{{param}}: Der Flugcontroller hat {{value}} behalten und den neuen Wert nicht übernommen.",
     "flashWriteRejected": "Der Flugcontroller hat das Schreiben in den Flash abgelehnt (Ergebnis {{result}}).",
-    "calibrationLost": "{{type}}-Kalibrierung hat den Neustart NICHT überstanden. Vor dem Flug neu kalibrieren."
+    "calibrationLost": "{{type}}-Kalibrierung hat den Neustart NICHT überstanden. Vor dem Flug neu kalibrieren.",
+    "replayFileRequired": "Eine .tlog-Datei zum Abspielen wählen",
+    "replayTransportName": "Wiedergabe {{file}}",
+    "replayPickTitle": "Flug wiedergeben",
+    "replayEmpty": "Diese Datei enthält keine Flugdaten, die ArduDeck abspielen kann",
+    "replayFilterTlog": "Telemetrie-Logs (.tlog)",
+    "replayFilterBin": "Bord-Logs (.bin)"
   },
   "licenseValidator": {
     "invalidKeyFormat": "Ungültiges Schlüsselformat",

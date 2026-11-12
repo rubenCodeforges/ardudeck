@@ -148,7 +148,9 @@
     "waypoints": "Waypoints",
     "workspaceLayout": "ArduDeck workspace layout",
     "xplaneExecutable": "X-Plane Executable",
-    "zipArchive": "Zip Archive"
+    "zipArchive": "Zip Archive",
+    "qgcParameterFiles": "QGroundControl parameter files",
+    "allParameterFiles": "Parameter files (.param, .params)"
   },
   "firmwareDownloader": {
     "aborted": "Download aborted",
@@ -315,14 +317,20 @@
     "writeProbeRejected": "FC rejected the write probe: {{error}}",
     "inavNoParams": "This flight controller has no MAVLink parameters (INAV). Configure it over MSP.",
     "pickFolderTitle": "Choose a folder",
-    "resetParamsArduPilotOnly": "Resetting all parameters is only available for ArduPilot.",
+    "resetParamsArduPilotOnly": "Resetting all parameters is only available for ArduPilot and PX4.",
     "resetParamsDisarmFirst": "Disarm the vehicle before resetting its parameters.",
     "resetParamsFailed": "The flight controller did not accept the parameter reset.",
     "rcMapUnknown": "Stick override is off until the vehicle's parameters are loaded (RCMAP decides which channel is throttle).",
     "paramNoEcho": "{{param}}: the flight controller did not confirm the write. Check the link and try again.",
     "paramRejected": "{{param}}: the flight controller kept {{value}} and did not take the new value.",
     "flashWriteRejected": "The flight controller refused the flash write (result {{result}}).",
-    "calibrationLost": "{{type}} calibration did NOT survive the reboot. Recalibrate before flying."
+    "calibrationLost": "{{type}} calibration did NOT survive the reboot. Recalibrate before flying.",
+    "replayFileRequired": "Choose a .tlog file to replay",
+    "replayTransportName": "Replay {{file}}",
+    "replayPickTitle": "Replay a flight",
+    "replayEmpty": "This file holds no flight data ArduDeck can replay",
+    "replayFilterTlog": "Telemetry logs (.tlog)",
+    "replayFilterBin": "Onboard logs (.bin)"
   },
   "licenseValidator": {
     "invalidKeyFormat": "Invalid key format",

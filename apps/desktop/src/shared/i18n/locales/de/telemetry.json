@@ -94,5 +94,23 @@
     "telemetryRate": "Telemetrierate",
     "telemetryRateHint": "Wie oft das Fahrzeug Telemetrie sendet. FC lässt die Raten des Flugcontrollers unverändert.",
     "cargoPanelMissing": "Dieses Panel kommt von einem Cargo, das gerade nicht geladen ist."
+  },
+  "replay": {
+    "badge": "WIEDERGABE",
+    "badgeTip": "Ein aufgezeichneter Flug wird abgespielt. Nichts wird an ein Fahrzeug gesendet.",
+    "pause": "Pause",
+    "play": "Abspielen",
+    "restart": "Von vorn abspielen",
+    "seek": "Position im Flug",
+    "speedTip": "Wiedergabegeschwindigkeit",
+    "speed": "{{speed}}x",
+    "stop": "Wiedergabe beenden",
+    "chooseTitle": "Flug wiedergeben",
+    "chooseIntro": "Welche Aufzeichnung soll abgespielt werden?",
+    "chooseBusy": "Zuerst das Fahrzeug trennen.",
+    "chooseTlog": "Telemetrie-Log (.tlog)",
+    "chooseTlogDesc": "Was ArduDeck über die Funkverbindung empfangen hat. Wird automatisch aufgezeichnet; so flüssig wie die Telemetrierate war.",
+    "chooseBin": "Bord-Log (.bin)",
+    "chooseBinDesc": "Die eigene Aufzeichnung des Flugcontrollers von seiner SD-Karte. Meist deutlich flüssiger; zuerst vom Fahrzeug herunterladen."
   }
 }

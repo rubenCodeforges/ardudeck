@@ -283,7 +283,10 @@
       "title": "遥测日志",
       "record": "将遥测记录到 .tlog 文件",
       "recordHint": "每次连接都会以 MAVLink .tlog 格式保存在应用数据文件夹中，可用任何 tlog 查看器打开。保留最新的 50 个文件，总计不超过 2 GB。",
-      "openFolder": "打开日志文件夹"
+      "openFolder": "打开日志文件夹",
+      "replay": "回放飞行",
+      "replayTip": "在驾驶舱中回放已记录的 .tlog 或机载 .bin：地图、仪表、HUD 和 Vision。",
+      "replayBusy": "请先断开飞行器"
     },
     "terrainUplink": {
       "title": "地形上传",

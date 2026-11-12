@@ -204,7 +204,12 @@
     "ekf": "EKF 健康状态",
     "flightTimer": "飞行计时器",
     "mavlinkFields": "MAVLink 字段",
-    "proximity": "避障雷达距离"
+    "proximity": "避障雷达距离",
+    "fleetBattery": "机群电池",
+    "fleetMatrix": "机群矩阵",
+    "fleetOps": "机群操作",
+    "fleetRadar": "机群雷达",
+    "fleetSeparation": "机群间距"
   },
   "instrumentsCatalog": {
     "arrange": "排列",
@@ -258,7 +263,9 @@
     "title": "仪表",
     "updateTip": "以当前布局更新",
     "vehicleProfile": "载具配置文件",
-    "vehicleProfileHint": "此目录提供哪些仪表。自动会依载具报告的内容决定，与 HUD 选择飞行器或地面布局的方式相同。"
+    "vehicleProfileHint": "此目录提供哪些仪表。自动会依载具报告的内容决定，与 HUD 选择飞行器或地面布局的方式相同。",
+    "blurbSwarm": "一次查看整个机群：状态、间距、电池、编组指令。",
+    "roleSwarm": "集群"
   },
   "instrumentsLayer": {
     "display": "显示",
@@ -466,7 +473,9 @@
     "splitDesc": "用于地图内分割的精简版；会自动应用。",
     "splitName": "分割驾驶舱",
     "stripsDesc": "精简的读数带，地图最大化。",
-    "stripsName": "仅状态栏"
+    "stripsName": "仅状态栏",
+    "swarmDesc": "机群矩阵、间距和电池，精简驾驶舱。",
+    "swarmName": "集群"
   },
   "rtkInstrument": {
     "base": "基站",
@@ -629,5 +638,41 @@
     "body": "检测到载具回传近距避障传感器数据，是否要在地图上显示？",
     "dismiss": "忽略",
     "title": "检测到避障传感器"
+  },
+  "fleetInstruments": {
+    "armedCount": "{{armed}}/{{total}} 已解锁",
+    "battery": "机群电池",
+    "chipTip": "{{label}}：{{mode}}，电量 {{pct}}%",
+    "closing": "接近",
+    "colAlt": "高度 {{unit}}",
+    "colArm": "解锁",
+    "colBattery": "电量%",
+    "colId": "ID",
+    "colLink": "链路",
+    "colMode": "模式",
+    "colSats": "卫星",
+    "fleetClear": "其余机群安全",
+    "fleetWorst": "机群 {{a}} / {{b}}",
+    "fleetWorstShort": "{{a}}/{{b}} {{d}} {{unit}}",
+    "horizVert": "水平 {{h}} / 垂直 {{v}} {{unit}}",
+    "lowest": "最低 {{label}}",
+    "lowestPct": "最低 {{label}} {{pct}}%",
+    "matrix": "机群",
+    "minimum": "最小",
+    "nearestTo": "距 {{label}} 最近",
+    "noFleet": "连接第二架飞行器后显示整个机群。",
+    "noPositions": "无位置",
+    "noSelection": "选择一架飞行器",
+    "opsHint": "在机群列表中勾选飞行器，可统一解锁、RTL 和开始任务。起飞和编队需要多机引擎。",
+    "radar": "机群雷达",
+    "selectTip": "选择 {{label}}",
+    "separation": "间距",
+    "tooClose": "过近"
+  },
+  "swarmPrompt": {
+    "apply": "使用集群布局",
+    "body": "切换到集群仪表布局？",
+    "dismiss": "暂不",
+    "title": "已连接 {{count}} 架飞行器"
   }
 }

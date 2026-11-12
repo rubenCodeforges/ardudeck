@@ -815,7 +815,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
   // Handle map click - either set home or add waypoint depending on mode
   const handleMapClick = useCallback((lat: number, lng: number) => {
     if (isSettingHome) {
-      setHomePosition(lat, lng, 0);
+      setHomePosition(lat, lng);
       setIsSettingHome(false);
       return;
     }
@@ -823,7 +823,7 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
     // Auto-set home on first waypoint click if not already set.
     // Home is a planning reference (FC sets its own home on arm via GPS).
     if (!homePosition) {
-      setHomePosition(lat, lng, 0);
+      setHomePosition(lat, lng);
     }
 
     // Get default altitude from last waypoint or 100m

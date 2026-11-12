@@ -20,9 +20,9 @@ import {
   closestProximitySector,
 } from '../proximity-sectors';
 
-const mono = 'font-mono tabular-nums leading-none whitespace-nowrap';
+export const mono = 'font-mono tabular-nums leading-none whitespace-nowrap';
 
-function useNow(intervalMs: number): number {
+export function useNow(intervalMs: number): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), intervalMs);
@@ -31,7 +31,7 @@ function useNow(intervalMs: number): number {
   return now;
 }
 
-function Card({ label, right, children, width }: { label: string; right?: ReactNode; children: ReactNode; width?: number }): JSX.Element {
+export function Card({ label, right, children, width }: { label: string; right?: ReactNode; children: ReactNode; width?: number }): JSX.Element {
   const inDock = useInDock();
   return (
     <div

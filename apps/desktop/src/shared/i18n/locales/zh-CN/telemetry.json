@@ -94,5 +94,23 @@
     "telemetryRate": "遥测速率",
     "telemetryRateHint": "载具视频流遥测的频率。选择 FC 时不会更动飞控本身的速率。",
     "cargoPanelMissing": "此面板来自当前未加载的 Cargo。"
+  },
+  "replay": {
+    "badge": "回放",
+    "badgeTip": "正在回放已记录的飞行，不会向任何飞行器发送数据。",
+    "pause": "暂停",
+    "play": "播放",
+    "restart": "从头播放",
+    "seek": "飞行中的位置",
+    "speedTip": "回放速度",
+    "speed": "{{speed}}x",
+    "stop": "停止回放",
+    "chooseTitle": "回放飞行",
+    "chooseIntro": "要回放哪一种记录？",
+    "chooseBusy": "请先断开飞行器。",
+    "chooseTlog": "遥测日志 (.tlog)",
+    "chooseTlogDesc": "ArduDeck 通过数传链路接收到的数据。自动记录；流畅度取决于当时的遥测频率。",
+    "chooseBin": "机载日志 (.bin)",
+    "chooseBinDesc": "飞控自身存储在 SD 卡上的记录。通常流畅得多；请先从飞行器下载。"
   }
 }

@@ -135,7 +135,8 @@
     "hidePointSet": "Punktsatz ausblenden",
     "planSurveyHere": "Vermessung hier planen",
     "pointN": "Punkt {{n}}",
-    "referenceLine": "{{count}} Punkte · Referenzlinie"
+    "referenceLine": "{{count}} Punkte · Referenzlinie",
+    "setHomeHere": "Home hier setzen"
   },
   "mission3DPanel": {
     "centerTip": "Karte auf GPS-Position des Fahrzeugs zentrieren",
@@ -954,5 +955,83 @@
     "pinPlaceholder": "Admin-PIN",
     "pinWrong": "Falsche PIN.",
     "pinThrottled": "Zu viele Fehlversuche. Bitte einen Moment warten."
+  },
+  "missionFit": {
+    "openButton": "Wege, die Mission passend zu machen",
+    "title": "Diese Mission ist sehr groß",
+    "titleRejected": "Der Flugcontroller hat keinen Platz für diese Mission",
+    "intro": "{{count}} Einträge. Viele Flugcontroller fassen nur einige hundert bis etwa zweitausend Missionseinträge. Wähle einen Weg:",
+    "introRejected": "Er hat {{count}} Einträge abgelehnt. Wähle einen Weg und lade danach erneut hoch:",
+    "terrainTitle": "Flugcontroller dem Gelände folgen lassen",
+    "terrainDesc": "Wegpunkte nur an den Linienenden, geflogen in einer Höhe über Gelände. Die Mission schrumpft auf einen Bruchteil.",
+    "terrainNote": "Benötigt TERRAIN_ENABLE und eine SD-Karte; ArduDeck sendet die Geländedaten. Folgt einem Raster von etwa 100 m, oder mit Entfernungsmesser und WP_RFND_USE dem echten Boden.",
+    "splitTitle": "In Flüge aufteilen",
+    "splitDesc": "Ein Flug pro Akku, jeder wird vor dem Flug einzeln hochgeladen.",
+    "splitNote": "Funktioniert mit jedem Flugcontroller. Du lädst zwischen den Flügen hoch.",
+    "sdTitle": "Missionen auf der SD-Karte speichern",
+    "sdDesc": "Reserviert Platz auf der SD-Karte für bis zu etwa {{items}} Einträge.",
+    "sdNote": "Setzt BRD_SD_MISSION über die Parameterprüfung. Benötigt eine microSD-Karte und einen Neustart vor dem nächsten Hochladen.",
+    "noSurvey": "Die Mission enthält keine Vermessung zum Aufteilen.",
+    "noTerrainFollow": "Nur für Vermessungen, die mit ArduDeck-Geländefolge geplant wurden.",
+    "sdUnavailable": "Benötigt einen verbundenen ArduPilot-Flugcontroller mit geladenen Parametern.",
+    "splitFailed": "Die Vermessung konnte zum Aufteilen nicht neu erzeugt werden.",
+    "oneFlight": "Die Vermessung passt mit ihrer Ausdauer-Einstellung in einen Flug, es gibt nichts aufzuteilen. Stelle im Vermessungs-Panel eine kürzere Ausdauer ein.",
+    "splitDone_one": "In {{count}} Flug aufgeteilt; der größte hat {{largest}} Einträge.",
+    "splitDone_other": "In {{count}} Flüge aufgeteilt; der größte hat {{largest}} Einträge. Lade jeden vor dem Flug hoch.",
+    "terrainDone": "Die Vermessungen nutzen jetzt geländebezogene Höhe. Die Mission hat {{total}} Einträge.",
+    "terrainDoneParamNot": "Die Vermessungen nutzen jetzt geländebezogene Höhe ({{total}} Einträge), aber TERRAIN_ENABLE wurde nicht gesetzt. Aktiviere es vor dem Flug.",
+    "terrainEnableReason": "Lässt den Flugcontroller mit Daten von ArduDeck dem Gelände folgen.",
+    "sdReason": "Speichert die Mission auf der SD-Karte, Platz für etwa {{items}} Einträge.",
+    "sdDone": "BRD_SD_MISSION ist gesetzt. Starte den Flugcontroller neu und lade dann erneut hoch.",
+    "sdNotApplied": "BRD_SD_MISSION wurde nicht geändert."
+  },
+  "guidesPanel": {
+    "title": "Hilfslinien",
+    "addArea": "Gebiet",
+    "addLine": "Linie",
+    "addPoint": "Punkt",
+    "import": "Datei importieren",
+    "enterPoints": "Punkte eingeben",
+    "showLabels": "Beschriftungen auf der Karte",
+    "empty": "Noch keine Hilfslinien. Zeichne eine, importiere KML, KMZ, GeoJSON oder SHP, oder lass einen Agenten oder ein Cargo welche hinzufügen.",
+    "color": "Farbe",
+    "name": "Name",
+    "role": "Rolle",
+    "hide": "Auf der Karte ausblenden",
+    "show": "Auf der Karte zeigen",
+    "zoomTo": "Hinzoomen",
+    "surveyArea": "Hier eine Vermessung planen",
+    "surveyLine": "Korridorvermessung entlang planen",
+    "delete": "Löschen",
+    "confirmDelete": "Löschen?",
+    "hectares": "{{value}} ha",
+    "km": "{{value}} km",
+    "points_one": "{{count}} Punkt",
+    "points_other": "{{count}} Punkte",
+    "holes_one": "{{count}} Aussparung",
+    "holes_other": "{{count}} Aussparungen",
+    "roles": {
+      "area": "Gebiet",
+      "interest": "Interessengebiet",
+      "nofly": "Flugverbotszone",
+      "takeoff": "Start / Landung",
+      "poi": "Interessenpunkt",
+      "note": "Referenz"
+    },
+    "drawPrompt": {
+      "polygon": "Klicke die Ecken des Gebiets an, dann Enter",
+      "line": "Klicke entlang der Linie, dann Enter",
+      "points": "Klicke auf die Stelle"
+    },
+    "defaultName": {
+      "polygon": "Gebiet {{n}}",
+      "line": "Linie {{n}}",
+      "points": "Punkt {{n}}"
+    },
+    "addTitle": "Hilfslinie hinzufügen",
+    "onMap": "Auf der Karte",
+    "onMapCount": "Auf der Karte ({{count}})",
+    "importShort": "Import",
+    "enterShort": "Eingabe"
   }
 }

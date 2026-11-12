@@ -293,7 +293,10 @@
     "sensorSpacingHint": "测绘线之间的距离。典型磁力计测量飞行 10 至 50 m。",
     "tieLines": "连接线",
     "tieLinesHint": "每 {{every}} 条测绘线后飞行一条与之垂直的连接线。用于将各线相互校平。",
-    "tieLinesOff": "关闭。磁力计测量通常每 5 至 10 条线添加一条。"
+    "tieLinesOff": "关闭。磁力计测量通常每 5 至 10 条线添加一条。",
+    "surveyNamePrefix": "测绘",
+    "sectionWord": "分段",
+    "flightWord": "航次"
   },
   "surveyMapOverlay": {
     "clickToAddControlPoint": "点击以新增控制点",

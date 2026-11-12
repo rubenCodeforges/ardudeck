@@ -817,7 +817,8 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
           style={stretched && panelExt
             ? (row
                 ? { top: 6, left: 6 - panelExt.before }
-                : { top: 6 - panelExt.before, left: 6 })
+                // Column: the bottom end, since the top-left corner sits under the Instruments menu button.
+                : { bottom: 6 - panelExt.after, left: 6 })
             : undefined}
           className={
             'absolute p-1.5 rounded-full bg-surface-solid border shadow-lg transition-opacity pointer-events-auto ' +
@@ -848,7 +849,7 @@ export function DockedGroup({ gid, group }: { gid: string; group: DockGroup }): 
           style={stretched && panelExt
             ? (row
                 ? { top: 8, left: 38 - panelExt.before }
-                : { top: 38 - panelExt.before, left: 8 })
+                : { bottom: 38 - panelExt.after, left: 8 })
             : undefined}
           className={
             `absolute ${stretched ? '' : '-top-1.5 -left-1.5'} p-1 rounded-full bg-surface-solid shadow-lg text-content-secondary ` +

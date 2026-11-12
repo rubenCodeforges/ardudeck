@@ -729,5 +729,35 @@ do
   SMLSIZE, MIDSIZE, DBLSIZE = saved[1], saved[2], saved[3]
 end
 
+-- ELRS in MAVLink mode sends 0x5001 with the temperature bits at 0, and the baro temperature as CRSF frame 0x0D
+do
+  local before = V.imuTemp
+  feed(0x5001, (5 + 1) | (1 << 8))
+  check('zero temperature field keeps the last IMU reading', V.imuTemp, before)
+  frames[#frames + 1] = { 0x0D, { 1, 0x01, 0x0E } } -- 27.0 C in tenths, big-endian
+  M.background(w)
+  check('CRSF temperature frame decoded', V.crsfTemp, 27.0, 0.05)
+  frames[#frames + 1] = { 0x0D, { 1, 0xFF, 0x9C } } -- -10.0 C
+  M.background(w)
+  check('negative CRSF temperature', V.crsfTemp, -10.0, 0.05)
+  local TILE3 = findUp(M.refresh, 'TILE', 6)
+  local ok = pcall(TILE3.imu, 8, 48, 144, 96, 'default')
+  check('temperature tile draws', ok and 1 or 0, 1)
+end
+
+-- a lost link keeps the page: the full-screen notice is only for "never had data"
+do
+  local drawLive = findUp(M.refresh, 'drawLive', 2)
+  local drawLinkLostBar = findUp(M.refresh, 'drawLinkLostBar', 2)
+  check('link-lost bar exists', drawLinkLostBar and 1 or 0, 1)
+  check('live page reachable from refresh', drawLive and 1 or 0, 1)
+  V.everFrame = true
+  V.lastFrameT = stubTime
+  stubTime = stubTime + 2500 -- 25 s without frames
+  local ok, err = pcall(M.refresh, w, nil, nil)
+  check('refresh after the link drops', ok and 1 or 0, 1)
+  if not ok then print(err) end
+end
+
 print(failures == 0 and 'ALL PASS' or (failures .. ' FAILURES'))
 os.exit(failures == 0 and 0 or 1)

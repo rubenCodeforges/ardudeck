@@ -32,6 +32,8 @@ import { ModuleRuntime } from './modules/ModuleRuntime';
 import { MountPoint } from './modules/MountPoint';
 import { ModuleDock } from './modules/ModuleDock';
 import { ModuleProposalDialog } from './modules/ModuleProposalDialog';
+import { MissionFitDialog } from './components/mission/MissionFitDialog';
+import { useMissionFitStore } from './components/mission/mission-fit-actions';
 import { ProductionWriteDialog } from './modules/ProductionWriteDialog';
 import { DroneCanReviewDialog } from './modules/DroneCanReviewDialog';
 import { CompanionDashboard } from './components/companion/CompanionDashboard';
@@ -49,6 +51,7 @@ import { useConnectionStore } from './stores/connection-store';
 import { useActiveVehicleSync } from './hooks/useActiveVehicleSync';
 import { useActiveVehicleIdentity } from './hooks/useFleet';
 import { useActiveVehicleStore } from './stores/active-vehicle-store';
+import { openReplayChooser, ReplayChooser } from './components/telemetry/ReplayBar';
 import { useFleetTelemetryStore } from './stores/fleet-telemetry-store';
 import { createCoalescer, startRenderGovernor } from './perf/render-governor';
 import { shouldMirrorToSharedStore } from './lib/telemetry-routing';
@@ -128,6 +131,7 @@ const WELCOME_CARDS: WelcomeCard[] = [
   { titleKey: 'common:sitlSimulator', descKey: 'app:welcome.sitlDesc', color: 'purple', view: 'sitl', iconPath: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
   { titleKey: 'common:3dSimWorld', descKey: 'app:welcome.simWorldDesc', color: 'emerald', run: () => { window.electronAPI?.openDetachedWindow?.({ componentId: 'sim-world', title: i18nT('common:3dSimWorld'), initialBounds: { width: 1280, height: 800 } }); }, iconPath: 'M21 12a9 9 0 11-18 0 9 9 0 0118 0zM3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 010 18M12 3a15 15 0 000 18' },
   { titleKey: 'app:welcome.flightLogAnalysis', descKey: 'app:welcome.flightLogAnalysisDesc', color: 'blue', view: 'logs', iconPath: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+  { titleKey: 'app:welcome.flightReplay', descKey: 'app:welcome.flightReplayDesc', color: 'blue', badgeKey: 'common:new', run: openReplayChooser, iconPath: 'M21 12a9 9 0 11-18 0 9 9 0 0118 0zM10 8.5v7l5.5-3.5z' },
   { titleKey: 'common:missionLibrary', descKey: 'app:welcome.missionLibraryDesc', color: 'indigo', view: 'library', iconPath: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
 ];
 
@@ -350,6 +354,24 @@ function CollapsedSidebar({ onExpand }: { onExpand: () => void }) {
       )}
     </div>
   );
+}
+
+
+/** Read back calibrations waiting on a reboot once the parameter download settles, then tell readers the records changed. */
+function verifyCalibrationRecords(boardUid: string): void {
+  const runVerify = () => {
+    void window.electronAPI?.calibrationRecordVerify?.(boardUid)?.then(() => {
+      useCalibrationStore.setState((s) => ({ recordsVersion: s.recordsVersion + 1 }));
+    });
+  };
+  if (!useParameterStore.getState().isLoading) { runVerify(); return; }
+  const giveUp = setTimeout(() => { unsub(); runVerify(); }, 180_000);
+  const unsub = useParameterStore.subscribe((st) => {
+    if (st.isLoading) return;
+    clearTimeout(giveUp);
+    unsub();
+    runVerify();
+  });
 }
 
 function App() {
@@ -633,6 +655,11 @@ function App() {
     if (connectionState.isConnected && connectionState.protocol === 'mavlink') {
       // Small delay to ensure connection is stable
       const timer = setTimeout(() => {
+        // A replay has no vehicle to answer: metadata only.
+        if (connectionState.connectionType === 'replay') {
+          if (connectionState.mavType !== undefined) fetchMetadata(connectionState.mavType);
+          return;
+        }
         // Only fetch params on fresh connection (not reconnection after reboot).
         // Keyed on the download state, not the count: connect-time batch reads
         // (safety monitor, Q_ENABLE, calibration) put a handful of real
@@ -650,21 +677,7 @@ function App() {
         // well, so this is where the vehicle has to be asked, not assumed.
         // Wait for the parameter download to settle first: reads fired while it floods the link time out,
         // which left every record "not yet confirmed" and condemned some as lost (#159).
-        if (connectionState.boardUid) {
-          const boardUid = connectionState.boardUid;
-          const runVerify = () => void window.electronAPI?.calibrationRecordVerify?.(boardUid);
-          const busy = () => useParameterStore.getState().isLoading;
-          if (!busy()) runVerify();
-          else {
-            const giveUp = setTimeout(() => { unsub(); runVerify(); }, 180_000);
-            const unsub = useParameterStore.subscribe((st) => {
-              if (st.isLoading) return;
-              clearTimeout(giveUp);
-              unsub();
-              runVerify();
-            });
-          }
-        }
+        if (connectionState.boardUid) verifyCalibrationRecords(connectionState.boardUid);
         // Auto-download the vehicle's mission ONLY when we have nothing locally.
         // The FC holds the flattened union of whatever was uploaded, so if the
         // operator has been planning (surveys, hand-placed WPs, a loaded file),
@@ -685,7 +698,24 @@ function App() {
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [connectionState.isConnected, connectionState.protocol, connectionState.mavType, fetchParameters, fetchMetadata, fetchMission]);
+  }, [connectionState.isConnected, connectionState.protocol, connectionState.mavType, connectionState.connectionType, fetchParameters, fetchMetadata, fetchMission]);
+
+  // A reboot the link rides through (isConnected never drops) skips the connect effect above, so the
+  // calibration check would wait for a manual reconnect. Run it when such a reconnect ends.
+  const reconnectRef = useRef<{ active: boolean; dropped: boolean }>({ active: false, dropped: false });
+  useEffect(() => {
+    const r = reconnectRef.current;
+    if (connectionState.isReconnecting) {
+      if (!r.active) { r.active = true; r.dropped = false; }
+      if (!connectionState.isConnected) r.dropped = true;
+      return;
+    }
+    if (!r.active) return;
+    r.active = false;
+    if (r.dropped || !connectionState.isConnected) return;
+    if (connectionState.protocol !== 'mavlink' || connectionState.connectionType === 'replay' || !connectionState.boardUid) return;
+    verifyCalibrationRecords(connectionState.boardUid);
+  }, [connectionState.isReconnecting, connectionState.isConnected, connectionState.protocol, connectionState.connectionType, connectionState.boardUid]);
 
   // Focusing another vehicle (fleet list, map, rail) swaps whose parameters the
   // configuration views show: drop the previous vehicle's set and load the new one.
@@ -696,7 +726,7 @@ function App() {
     if (focusedVehicleKey) previousFocusRef.current = focusedVehicleKey;
     if (!previous || !focusedVehicleKey || previous === focusedVehicleKey) return;
     useParameterStore.getState().reset();
-    fetchParameters();
+    if (connectionState.connectionType !== 'replay') fetchParameters();
     if (connectionState.mavType !== undefined) fetchMetadata(connectionState.mavType);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusedVehicleKey]);
@@ -756,6 +786,10 @@ function App() {
       setConnectionState(state);
       const resetVehicleStores = (): void => {
         reset();
+        // Fleet switches land here too: without the reseed the map has no fix and snaps to home.
+        const activeKey = useActiveVehicleStore.getState().activeVehicleKey;
+        const snapshot = activeKey ? useFleetTelemetryStore.getState().byVehicle[activeKey] : undefined;
+        if (snapshot) useTelemetryStore.getState().updateBatch(snapshot);
         resetParameters();
         // Keep mission, fence, and rally data on disconnect - user may be planning offline
         resetLegacyConfig();
@@ -790,7 +824,12 @@ function App() {
   // instrument. The governor thins it when the machine cannot keep up, and is
   // a straight pass-through when it can.
   const flushShared = useMemo(
-    () => createCoalescer<Parameters<typeof updateBatch>[0]>((b) => updateBatch(b)),
+    () => createCoalescer<Parameters<typeof updateBatch>[0]>((b) => {
+      // A batch held across a vehicle switch belongs to the previous vehicle; applying it would flash that vehicle.
+      const activeKey = useActiveVehicleStore.getState().activeVehicleKey;
+      if (!shouldMirrorToSharedStore(b.__vehicleKey ?? '__primary__', activeKey, firstSeenVehicleKeyRef.current)) return;
+      updateBatch(b);
+    }),
     [updateBatch],
   );
   useEffect(() => { startRenderGovernor(); }, []);
@@ -913,6 +952,7 @@ function App() {
     const unsubCurrent = window.electronAPI?.onMissionCurrent(setCurrentSeq);
     const unsubReached = window.electronAPI?.onMissionReached((seq) => useMissionStore.getState().setReachedSeq(seq));
     const unsubError = window.electronAPI?.onMissionError(setMissionError);
+    const unsubNoSpace = window.electronAPI?.onMissionNoSpace?.((count) => useMissionFitStore.getState().show(count, true));
     const unsubUploadComplete = window.electronAPI?.onMissionUploadComplete(setUploadComplete);
     const unsubClearComplete = window.electronAPI?.onMissionClearComplete(setClearComplete);
 
@@ -922,6 +962,7 @@ function App() {
       unsubCurrent?.();
       unsubReached?.();
       unsubError?.();
+      unsubNoSpace?.();
       unsubUploadComplete?.();
       unsubClearComplete?.();
     };
@@ -1291,6 +1332,7 @@ function App() {
     <AppTourProvider>
     <AppShell>
       <GlobalTooltip />
+      <ReplayChooser />
       <ActivityIndicator />
       <SitlAutoApplyWatcher />
       <ProfileApplyOverlay />
@@ -1416,6 +1458,7 @@ function App() {
     </div>
     <ModuleDock />
     <ModuleProposalDialog />
+    <MissionFitDialog />
     <ProductionWriteDialog />
     <DroneCanReviewDialog />
     <VaultBackupDialog />

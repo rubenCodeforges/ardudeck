@@ -1091,7 +1091,10 @@
     "writeBody": "以下 {{count}} 個參數將被永久儲存到飛控。",
     "writeRebootWarning": "有些參數需要重新啟動才會生效。",
     "writeTitle": "將參數寫入快閃記憶體",
-    "writeToFlash": "寫入快閃記憶體"
+    "writeToFlash": "寫入快閃記憶體",
+    "reset": "重設",
+    "resetTip": "將參數重設為韌體預設值",
+    "noBitsSet": "未設定任何位元"
   },
   "pidTuningTab": {
     "accelDesc": "每個軸的最大旋轉加速度 (deg/s²)。由 Initial Parameters 與 Autotune 設定。",
@@ -2501,6 +2504,26 @@
     "confirm": "重設並重新啟動",
     "disarmFirst": "載具必須先處於上鎖狀態。",
     "erased": "參數已清除。正在重新啟動以載入預設值。",
-    "failed": "參數重設未成功。"
+    "failed": "參數重設未成功。",
+    "menu": "恢復原廠設定",
+    "menuDesc": "清除所有已儲存的參數並重新啟動。",
+    "calibrationWarningPx4": "校準會保留，但機架設定、調參和其他所有設定都會被清除。飛行前請重新檢查設定。"
+  },
+  "resetChanged": {
+    "menu": "重設已變更的值",
+    "menuDesc": "將所有與預設值不同的參數恢復預設。寫入快閃記憶體前可先檢查清單。",
+    "noDefaults": "需要韌體預設值，但此飛控未提供。",
+    "title": "將已變更的值重設為預設值？",
+    "body": "這些參數與韌體預設值不同，將恢復為預設值。數值僅暫存：請檢查後再使用寫入快閃記憶體。",
+    "keep": "保留校準、感測器 ID、機架和序列埠設定",
+    "keptCount_other": "{{count}} 個受保護的值保持不變。",
+    "keepOffWarning": "校準、機架和連結設定也會被重設。載具需要重新校準，連結可能中斷。",
+    "nothing": "無需重設：所有值均為預設值。",
+    "colParam": "參數",
+    "colCurrent": "目前",
+    "colDefault": "預設",
+    "flashNote": "寫入快閃記憶體之前不會傳送任何內容。",
+    "confirm_other": "重設 {{count}} 個值",
+    "staged_other": "已將 {{count}} 個值恢復預設。請檢查後寫入快閃記憶體。"
   }
 }

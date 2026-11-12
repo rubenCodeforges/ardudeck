@@ -17,6 +17,31 @@ import { GROUP_COLOR_PALETTE } from '../../shared/mission-group-types';
 import { useSettingsStore } from './settings-store';
 import { useSurveyStore } from './survey-store';
 
+/** What a guide stands for. Drives its default colour and how it is drawn; absent = a plain area. */
+export type GuideRole = 'area' | 'interest' | 'nofly' | 'takeoff' | 'poi' | 'note';
+export const GUIDE_ROLES: GuideRole[] = ['area', 'interest', 'nofly', 'takeoff', 'poi', 'note'];
+
+/** Roles written before the generic names; read once on load. */
+const LEGACY_ROLES: Record<string, GuideRole> = { anomaly: 'interest', sample: 'poi' };
+
+// Kept clear of the mission's blues so a guide never reads as part of the flight path.
+export const GUIDE_ROLE_COLORS: Record<GuideRole, string> = {
+  area: '#e2e8f0',
+  interest: '#f97316',
+  nofly: '#ef4444',
+  takeoff: '#22c55e',
+  poi: '#facc15',
+  note: '#c084fc',
+};
+
+export const GUIDE_PALETTE = ['#f97316', '#facc15', '#22c55e', '#14b8a6', '#e2e8f0', '#c084fc', '#ec4899', '#ef4444'];
+
+export type GuideGeometry = 'polygon' | 'points' | 'line';
+
+export function minGuidePoints(kind: GuideGeometry): number {
+  return kind === 'polygon' ? 3 : kind === 'line' ? 2 : 1;
+}
+
 export interface MapGuide {
   id: string;
   name: string;
@@ -33,10 +58,33 @@ export interface MapGuide {
   kind?: 'polygon' | 'points' | 'line';
   /** Per-point labels for 'points' guides (parallel to `polygon`). */
   pointLabels?: (string | null)[];
+  role?: GuideRole;
+  /** Where it came from or a remark, shown in the guides panel. */
+  notes?: string;
+  /** Who added it: an import, an agent, a cargo. */
+  source?: string;
+}
+
+export type GuideInput = Omit<MapGuide, 'id' | 'visible' | 'holes' | 'color'> & {
+  id?: string;
+  visible?: boolean;
+  holes?: LatLng[][];
+  color?: string;
+};
+
+const LABELS_KEY = 'ardudeck:guide-labels';
+function readShowLabels(): boolean {
+  try { return localStorage.getItem(LABELS_KEY) !== '0'; } catch { return true; }
 }
 
 interface GuideStore {
   guides: MapGuide[];
+  /** Name chips on the map. Per viewer. */
+  showLabels: boolean;
+  setShowLabels: (show: boolean) => void;
+  /** Add (no id, or an unknown id) or replace a guide. Points are kept as given. */
+  upsertGuide: (input: GuideInput) => MapGuide;
+  patchGuide: (id: string, patch: Partial<Pick<MapGuide, 'name' | 'color' | 'role' | 'notes' | 'polygon' | 'holes'>>) => void;
   /** Monotonic trigger + bounds for "focus the map on this guide" requests. */
   focusSeq: number;
   focusBounds: [[number, number], [number, number]] | null;
@@ -92,6 +140,34 @@ function persist(guides: MapGuide[]): void {
 
 export const useGuideStore = create<GuideStore>((set, get) => ({
   guides: [],
+  showLabels: readShowLabels(),
+  setShowLabels: (showLabels) => {
+    try { localStorage.setItem(LABELS_KEY, showLabels ? '1' : '0'); } catch { /* per-viewer convenience only */ }
+    set({ showLabels });
+  },
+
+  upsertGuide: (input) => {
+    const existing = input.id ? get().guides.find((g) => g.id === input.id) : undefined;
+    const role = input.role ?? existing?.role;
+    const guide: MapGuide = {
+      ...existing,
+      ...input,
+      id: existing?.id ?? input.id ?? uuid(),
+      holes: input.holes ?? existing?.holes ?? [],
+      visible: input.visible ?? existing?.visible ?? true,
+      color: input.color ?? existing?.color ?? (role ? GUIDE_ROLE_COLORS[role] : GROUP_COLOR_PALETTE[get().guides.length % GROUP_COLOR_PALETTE.length]!),
+    };
+    const guides = existing ? get().guides.map((g) => (g.id === guide.id ? guide : g)) : [...get().guides, guide];
+    set({ guides });
+    persist(guides);
+    return guide;
+  },
+
+  patchGuide: (id, patch) => {
+    const guides = get().guides.map((g) => (g.id === id ? { ...g, ...patch } : g));
+    set({ guides });
+    persist(guides);
+  },
   focusSeq: 0,
   focusBounds: null,
 
@@ -254,7 +330,11 @@ export const useGuideStore = create<GuideStore>((set, get) => ({
 function hydrate(): void {
   const raw = useSettingsStore.getState().mapGuides;
   if (Array.isArray(raw) && raw.length > 0) {
-    useGuideStore.setState({ guides: raw as unknown as MapGuide[] });
+    const guides = (raw as unknown as MapGuide[]).map((g) => {
+      const legacy = g.role ? LEGACY_ROLES[g.role as string] : undefined;
+      return legacy ? { ...g, role: legacy } : g;
+    });
+    useGuideStore.setState({ guides });
   }
 }
 

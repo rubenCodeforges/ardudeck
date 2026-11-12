@@ -1091,7 +1091,10 @@
     "writeBody": "Die folgenden {{count}} Parameter werden dauerhaft im Flugcontroller gespeichert.",
     "writeRebootWarning": "Einige Parameter erfordern einen Neustart, um wirksam zu werden.",
     "writeTitle": "Parameter in Flash schreiben",
-    "writeToFlash": "In Flash schreiben"
+    "writeToFlash": "In Flash schreiben",
+    "reset": "Zurücksetzen",
+    "resetTip": "Parameter auf die Firmware-Standardwerte zurücksetzen",
+    "noBitsSet": "Keine Bits gesetzt"
   },
   "pidTuningTab": {
     "accelDesc": "Maximale Drehbeschleunigung pro Achse (deg/s²). Wird durch Initial Parameters und Autotune gesetzt.",
@@ -2501,6 +2504,29 @@
     "confirm": "Zurücksetzen und neu starten",
     "disarmFirst": "Das Fahrzeug muss zuerst disarmt sein.",
     "erased": "Parameter gelöscht. Neustart lädt die Standardwerte.",
-    "failed": "Das Zurücksetzen der Parameter ist nicht durchgegangen."
+    "failed": "Das Zurücksetzen der Parameter ist nicht durchgegangen.",
+    "menu": "Werkseinstellungen",
+    "menuDesc": "Alle gespeicherten Parameter löschen und neu starten.",
+    "calibrationWarningPx4": "Die Kalibrierung bleibt erhalten, aber Airframe-Setup, Tuning und alle anderen Einstellungen werden gelöscht. Prüfe das Setup erneut, bevor das Fahrzeug fliegt."
+  },
+  "resetChanged": {
+    "menu": "Geänderte Werte zurücksetzen",
+    "menuDesc": "Jeden Wert, der vom Standard abweicht, zurücksetzen. Du prüfst die Liste vor dem Schreiben in den Flash.",
+    "noDefaults": "Benötigt die Firmware-Standardwerte, die dieser Flugcontroller nicht geliefert hat.",
+    "title": "Geänderte Werte auf Standard zurücksetzen?",
+    "body": "Diese Parameter weichen vom Firmware-Standard ab und werden darauf zurückgesetzt. Die Werte werden nur vorgemerkt: prüfe sie und nutze dann In Flash schreiben.",
+    "keep": "Kalibrierung, Sensor-IDs, Rahmen und serielle Ports behalten",
+    "keptCount_one": "{{count}} geschützter Wert bleibt unverändert.",
+    "keptCount_other": "{{count}} geschützte Werte bleiben unverändert.",
+    "keepOffWarning": "Kalibrierung, Rahmen und Verbindungseinstellungen werden ebenfalls zurückgesetzt. Das Fahrzeug muss neu kalibriert werden und die Verbindung kann abbrechen.",
+    "nothing": "Nichts zurückzusetzen: alle Werte stehen auf Standard.",
+    "colParam": "Parameter",
+    "colCurrent": "Aktuell",
+    "colDefault": "Standard",
+    "flashNote": "Erst In Flash schreiben sendet etwas.",
+    "confirm_one": "{{count}} Wert zurücksetzen",
+    "confirm_other": "{{count}} Werte zurücksetzen",
+    "staged_one": "{{count}} Wert auf Standard gesetzt. Prüfen und dann In Flash schreiben.",
+    "staged_other": "{{count}} Werte auf Standard gesetzt. Prüfen und dann In Flash schreiben."
   }
 }

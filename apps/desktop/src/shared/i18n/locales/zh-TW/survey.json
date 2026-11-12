@@ -293,7 +293,10 @@
     "sensorSpacingHint": "測繪線之間的距離。典型的磁力測量間距為 10 至 50 m。",
     "tieLines": "聯絡測線",
     "tieLinesHint": "每 {{every}} 條測繪線加一條垂直的聯絡測線,在測繪線之後飛行。用來讓各測線彼此校平。",
-    "tieLinesOff": "關閉。磁力測量通常每 5 到 10 條測線加一條。"
+    "tieLinesOff": "關閉。磁力測量通常每 5 到 10 條測線加一條。",
+    "surveyNamePrefix": "測繪",
+    "sectionWord": "分段",
+    "flightWord": "航次"
   },
   "surveyMapOverlay": {
     "clickToAddControlPoint": "點擊以新增控制點",

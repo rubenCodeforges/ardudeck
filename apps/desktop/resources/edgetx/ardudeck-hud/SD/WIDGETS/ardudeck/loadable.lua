@@ -343,7 +343,7 @@ local V = {
   lastFrameT = 0, lastStreamT = 0, everFrame = false,
   modeNum = -1, armed = false, flying = false,
   battFs = false, ekfBad = false, anyFs = false, fenceBreach = false,
-  throttle = 0, imuTemp = 0,
+  throttle = 0, imuTemp = 0, tImuTemp = 0, crsfTemp = nil, tCrsfTemp = 0,
   sats = 0, fix = 0, hdop = 0, gpsAltM = 0,
   voltV = 0, currA = 0, mah = 0,
   homeDistM = 0, homeAltM = 0, homeBearingDeg = 0,
@@ -439,7 +439,12 @@ decoders[0x5001] = function (d)
   V.anyFs = btest(d, 2 ^ 12)
   V.fenceBreach = btest(d, 2 ^ 14)
   V.throttle = dec_2_0(band(rshift(d, 19), 0x7F))
-  V.imuTemp = band(rshift(d, 26), 0x3F) + 19
+  -- ELRS in MAVLink mode builds this frame from HEARTBEAT and leaves the temperature bits at 0.
+  local rawTemp = band(rshift(d, 26), 0x3F)
+  if rawTemp > 0 then
+    V.imuTemp = rawTemp + 19
+    V.tImuTemp = now()
+  end
   V.tAp = now()
 end
 
@@ -661,7 +666,12 @@ local function pump()
     -- data[2..3], value LE at data[4..7]; 0xF2 array: count data[2],
     -- 6-byte entries from data[3]; 0xF1 text: severity data[2], chars
     -- from data[3].
-    if (cmd == 0x80 or cmd == 0x7F) and data ~= nil then
+    if cmd == 0x0D and data ~= nil and #data >= 3 then
+      local raw = data[2] * 256 + data[3]
+      if raw >= 0x8000 then raw = raw - 0x10000 end
+      V.crsfTemp = raw / 10
+      V.tCrsfTemp = now()
+    elseif (cmd == 0x80 or cmd == 0x7F) and data ~= nil then
       local sub = data[1]
       if sub == 0xF0 and #data >= 7 then
         handlePassthrough(data[2] + data[3] * 256, bytesToU32(data, 4))
@@ -805,6 +815,18 @@ local function fontH(f)
     FONT_H[f] = th or (f == DBLSIZE and 34 or f == MIDSIZE and 25 or f == SMLSIZE and 13 or 17)
   end
   return FONT_H[f]
+end
+
+-- Link lost after data arrived: the page keeps the last values (greyed as stale) and this bar replaces the top bar.
+local function drawLinkLostBar(state, hint, color)
+  lcd.drawFilledRectangle(0, 0, LCD_W, 38, color)
+  local ago = math.max(0, math.floor((now() - V.lastFrameT) / 100))
+  local agoTxt = ago < 60 and string.format('%ds', ago) or string.format('%d:%02d', math.floor(ago / 60), ago % 60)
+  local line = state .. '   last data ' .. agoTxt .. ' ago'
+  if hint and LCD_W >= 400 and lcd.sizeText(line .. '   ' .. hint, SMLSIZE) < LCD_W - 24 then
+    line = line .. '   ' .. hint
+  end
+  lcd.drawText(LCD_W / 2, 19 - math.floor(fontH(SMLSIZE) / 2), line, SMLSIZE + CENTER + T.TEXT)
 end
 
 -- Big value over an optional sub line, fonts picked so they fit the tile without overlapping.
@@ -1254,7 +1276,7 @@ TILE.timer = function (x, y, w, h)
     string.format('%02d:%02d', math.floor(secs / 60), secs % 60), vf + T.TEXT)
   if sy then
     lcd.drawText(x + 8, sy,
-      V.armed and (isGround() and 'running' or 'flying') or 'total this session',
+      V.armed and (isGround() and 'running' or 'flying') or (secs > 0 and 'tap to reset' or 'total this session'),
       sf + (V.armed and T.SUCCESS or T.TEXT_3))
   end
   if V.armed then
@@ -1726,17 +1748,21 @@ TILE.depth = function (x, y, w, h)
 end
 
 TILE.imu = function (x, y, w, h)
-  tileFrame(x, y, w, h, 'IMU TEMP')
-  local c = V.imuTemp >= 70 and T.DANGER or (V.imuTemp >= 60 and T.WARN_STRONG or T.SUCCESS)
+  -- A real IMU reading wins; without one (ELRS MAVLink mode) show the baro temperature ELRS sends as a CRSF frame.
+  local useBaro = V.crsfTemp ~= nil and (V.tImuTemp == 0 or now() - V.tImuTemp > STALE_AFTER * 3)
+  local temp = useBaro and math.floor(V.crsfTemp + 0.5) or V.imuTemp
+  local tStamp = useBaro and V.tCrsfTemp or V.tAp
+  tileFrame(x, y, w, h, useBaro and 'BARO TEMP' or 'IMU TEMP')
+  local c = temp >= 70 and T.DANGER or (temp >= 60 and T.WARN_STRONG or T.SUCCESS)
   local vy, vf, sy, sf = stack(y, h, false)
-  valueText(x + 8, vy, w - 16 - 20, string.format('%dC', V.imuTemp), vf, staleColor(V.tAp, c))
+  valueText(x + 8, vy, w - 16 - 20, string.format('%dC', temp), vf, staleColor(tStamp, c))
   -- thermometer strip: 20..80C
   local bx, bh2 = x + w - 16, h - 30
   local by = y + 18
   lcd.drawFilledRectangle(bx, by, 8, bh2, T.GAUGE_BEZEL_2)
-  local frac = math.max(0, math.min(1, (V.imuTemp - 20) / 60))
+  local frac = math.max(0, math.min(1, (temp - 20) / 60))
   local fill = math.floor(bh2 * frac + 0.5)
-  if fill > 0 then lcd.drawFilledRectangle(bx, by + bh2 - fill, 8, fill, staleColor(V.tAp, c)) end
+  if fill > 0 then lcd.drawFilledRectangle(bx, by + bh2 - fill, 8, fill, staleColor(tStamp, c)) end
   lcd.drawRectangle(bx, by, 8, bh2, T.GAUGE_EDGE)
 end
 
@@ -2519,11 +2545,18 @@ function M.refresh(widget, event, touchState)
     elseif demoTap and touchState.x > LCD_W - 130 and touchState.y >= 38 and touchState.y < 62 then
       demoTap = false
     else
-      -- tap inside a map tile cycles zoom level
+      -- tap inside a map tile cycles zoom level; a tap on the flight timer while disarmed resets it
       local layout = activeLayout()
       local onMap = false
       for i = 1, #layout do
         local tl = layout[i]
+        if tl.id == 'timer' and not V.armed and touchState.x >= tl.x and touchState.x <= tl.x + tl.w
+          and touchState.y >= tl.y and touchState.y <= tl.y + tl.h then
+          V.armedAccum = 0
+          V.armedAtT = nil
+          onMap = true
+          break
+        end
         if tl.id == 'map' and touchState.x >= tl.x and touchState.x <= tl.x + tl.w
           and touchState.y >= tl.y and touchState.y <= tl.y + tl.h then
           onMap = true
@@ -2554,6 +2587,10 @@ function M.refresh(widget, event, touchState)
     demoTick()
     announceTransitions(true)
     drawLive()
+  elseif V.everFrame then
+    announceTransitions(false)
+    drawLive()
+    drawLinkLostBar(state, hint, color)
   else
     announceTransitions(false)
     drawLadderBanner(state, hint, color)

@@ -148,7 +148,9 @@
     "waypoints": "Точки маршруту",
     "workspaceLayout": "Макет робочого простору ArduDeck",
     "xplaneExecutable": "Виконуваний файл X-Plane",
-    "zipArchive": "Zip-архів"
+    "zipArchive": "Zip-архів",
+    "qgcParameterFiles": "Файли параметрів QGroundControl",
+    "allParameterFiles": "Файли параметрів (.param, .params)"
   },
   "firmwareDownloader": {
     "aborted": "Завантаження перервано",
@@ -315,14 +317,20 @@
     "writeProbeRejected": "FC відхилив пробний запис: {{error}}",
     "inavNoParams": "Цей польотний контролер не має MAVLink-параметрів (INAV). Налаштовуйте його через MSP.",
     "pickFolderTitle": "Виберіть папку",
-    "resetParamsArduPilotOnly": "Скидання всіх параметрів доступне лише для ArduPilot.",
+    "resetParamsArduPilotOnly": "Скидання всіх параметрів доступне лише для ArduPilot і PX4.",
     "resetParamsDisarmFirst": "Апарат має бути дизармлений перед скиданням параметрів.",
     "resetParamsFailed": "Польотний контролер не прийняв скидання параметрів.",
     "rcMapUnknown": "Перевизначення стіків вимкнено, доки не завантажено параметри апарата (RCMAP визначає, який канал є газом).",
     "paramNoEcho": "{{param}}: польотний контролер не підтвердив запис. Перевірте зв’язок і спробуйте ще раз.",
     "paramRejected": "{{param}}: польотний контролер залишив {{value}} і не прийняв нове значення.",
     "flashWriteRejected": "Польотний контролер відхилив запис у флеш-пам’ять (результат {{result}}).",
-    "calibrationLost": "Калібрування {{type}} НЕ збереглося після перезавантаження. Відкалібруйте повторно перед польотом."
+    "calibrationLost": "Калібрування {{type}} НЕ збереглося після перезавантаження. Відкалібруйте повторно перед польотом.",
+    "replayFileRequired": "Виберіть файл .tlog для відтворення",
+    "replayTransportName": "Відтворення {{file}}",
+    "replayPickTitle": "Відтворити політ",
+    "replayEmpty": "У цьому файлі немає польотних даних, які ArduDeck може відтворити",
+    "replayFilterTlog": "Журнали телеметрії (.tlog)",
+    "replayFilterBin": "Бортові журнали (.bin)"
   },
   "licenseValidator": {
     "invalidKeyFormat": "Некоректний формат ключа",

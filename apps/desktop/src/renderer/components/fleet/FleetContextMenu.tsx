@@ -17,7 +17,7 @@ import { selectActiveVehicle, type FleetVehicle } from '../../hooks/useFleet';
 import { SHAPE_OPTIONS, FormationGlyph } from './FormationGlyphs';
 import { TAC_GLASS, tacButton } from './tactical';
 
-const MENU_WIDTH = 200;
+const MENU_WIDTH = 216;
 
 function NumChip({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (n: number) => void }) {
   const { t } = useTranslation();
@@ -37,7 +37,8 @@ export function FleetContextMenu(): JSX.Element | null {
   const { t } = useTranslation();
   const menu = useFormationStore((s) => s.contextMenu);
   const close = useFormationStore((s) => s.closeContextMenu);
-  const { canFollow, busy, leader, formations, configFor, setConfig, vehicles, formUp, reshapeFleet, createFleet, addToFleet, removeFromFleet, disbandFleet } = useFormationControl();
+  const { canFollow, canTakeoff, busy, leader, formations, configFor, setConfig, vehicles, formUp, reshapeFleet, createFleet, addToFleet, removeFromFleet, disbandFleet, takeOffFleet, startLeaderMission } = useFormationControl();
+  const [takeoffAlt, setTakeoffAlt] = useState(10);
 
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
@@ -104,6 +105,24 @@ export function FleetContextMenu(): JSX.Element | null {
           {t('fleet:fleetContextMenu.commandVehicle')}
         </button>
 
+        {isLeader && (canTakeoff || canFollow) && (
+          <div className="flex flex-col gap-1 border-b border-subtle pb-1">
+            {canTakeoff && (
+              <div className="flex items-center gap-1.5">
+                <button type="button" disabled={busy} onClick={run(() => { void takeOffFleet(v.key, takeoffAlt); })} className={`${item} flex-1`}>
+                  {t('fleet:fleetContextMenu.takeOffFleet')}
+                </button>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <NumChip label={t('fleet:fleetContextMenu.alt')} value={takeoffAlt} min={1} max={120} onChange={setTakeoffAlt} />
+                </div>
+              </div>
+            )}
+            <button type="button" disabled={busy} onClick={run(() => { void startLeaderMission(v.key); })} className={item}>
+              {t('fleet:fleetContextMenu.startMission')}
+            </button>
+          </div>
+        )}
+
         {canFollow && (
           <>
             <button type="button" disabled={busy || isLeader} onClick={run(() => { void createFleet(v.key); })} className={item}>
@@ -142,9 +161,9 @@ export function FleetContextMenu(): JSX.Element | null {
                 command the fleet into motion; the lit current shape is a no-op. */}
             {hasWingmen && (
               <>
-                <div className="flex items-center justify-between gap-2 px-1.5 pt-1">
-                  <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-content-tertiary">{t('fleet:fleetContextMenu.formationShape')}</span>
-                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                <div className="flex flex-col gap-1 px-1.5 pt-1">
+                  <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-content-tertiary whitespace-nowrap">{t('fleet:fleetContextMenu.formationShape')}</span>
+                  <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
                     <NumChip label={t('fleet:fleetContextMenu.gap')} value={cfg.spacing} min={2} max={500} onChange={(spacing) => editConfig({ spacing })} />
                     <NumChip label={t('fleet:fleetContextMenu.alt')} value={cfg.altStep} min={0} max={100} onChange={(altStep) => editConfig({ altStep })} />
                   </div>

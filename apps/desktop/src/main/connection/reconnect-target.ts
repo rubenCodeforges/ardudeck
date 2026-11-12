@@ -20,7 +20,7 @@ import type { ConnectOptions } from '../../shared/ipc-channels';
 
 /** The live connection, as much of it as is still set. */
 export interface LiveConnection {
-  connectionType?: 'serial' | 'tcp' | 'udp';
+  connectionType?: 'serial' | 'tcp' | 'udp' | 'replay';
   portPath?: string;
   /** 'crsf' links never reconnect through here; it resolves like a cleared protocol. */
   protocol?: 'msp' | 'mavlink' | 'crsf';

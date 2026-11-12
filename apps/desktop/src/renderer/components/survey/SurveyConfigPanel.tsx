@@ -47,9 +47,9 @@ import {
   generatorDescription,
   type GeneratorConfigField,
 } from './generator-registry';
-import { createSurveyGroup, createManualGroup, nextGroupColor, GROUP_COLOR_PALETTE } from '../../../shared/mission-group-types';
-import { splitIntoSorties } from './survey-sortie-split';
-import { splitCorridorIntoSections, sectionCountForEndurance, sectionCountForLength, centrelineLengthM } from './corridor-sections';
+import { createSurveyGroup, nextGroupColor } from '../../../shared/mission-group-types';
+import { buildFlightSplitEntries, type FlightSplitMode } from './survey-flight-split';
+import { sectionCountForEndurance, sectionCountForLength, centrelineLengthM } from './corridor-sections';
 import { computeSurveyGroupSignature } from './survey-group-signature';
 import { MAV_CMD } from '../../../shared/mission-types';
 import {
@@ -590,41 +590,13 @@ export function SurveyConfigPanel() {
 
   // Split the survey into one battery-sized flight group per sortie, instead of
   // a single group. Each flight is independently uploadable from the table.
-  const handleSplitIntoFlights = useCallback((mode: 'sections' | 'lines' = 'sections') => {
+  const handleSplitIntoFlights = useCallback((mode: FlightSplitMode = 'sections') => {
     if (!result || !polygon) return;
-    // A corridor's path is line-major, so slicing it by elapsed time hands each
-    // flight a few full-length passes over the whole route. Right for a swarm
-    // working side by side, wrong for one aircraft that wants this stretch
-    // finished before moving down the route.
-    const isCorridor = config.pattern === 'corridor';
-    const override = config.corridorSectionLengthM ?? 0;
-    const sorties = isCorridor && mode === 'sections'
-      ? splitCorridorIntoSections(
-          result.waypoints,
-          polygon,
-          override > 0
-            ? sectionCountForLength(polygon, override)
-            : sectionCountForEndurance(result.waypoints, config.speed, config.enduranceMinutes ?? 20),
-        )
-      : splitIntoSorties(result.waypoints, config.speed, config.enduranceMinutes ?? 20);
-    if (sorties.length <= 1) return;
-    const fullConfig = { ...config, polygon };
-    const firmware = useConnectionStore.getState().connectionState.firmware;
-    const baseName = `Survey ${existingGroups.filter((g) => g.kind === 'survey').length + 1}`;
-    const entries = sorties.map((slice, i) => {
-      // Each sortie is its own complete flight: takeoff -> slice -> RTL.
-      // each flight keeps only its own whole lines, renumbered from its first waypoint
-      const offset = slice.length > 0 ? result.waypoints.indexOf(slice[0]!) : -1;
-      const legStarts = offset < 0 ? undefined : (result.legStarts ?? [])
-        .filter((s) => s >= offset && s + 1 < offset + slice.length)
-        .map((s) => s - offset);
-      const items = surveyToMissionItems({ ...result, waypoints: slice, legStarts }, fullConfig, firmware);
-      const group = createManualGroup({
-        name: `${baseName} · ${isCorridor && mode === 'sections' ? 'Section' : 'Flight'} ${i + 1}/${sorties.length}`,
-        color: GROUP_COLOR_PALETTE[i % GROUP_COLOR_PALETTE.length]!,
-      });
-      return { group: { ...group, separateFlight: true }, items };
+    const entries = buildFlightSplitEntries({
+      result, polygon, config, existingGroups, mode,
+      firmware: useConnectionStore.getState().connectionState.firmware,
     });
+    if (!entries) return;
     addGroupsWithItems(entries);
     clearSurvey();
     setInsertSuccess(true);

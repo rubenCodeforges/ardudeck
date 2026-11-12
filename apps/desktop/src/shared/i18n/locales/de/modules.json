@@ -124,7 +124,10 @@
     "alreadyOpen": "Es ist bereits ein anderer Vorschlag geöffnet",
     "needsItems": "Ein Missionsvorschlag braucht mindestens einen Wegpunkt mit Position und Höhe.",
     "needsPoint": "Ein Landevorschlag braucht eine Position.",
-    "needsThreePoints": "Ein Geofence benötigt mindestens drei Punkte"
+    "needsThreePoints": "Ein Geofence benötigt mindestens drei Punkte",
+    "agentName": "KI-Agent",
+    "agentArmed": "Das Fahrzeug ist scharf geschaltet. Pläne können nur im entschärften Zustand vorgeschlagen werden.",
+    "lineSensor": "Liniensensor"
   },
   "moduleProposalDialog": {
     "addToMission": "Zur Mission hinzufügen",
@@ -148,7 +151,13 @@
     "replacesFence_one": "Dies ersetzt den bereits vorhandenen Einschluss-Geofence ({{count}} Form, {{points}} Punkte). Er gilt dann nicht mehr.",
     "replacesFence_other": "Dies ersetzt den bereits vorhandenen Einschluss-Geofence ({{count}} Formen, {{points}} Punkte). Er gilt dann nicht mehr.",
     "returnPoint": "den Rückkehrpunkt",
-    "writeToAircraft": "Auf Luftfahrzeug schreiben"
+    "writeToAircraft": "Auf Luftfahrzeug schreiben",
+    "asksToSurvey": "{{from}} möchte eine Vermessung hinzufügen",
+    "surveySummary": "{{pattern}} in {{alt}} m, {{area}}, {{extent}}",
+    "surveyCorridor": "Korridor entlang {{count}} Punkten in {{alt}} m, {{extent}}",
+    "surveyNote": "ArduDeck plant die Fluglinien. Du kannst sie im Vermessungs-Panel anpassen. Erst beim Hochladen geht etwas an das Fluggerät.",
+    "areaHa": "{{value}} ha",
+    "areaM2": "{{value}} m²"
   },
   "production": {
     "notConnected": "Zuerst ein Fahrzeug verbinden",

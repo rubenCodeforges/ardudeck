@@ -640,8 +640,13 @@ export const useMapInstrumentsStore = create<MapInstrumentsStore>((set, get) => 
         if (key in layout.positions) writeOverlayPosPayload(key, layout.positions[key]);
         else clearOverlayPosPayload(key);
       }
+      // A layout that never mentions a cargo instrument means "not in this layout", not the cargo's default.
+      const visible = { ...layout.visible };
+      for (const def of allMapInstruments()) {
+        if (isCargoInstrumentId(def.id) && !(def.id in visible)) visible[def.id] = false;
+      }
       set({
-        visible: { ...layout.visible },
+        visible,
         scale: { ...layout.scale },
         opacity: layout.opacity,
         instrumentOpacity: { ...(layout.instrumentOpacity ?? {}) },

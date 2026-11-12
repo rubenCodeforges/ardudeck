@@ -777,7 +777,7 @@ export const MavlinkConfigView: React.FC = () => {
               {rebooting ? t('common:rebooting') : t('common:reboot')}
             </button>
 
-            {connectionState.firmware === 'ardupilot' && !isInavLink && (
+            {(connectionState.firmware === 'ardupilot' || connectionState.firmware === 'px4') && !isInavLink && (
               <button
                 {...ui('button', { variant: 'danger' })}
                 onClick={() => setShowResetParams(true)}
@@ -981,6 +981,7 @@ export const MavlinkConfigView: React.FC = () => {
       {showResetParams && (
         <ResetParamsDialog
           armed={armed}
+          firmware={connectionState.firmware}
           vehicleType={connectionState.vehicleType || connectionState.fcVariant}
           onCancel={() => setShowResetParams(false)}
           onReset={handleResetParams}

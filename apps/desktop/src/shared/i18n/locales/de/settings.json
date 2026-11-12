@@ -283,7 +283,10 @@
       "title": "Telemetrieprotokoll",
       "record": "Telemetrie in einer .tlog-Datei aufzeichnen",
       "recordHint": "Jede Verbindung wird als MAVLink-.tlog im App-Datenordner gespeichert. Sie lässt sich in jedem Tlog-Viewer öffnen. Es bleiben die neuesten 50 Dateien, höchstens 2 GB.",
-      "openFolder": "Protokollordner öffnen"
+      "openFolder": "Protokollordner öffnen",
+      "replay": "Flug wiedergeben",
+      "replayTip": "Eine aufgezeichnete .tlog oder ein Bord-Log .bin im Cockpit abspielen: Karte, Instrumente, HUD und Vision.",
+      "replayBusy": "Zuerst das Fahrzeug trennen"
     },
     "terrainUplink": {
       "title": "Gelände-Uplink",

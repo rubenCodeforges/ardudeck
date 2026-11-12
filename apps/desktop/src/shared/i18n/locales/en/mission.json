@@ -135,7 +135,8 @@
     "hidePointSet": "Hide point set",
     "planSurveyHere": "Plan survey here",
     "pointN": "point {{n}}",
-    "referenceLine": "{{count}} points · reference line"
+    "referenceLine": "{{count}} points · reference line",
+    "setHomeHere": "Set home here"
   },
   "mission3DPanel": {
     "centerTip": "Center map on vehicle GPS position",
@@ -954,5 +955,83 @@
     "pinPlaceholder": "Admin PIN",
     "pinWrong": "Wrong PIN.",
     "pinThrottled": "Too many wrong tries. Wait a moment."
+  },
+  "missionFit": {
+    "openButton": "Ways to make it fit",
+    "title": "This mission is very large",
+    "titleRejected": "The flight controller has no space for this mission",
+    "intro": "{{count}} items. Many flight controllers hold only a few hundred to about two thousand mission items. Pick a way to make it fit:",
+    "introRejected": "It refused {{count}} items. Pick a way to make the mission fit, then upload again:",
+    "terrainTitle": "Let the flight controller follow the terrain",
+    "terrainDesc": "Waypoints only at the ends of each line, flown at a height above the terrain. The mission shrinks to a fraction of its size.",
+    "terrainNote": "Needs TERRAIN_ENABLE and an SD card; ArduDeck sends the terrain data. It follows a grid of about 100 m, or the real ground with a rangefinder and WP_RFND_USE.",
+    "splitTitle": "Split into flights",
+    "splitDesc": "One flight per battery, each uploaded on its own before it flies.",
+    "splitNote": "Works on any flight controller. You upload between flights.",
+    "sdTitle": "Store missions on the SD card",
+    "sdDesc": "Reserves room on the SD card for up to about {{items}} items.",
+    "sdNote": "Sets BRD_SD_MISSION through the parameter review. Needs a microSD card and a reboot before the next upload.",
+    "noSurvey": "The mission holds no survey to split.",
+    "noTerrainFollow": "Only for surveys planned with ArduDeck terrain following.",
+    "sdUnavailable": "Needs a connected ArduPilot flight controller with its parameters loaded.",
+    "splitFailed": "The survey could not be regenerated for splitting.",
+    "oneFlight": "The survey fits in one flight at its endurance setting, so there is nothing to split. Set a shorter endurance in the survey panel.",
+    "splitDone_one": "Split into {{count}} flight; the largest has {{largest}} items.",
+    "splitDone_other": "Split into {{count}} flights; the largest has {{largest}} items. Upload each before it flies.",
+    "terrainDone": "The surveys now use terrain-relative altitude. The mission has {{total}} items.",
+    "terrainDoneParamNot": "The surveys now use terrain-relative altitude ({{total}} items), but TERRAIN_ENABLE was not set. Enable it before flying.",
+    "terrainEnableReason": "Lets the flight controller follow the terrain with data ArduDeck sends.",
+    "sdReason": "Stores the mission on the SD card, room for about {{items}} items.",
+    "sdDone": "BRD_SD_MISSION is set. Reboot the flight controller, then upload again.",
+    "sdNotApplied": "BRD_SD_MISSION was not changed."
+  },
+  "guidesPanel": {
+    "title": "Guides",
+    "addArea": "Area",
+    "addLine": "Line",
+    "addPoint": "Point",
+    "import": "Import file",
+    "enterPoints": "Enter points",
+    "showLabels": "Labels on the map",
+    "empty": "No guides yet. Draw one, import a KML, KMZ, GeoJSON or SHP file, or let an agent or a cargo add them.",
+    "color": "Colour",
+    "name": "Name",
+    "role": "Role",
+    "hide": "Hide on the map",
+    "show": "Show on the map",
+    "zoomTo": "Zoom to it",
+    "surveyArea": "Plan a survey here",
+    "surveyLine": "Plan a corridor survey along it",
+    "delete": "Delete",
+    "confirmDelete": "Delete?",
+    "hectares": "{{value}} ha",
+    "km": "{{value}} km",
+    "points_one": "{{count}} point",
+    "points_other": "{{count}} points",
+    "holes_one": "{{count}} hole",
+    "holes_other": "{{count}} holes",
+    "roles": {
+      "area": "Area",
+      "interest": "Area of interest",
+      "nofly": "No-fly zone",
+      "takeoff": "Take-off / landing",
+      "poi": "Point of interest",
+      "note": "Reference"
+    },
+    "drawPrompt": {
+      "polygon": "Click the corners of the area, then press Enter",
+      "line": "Click along the line, then press Enter",
+      "points": "Click the spot"
+    },
+    "defaultName": {
+      "polygon": "Area {{n}}",
+      "line": "Line {{n}}",
+      "points": "Point {{n}}"
+    },
+    "addTitle": "Add a guide",
+    "onMap": "On the map",
+    "onMapCount": "On the map ({{count}})",
+    "importShort": "Import",
+    "enterShort": "Coords"
   }
 }

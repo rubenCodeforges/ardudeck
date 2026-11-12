@@ -67,6 +67,8 @@
     "firmwareFlashDesc": "通过 USB 或 DFU 烧录固件",
     "flightLogAnalysis": "飞行记录分析",
     "flightLogAnalysisDesc": "AI 驱动的飞行记录查看",
+    "flightReplay": "飞行回放",
+    "flightReplayDesc": "回放已记录的飞行 (.tlog 或 .bin)",
     "intro": "使用左侧面板连接到你的飞控，或直接进入下方的工具。",
     "missionLibraryDesc": "浏览与管理已保存的计划",
     "radioHudDesc": "在你的 EdgeTX 遥控器上显示 ArduDeck 遥测画面",

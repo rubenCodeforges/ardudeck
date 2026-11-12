@@ -28,6 +28,21 @@ export const TESTING_CHANNELS = {
 
   // Parameter write (approval-gated via compare modal)
   PROPOSE_PARAMETERS: 'testing:propose-parameters',
+
+  // Mission planning (approval-gated via the proposal dialog; nothing is uploaded except an approved fence)
+  GET_MISSION: 'testing:get-mission',
+  PROPOSE_MISSION: 'testing:propose-mission',
+  PROPOSE_SURVEY: 'testing:propose-survey',
+  PROPOSE_FENCE: 'testing:propose-fence',
+  SET_VEHICLE_PROFILE: 'testing:set-vehicle-profile',
+  SET_HOME: 'testing:set-home',
+  LIST_SURVEY_OPTIONS: 'testing:list-survey-options',
+  FIT_MISSION: 'testing:fit-mission',
+  DRAW_AREA: 'testing:draw-area',
+  LIST_AREAS: 'testing:list-areas',
+  DELETE_AREA: 'testing:delete-area',
+  SURVEY_AREA: 'testing:survey-area',
+  GET_FLIGHT_ESTIMATE: 'testing:get-flight-estimate',
 } as const;
 
 export type TestingChannel = typeof TESTING_CHANNELS[keyof typeof TESTING_CHANNELS];

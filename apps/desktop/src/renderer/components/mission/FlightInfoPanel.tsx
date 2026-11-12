@@ -15,6 +15,7 @@ import { useSurveyStore } from '../../stores/survey-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { commandHasLocation, hasValidCoordinates, mavFrameToAltFrame } from '../../../shared/mission-types';
 import { estimateDataSizeGb } from '../survey/survey-stats';
+import { useMissionFitStore } from './mission-fit-actions';
 import {
   computeMissionBriefing,
   formatAltitudeM,
@@ -335,6 +336,15 @@ export function FlightInfoPanel() {
           value={briefing.waypointCount.toLocaleString()}
           detail={briefing.waypointCount > FC_WAYPOINT_SOFT_LIMIT ? t('mission:flightInfoPanel.veryLarge') : undefined}
         />
+        {briefing.waypointCount > FC_WAYPOINT_SOFT_LIMIT && (
+          <button
+            type="button"
+            onClick={() => useMissionFitStore.getState().show(briefing.waypointCount, false)}
+            className="mt-1 w-full rounded-md border border-amber-500/40 px-2 py-1 text-[11px] font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-colors"
+          >
+            {t('mission:missionFit.openButton')}
+          </button>
+        )}
       </Section>
 
       {/* Weather */}

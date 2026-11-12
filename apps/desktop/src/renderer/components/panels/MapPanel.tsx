@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { ui } from '../ui/ui-hooks';
+import { useFormationStore } from '../../stores/formation-store';
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents, Circle } from 'react-leaflet';
 import { useActiveCargoTheme } from '../../hooks/useTheme';
@@ -11,7 +12,7 @@ import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useMissionStore } from '../../stores/mission-store';
 import { useVehicleMissionView } from '../../stores/vehicle-mission-store';
-import { commandHasLocation, hasValidCoordinates, MAV_CMD, type MissionItem } from '../../../shared/mission-types';
+import { commandHasLocation, hasValidCoordinates, MAV_CMD, type MissionItem, type AltReferenceFrame } from '../../../shared/mission-types';
 import { splitMissionMarkers } from '../../utils/mission-markers';
 import { useIpLocation } from '../../utils/ip-geolocation';
 import { useEditModeStore } from '../../stores/edit-mode-store';
@@ -657,6 +658,22 @@ function createOrbitArrowIcon(rotationDeg: number): L.DivIcon {
 // (phone, second laptop) renders here with no app-to-app sync.
 const GUIDED_TARGET_MAX_AGE_MS = 5000;
 
+/** Where the command card is open, and the altitude to start from when it reopens on an existing target. */
+interface CommandPopupAt {
+  lat: number;
+  lon: number;
+  alt?: number;
+  altFrame?: AltReferenceFrame;
+}
+
+/** MAV_FRAME of a reported target as the card's altitude reference. */
+function altFrameFromMavFrame(frame: number): AltReferenceFrame | undefined {
+  if (frame === 0 || frame === 5) return 'asl';
+  if (frame === 3 || frame === 6) return 'relative';
+  if (frame === 10 || frame === 11) return 'terrain';
+  return undefined;
+}
+
 /** Fresh, position-valid vehicle-broadcast guided target, else null. */
 function useVehicleGuidedTarget(): { lat: number; lon: number; alt: number } | null {
   const guidedTarget = useTelemetryStore((s) => s.guidedTarget);
@@ -717,8 +734,9 @@ function CommandLayer({
   onCancel,
   onSetRoi,
   onClearRoi,
+  onTargetClick,
 }: {
-  commandPopup: { lat: number; lon: number } | null;
+  commandPopup: CommandPopupAt | null;
   activeTarget: ActiveCommandTarget | null;
   vehiclePosition: [number, number];
   roiTarget: { lat: number; lon: number } | null;
@@ -726,9 +744,13 @@ function CommandLayer({
   onCancel: () => void;
   onSetRoi: (lat: number, lon: number) => void;
   onClearRoi: () => void;
+  /** Click on the go-to target: reopen the command card on it to change altitude or speed (#166). */
+  onTargetClick?: (lat: number, lon: number, alt: number) => void;
 }) {
   const layer = useImperativeMapLayer();
   const map = layer.map;
+  const onTargetClickRef = useRef(onTargetClick);
+  onTargetClickRef.current = onTargetClick;
 
   // Track screen-space anchor for the popup. Updated on every map move so the
   // popup stays glued to the lat/lon as the user pans/zooms.
@@ -785,14 +807,20 @@ function CommandLayer({
 
     if (activeTarget.type === 'goto') {
       layer.polyline('cmd-line', [vehiclePosition, [activeTarget.lat, activeTarget.lon]], GOTO_LINE_OPTIONS);
-      layer.marker('cmd-target', [activeTarget.lat, activeTarget.lon], { icon: GOTO_TARGET_ICON });
+      const target = layer.marker('cmd-target', [activeTarget.lat, activeTarget.lon], { icon: GOTO_TARGET_ICON });
+      const { lat, lon, alt } = activeTarget;
+      target.off('click');
+      target.on('click', (e: L.LeafletMouseEvent) => {
+        L.DomEvent.stopPropagation(e);
+        onTargetClickRef.current?.(lat, lon, alt);
+      });
       layer.remove('cmd-orbit-ring');
       cleanupArrows();
     } else if (activeTarget.type === 'orbit' || activeTarget.type === 'spiral') {
       // Spiral renders the same circular footprint as Orbit - the climb is a
       // temporal property, not a static path. Direction arrows still apply.
       layer.polyline('cmd-line', [vehiclePosition, [activeTarget.lat, activeTarget.lon]], ORBIT_LINE_OPTIONS);
-      layer.marker('cmd-target', [activeTarget.lat, activeTarget.lon], { icon: ORBIT_CENTER_ICON });
+      layer.marker('cmd-target', [activeTarget.lat, activeTarget.lon], { icon: ORBIT_CENTER_ICON }).off('click');
       layer.circle('cmd-orbit-ring', [activeTarget.lat, activeTarget.lon], Math.abs(activeTarget.radius), ORBIT_RING_OPTIONS);
       const isCw = activeTarget.radius >= 0;
       const tangentOffset = isCw ? 90 : -90;
@@ -807,7 +835,7 @@ function CommandLayer({
       // starting yaw rotation. Render the same line + marker intent indicator
       // as Move/Orbit so the operator sees what was commanded.
       layer.polyline('cmd-line', [vehiclePosition, [activeTarget.lat, activeTarget.lon]], ORBIT_LINE_OPTIONS);
-      layer.marker('cmd-target', [activeTarget.lat, activeTarget.lon], { icon: ORBIT_CENTER_ICON });
+      layer.marker('cmd-target', [activeTarget.lat, activeTarget.lon], { icon: ORBIT_CENTER_ICON }).off('click');
       layer.remove('cmd-orbit-ring');
       cleanupArrows();
     } else if (activeTarget.type === 'reveal' || activeTarget.type === 'strafe') {
@@ -816,7 +844,7 @@ function CommandLayer({
       // pose at command START; from the GCS side we can only show the target
       // and the look-at line as an intent indicator.
       layer.polyline('cmd-line', [vehiclePosition, [activeTarget.lat, activeTarget.lon]], ORBIT_LINE_OPTIONS);
-      layer.marker('cmd-target', [activeTarget.lat, activeTarget.lon], { icon: ORBIT_CENTER_ICON });
+      layer.marker('cmd-target', [activeTarget.lat, activeTarget.lon], { icon: ORBIT_CENTER_ICON }).off('click');
       layer.remove('cmd-orbit-ring');
       cleanupArrows();
     } else if (activeTarget.type === 'climbRtl') {
@@ -827,7 +855,7 @@ function CommandLayer({
       cleanupArrows();
     } else {
       layer.polyline('cmd-line', [vehiclePosition, [activeTarget.lat, activeTarget.lon]], LAND_LINE_OPTIONS);
-      layer.marker('cmd-target', [activeTarget.lat, activeTarget.lon], { icon: LAND_TARGET_ICON });
+      layer.marker('cmd-target', [activeTarget.lat, activeTarget.lon], { icon: LAND_TARGET_ICON }).off('click');
       layer.remove('cmd-orbit-ring');
       cleanupArrows();
     }
@@ -846,6 +874,8 @@ function CommandLayer({
       mapContainer={map.getContainer()}
       lat={commandPopup.lat}
       lon={commandPopup.lon}
+      initialAltitude={commandPopup.alt}
+      initialAltFrame={commandPopup.altFrame}
       distanceMeters={popupContext.dist}
       currentAltAgl={popupContext.altAgl}
       currentMode={popupContext.mode}
@@ -863,6 +893,8 @@ interface CommandPopupOverlayProps {
   mapContainer: HTMLElement;
   lat: number;
   lon: number;
+  initialAltitude?: number;
+  initialAltFrame?: AltReferenceFrame;
   distanceMeters: number;
   currentAltAgl: number;
   currentMode: string;
@@ -878,6 +910,8 @@ function CommandPopupOverlay({
   mapContainer,
   lat,
   lon,
+  initialAltitude,
+  initialAltFrame,
   distanceMeters,
   currentAltAgl,
   currentMode,
@@ -968,8 +1002,11 @@ function CommandPopupOverlay({
       }}
     >
       <MapCommandPopup
+        key={`${lat},${lon},${initialAltitude ?? ''}`}
         lat={lat}
         lon={lon}
+        initialAltitude={initialAltitude}
+        initialAltFrame={initialAltFrame}
         distanceMeters={distanceMeters}
         currentAltAgl={currentAltAgl}
         currentMode={currentMode}
@@ -2163,7 +2200,7 @@ function LiveProximityRing({ homePosition, defaultPosition }: {
   return <ProximityRingOverlay position={position} heading={heading} />;
 }
 
-function LiveVehicleMarker({ tacticalClass, isSelected, activeIsLeader, activeDesignation, activeBodyColor, homePosition, defaultPosition, altitudeUnit, speedUnit, onSelectToggle }: {
+function LiveVehicleMarker({ tacticalClass, isSelected, activeIsLeader, activeDesignation, activeBodyColor, homePosition, defaultPosition, altitudeUnit, speedUnit, onSelectToggle, onFleetMenu }: {
   tacticalClass: ReturnType<typeof mavTypeToTacticalClass>;
   isSelected: boolean;
   activeIsLeader: boolean;
@@ -2174,6 +2211,8 @@ function LiveVehicleMarker({ tacticalClass, isSelected, activeIsLeader, activeDe
   altitudeUnit: ReturnType<typeof useSettingsStore.getState>['unitPreferences']['altitude'];
   speedUnit: ReturnType<typeof useSettingsStore.getState>['unitPreferences']['speed'];
   onSelectToggle: () => void;
+  /** Fleet mode: right-click opens the fleet menu for this vehicle. */
+  onFleetMenu?: (x: number, y: number) => void;
 }): JSX.Element {
   const vehiclePosition = useLiveVehiclePosition(homePosition, defaultPosition);
   const heading = useTelemetryStore((s) => s.vfrHud.heading);
@@ -2235,6 +2274,12 @@ function LiveVehicleMarker({ tacticalClass, isSelected, activeIsLeader, activeDe
         click: (e) => {
           L.DomEvent.stopPropagation(e.originalEvent);
           onSelectToggle();
+        },
+        contextmenu: (e) => {
+          if (!onFleetMenu) return;
+          L.DomEvent.stopPropagation(e.originalEvent);
+          L.DomEvent.preventDefault(e.originalEvent);
+          onFleetMenu(e.originalEvent.clientX, e.originalEvent.clientY);
         },
       }}
     />
@@ -2395,7 +2440,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
 
 
   // Command popup is local UI state — only relevant while the popover is up.
-  const [commandPopup, setCommandPopup] = useState<{ lat: number; lon: number } | null>(null);
+  const [commandPopup, setCommandPopup] = useState<CommandPopupAt | null>(null);
   // Refusals must be visible on the map itself: the Messages panel is not part
   // of the default layout, so a store-only warning reads as a dead right-click.
   const [mapNotice, setMapNotice] = useState<string | null>(null);
@@ -2462,6 +2507,13 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
     }
     setCommandPopup({ lat, lon });
   }, [isSelected, showMapNotice, t]);
+
+  // The vehicle's own target reports its altitude frame; a desktop-issued target keeps the card's default frame.
+  const handleTargetClick = useCallback((lat: number, lon: number, alt: number) => {
+    if (!isSelected || !useTelemetryStore.getState().flight.armed) return;
+    const reported = useTelemetryStore.getState().guidedTarget;
+    setCommandPopup({ lat, lon, alt, altFrame: reported ? altFrameFromMavFrame(reported.frame) : undefined });
+  }, [isSelected]);
 
   // Camera ROI: point the active vehicle's gimbal at a clicked ground point.
   // This is a gimbal command (MAV_CMD_DO_SET_ROI_LOCATION), not a nav command,
@@ -3005,6 +3057,9 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
               if (fleetActive) deselectActiveVehicle();
               else setSelectedVehicleId(prev => prev === VEHICLE_ID ? null : VEHICLE_ID);
             }}
+            onFleetMenu={fleetActive && activeVehicleKey
+              ? (x, y) => useFormationStore.getState().openContextMenu({ x, y, vehicleKey: activeVehicleKey })
+              : undefined}
           />
         )}
 
@@ -3025,6 +3080,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
           onCancel={handleCommandCancel}
           onSetRoi={handleSetRoi}
           onClearRoi={handleClearRoi}
+          onTargetClick={handleTargetClick}
         />
       </MapContainer>
 

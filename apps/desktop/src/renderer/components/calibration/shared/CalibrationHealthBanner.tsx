@@ -82,10 +82,10 @@ export function CalibrationHealthBanner() {
   const boardUid = useConnectionStore((s) => s.connectionState.boardUid);
   const isConnected = useConnectionStore((s) => s.connectionState.isConnected);
   const currentStep = useCalibrationStore((s) => s.currentStep);
+  const recordsVersion = useCalibrationStore((s) => s.recordsVersion);
   const [records, setRecords] = useState<CalibrationRecordIpc[]>([]);
 
-  // Re-read whenever the wizard returns to the select screen, so a calibration
-  // just finished (or just invalidated by a reboot) shows without a restart.
+  // Re-read on the select screen and whenever the post-reboot check rewrites the records.
   useEffect(() => {
     if (!boardUid) {
       setRecords([]);
@@ -96,7 +96,7 @@ export function CalibrationHealthBanner() {
       if (!cancelled) setRecords(list ?? []);
     });
     return () => { cancelled = true; };
-  }, [boardUid, currentStep, isConnected]);
+  }, [boardUid, currentStep, isConnected, recordsVersion]);
 
   if (!boardUid || records.length === 0) return null;
 

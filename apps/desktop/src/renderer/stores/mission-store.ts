@@ -37,6 +37,7 @@ import { useVehicleMissionStore, groupVehicleState } from './vehicle-mission-sto
 import { useParameterStore } from './parameter-store';
 import { useArduPilotSitlStore } from './ardupilot-sitl-store';
 import { getVehicleClass } from '../../shared/telemetry-types';
+import { getElevation } from '../utils/elevation-api';
 
 // MSP Waypoint types (matching msp-ts)
 interface MSPWaypoint {
@@ -1102,8 +1103,15 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   },
 
   // Home position management
-  setHomePosition: (lat: number, lon: number, alt: number = 0) => {
-    set({ homePosition: { lat, lon, alt }, isDirty: true });
+  setHomePosition: (lat: number, lon: number, alt?: number) => {
+    set({ homePosition: { lat, lon, alt: alt ?? 0 }, isDirty: true });
+    if (alt !== undefined) return;
+    // Placed on the map: home altitude is the ground there, or every ASL waypoint reads as height above sea level.
+    void getElevation(lat, lon).then((ground) => {
+      const h = get().homePosition;
+      if (ground === null || !h || h.lat !== lat || h.lon !== lon) return;
+      set({ homePosition: { lat, lon, alt: ground } });
+    });
   },
 
   clearHomePosition: () => {

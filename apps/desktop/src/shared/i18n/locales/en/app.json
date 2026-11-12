@@ -67,6 +67,8 @@
     "firmwareFlashDesc": "Flash firmware over USB or DFU",
     "flightLogAnalysis": "Flight Log Analysis",
     "flightLogAnalysisDesc": "AI-powered flight log review",
+    "flightReplay": "Flight Replay",
+    "flightReplayDesc": "Play back a recorded flight (.tlog or .bin)",
     "intro": "Connect to your flight controller using the panel on the left, or jump straight into one of the tools below.",
     "missionLibraryDesc": "Browse & manage saved plans",
     "radioHudDesc": "ArduDeck telemetry screen on your EdgeTX radio",

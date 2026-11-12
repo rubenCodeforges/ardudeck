@@ -58,6 +58,7 @@ type InstrumentRole =
   | 'command'
   | 'status'
   | 'summary'
+  | 'swarm'
   | 'cargo';
 
 // Flight-critical first, chrome last. Mirrors the mobile rail order.
@@ -68,6 +69,7 @@ const ROLE_ORDER: InstrumentRole[] = [
   'command',
   'status',
   'summary',
+  'swarm',
   'cargo',
 ];
 
@@ -90,6 +92,11 @@ const INSTRUMENT_ROLE: Record<string, InstrumentRole> = {
   annunciator: 'status',
   controls: 'command',
   'flight-data': 'summary',
+  'fleet-matrix': 'swarm',
+  'fleet-separation': 'swarm',
+  'fleet-battery': 'swarm',
+  'fleet-ops': 'swarm',
+  'fleet-radar': 'swarm',
 };
 
 function roleOf(id: string): InstrumentRole {
@@ -109,6 +116,7 @@ const ROLE_TITLE: Record<InstrumentRole, string> = {
   command: 'map:instrumentsCatalog.roleCommand',
   status: 'map:instrumentsCatalog.roleStatus',
   summary: 'map:instrumentsCatalog.roleSummary', // i18n-exempt: i18n key
+  swarm: 'map:instrumentsCatalog.roleSwarm', // i18n-exempt: i18n key
   cargo: 'map:instrumentsCatalog.roleCargo', // i18n-exempt: i18n key
 };
 
@@ -119,6 +127,7 @@ const ROLE_BLURB: Record<InstrumentRole, string> = {
   command: 'map:instrumentsCatalog.blurbCommand',
   status: 'map:instrumentsCatalog.blurbStatus',
   summary: 'map:instrumentsCatalog.blurbSummary', // i18n-exempt: i18n key
+  swarm: 'map:instrumentsCatalog.blurbSwarm', // i18n-exempt: i18n key
   cargo: 'map:instrumentsCatalog.blurbCargo', // i18n-exempt: i18n key
 };
 
@@ -132,6 +141,7 @@ const ROLE_COLOR: Record<InstrumentRole, string> = {
   command: '#ef4444',
   status: '#2dd4bf',
   summary: '#a78bfa',
+  swarm: '#38bdf8',
   cargo: '#f472b6',
 };
 
@@ -150,6 +160,8 @@ function RoleIcon({ role, className }: { role: InstrumentRole; className?: strin
       return (<svg {...p}><path d="M3 12h4l2 6 4-14 2 8h6" /></svg>);
     case 'summary':
       return (<svg {...p}><path d="M4 6h16M4 12h16M4 18h10" /></svg>);
+    case 'swarm':
+      return (<svg {...p}><circle cx="12" cy="6" r="2.5" /><circle cx="5" cy="17" r="2.5" /><circle cx="19" cy="17" r="2.5" /><path d="M10.5 8L6.5 15M13.5 8l4 7M7.5 17h9" /></svg>);
     case 'cargo':
       return (<svg {...p}><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z" /><path d="M3 8l9 5 9-5M12 13v8" /></svg>);
   }

@@ -1,8 +1,5 @@
 {
   "draggableFleetActions": {
-    "collapseAria": "折叠机队操作面板",
-    "dragTip": "拖拽以移动，会吸附到面板与窗口边缘",
-    "expandAria": "展开机队操作面板",
     "title": "机队操作"
   },
   "fleetContextMenu": {
@@ -22,7 +19,9 @@
     "leadsFleet": "领导机队",
     "leave": "离开机队",
     "leaveTip": "将 {{label}} 移出机队，其余载具维持队形",
-    "reformShape": "重新编队：{{label}}"
+    "reformShape": "重新编队：{{label}}",
+    "startMission": "开始任务",
+    "takeOffFleet": "机群起飞"
   },
   "fleetCoordination": {
     "alt": "高度",

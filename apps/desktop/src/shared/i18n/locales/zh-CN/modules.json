@@ -124,7 +124,10 @@
     "alreadyOpen": "已有另一项提案打开中",
     "needsItems": "任务建议至少需要一个带位置和高度的航点。",
     "needsPoint": "降落建议需要一个位置。",
-    "needsThreePoints": "围栏至少需要三个点"
+    "needsThreePoints": "围栏至少需要三个点",
+    "agentName": "AI 代理",
+    "agentArmed": "载具已解锁。只有在上锁状态下才能提议计划。",
+    "lineSensor": "线扫传感器"
   },
   "moduleProposalDialog": {
     "addToMission": "添加到任务",
@@ -148,7 +151,13 @@
     "replacesFence_one": "这会取代当前已有的允许围栏（{{count}} 个形状，{{points}} 个点）。它将不再生效。",
     "replacesFence_other": "这会取代当前已有的允许围栏（{{count}} 个形状，{{points}} 个点）。它将不再生效。",
     "returnPoint": "返航点",
-    "writeToAircraft": "写入飞行器"
+    "writeToAircraft": "写入飞行器",
+    "asksToSurvey": "{{from}} 请求添加测绘任务",
+    "surveySummary": "{{pattern}}，高度 {{alt}} 米，{{area}}，{{extent}}",
+    "surveyCorridor": "沿 {{count}} 个点的走廊，高度 {{alt}} 米，{{extent}}",
+    "surveyNote": "ArduDeck 会规划航线，你可以在测绘面板中调整。上传之前不会向飞行器发送任何内容。",
+    "areaHa": "{{value}} 公顷",
+    "areaM2": "{{value}} 平方米"
   },
   "production": {
     "notConnected": "请先连接载具",

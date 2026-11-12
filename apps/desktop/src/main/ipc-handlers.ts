@@ -36,6 +36,7 @@ import { registerDroneBridgeIpcHandlers } from './dronebridge/dronebridge-ipc-ha
 import { registerCameraSettingsIpcHandlers } from './camera-settings/camera-settings-ipc.js';
 import { mavlinkTee } from './mavlink-tee.js';
 import { TlogRecorder } from './tlog/tlog-recorder.js';
+import { TlogReplayTransport } from './tlog/tlog-replay.js';
 import { setupOverlayHandlers, getApiKey } from './overlays/overlay-ipc-handlers.js';
 import { setupTrafficHandlers } from './traffic/traffic-ipc-handlers.js';
 import {
@@ -146,7 +147,8 @@ import {
 } from '../shared/led-control.js';
 import { flashRoute } from '../shared/flash-route.js';
 import { eraseAllParameters, type ResetMethod } from './params/reset-defaults.js';
-import { IPC_CHANNELS, SEVERITY_LABELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type LayoutStoreSchema, type SettingsStoreSchema, type SigningStatus, type TelemetrySpeed, type LegacyStreamConsentRequest, type TransportInfoIpc, type VehicleInfoIpc, type SetActiveSelectionPayload, type VehicleCommand, type MissionVehicleProgress, type OrchestrationIntentIpc, type OrchestrationStatusIpc, type OrchestratorSource, type OrchestratorStatus, type CameraSourceConfig, type GimbalCommand, type CameraCommand, type FrameBlueprintResult, type FrameBlueprintRequest } from '../shared/ipc-channels.js';
+import { parseParamFile, formatParamFile, formatFromPath, type ParamFileEntry } from '../shared/param-file-format.js';
+import { IPC_CHANNELS, SEVERITY_LABELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type LayoutStoreSchema, type SettingsStoreSchema, type SigningStatus, type TelemetrySpeed, type LegacyStreamConsentRequest, type TransportInfoIpc, type VehicleInfoIpc, type SetActiveSelectionPayload, type VehicleCommand, type MissionVehicleProgress, type OrchestrationIntentIpc, type OrchestrationStatusIpc, type OrchestratorSource, type OrchestratorStatus, type CameraSourceConfig, type GimbalCommand, type CameraCommand, type FrameBlueprintResult, type FrameBlueprintRequest, type ReplayControl, type ReplayStatusIpc } from '../shared/ipc-channels.js';
 import { DEFAULT_USER_UNIT_PREFERENCES } from '../shared/user-units.js';
 import { initAutoUpdater, checkForUpdates, downloadUpdate, installUpdate } from './updater.js';
 import type { ParamValuePayload, ParameterProgress } from '../shared/parameter-types.js';
@@ -2434,9 +2436,11 @@ let missionUploadState: {
  * callback; a legacy single-vehicle upload emits the original IPC events so the
  * existing mission view is unchanged.
  */
-function settleMissionUpload(mainWindow: BrowserWindow, ok: boolean, error?: string): void {
+function settleMissionUpload(mainWindow: BrowserWindow, ok: boolean, error?: string, noSpace = false): void {
   const state = missionUploadState;
   if (!state) return;
+  // The renderer offers ways to make a mission fit (split, SD storage, FC terrain following).
+  if (noSpace && !state.onComplete) safeSend(mainWindow, IPC_CHANNELS.MISSION_NO_SPACE, state.items.length);
   if (state.timeout) clearTimeout(state.timeout);
   missionUploadState = null;
   if (state.onComplete) {
@@ -2503,7 +2507,7 @@ function handleMissionAckForUpload(mainWindow: BrowserWindow, packet: MAVLinkPac
   if (ackType === MAV_MISSION_RESULT.ACCEPTED) {
     settleMissionUpload(mainWindow, true);
   } else {
-    settleMissionUpload(mainWindow, false, `Mission error: ${getMissionResultName(ackType)}`);
+    settleMissionUpload(mainWindow, false, `Mission error: ${getMissionResultName(ackType)}`, ackType === MAV_MISSION_RESULT.NO_SPACE);
   }
   return true;
 }
@@ -4228,7 +4232,7 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
           if (missionUploadState) {
             // Routes the error to the per-vehicle callback, or emits the legacy
             // MISSION_ERROR event for a single-vehicle upload.
-            settleMissionUpload(mainWindow, false, `Mission error: ${errorMsg}`);
+            settleMissionUpload(mainWindow, false, `Mission error: ${errorMsg}`, ackType === MAV_MISSION_RESULT.NO_SPACE);
           } else {
             safeSend(mainWindow, IPC_CHANNELS.MISSION_ERROR, `Mission error: ${errorMsg}`);
           }
@@ -5641,7 +5645,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           for await (const packet of mavlinkParser.parse(chunk)) {
             connectionState.packetsReceived++;
             noteVehicleTraffic();
-            tlogRecorder.record(packet.buffer, packet.rxtime.getTime());
+            if (!(currentTransport instanceof TlogReplayTransport)) tlogRecorder.record(packet.buffer, packet.rxtime.getTime());
 
             // Detect signed incoming packets from FC. Only a CRC-checked packet counts: an
             // unknown msgid is unverified bytes, and its signed bit proves nothing.
@@ -6694,8 +6698,18 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
             transportName = `UDP :${options.udpPort ?? 14550}`;
           }
           break;
+        case 'replay': {
+          if (!options.replayPath) throw new Error(t('main:ipc.replayFileRequired'));
+          const replay = new TlogReplayTransport(options.replayPath);
+          replay.setStatusListener((status) => safeSend(mainWindow, IPC_CHANNELS.TLOG_REPLAY_STATUS, status));
+          currentTransport = replay;
+          // A replay that ends or is closed must never redial.
+          suppressAutoReconnect = true;
+          transportName = t('main:ipc.replayTransportName', { file: replay.portName });
+          break;
+        }
         default:
-          throw new Error(`Invalid connection type: ${options.type ?? 'undefined'}. Must be 'serial', 'tcp', or 'udp'.`);
+          throw new Error(`Invalid connection type: ${options.type ?? 'undefined'}. Must be 'serial', 'tcp', 'udp' or 'replay'.`);
       }
 
       // Defensive check - should never happen after the switch, but prevents null access
@@ -7547,6 +7561,38 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(IPC_CHANNELS.TLOG_OPEN_FOLDER, async (): Promise<boolean> => {
     mkdirSync(tlogRecorder.folder, { recursive: true });
     return (await shell.openPath(tlogRecorder.folder)) === '';
+  });
+
+  ipcMain.handle(IPC_CHANNELS.TLOG_REPLAY_PICK, async (_event, kind: 'tlog' | 'bin' = 'tlog'): Promise<string | null> => {
+    let defaultPath: string;
+    if (kind === 'tlog') {
+      mkdirSync(tlogRecorder.folder, { recursive: true });
+      defaultPath = tlogRecorder.folder;
+    } else {
+      const recent = recentLogsStore.get('logs').find((l) => /\.bin$/i.test(l.path));
+      defaultPath = recent ? dirname(recent.path) : app.getPath('downloads');
+    }
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: t('main:ipc.replayPickTitle'),
+      defaultPath,
+      properties: ['openFile'],
+      filters: kind === 'tlog'
+        ? [{ name: t('main:ipc.replayFilterTlog'), extensions: ['tlog'] }]
+        : [{ name: t('main:ipc.replayFilterBin'), extensions: ['bin', 'BIN'] }],
+    });
+    return result.canceled ? null : result.filePaths[0] ?? null;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.TLOG_REPLAY_CONTROL, async (_event, control: ReplayControl): Promise<ReplayStatusIpc | null> => {
+    if (!(currentTransport instanceof TlogReplayTransport)) return null;
+    const replay = currentTransport;
+    switch (control.action) {
+      case 'play': replay.play(); break;
+      case 'pause': replay.pause(); break;
+      case 'seek': replay.seek(control.ms); break;
+      case 'speed': replay.setSpeed(control.speed); break;
+    }
+    return replay.status();
   });
 
   // Settings/Vehicle profile handlers
@@ -8719,11 +8765,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // does NOT respawn itself. So for SITL we skip the MAVLink command entirely
   // and just restart the child process; the new SITL boots from the just-saved
   // eeprom.bin so any prior PARAM_SET / PREFLIGHT_STORAGE work persists.
-  // Erase every stored parameter on the primary ArduPilot vehicle; the renderer reboots it next.
+  // Erase every stored parameter on the primary ArduPilot or PX4 vehicle; the renderer reboots it next.
   ipcMain.handle(IPC_CHANNELS.MAVLINK_RESET_PARAMS, async (): Promise<{ success: boolean; method?: ResetMethod; error?: string }> => {
     const focus = focusedVehicle();
     if (!focus || !focus.isPrimaryVehicle || !isMavlinkFocus(focus)) return { success: false, error: t('main:ipc.notConnected') };
-    if (focus.firmware !== 'ardupilot') return { success: false, error: t('main:ipc.resetParamsArduPilotOnly') };
+    if (focus.firmware !== 'ardupilot' && focus.firmware !== 'px4') return { success: false, error: t('main:ipc.resetParamsArduPilotOnly') };
     if (isVehicleArmed(focus.transport, focus.sysid)) return { success: false, error: t('main:ipc.resetParamsDisarmFirst') };
     try {
       const result = await eraseAllParameters({
@@ -8743,7 +8789,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           await sendToFocusedVehicle(focus, PARAM_SET_ID, payload, PARAM_SET_CRC_EXTRA);
           return true;
         },
-      });
+      }, 3000, focus.firmware === 'ardupilot');
       if (!result.ok) return { success: false, error: t('main:ipc.resetParamsFailed') };
       sendLog(mainWindow, 'warn', `All parameters erased (${result.method}); reboot to load the defaults`);
       return { success: true, method: result.method };
@@ -10475,13 +10521,14 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   });
 
   // Save parameters to file
-  ipcMain.handle(IPC_CHANNELS.PARAM_SAVE_FILE, async (_, params: Array<{ id: string; value: number }>, vehicleType?: string): Promise<{ success: boolean; error?: string; filePath?: string }> => {
+  ipcMain.handle(IPC_CHANNELS.PARAM_SAVE_FILE, async (_, params: ParamFileEntry[], vehicleType?: string): Promise<{ success: boolean; error?: string; filePath?: string }> => {
     try {
       const result = await dialog.showSaveDialog(mainWindow, {
         title: t('main:ipc.saveParametersTitle'),
         defaultPath: 'parameters.param',
         filters: [
           { name: t('main:fileFilters.parameterFiles'), extensions: ['param'] },
+          { name: t('main:fileFilters.qgcParameterFiles'), extensions: ['params'] },
           { name: t('main:fileFilters.textFiles'), extensions: ['txt'] },
           { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ],
@@ -10491,26 +10538,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         return { success: false, error: 'Cancelled' };
       }
 
-      // Header with vehicle type and timestamp for cross-vehicle-type safety
-      const header = [
-        `# ArduDeck Parameter File`,
-        vehicleType ? `# Vehicle: ${vehicleType}` : null,
-        `# Date: ${new Date().toISOString()}`,
-        `# Parameters: ${params.length}`,
-        '',
-      ].filter(Boolean).join('\n');
-
-      // Format: PARAM_NAME,VALUE (one per line)
-      // MAVLink parameters are 32-bit floats. When decoded into JS 64-bit doubles
-      // they carry floating-point noise (e.g. 0.18000000715255737 instead of 0.18).
-      // toPrecision(6) recovers the original 6 significant digits; parseFloat strips
-      // trailing zeros so integers stored as floats still look clean (e.g. "1" not "1.00000").
-      const formatValue = (value: number): string => {
-        if (Number.isInteger(value)) return String(value);
-        return String(parseFloat(value.toPrecision(6)));
-      };
-      const content = header + '\n\n' + params.map(p => `${p.id},${formatValue(p.value)}`).join('\n');
-
+      const focus = focusedVehicle();
+      const content = formatParamFile(params, { format: formatFromPath(result.filePath), vehicleType, sysid: focus?.sysid, compid: 1 });
       const fs = await import('fs/promises');
       await fs.writeFile(result.filePath, content, 'utf-8');
 
@@ -10610,8 +10639,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const result = await dialog.showOpenDialog(mainWindow, {
         title: t('main:ipc.loadParametersTitle'),
         filters: [
+          { name: t('main:fileFilters.allParameterFiles'), extensions: ['param', 'params', 'txt'] },
           { name: t('main:fileFilters.parameterFiles'), extensions: ['param'] },
-          { name: t('main:fileFilters.textFiles'), extensions: ['txt'] },
+          { name: t('main:fileFilters.qgcParameterFiles'), extensions: ['params'] },
           { name: t('main:fileFilters.allFiles'), extensions: ['*'] },
         ],
         properties: ['openFile'],
@@ -10625,40 +10655,8 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
       const fs = await import('fs/promises');
       const content = await fs.readFile(filePath, 'utf-8');
 
-      // Parse: PARAM_NAME,VALUE (one per line)
-      // Also supports PARAM_NAME VALUE (space-separated, like Mission Planner)
-      const params: Array<{ id: string; value: number }> = [];
-      let vehicleType: string | undefined;
-      const lines = content.split(/\r?\n/);
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-
-        // Parse header comments for metadata
-        if (trimmed.startsWith('#')) {
-          const vehicleMatch = trimmed.match(/^#\s*Vehicle:\s*(.+)/i);
-          if (vehicleMatch?.[1]) {
-            vehicleType = vehicleMatch[1].trim();
-          }
-          continue;
-        }
-
-        // Try comma-separated first, then space/tab
-        let parts = trimmed.split(',');
-        if (parts.length < 2) {
-          parts = trimmed.split(/\s+/);
-        }
-
-        if (parts.length >= 2) {
-          const id = parts[0]!.trim();
-          const value = parseFloat(parts[1]!.trim());
-
-          if (id && !isNaN(value)) {
-            params.push({ id, value });
-          }
-        }
-      }
+      // Mission Planner and QGroundControl files both load; QGC rows carry sysid/compid in front of the name.
+      const { params, vehicleType } = parseParamFile(content);
 
       sendLog(mainWindow, 'info', `Loaded ${params.length} parameters from ${filePath}${vehicleType ? ` (${vehicleType})` : ''}`);
       return { success: true, params, vehicleType, filePath };
@@ -10670,21 +10668,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   });
 
   // Save parameters to a specific file path (offline mode - Save)
-  ipcMain.handle(IPC_CHANNELS.PARAM_SAVE_TO_PATH, async (_, params: Array<{ id: string; value: number }>, filePath: string, vehicleType?: string): Promise<{ success: boolean; error?: string }> => {
+  ipcMain.handle(IPC_CHANNELS.PARAM_SAVE_TO_PATH, async (_, params: ParamFileEntry[], filePath: string, vehicleType?: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const header = [
-        `# ArduDeck Parameter File`,
-        vehicleType ? `# Vehicle: ${vehicleType}` : null,
-        `# Date: ${new Date().toISOString()}`,
-        `# Parameters: ${params.length}`,
-        '',
-      ].filter(Boolean).join('\n');
-
-      const formatValue = (value: number): string => {
-        if (Number.isInteger(value)) return String(value);
-        return String(parseFloat(value.toPrecision(6)));
-      };
-      const content = header + '\n\n' + params.map(p => `${p.id},${formatValue(p.value)}`).join('\n');
+      const content = formatParamFile(params, { format: formatFromPath(filePath), vehicleType, sysid: focusedVehicle()?.sysid, compid: 1 });
 
       const fs = await import('fs/promises');
       await fs.writeFile(filePath, content, 'utf-8');

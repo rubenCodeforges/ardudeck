@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { describeParamValue } from '../../../shared/param-value-label';
 import { AlertTriangle, RotateCw, Loader2, Star, Check } from 'lucide-react';
 import { useConnectionStore } from '../../stores/connection-store';
 import { useParameterStore, type SortColumn, type FileParamDiff } from '../../stores/parameter-store';
@@ -287,7 +288,7 @@ export function ParametersView() {
 
       const params = filtered
         .sort((a, b) => a.id.localeCompare(b.id))
-        .map(p => ({ id: p.id, value: p.value }));
+        .map(p => ({ id: p.id, value: p.value, type: p.type }));
 
       if (params.length === 0) {
         const labels = { all: t('parameters:parametersView.noParamsToSave'), changed: t('parameters:parametersView.noChangedToSave'), nondefault: t('parameters:parametersView.noNonDefaultToSave') };
@@ -1004,6 +1005,12 @@ export function ParametersView() {
                           {formatParamValue(param.value)}
                         </button>
                       )}
+                      {editingParam !== param.id && (() => {
+                        const d = describeParamValue(param.value, getParameterMetadata(param.id));
+                        if (!d) return null;
+                        const text = d.text || t('mavlink-config:parameterTable.noBitsSet');
+                        return <span className="text-[11px] text-content-secondary truncate min-w-0 max-w-[220px]" data-tip={text}>{text}</span>;
+                      })()}
                       {param.isReadOnly ? (
                         <span className="px-1.5 py-0.5 bg-surface-raised text-content-secondary rounded text-[10px] shrink-0">
                           {t('parameters:parametersView.readOnlyBadge')}

@@ -457,13 +457,13 @@ export function Mission3DPanel({
     if (threeLayerRef.current?.hitAt(e.point.x, e.point.y)) return;
     const { lat, lng } = e.lngLat;
     if (homeMode) {
-      setHomePosition(lat, lng, 0);
+      setHomePosition(lat, lng);
       setHomeMode(false);
       return;
     }
     if (!addMode && !e.originalEvent.shiftKey) return;
     // same rules as 2D: home follows the first waypoint, the height follows the last one
-    if (!homePosition) setHomePosition(lat, lng, 0);
+    if (!homePosition) setHomePosition(lat, lng);
     const last = missionItems[missionItems.length - 1];
     addWaypoint(lat, lng, last?.altitude ?? 100);
   };

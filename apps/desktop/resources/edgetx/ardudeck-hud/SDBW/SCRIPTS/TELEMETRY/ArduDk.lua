@@ -62,7 +62,7 @@ local V = {
   lastFrameT = 0, lastStreamT = 0, everFrame = false,
   modeNum = -1, armed = false, flying = false,
   battFs = false, ekfBad = false, anyFs = false, fenceBreach = false,
-  throttle = 0, imuTemp = 0,
+  throttle = 0, imuTemp = 0, tImuTemp = 0, crsfTemp = nil,
   sats = 0, fix = 0, hdop = 0, gpsAltM = 0,
   voltV = 0, currA = 0, mah = 0,
   homeDistM = 0, homeAltM = 0, homeBearingDeg = 0,
@@ -167,7 +167,12 @@ decoders[0x5001] = function (d)
   V.anyFs = btest(d, 2 ^ 12)
   V.fenceBreach = btest(d, 2 ^ 14)
   V.throttle = dec_2_0(band(rshift(d, 19), 0x7F))
-  V.imuTemp = band(rshift(d, 26), 0x3F) + 19
+  -- ELRS in MAVLink mode builds this frame without the temperature bits (0)
+  local rawTemp = band(rshift(d, 26), 0x3F)
+  if rawTemp > 0 then
+    V.imuTemp = rawTemp + 19
+    V.tImuTemp = now()
+  end
   V.tAp = now(); V.lastStreamT = V.tAp
 end
 
@@ -265,7 +270,12 @@ local function pump()
     if getUsage() > 70 then break end
     local cmd, data = crossfireTelemetryPop()
     if cmd == nil then break end
-    if (cmd == 0x80 or cmd == 0x7F) and data ~= nil then
+    if cmd == 0x0D and data ~= nil and #data >= 3 then
+      -- CRSF temperature: source id, big-endian int16 in tenths (ELRS sends the baro temperature here)
+      local raw = data[2] * 256 + data[3]
+      if raw >= 0x8000 then raw = raw - 0x10000 end
+      V.crsfTemp = raw / 10
+    elseif (cmd == 0x80 or cmd == 0x7F) and data ~= nil then
       local sub = data[1]
       if sub == 0xF0 and #data >= 7 then
         handlePassthrough(data[2] + data[3] * 256, bytesToU32(data, 4))
@@ -638,7 +648,13 @@ local FIELDS = {
   wind = function () return string.format('w%.1fm', V.windMs) end,
   hdop = function () return string.format('hd%.1f', V.hdop), V.hdop > 2 end,
   rng = function () return string.format('r%.1fm', V.rangeM) end,
-  imu = function () return string.format('i%dC', V.imuTemp), V.imuTemp > 60 end,
+  imu = function ()
+    if V.tImuTemp == 0 and V.crsfTemp then
+      local c = math.floor(V.crsfTemp + 0.5)
+      return string.format('b%dC', c), c > 60
+    end
+    return string.format('i%dC', V.imuTemp), V.imuTemp > 60
+  end,
   wp = function ()
     if V.wpNum <= 0 then return 'wp--' end
     return string.format('wp%d %dm', V.wpNum, math.floor(V.wpDistM + 0.5))
@@ -920,6 +936,12 @@ local function run(event)
   local state, hint = ladderState()
   if state == 'LIVE' then
     if page == 1 then drawFly() else drawNav() end
+  elseif V.everFrame then
+    -- link lost after data: keep the last values, flag it on an inverted top line
+    if page == 1 then drawFly() else drawNav() end
+    local ago = math.max(0, math.floor((now() - V.lastFrameT) / 100))
+    lcd.drawFilledRectangle(0, 0, LCD_W, 9, SOLID)
+    lcd.drawText(1, 1, string.format('%s %ds ago', state, ago), SMLSIZE + INVERS + BLINK)
   else
     drawLadder(state, hint)
   end

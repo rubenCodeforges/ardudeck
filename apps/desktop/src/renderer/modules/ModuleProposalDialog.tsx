@@ -65,8 +65,13 @@ export function ModuleProposalDialog(): JSX.Element | null {
     if (pending.existing.exclusionShapes > 0) kept.push(t('modules:moduleProposalDialog.exclusionZones', { count: pending.existing.exclusionShapes }));
     if (pending.existing.hasReturnPoint) kept.push(t('modules:moduleProposalDialog.returnPoint'));
   }
-  const heading = pending.kind === 'landing' ? t('modules:moduleProposalDialog.asksToLand', { from }) : pending.kind === 'mission' ? t('modules:moduleProposalDialog.asksToPlan', { from }) : t('modules:moduleProposalDialog.asksToWrite', { from });
-  const confirm = pending.kind === 'landing' ? t('modules:moduleProposalDialog.flyAndLand') : pending.kind === 'mission' ? t('modules:moduleProposalDialog.addToMission') : t('modules:moduleProposalDialog.writeToAircraft');
+  const heading = pending.kind === 'landing' ? t('modules:moduleProposalDialog.asksToLand', { from })
+    : pending.kind === 'mission' ? t('modules:moduleProposalDialog.asksToPlan', { from })
+    : pending.kind === 'survey' ? t('modules:moduleProposalDialog.asksToSurvey', { from })
+    : t('modules:moduleProposalDialog.asksToWrite', { from });
+  const confirm = pending.kind === 'landing' ? t('modules:moduleProposalDialog.flyAndLand')
+    : pending.kind === 'mission' || pending.kind === 'survey' ? t('modules:moduleProposalDialog.addToMission')
+    : t('modules:moduleProposalDialog.writeToAircraft');
   const blocked = pending.kind === 'landing' ? pending.refusal : null;
 
   return (
@@ -91,6 +96,25 @@ export function ModuleProposalDialog(): JSX.Element | null {
             </div>
           </div>
         )}
+
+        {pending.kind === 'survey' && (() => {
+          const sp = pending.proposal;
+          const corridor = sp.pattern === 'corridor';
+          const area = sp.areaM2 >= 10_000
+            ? t('modules:moduleProposalDialog.areaHa', { value: (sp.areaM2 / 10_000).toFixed(1) })
+            : t('modules:moduleProposalDialog.areaM2', { value: Math.round(sp.areaM2) });
+          return (
+            <div className="px-4 pt-3">
+              <Outline points={sp.polygon} closed={!corridor} />
+              <div className="mt-2 text-xs text-content-secondary tabular-nums">
+                {corridor
+                  ? t('modules:moduleProposalDialog.surveyCorridor', { count: sp.polygon.length, alt: Math.round(sp.altitudeM), extent: extent(sp.polygon) })
+                  : t('modules:moduleProposalDialog.surveySummary', { pattern: sp.pattern, alt: Math.round(sp.altitudeM), area, extent: extent(sp.polygon) })}
+              </div>
+              <div className="mt-2 rounded border border-subtle px-2 py-1.5 text-xs text-content-tertiary">{t('modules:moduleProposalDialog.surveyNote')}</div>
+            </div>
+          );
+        })()}
 
         {pending.kind === 'landing' && (
           <div className="px-4 pt-3">

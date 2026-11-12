@@ -155,6 +155,8 @@ export interface CalibrationState {
 
   // Track completed calibrations this session (arming flags may not clear until reboot)
   completedCalibrations: Set<CalibrationTypeId>;
+  /** Bumped when the stored calibration records change, so readers re-fetch them. */
+  recordsVersion: number;
 
   // Pre-cal snapshot of MAVLink params we'll diff against on completion.
   // Captured when the user clicks Start; cleared on reset.
@@ -262,6 +264,7 @@ export const useCalibrationStore = create<CalibrationState>((set, get) => ({
   savePersistentError: null,
 
   completedCalibrations: new Set(),
+  recordsVersion: 0,
 
   paramSnapshot: null,
   verification: null,

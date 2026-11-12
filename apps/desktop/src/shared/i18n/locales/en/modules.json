@@ -124,7 +124,10 @@
     "alreadyOpen": "Another proposal is already open",
     "needsItems": "A mission proposal needs at least one waypoint with a position and an altitude.",
     "needsPoint": "A landing proposal needs a position.",
-    "needsThreePoints": "A fence needs at least three points"
+    "needsThreePoints": "A fence needs at least three points",
+    "agentName": "AI agent",
+    "agentArmed": "The vehicle is armed. Plans can only be proposed while it is disarmed.",
+    "lineSensor": "Line sensor"
   },
   "moduleProposalDialog": {
     "addToMission": "Add to mission",
@@ -148,7 +151,13 @@
     "replacesFence_one": "This replaces the inclusion fence already held ({{count}} shape, {{points}} points). It will no longer apply.",
     "replacesFence_other": "This replaces the inclusion fence already held ({{count}} shapes, {{points}} points). It will no longer apply.",
     "returnPoint": "the return point",
-    "writeToAircraft": "Write to aircraft"
+    "writeToAircraft": "Write to aircraft",
+    "asksToSurvey": "{{from}} asks to add a survey",
+    "surveySummary": "{{pattern}} at {{alt}} m, {{area}}, {{extent}}",
+    "surveyCorridor": "Corridor along {{count}} points at {{alt}} m, {{extent}}",
+    "surveyNote": "ArduDeck plans the flight lines. You can tune them in the survey panel. Nothing goes to the aircraft until you upload.",
+    "areaHa": "{{value}} ha",
+    "areaM2": "{{value}} m²"
   },
   "production": {
     "notConnected": "Connect a vehicle first",

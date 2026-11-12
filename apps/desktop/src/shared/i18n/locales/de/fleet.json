@@ -1,8 +1,5 @@
 {
   "draggableFleetActions": {
-    "collapseAria": "Flotten-Panel einklappen",
-    "dragTip": "Ziehen zum Verschieben - rastet an Panel- und Fensterrändern ein",
-    "expandAria": "Flotten-Panel ausklappen",
     "title": "Flotte"
   },
   "fleetContextMenu": {
@@ -22,7 +19,9 @@
     "leadsFleet": "Führt eine Flotte",
     "leave": "Flotte verlassen",
     "leaveTip": "{{label}} aus der Flotte nehmen - die übrigen halten die Formation",
-    "reformShape": "Neu formieren: {{label}}"
+    "reformShape": "Neu formieren: {{label}}",
+    "startMission": "Mission starten",
+    "takeOffFleet": "Flotte abheben"
   },
   "fleetCoordination": {
     "alt": "Höhe",

@@ -888,7 +888,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
     const { offlineFilePath, parameters, offlineVehicleType } = get();
     if (!offlineFilePath) return get().saveOfflineFileAs();
 
-    const params = Array.from(parameters.values()).map(p => ({ id: p.id, value: p.value }));
+    const params = Array.from(parameters.values()).map(p => ({ id: p.id, value: p.value, type: p.type }));
     const result = await window.electronAPI?.saveParamsToPath(params, offlineFilePath, offlineVehicleType ?? undefined);
 
     if (result?.success) {
@@ -909,7 +909,7 @@ export const useParameterStore = create<ParameterStore>((set, get) => ({
 
   saveOfflineFileAs: async () => {
     const { parameters, offlineVehicleType } = get();
-    const params = Array.from(parameters.values()).map(p => ({ id: p.id, value: p.value }));
+    const params = Array.from(parameters.values()).map(p => ({ id: p.id, value: p.value, type: p.type }));
     const result = await window.electronAPI?.saveParamsToFile(params, offlineVehicleType ?? undefined);
 
     if (result?.success && result.filePath) {

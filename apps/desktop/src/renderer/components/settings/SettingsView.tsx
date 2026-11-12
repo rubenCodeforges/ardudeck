@@ -20,6 +20,7 @@ import { useParameterStore } from '../../stores/parameter-store';
 import { useNavigationStore } from '../../stores/navigation-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useConnectionStore } from '../../stores/connection-store';
+import { openReplayChooser } from '../telemetry/ReplayBar';
 import { useUpdateStore } from '../../stores/update-store';
 import { betaLabel } from '../../utils/version-label';
 import { renderMarkdown } from '../lua-graph/docs/markdown-renderer';
@@ -2271,6 +2272,7 @@ function TelemetryLogSection() {
   const { t } = useTranslation();
   const recordTlog = useSettingsStore((s) => s.recordTlog);
   const setRecordTlog = useSettingsStore((s) => s.setRecordTlog);
+  const liveLink = useConnectionStore((s) => s.connectionState.isConnected && s.connectionState.connectionType !== 'replay');
 
   return (
     <div className="mt-8">
@@ -2298,6 +2300,15 @@ function TelemetryLogSection() {
             className="h-8 px-3 rounded-lg border border-subtle text-xs text-content-secondary hover:text-content hover:bg-surface-raised"
           >
             {t('settings:settingsView.telemetryLog.openFolder')}
+          </button>
+          <button
+            type="button"
+            onClick={openReplayChooser}
+            disabled={liveLink}
+            data-tip={liveLink ? t('settings:settingsView.telemetryLog.replayBusy') : t('settings:settingsView.telemetryLog.replayTip')}
+            className="ml-2 h-8 px-3 rounded-lg border border-subtle text-xs text-content-secondary hover:text-content hover:bg-surface-raised disabled:opacity-50"
+          >
+            {t('settings:settingsView.telemetryLog.replay')}
           </button>
         </div>
       </section>

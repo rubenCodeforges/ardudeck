@@ -29,4 +29,10 @@ describe('eraseAllParameters', () => {
     const { d } = deps(4, false);
     expect(await eraseAllParameters(d)).toEqual({ ok: false });
   });
+
+  it('never writes FORMAT_VERSION when the fallback is off (PX4)', async () => {
+    const { d } = deps(4);
+    expect(await eraseAllParameters(d, 3000, false)).toEqual({ ok: false });
+    expect(d.setParam).not.toHaveBeenCalled();
+  });
 });

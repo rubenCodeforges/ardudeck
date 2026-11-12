@@ -25,12 +25,10 @@ import {
 } from '../stores/fleet-repo-store';
 import { raiseModuleAlert, clearModuleAlert, clearModuleAlertsFor } from './module-alert-registry';
 import { proposeFence, proposeLanding, proposeMission, cancelProposalsFor } from './module-proposal-registry';
-import { createImportedGroup, nextGroupColor } from '../../shared/mission-group-types';
-import { createDefaultWaypoint, MAV_FRAME } from '../../shared/mission-types';
-import { summariseFence, replaceInclusion, appendExclusions } from './module-fence-write';
+import { applyFenceProposal, applyMissionProposal } from './proposal-apply';
+import { summariseFence } from './module-fence-write';
 import { fenceBudgetFor } from './fence-budget';
 import { getVehicleClass } from '../../shared/telemetry-types';
-import type { ProposalResult } from '@ardudeck/module-sdk';
 import {
   openModuleMissionPanel,
   registerModuleMissionPanel,
@@ -580,34 +578,14 @@ export function createRendererHostApi(
         );
         if (!answer.accepted) return answer;
         // The HOST writes. The module never held this path.
-        const fence = useFenceStore.getState();
-        const inclusion = proposal.inclusion && proposal.inclusion.length >= 3 ? proposal.inclusion : null;
-        if (inclusion) replaceInclusion(fence, fence, inclusion);
-        const exclusionsWritten = proposal.exclusions ? appendExclusions(fence, proposal.exclusions) : undefined;
-        const ok = await useFenceStore.getState().uploadFence();
-        const result: ProposalResult = { accepted: true };
-        if (inclusion) result.pointsAccepted = inclusion.length;
-        if (exclusionsWritten !== undefined) result.exclusionsAccepted = exclusionsWritten;
-        if (!ok) result.error = useFenceStore.getState().error ?? t('modules:moduleHost.fenceNotConfirmed');
-        return result;
+        return applyFenceProposal(proposal);
       },
       proposeMission: async (proposal) => {
         const name = useModuleStore.getState().modules.find((m) => m.slug === slug)?.name;
         const ms = useMissionStore.getState();
         const answer = await proposeMission(slug, name || slug, proposal, ms.missionItems.length);
         if (!answer.accepted) return answer;
-        const current = useMissionStore.getState();
-        const replace = proposal.mode === 'replace';
-        const base = replace ? [] : current.missionItems;
-        const group = createImportedGroup({ importedFrom: 'file', sourceLabel: name || slug, name: proposal.name, color: nextGroupColor(current.groups), order: current.groups.length });
-        const items = proposal.items.map((it, i) => {
-          const wp = createDefaultWaypoint(base.length + i, it.lat, it.lng, it.altitude, group.id);
-          if (it.frame === 'asl') wp.frame = MAV_FRAME.GLOBAL;
-          return wp;
-        });
-        if (replace) current.setMissionItemsFromFile(items, [group]);
-        else useMissionStore.setState({ missionItems: [...base, ...items], groups: [...current.groups, group], isDirty: true, selectedSeq: items[items.length - 1]?.seq ?? null });
-        return { accepted: true, pointsAccepted: items.length };
+        return applyMissionProposal(name || slug, proposal);
       },
       proposeLanding: async (proposal) => {
         const name = useModuleStore.getState().modules.find((m) => m.slug === slug)?.name;

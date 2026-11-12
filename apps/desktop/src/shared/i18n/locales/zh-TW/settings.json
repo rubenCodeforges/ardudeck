@@ -283,7 +283,10 @@
       "title": "遙測日誌",
       "record": "將遙測記錄到 .tlog 檔案",
       "recordHint": "每次連線都會以 MAVLink .tlog 格式儲存在應用程式資料資料夾中，可用任何 tlog 檢視器開啟。保留最新的 50 個檔案，總計不超過 2 GB。",
-      "openFolder": "開啟日誌資料夾"
+      "openFolder": "開啟日誌資料夾",
+      "replay": "回放飛行",
+      "replayTip": "在駕駛艙中回放已記錄的 .tlog 或機載 .bin：地圖、儀表、HUD 和 Vision。",
+      "replayBusy": "請先中斷飛行器連線"
     },
     "terrainUplink": {
       "title": "地形上傳",

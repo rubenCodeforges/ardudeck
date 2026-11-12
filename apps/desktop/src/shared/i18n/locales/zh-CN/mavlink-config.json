@@ -1091,7 +1091,10 @@
     "writeBody": "以下 {{count}} 个参数将被永久保存到飞控。",
     "writeRebootWarning": "有些参数需要重新启动才会生效。",
     "writeTitle": "将参数写入闪存",
-    "writeToFlash": "写入闪存"
+    "writeToFlash": "写入闪存",
+    "reset": "重置",
+    "resetTip": "将参数重置为固件默认值",
+    "noBitsSet": "未设置任何位"
   },
   "pidTuningTab": {
     "accelDesc": "每个轴的最大旋转加速度 (deg/s²)。由 Initial Parameters 与 Autotune 设置。",
@@ -2501,6 +2504,26 @@
     "confirm": "重置并重启",
     "disarmFirst": "载具必须先处于上锁状态。",
     "erased": "参数已清除。正在重启以加载默认值。",
-    "failed": "参数重置未成功。"
+    "failed": "参数重置未成功。",
+    "menu": "恢复出厂设置",
+    "menuDesc": "清除所有已存储的参数并重启。",
+    "calibrationWarningPx4": "校准会保留，但机架设置、调参和其他所有设置都会被清除。飞行前请重新检查设置。"
+  },
+  "resetChanged": {
+    "menu": "重置已更改的值",
+    "menuDesc": "将所有与默认值不同的参数恢复默认。写入闪存前可先检查列表。",
+    "noDefaults": "需要固件默认值，但此飞控未提供。",
+    "title": "将已更改的值重置为默认值？",
+    "body": "这些参数与固件默认值不同，将恢复为默认值。数值仅暂存：请检查后再使用写入闪存。",
+    "keep": "保留校准、传感器 ID、机架和串口设置",
+    "keptCount_other": "{{count}} 个受保护的值保持不变。",
+    "keepOffWarning": "校准、机架和链路设置也会被重置。载具需要重新校准，链路可能中断。",
+    "nothing": "无需重置：所有值均为默认值。",
+    "colParam": "参数",
+    "colCurrent": "当前",
+    "colDefault": "默认",
+    "flashNote": "写入闪存之前不会发送任何内容。",
+    "confirm_other": "重置 {{count}} 个值",
+    "staged_other": "已将 {{count}} 个值恢复默认。请检查后写入闪存。"
   }
 }

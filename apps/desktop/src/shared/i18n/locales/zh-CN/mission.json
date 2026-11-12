@@ -136,7 +136,8 @@
     "hidePointSet": "隐藏点集",
     "planSurveyHere": "在此规划测绘",
     "pointN": "点 {{n}}",
-    "referenceLine": "{{count}} 个点 · 参考线"
+    "referenceLine": "{{count}} 个点 · 参考线",
+    "setHomeHere": "在此设置返航点"
   },
   "mission3DPanel": {
     "centerTip": "将地图居中于载具 GPS 位置",
@@ -955,5 +956,80 @@
     "pinPlaceholder": "管理员 PIN",
     "pinWrong": "PIN 错误。",
     "pinThrottled": "错误尝试次数过多，请稍候。"
+  },
+  "missionFit": {
+    "openButton": "让任务装得下的方法",
+    "title": "此任务非常大",
+    "titleRejected": "飞控没有空间存放此任务",
+    "intro": "{{count}} 个项目。许多飞控只能存放几百到约两千个任务项目。请选择一种方法：",
+    "introRejected": "飞控拒绝了 {{count}} 个项目。请选择一种方法，然后重新上传：",
+    "terrainTitle": "让飞控跟随地形",
+    "terrainDesc": "只在每条航线两端设置航点，按离地高度飞行。任务会缩小为原来的一小部分。",
+    "terrainNote": "需要 TERRAIN_ENABLE 和 SD 卡；ArduDeck 会发送地形数据。按约 100 米网格跟随，使用测距仪和 WP_RFND_USE 时跟随真实地面。",
+    "splitTitle": "拆分为多个航次",
+    "splitDesc": "每块电池一个航次，每次飞行前单独上传。",
+    "splitNote": "适用于任何飞控。需要在航次之间上传。",
+    "sdTitle": "将任务存储在 SD 卡上",
+    "sdDesc": "在 SD 卡上预留约 {{items}} 个项目的空间。",
+    "sdNote": "通过参数审查设置 BRD_SD_MISSION。需要 microSD 卡，并在下次上传前重启。",
+    "noSurvey": "任务中没有可拆分的测绘。",
+    "noTerrainFollow": "仅适用于使用 ArduDeck 地形跟随规划的测绘。",
+    "sdUnavailable": "需要已连接且已加载参数的 ArduPilot 飞控。",
+    "splitFailed": "无法重新生成测绘以进行拆分。",
+    "oneFlight": "按当前续航设置，测绘可在一个航次内完成，无需拆分。请在测绘面板中设置更短的续航。",
+    "splitDone_other": "已拆分为 {{count}} 个航次；最大的有 {{largest}} 个项目。每次飞行前上传。",
+    "terrainDone": "测绘现在使用相对地形高度。任务共有 {{total}} 个项目。",
+    "terrainDoneParamNot": "测绘现在使用相对地形高度（{{total}} 个项目），但未设置 TERRAIN_ENABLE。飞行前请启用。",
+    "terrainEnableReason": "让飞控使用 ArduDeck 发送的数据跟随地形。",
+    "sdReason": "将任务存储在 SD 卡上，约可容纳 {{items}} 个项目。",
+    "sdDone": "已设置 BRD_SD_MISSION。请重启飞控，然后重新上传。",
+    "sdNotApplied": "BRD_SD_MISSION 未更改。"
+  },
+  "guidesPanel": {
+    "title": "参考图形",
+    "addArea": "区域",
+    "addLine": "线",
+    "addPoint": "点",
+    "import": "导入文件",
+    "enterPoints": "输入点",
+    "showLabels": "在地图上显示标签",
+    "empty": "还没有参考图形。绘制一个，导入 KML、KMZ、GeoJSON 或 SHP，或让代理或 cargo 添加。",
+    "color": "颜色",
+    "name": "名称",
+    "role": "角色",
+    "hide": "在地图上隐藏",
+    "show": "在地图上显示",
+    "zoomTo": "缩放到此",
+    "surveyArea": "在此规划测绘",
+    "surveyLine": "沿此线规划走廊测绘",
+    "delete": "删除",
+    "confirmDelete": "删除？",
+    "hectares": "{{value}} 公顷",
+    "km": "{{value}} 公里",
+    "points_other": "{{count}} 个点",
+    "holes_other": "{{count}} 个孔洞",
+    "roles": {
+      "area": "区域",
+      "interest": "关注区域",
+      "nofly": "禁飞区",
+      "takeoff": "起飞 / 降落",
+      "poi": "兴趣点",
+      "note": "参考"
+    },
+    "drawPrompt": {
+      "polygon": "点击区域的各个角，然后按 Enter",
+      "line": "沿线点击，然后按 Enter",
+      "points": "点击该位置"
+    },
+    "defaultName": {
+      "polygon": "区域 {{n}}",
+      "line": "线 {{n}}",
+      "points": "点 {{n}}"
+    },
+    "addTitle": "添加参考图形",
+    "onMap": "地图上",
+    "onMapCount": "地图上（{{count}}）",
+    "importShort": "导入",
+    "enterShort": "输入"
   }
 }

@@ -244,13 +244,18 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
         const wpElevations = elevations.slice(pathPoints.length, pathPoints.length + displayProfile.length);
         setHomeElevation(elevations[pathPoints.length + displayProfile.length] ?? null);
 
-        // Build terrain data
+        // Waypoints' own ground samples join the path samples, or a sparse line misses the ground under them on a slope.
         const terrain: TerrainPoint[] = pathPoints
           .map((p, i) => ({
             distance: p.distance,
             elevation: terrainElevations[i] ?? 0,
           }))
           .filter(t => t.elevation !== null);
+        displayProfile.forEach((p, i) => {
+          const elev = wpElevations[i];
+          if (elev !== null && elev !== undefined) terrain.push({ distance: p.distance, elevation: elev });
+        });
+        terrain.sort((a, b) => a.distance - b.distance);
 
         setTerrainData(terrain);
 
@@ -385,11 +390,15 @@ export function AltitudeProfilePanel({ readOnly = false }: AltitudeProfilePanelP
         const nAsl = getDisplayAsl(next);
         const pAgl = pAsl - getTerrainAtDistance(p.distance);
         const nAgl = nAsl - getTerrainAtDistance(next.distance);
-        const samples = 12;
-        for (let s = 1; s < samples; s++) {
-          const t = s / samples;
-          const d = p.distance + t * (next.distance - p.distance);
-          pts.push({ distance: d, asl: getTerrainAtDistance(d) + pAgl + t * (nAgl - pAgl) });
+        // Every terrain sample in the leg; fewer cut through ridges and draw false collisions.
+        const span = next.distance - p.distance;
+        if (span > 0) {
+          for (const tp of terrainData) {
+            if (tp.distance <= p.distance) continue;
+            if (tp.distance >= next.distance) break;
+            const t = (tp.distance - p.distance) / span;
+            pts.push({ distance: tp.distance, asl: tp.elevation + pAgl + t * (nAgl - pAgl) });
+          }
         }
       }
     }

@@ -6,13 +6,14 @@ import { ui } from '../ui/ui-hooks';
 
 interface ResetParamsDialogProps {
   armed: boolean;
+  firmware?: string | null;
   vehicleType?: string;
   onCancel: () => void;
   /** Erases and reboots; resolves false when the vehicle refused. */
   onReset: () => Promise<boolean>;
 }
 
-export function ResetParamsDialog({ armed, vehicleType, onCancel, onReset }: ResetParamsDialogProps) {
+export function ResetParamsDialog({ armed, firmware, vehicleType, onCancel, onReset }: ResetParamsDialogProps) {
   const { t } = useTranslation();
   const parameters = useParameterStore((s) => s.parameters);
   const [saved, setSaved] = useState(false);
@@ -27,7 +28,7 @@ export function ResetParamsDialog({ armed, vehicleType, onCancel, onReset }: Res
       const params = Array.from(parameters.values())
         .filter((p) => !p.isReadOnly)
         .sort((a, b) => a.id.localeCompare(b.id))
-        .map((p) => ({ id: p.id, value: p.value }));
+        .map((p) => ({ id: p.id, value: p.value, type: p.type }));
       const result = await window.electronAPI?.saveParamsToFile(params, vehicleType);
       if (result?.success) setSaved(true);
       else if (result?.error && result.error !== 'Cancelled') setSaveError(result.error);
@@ -51,7 +52,7 @@ export function ResetParamsDialog({ armed, vehicleType, onCancel, onReset }: Res
             {t('mavlink-config:resetParams.title')}
           </h3>
           <p className="text-sm text-content-secondary mt-2">{t('mavlink-config:resetParams.body')}</p>
-          <p className="text-sm text-amber-400 mt-2">{t('mavlink-config:resetParams.calibrationWarning')}</p>
+          <p className="text-sm text-amber-400 mt-2">{firmware === 'px4' ? t('mavlink-config:resetParams.calibrationWarningPx4') : t('mavlink-config:resetParams.calibrationWarning')}</p>
         </div>
         <div className="px-6 py-4 border-b border-subtle space-y-2">
           <p className="text-sm text-content-secondary">{t('mavlink-config:resetParams.saveFirst')}</p>

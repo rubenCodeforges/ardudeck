@@ -1,8 +1,5 @@
 {
   "draggableFleetActions": {
-    "collapseAria": "Collapse fleet ops panel",
-    "dragTip": "Drag to move - magnets to panel & window edges",
-    "expandAria": "Expand fleet ops panel",
     "title": "Fleet Ops"
   },
   "fleetContextMenu": {
@@ -22,7 +19,9 @@
     "leadsFleet": "Leads a fleet",
     "leave": "Leave fleet",
     "leaveTip": "Drop {{label}} from the fleet - the rest hold formation",
-    "reformShape": "Re-form: {{label}}"
+    "reformShape": "Re-form: {{label}}",
+    "startMission": "Start mission",
+    "takeOffFleet": "Take off fleet"
   },
   "fleetCoordination": {
     "alt": "alt",
