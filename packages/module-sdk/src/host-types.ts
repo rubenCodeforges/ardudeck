@@ -192,6 +192,38 @@ export interface TileSourceRegistration {
   version?: number;
 }
 
+/** One remote tile endpoint of a basemap. The template never leaves the main process. */
+export interface BasemapTileSource {
+  /** `{z}` `{x}` `{y}` and optional `{s}` (rotated over `subdomains`) or `{q}` (Bing quadkey). */
+  url: string;
+  subdomains?: string[];
+  /** Sent with every tile request, e.g. an API key header the provider documents. */
+  headers?: Record<string, string>;
+}
+
+/**
+ * A base map offered in the host's layer pickers (telemetry map, mission planner, 3D mission view,
+ * flight-log map). Tiles are fetched and cached by the host; image bytes are decoded by signature,
+ * not by Content-Type.
+ */
+export interface BasemapRegistration {
+  /** Stable id within this module. Re-registering the same id replaces it. */
+  id: string;
+  /** Picker label, already translated by the module. */
+  name: string;
+  /** Credit the provider requires, shown in the map's attribution corner. */
+  attribution?: string;
+  base: BasemapTileSource;
+  /** Transparent labels drawn over the base by the map itself (true alpha blending). */
+  labels?: BasemapTileSource;
+  /** Deepest zoom the provider serves; past it tiles are upscaled. Default 18. */
+  maxNativeZoom?: number;
+  /** Deepest zoom the map allows on this layer. Default maxNativeZoom + 4. */
+  maxZoom?: number;
+  /** The one row a compact picker (flight-log map) shows for this module. */
+  primary?: boolean;
+}
+
 /** How a scene model's origin altitude is read. */
 export type SceneAltitudeMode = 'amsl' | 'agl' | 'clamp';
 
@@ -1891,6 +1923,11 @@ export interface MainHostApi {
   /** Map tiles this module serves (DEM override or raster overlay). */
   tiles: {
     register(reg: TileSourceRegistration): void;
+    unregister(id: string): void;
+  };
+  /** Base maps for the host's layer pickers. Dropped automatically when the module unloads. Missing on older hosts. */
+  basemaps?: {
+    register(reg: BasemapRegistration): void;
     unregister(id: string): void;
   };
   /** Textured meshes for the synthetic vision and 3D mission scenes. */

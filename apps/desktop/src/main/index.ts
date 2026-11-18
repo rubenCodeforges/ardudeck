@@ -12,6 +12,7 @@ import { setupIpcHandlers, cleanupOnShutdown, isCleanExitSafe } from './ipc-hand
 import { setupModuleIpc } from './modules/module-ipc.js';
 import { setupAppIpc } from './apps/app-ipc.js';
 import { TILE_CACHE_SCHEME_PRIVILEGES, setupTileCacheProtocol, setupTileCacheHandlers } from './tile-cache.js';
+import { setupBasemapIpc } from './basemaps/basemap-ipc.js';
 import { setupBuildingCacheHandlers } from './building-cache.js';
 import { MODULE_SCHEME_PRIVILEGES, setupModuleProtocol } from './modules/module-protocol.js';
 import { ASSET_SCHEME_PRIVILEGES, setupAssetProtocol } from './terrain/asset-protocol.js';
@@ -442,6 +443,7 @@ app.whenReady().then(() => {
   setupModuleIpc(mainWindow);
   setupAppIpc(mainWindow);
   setupTileCacheHandlers(mainWindow);
+  setupBasemapIpc();
   setupBuildingCacheHandlers(mainWindow);
 
   splashSetStatus(splash, t('main:mainIndex.splashInitializing'));

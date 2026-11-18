@@ -20,7 +20,9 @@ import { demSourcesForTile, listTileSources, rasterSourceByKey, subscribeTileSou
 import { composeDem, encodePng, readSourceTile, type Rgba } from './terrain/dem-tiles.js';
 import { listSceneMeshes, subscribeSceneMeshes } from './terrain/scene-mesh-registry.js';
 import { TILE_SOURCE_LAYER_PREFIX } from '../shared/tile-source-types.js';
-import { isImageBytes } from './tile-image.js';
+import { imageContentType, isImageBytes } from './tile-image.js';
+import { basemapTileRequest } from './basemaps/basemap-registry.js';
+import { MODULE_BASEMAP_LABELS_PREFIX, MODULE_BASEMAP_PREFIX } from '../shared/basemap-types.js';
 
 // ─── Settings Store ──────────────────────────────────────────────────────────
 
@@ -108,6 +110,10 @@ export async function resolveTileBytes(requestUrl: string): Promise<{ status: nu
     if (!entry) return { status: 404, body: null };
     const img = await readSourceTile(entry, z, x, y);
     return { status: 200, body: toArrayBuffer(img ? encodePng(img) : TRANSPARENT_PNG) };
+  }
+
+  if (layer.startsWith(MODULE_BASEMAP_PREFIX) || layer.startsWith(MODULE_BASEMAP_LABELS_PREFIX)) {
+    return resolveModuleBasemapTile(layer, z, x, y);
   }
 
   if (layer !== 'dem') return resolveDefaultTileBytes(requestUrl);
@@ -253,7 +259,7 @@ export function setupTileCacheProtocol(): void {
   protocol.handle('tile-cache', async (request) => {
     const { status, body } = await resolveTileBytes(request.url);
     if (body === null) return new Response(null, { status });
-    return new Response(body, { status, headers: { 'Content-Type': 'image/png' } });
+    return new Response(body, { status, headers: { 'Content-Type': imageContentType(new Uint8Array(body)) } });
   });
 }
 
@@ -349,7 +355,7 @@ async function clearCache(layerKey?: string): Promise<void> {
 // md5 of the tile Carto serves for every request without a valid key.
 const CARTO_PLACEHOLDER_MD5 = 'df9307c738f2c6dbc0f8d31837019f98';
 
-async function fetchTileInto(cacheLayer: string, z: number, x: number, y: number, url: string): Promise<Buffer | null> {
+async function fetchTileInto(cacheLayer: string, z: number, x: number, y: number, url: string, headers?: Record<string, string>, onFail?: (why: string) => void): Promise<Buffer | null> {
   const tilePath = getTilePath(cacheLayer, z, x, y);
   try {
     const data = await readFile(tilePath);
@@ -358,18 +364,42 @@ async function fetchTileInto(cacheLayer: string, z: number, x: number, y: number
     // cache miss
   }
   try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
+    const response = await fetch(url, headers ? { headers } : undefined);
+    if (!response.ok) {
+      onFail?.(`HTTP ${response.status}`);
+      return null;
+    }
     const buffer = Buffer.from(await response.arrayBuffer());
-    if (!isImageBytes(buffer)) return null;
+    if (!isImageBytes(buffer)) {
+      onFail?.('not an image');
+      return null;
+    }
     if (createHash('md5').update(buffer).digest('hex') === CARTO_PLACEHOLDER_MD5) return null;
     mkdir(join(getCacheDir(), cacheLayer, String(z), String(x)), { recursive: true })
       .then(() => writeFile(tilePath, buffer))
       .catch(() => { /* ignore write errors */ });
     return buffer;
   } catch {
+    onFail?.('network error');
     return null;
   }
+}
+
+const warnedBasemapFailures = new Set<string>();
+
+/** A cargo base map tile; the provider URL and key never leave this process. */
+async function resolveModuleBasemapTile(layer: string, z: number, x: number, y: number): Promise<{ status: number; body: ArrayBuffer | null }> {
+  const req = basemapTileRequest(layer, z, x, y);
+  if (!req) return { status: 404, body: null };
+  const transparent = { status: 200, body: toArrayBuffer(TRANSPARENT_PNG) };
+  if (z > req.maxNativeZoom) return transparent;
+  const tile = await fetchTileInto(layer, z, x, y, req.url, req.headers, (why) => {
+    const k = `${layer}:${why}`;
+    if (warnedBasemapFailures.has(k)) return;
+    warnedBasemapFailures.add(k);
+    console.warn(`[basemaps] ${layer}: tile request failed (${why}); further failures of this kind are not logged`);
+  });
+  return tile ? { status: 200, body: toArrayBuffer(tile) } : transparent;
 }
 
 /** The dark basemap: Carto with the user's key, else Esri Canvas plus its label overlay. Never Carto's key placeholder. */

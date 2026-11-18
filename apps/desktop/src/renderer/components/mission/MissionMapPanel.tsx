@@ -76,6 +76,9 @@ import { buildSegmentedPath } from './mission-path';
 import { computeCameraTriggerPoints, photographedSeqs } from './camera-triggers';
 
 // Shared map layer definitions (centralized)
+import { ModuleBasemapTiles } from '../map/ModuleBasemapTiles';
+import { findModuleBasemap, useModuleBasemaps } from '../../stores/basemap-store';
+import { isModuleBasemapKey } from '../../../shared/basemap-types';
 import { MAP_LAYERS, DARK_LABELS_LAYER, ESRI_CANVAS_MAX_NATIVE_ZOOM, layerAttribution, type LayerKey, type MapLayer } from '../../../shared/map-layers';
 import { useMapKeysStore } from '../../stores/map-keys-store';
 import { MapSearchControl } from '../map/MapSearchControl';
@@ -614,6 +617,9 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
   const defaultZoom = isRover ? DEFAULT_ZOOM_ROVER : DEFAULT_ZOOM_AIRCRAFT;
 
   const [activeLayer, setActiveLayer] = useState<LayerKey>(defaultLayer);
+  const [moduleLayer, setModuleLayer] = useState<string | null>(null);
+  const moduleBasemaps = useModuleBasemaps();
+  const moduleBase = moduleLayer ? findModuleBasemap(moduleBasemaps, moduleLayer) : undefined;
   const [isAddingWaypoint, setIsAddingWaypoint] = useState(false);
   const [isSettingHome, setIsSettingHome] = useState(false);
   const [fitTrigger, setFitTrigger] = useState(0);
@@ -1120,14 +1126,18 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
         {activeMode === 'mission' && showLegWind && layerWindAt && <WindLegsOverlay windAt={layerWindAt} />}
         <CenterOnVehicle trigger={centerOnVehicleTrigger} />
 
-        <TileLayer
-          key={activeLayer}
-          url={`tile-cache://${activeLayer}/{z}/{x}/{y}.png`}
-          attribution={layerAttribution(activeLayer, cartoKey)}
-          maxZoom={layer.maxZoom}
-          maxNativeZoom={(layer as MapLayer).maxNativeZoom ?? layer.maxZoom}
-        />
-        {activeLayer === 'dark' && !cartoKey && (
+        {moduleBase ? (
+          <ModuleBasemapTiles basemap={moduleBase} />
+        ) : (
+          <TileLayer
+            key={activeLayer}
+            url={`tile-cache://${activeLayer}/{z}/{x}/{y}.png`}
+            attribution={layerAttribution(activeLayer, cartoKey)}
+            maxZoom={layer.maxZoom}
+            maxNativeZoom={(layer as MapLayer).maxNativeZoom ?? layer.maxZoom}
+          />
+        )}
+        {!moduleBase && activeLayer === 'dark' && !cartoKey && (
           <TileLayer
             url={`tile-cache://${DARK_LABELS_LAYER}/{z}/{x}/{y}.png`}
             maxZoom={layer.maxZoom}
@@ -1363,8 +1373,15 @@ function MissionMapPanel2D({ readOnly = false }: MissionMapPanelProps) {
       <div className="absolute top-3 right-3 z-[1000]">
         <MapLayersControl
           baseLayers={(Object.keys(MAP_LAYERS) as LayerKey[]).filter((k) => k !== 'dem' && k !== 'radar' && k !== 'openaip')}
-          activeLayer={activeLayer}
-          onSelectLayer={setActiveLayer}
+          activeLayer={moduleBase?.key ?? activeLayer}
+          onSelectLayer={(k) => {
+            if (isModuleBasemapKey(k)) {
+              setModuleLayer(k);
+            } else {
+              setModuleLayer(null);
+              setActiveLayer(k as LayerKey);
+            }
+          }}
           showTerrain={showTerrain}
           onToggleTerrain={() => setShowTerrain(!showTerrain)}
           extra={<OfflineAreaDownload bounds={mapBounds} activeLayer={activeLayer} />}

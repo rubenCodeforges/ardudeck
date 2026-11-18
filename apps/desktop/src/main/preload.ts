@@ -57,6 +57,7 @@ import type {
   TrainerLaunchInput,
   TrainerStatus,
 } from '../shared/trainer-types.js';
+import { BASEMAP_IPC, type ModuleBasemapInfo } from '../shared/basemap-types.js';
 import type { SceneMeshEntry, TileSourceEntry } from '../shared/tile-source-types.js';
 import type { TerrainUplinkStatus } from '../shared/tile-source-types.js';
 import type { WindField, WindFetchParams } from '../shared/wind-types.js';
@@ -2987,6 +2988,14 @@ const api = {
     },
     pathForFile: (file) => webUtils.getPathForFile(file),
   } satisfies UserModelsApi,
+
+  // ─── Cargo base maps ───
+  basemapsList: (): Promise<ModuleBasemapInfo[]> => ipcRenderer.invoke(BASEMAP_IPC.list),
+  onBasemapsChanged: (callback: (list: ModuleBasemapInfo[]) => void) => {
+    const handler = (_: unknown, list: ModuleBasemapInfo[]) => callback(list);
+    ipcRenderer.on(BASEMAP_IPC.changed, handler);
+    return () => ipcRenderer.removeListener(BASEMAP_IPC.changed, handler);
+  },
 
   // ─── ArduDeck Trainer ───
   trainerStatus: (): Promise<TrainerStatus> => ipcRenderer.invoke(IPC_CHANNELS.TRAINER_STATUS),

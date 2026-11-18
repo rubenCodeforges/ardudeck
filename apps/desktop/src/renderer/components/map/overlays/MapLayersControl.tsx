@@ -23,11 +23,13 @@ import { useOverlayStore } from '../../../stores/overlay-store';
 import { OVERLAYS } from './OverlayToggles';
 import { useModuleMapLayerToggles } from '../../panels/ModuleMapLayers';
 import { useUserModelsStore } from '../../../stores/user-models-store';
+import { useModuleBasemaps } from '../../../stores/basemap-store';
 
 interface MapLayersControlProps {
   baseLayers: LayerKey[];
-  activeLayer: LayerKey;
-  onSelectLayer: (key: LayerKey) => void;
+  /** A built-in layer key, or a cargo base map key (`mb-...`). */
+  activeLayer: string;
+  onSelectLayer: (key: string) => void;
   /** Optional terrain/height heatmap toggle (screens that support it). */
   showTerrain?: boolean;
   onToggleTerrain?: () => void;
@@ -49,6 +51,7 @@ export function MapLayersControl({
   const activeOverlays = useOverlayStore((s) => s.activeOverlays);
   const toggleOverlay = useOverlayStore((s) => s.toggleOverlay);
   const dipulAvailable = useOverlayStore((s) => s.dipulAvailable);
+  const moduleBasemaps = useModuleBasemaps();
 
   const overlayCount = (showOverlays ? activeOverlays.size : 0) + (showTerrain ? 1 : 0);
 
@@ -104,6 +107,12 @@ export function MapLayersControl({
                     <button key={key} type="button" onClick={() => onSelectLayer(key)} className={row(activeLayer === key)}>
                       <LayerIcon layerKey={key} />
                       {mapLayerName(key)}
+                    </button>
+                  ))}
+                  {moduleBasemaps.map((b) => (
+                    <button key={b.key} type="button" onClick={() => onSelectLayer(b.key)} className={row(activeLayer === b.key)}>
+                      <LayerIcon layerKey={b.key} />
+                      {b.name}
                     </button>
                   ))}
                 </div>

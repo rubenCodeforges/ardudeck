@@ -8,6 +8,7 @@ import { installScript } from '../script-installer/install-script.js';
 import { t } from '../../shared/i18n/index.js';
 import { registerTileSource, unregisterTileSource } from '../terrain/tile-source-registry.js';
 import { registerSceneMesh, unregisterSceneMesh } from '../terrain/scene-mesh-registry.js';
+import { registerBasemap, unregisterBasemap } from '../basemaps/basemap-registry.js';
 import { runModuleProcess } from './module-process.js';
 
 export function createMainHostApi(manifest: ModuleManifest): MainHostApi {
@@ -94,6 +95,10 @@ export function createMainHostApi(manifest: ModuleManifest): MainHostApi {
     tiles: {
       register: (reg) => { registerTileSource(manifest.slug, reg); },
       unregister: (id) => unregisterTileSource(manifest.slug, id),
+    },
+    basemaps: {
+      register: (reg) => { registerBasemap(manifest.slug, reg); },
+      unregister: (id) => unregisterBasemap(manifest.slug, id),
     },
     scene: {
       registerMesh: (reg) => { registerSceneMesh(manifest.slug, reg); },

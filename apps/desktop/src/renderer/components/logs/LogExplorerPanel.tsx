@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { compactBasemaps, findModuleBasemap, useModuleBasemaps } from '../../stores/basemap-store';
 import {
   DockviewReact,
   DockviewReadyEvent,
@@ -1547,6 +1548,9 @@ function FlightPathPanel() {
   const meshLayerRef = useRef<MeshThreeJsLayer | null>(null);
   const meshVersion = useSceneMeshStore((s) => s.version);
   const [activeLayer, setActiveLayer] = useState('satellite');
+  const allModuleBasemaps = useModuleBasemaps();
+  const moduleBasemaps = useMemo(() => compactBasemaps(allModuleBasemaps), [allModuleBasemaps]);
+  const moduleBase = findModuleBasemap(moduleBasemaps, activeLayer);
   const [colorMode, setColorMode] = useState<PathColorMode>('mode');
 
   // Compute per-segment colors based on color mode
@@ -1613,7 +1617,10 @@ function FlightPathPanel() {
   useEffect(() => {
     if (!mapContainerRef.current || points.length < 2) return;
 
-    const layerDef = FLIGHT_MAP_LAYERS[activeLayer] ?? FLIGHT_MAP_LAYERS['satellite']!;
+    const layerDef = moduleBase
+      ? { tiles: [`tile-cache://${moduleBase.key}/{z}/{x}/{y}.png`], maxZoom: moduleBase.maxNativeZoom }
+      : FLIGHT_MAP_LAYERS[activeLayer] ?? FLIGHT_MAP_LAYERS['satellite']!;
+    const labelsKey = moduleBase?.labelsKey;
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
@@ -1626,8 +1633,12 @@ function FlightPathPanel() {
             tileSize: 256,
             maxzoom: layerDef.maxZoom,
           },
+          ...(labelsKey ? { 'raster-labels': { type: 'raster' as const, tiles: [`tile-cache://${labelsKey}/{z}/{x}/{y}.png`], tileSize: 256, maxzoom: layerDef.maxZoom } } : {}),
         },
-        layers: [{ id: 'raster-layer', type: 'raster', source: 'raster-tiles' }],
+        layers: [
+          { id: 'raster-layer', type: 'raster', source: 'raster-tiles' },
+          ...(labelsKey ? [{ id: 'raster-labels', type: 'raster' as const, source: 'raster-labels' }] : []),
+        ],
       },
       center: mapCenter as [number, number],
       zoom: 15,
@@ -1807,7 +1818,7 @@ function FlightPathPanel() {
       map.remove();
       mapRef.current = null;
     };
-  }, [points, activeLayer, mapCenter]);
+  }, [points, activeLayer, mapCenter, moduleBase?.key]);
 
   useEffect(() => {
     meshLayerRef.current?.setMeshes(meshesFor('logs'), 1);
@@ -1854,6 +1865,18 @@ function FlightPathPanel() {
               }`}
             >
               {t(l.nameKey)}
+            </button>
+          ))}
+          {moduleBasemaps.map((b) => (
+            <button
+              {...ui('segment', { active: activeLayer === b.key })}
+              key={b.key}
+              onClick={() => setActiveLayer(b.key)}
+              className={`flex-1 text-[10px] px-2 py-1 transition-colors ${
+                activeLayer === b.key ? 'bg-blue-500/30 text-blue-300' : 'text-content-secondary hover:text-content'
+              }`}
+            >
+              {b.name}
             </button>
           ))}
         </div>

@@ -34,6 +34,8 @@ import { isFleetCommandTarget } from '../../lib/command-target';
 import { useVehicleColor } from '../../stores/vehicle-appearance-store';
 import { useTelemMissionViewStore } from '../../stores/telem-mission-view-store';
 import { mavTypeToTacticalClass, type VehicleState } from '../map/tactical-icon-pool';
+import { ModuleBasemapTiles } from '../map/ModuleBasemapTiles';
+import { findModuleBasemap, useModuleBasemaps } from '../../stores/basemap-store';
 import { dispatchMapCommand, isSameSpot, type ActiveCommandTarget, type MapCommand } from '../map/map-command-types';
 import { useCommandTargetStore, useActiveVehicleTarget, commandTargetKey } from '../../stores/command-target-store';
 import { useImperativeMapLayer } from '../map/ImperativeMapLayer';
@@ -2319,6 +2321,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
   // Use shared layer if it's a valid 2D key, otherwise fall back to 'googleSat'
   const currentLayer: TelemetryLayerKey = (sharedMapLayer in TELEMETRY_LAYERS ? sharedMapLayer : 'googleSat') as TelemetryLayerKey;
   const setCurrentLayer = (layer: TelemetryLayerKey) => setSharedMapLayer(layer);
+  const moduleBase = findModuleBasemap(useModuleBasemaps(), sharedMapLayer);
   const [showHeadingLine, setShowHeadingLine] = useState(true);
   // The old small CompassOverlay is gone in 2D; the toolbar Compass button
   // now drives the 'heading' round gauge instrument instead.
@@ -2940,14 +2943,18 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
         <MapFocusLayer onFocus={() => setFollowVehicle(false)} />
         <TelemetryViewportSync />
         <MapBoundsTracker onBoundsChange={handleBoundsChange} />
-        <TileLayer
-          key={currentLayer}
-          url={`tile-cache://${currentLayer}/{z}/{x}/{y}.png`}
-          attribution={layerAttribution(currentLayer, cartoKey)}
-          maxZoom={layer.maxZoom}
-          maxNativeZoom={(layer as MapLayer).maxNativeZoom ?? layer.maxZoom}
-        />
-        {currentLayer === 'dark' && !cartoKey && (
+        {moduleBase ? (
+          <ModuleBasemapTiles basemap={moduleBase} />
+        ) : (
+          <TileLayer
+            key={currentLayer}
+            url={`tile-cache://${currentLayer}/{z}/{x}/{y}.png`}
+            attribution={layerAttribution(currentLayer, cartoKey)}
+            maxZoom={layer.maxZoom}
+            maxNativeZoom={(layer as MapLayer).maxNativeZoom ?? layer.maxZoom}
+          />
+        )}
+        {!moduleBase && currentLayer === 'dark' && !cartoKey && (
           <TileLayer
             url={`tile-cache://${DARK_LABELS_LAYER}/{z}/{x}/{y}.png`}
             maxZoom={layer.maxZoom}
@@ -3134,8 +3141,8 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
         {splitFull ? <SplitControl /> : (<>
         <MapLayersControl
           baseLayers={Object.keys(TELEMETRY_LAYERS) as LayerKey[]}
-          activeLayer={currentLayer}
-          onSelectLayer={(k) => setCurrentLayer(k as TelemetryLayerKey)}
+          activeLayer={moduleBase?.key ?? currentLayer}
+          onSelectLayer={(k) => setSharedMapLayer(k)}
           showTerrain={showTerrain}
           onToggleTerrain={() => setShowTerrain(!showTerrain)}
           extra={<MissionPathsToggle />}

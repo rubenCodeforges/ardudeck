@@ -73,6 +73,7 @@ import { demSourceMaxZoom, useTileSourceStore } from '../../stores/tile-source-s
 import { meshesFor, useSceneMeshStore } from '../../stores/scene-mesh-store';
 
 // Shared map layer definitions (centralized)
+import { findModuleBasemap, useModuleBasemaps } from '../../stores/basemap-store';
 import { MAP_LAYERS, mapLayerName, type LayerKey, type MapLayer } from '../../../shared/map-layers';
 
 // Exclude 'dem' from the layer picker (it's a data layer, not a base map)
@@ -285,7 +286,8 @@ export function Mission3DPanel({
   const setSharedMapLayer = useEditModeStore((s) => s.setMapLayer);
   // Use shared layer if it's a valid 3D key, otherwise fall back to 'googleSat'
   const activeLayer: LayerKey = (sharedMapLayer in MAP_LAYERS ? sharedMapLayer : 'googleSat') as LayerKey;
-  const setActiveLayer = (layer: LayerKey) => setSharedMapLayer(layer);
+  const setActiveLayer = (layer: string) => setSharedMapLayer(layer);
+  const moduleBase = findModuleBasemap(useModuleBasemaps(), sharedMapLayer);
   const [exaggeration, setExaggeration] = useState(1.0);
   const exaggerationRef = useRef(1);
   exaggerationRef.current = exaggeration;
@@ -851,9 +853,23 @@ export function Mission3DPanel({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
-    const source = map.getSource('raster-tiles') as maplibregl.RasterTileSource | undefined;
-    if (source) source.setTiles([getCachedTileUrl(activeLayer as BaseLayerKey)]);
-  }, [activeLayer, mapReady]);
+    // Rebuilt, not setTiles(): a source keeps its maxzoom, and a cargo layer can stop earlier than the built-in one.
+    const firstOther = map.getStyle().layers.find((l) => l.id !== 'raster-layer' && l.id !== 'raster-labels')?.id;
+    for (const id of ['raster-labels', 'raster-layer']) if (map.getLayer(id)) map.removeLayer(id);
+    for (const id of ['raster-labels', 'raster-tiles']) if (map.getSource(id)) map.removeSource(id);
+    const builtIn = MAP_LAYERS[activeLayer];
+    map.addSource('raster-tiles', {
+      type: 'raster',
+      tiles: [moduleBase ? `tile-cache://${moduleBase.key}/{z}/{x}/{y}.png` : getCachedTileUrl(activeLayer as BaseLayerKey)],
+      tileSize: 256,
+      maxzoom: moduleBase ? moduleBase.maxNativeZoom : (builtIn as MapLayer).maxNativeZoom ?? builtIn.maxZoom,
+    });
+    map.addLayer({ id: 'raster-layer', type: 'raster', source: 'raster-tiles' }, firstOther);
+    if (moduleBase?.labelsKey) {
+      map.addSource('raster-labels', { type: 'raster', tiles: [`tile-cache://${moduleBase.labelsKey}/{z}/{x}/{y}.png`], tileSize: 256, maxzoom: moduleBase.maxNativeZoom });
+      map.addLayer({ id: 'raster-labels', type: 'raster', source: 'raster-labels' }, firstOther);
+    }
+  }, [activeLayer, moduleBase?.key, moduleBase?.labelsKey, moduleBase?.maxNativeZoom, mapReady]);
 
   // Update terrain exaggeration (only when terrain is enabled)
   useEffect(() => {
@@ -1098,7 +1114,7 @@ export function Mission3DPanel({
         )}
         <MapLayersControl
           baseLayers={BASE_LAYERS}
-          activeLayer={activeLayer}
+          activeLayer={moduleBase?.key ?? activeLayer}
           onSelectLayer={setActiveLayer}
           showTerrain={showHeight}
           onToggleTerrain={() => setShowHeight((v) => !v)}

@@ -84,3 +84,11 @@ describe('resolveTileBytes', () => {
     expect(Buffer.from(res.body!).equals(PNG)).toBe(true);
   });
 });
+
+describe('imageContentType', () => {
+  it('names the type from the bytes, not the provider header', async () => {
+    const { imageContentType } = await import('./tile-image');
+    expect(imageContentType(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0]))).toBe('image/png');
+    expect(imageContentType(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0]))).toBe('image/jpeg');
+  });
+});

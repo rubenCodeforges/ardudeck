@@ -28,6 +28,7 @@ import {
 } from './module-dev.js';
 import { killPty, resizePty, spawnPty, writePty } from './module-pty-service.js';
 import { unregisterTileSourcesFor } from '../terrain/tile-source-registry.js';
+import { unregisterBasemapsFor } from '../basemaps/basemap-registry.js';
 import { unregisterSceneMeshesFor } from '../terrain/scene-mesh-registry.js';
 
 export function setupModuleIpc(mainWindow: BrowserWindow): void {
@@ -93,6 +94,7 @@ export function setupModuleIpc(mainWindow: BrowserWindow): void {
       if (!enabled) {
         unregisterTileSourcesFor(slug);
         unregisterSceneMeshesFor(slug);
+        unregisterBasemapsFor(slug);
       }
       return { success: true, modules: setModuleEnabled(slug, enabled) };
     } catch (err) {

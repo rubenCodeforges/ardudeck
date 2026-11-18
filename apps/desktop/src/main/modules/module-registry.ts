@@ -7,6 +7,7 @@ import { loadModuleMain } from './module-loader.js';
 import { createMainHostApi } from './module-host-main.js';
 import { killAllForModule } from './module-pty-service.js';
 import { unregisterTileSourcesFor } from '../terrain/tile-source-registry.js';
+import { unregisterBasemapsFor } from '../basemaps/basemap-registry.js';
 import { unregisterSceneMeshesFor } from '../terrain/scene-mesh-registry.js';
 
 interface LoadedRecord {
@@ -65,6 +66,7 @@ export function unloadAllModules(): void {
     killAllForModule(slug);
     unregisterTileSourcesFor(slug);
     unregisterSceneMeshesFor(slug);
+    unregisterBasemapsFor(slug);
   }
   loaded.clear();
 }
