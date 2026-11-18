@@ -163,17 +163,23 @@ export function DraggableSlider({
     onChange(Math.max(min, roundToStep(value - step)));
   }, [min, onChange, step, value, disabled, roundToStep]);
 
-  const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (disabled) return;
-      // Accept both '.' and ',' as decimal separators (locale-tolerant).
-      const raw = e.target.value.replace(',', '.');
-      const parsed = parseFloat(raw);
-      const newValue = Number.isFinite(parsed) ? parsed : min;
-      onChange(Math.max(min, Math.min(max, newValue)));
-    },
-    [max, min, onChange, disabled]
-  );
+  // Free text while focused: formatting each keystroke turned "2" into "2.0", so 20 could not be typed.
+  const [draft, setDraft] = useState<string | null>(null);
+  const escapedRef = useRef(false);
+  const shownValue = roundToStep(displayValue).toFixed(stepDecimals);
+
+  const commitDraft = useCallback(() => {
+    const raw = draft;
+    setDraft(null);
+    if (raw === null || disabled || escapedRef.current) {
+      escapedRef.current = false;
+      return;
+    }
+    const parsed = Number(raw.trim().replace(',', '.'));
+    if (raw.trim() === '' || !Number.isFinite(parsed)) return;
+    const next = Math.max(min, Math.min(max, roundToStep(parsed)));
+    if (next !== value) onChange(next);
+  }, [draft, disabled, min, max, roundToStep, value, onChange]);
 
   return (
     <div className={disabled ? 'opacity-60' : ''}>
@@ -202,15 +208,24 @@ export function DraggableSlider({
               <input
                 type="text"
                 inputMode="decimal"
-                value={roundToStep(displayValue).toFixed(stepDecimals)}
-                onChange={handleInputChange}
+                value={draft ?? shownValue}
+                onFocus={() => setDraft(shownValue)}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={commitDraft}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur();
+                  else if (e.key === 'Escape') {
+                    escapedRef.current = true;
+                    e.currentTarget.blur();
+                  }
+                }}
                 disabled={disabled}
                 className={`min-w-[5rem] w-auto px-2 py-1 text-center text-sm border rounded tabular-nums ${
                   disabled
                     ? 'bg-surface-input border-subtle text-content-secondary cursor-not-allowed'
                     : 'bg-surface-input border-border text-content'
                 }`}
-                style={{ width: `${Math.max(5, roundToStep(displayValue).toFixed(stepDecimals).length + 2)}ch` }}
+                style={{ width: `${Math.max(5, (draft ?? shownValue).length + 2)}ch` }}
               />
               <button
                 onClick={handleIncrement}

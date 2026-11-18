@@ -9,9 +9,10 @@ import { t } from './i18n/index.js';
 export const MAV_FRAME = {
   GLOBAL: 0,                    // Absolute altitude (MSL)
   GLOBAL_RELATIVE_ALT: 3,       // Altitude relative to home (most common)
-  GLOBAL_INT: 4,                // Absolute altitude with int32 coords
-  GLOBAL_RELATIVE_ALT_INT: 5,   // Relative altitude with int32 coords
+  GLOBAL_INT: 5,                // Absolute altitude with int32 coords
+  GLOBAL_RELATIVE_ALT_INT: 6,   // Relative altitude with int32 coords
   GLOBAL_TERRAIN_ALT: 10,       // Altitude relative to terrain
+  GLOBAL_TERRAIN_ALT_INT: 11,   // Altitude relative to terrain with int32 coords
 } as const;
 
 export type MavFrame = typeof MAV_FRAME[keyof typeof MAV_FRAME];
@@ -22,7 +23,7 @@ export type AltReferenceFrame = 'asl' | 'relative' | 'terrain';
 /** Map a MAV_FRAME numeric code to a collapsed altitude reference frame. */
 export function mavFrameToAltFrame(frame: number): AltReferenceFrame {
   if (frame === MAV_FRAME.GLOBAL || frame === MAV_FRAME.GLOBAL_INT) return 'asl';
-  if (frame === MAV_FRAME.GLOBAL_TERRAIN_ALT) return 'terrain';
+  if (frame === MAV_FRAME.GLOBAL_TERRAIN_ALT || frame === MAV_FRAME.GLOBAL_TERRAIN_ALT_INT) return 'terrain';
   return 'relative'; // GLOBAL_RELATIVE_ALT / _INT and the ArduPilot default
 }
 

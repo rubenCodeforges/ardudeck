@@ -370,6 +370,7 @@
     "compassFailure": "Kompass {{n}} ({{reason}})",
     "compassMotInProgress": "CompassMot läuft bereits",
     "compassNotConverging": "Die Kompasskalibrierung konvergiert nicht. Prüfen Sie, ob der Kompass funktionsfähig ist (Prearm „Compass not healthy“ bedeutet, dass er es nicht ist), entfernen Sie sich von Metall, Magneten und Kabeln und drehen Sie durch alle Achsen. Wenn dieser FC keinen funktionierenden Kompass hat, deaktivieren Sie ihn (COMPASS_ENABLE=0). Stabilize benötigt keinen.",
+    "compassRetrying": "Versuch fehlgeschlagen ({{reason}}). Neuer Versuch, weiter drehen.",
     "compassRefusedStart": "Das Fahrzeug hat den Start verweigert: Es kalibriert nur Kompasse, die eingeschaltet sind UND Daten melden. Prüfen Sie die Karte „Kompasse“, mindestens einer muss in Verwendung und funktionsfähig sein. Versorgen Sie das Fahrzeug über seinen Akku, nicht nur über USB.",
     "fcBusy": "Der Flugcontroller ist beschäftigt. Disarmen Sie, warten Sie einige Sekunden und versuchen Sie es erneut.",
     "fitNotConverged": "die Anpassung ist nicht konvergiert",

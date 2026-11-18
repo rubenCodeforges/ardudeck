@@ -51,6 +51,8 @@ describe('compass calibration command', () => {
     // mag_mask=0 (all compasses), autosave on success
     expect(sent.params.param1).toBe(0);
     expect(sent.params.param3).toBe(1);
+    // retry a failed fit, as Mission Planner does (#159)
+    expect(sent.params.param2).toBe(1);
   });
 
   it('completes only after every compass in the mask reports SUCCESS', async () => {
@@ -70,12 +72,44 @@ describe('compass calibration command', () => {
     }]);
   });
 
-  it('fails immediately when a compass reports FAILED', async () => {
+  it('keeps going when a compass reports FAILED: the firmware retries the fit (#159)', async () => {
     await startMavlinkCalibration('compass');
     handleMagCalReport(0, 0b1, 5 /* FAILED */, 0);
+    expect(ctx.complete).toHaveLength(0);
+    handleMagCalReport(0, 0b1, 4 /* SUCCESS */, 6.1);
     expect(ctx.complete).toHaveLength(1);
-    expect(ctx.complete[0]!.success).toBe(false);
-    expect(ctx.complete[0]!.error).toMatch(/compass/i);
+    expect(ctx.complete[0]!.success).toBe(true);
+  });
+
+  it('fails with the last reason when nothing converges before the time limit', async () => {
+    vi.useFakeTimers();
+    try {
+      await startMavlinkCalibration('compass');
+      handleCalibrationStatusText('Mag(1) calibration bad radius', 4);
+      expect(ctx.complete).toHaveLength(0);
+      vi.advanceTimersByTime(300_000);
+      expect(ctx.complete).toHaveLength(1);
+      expect(ctx.complete[0]!.success).toBe(false);
+      expect(ctx.complete[0]!.error).toMatch(/radius|interference/i);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps a converged compass when another one is still retrying at the time limit', async () => {
+    vi.useFakeTimers();
+    try {
+      await startMavlinkCalibration('compass');
+      handleMagCalReport(0, 0b11, 4 /* SUCCESS */, 5.0);
+      handleMagCalReport(1, 0b11, 7 /* BAD_RADIUS */, 0);
+      expect(ctx.complete).toHaveLength(0);
+      vi.advanceTimersByTime(300_000);
+      expect(ctx.complete).toHaveLength(1);
+      expect(ctx.complete[0]!.success).toBe(true);
+      expect(ctx.complete[0]!.error).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('reports live progress from MAG_CAL_PROGRESS', async () => {
@@ -103,12 +137,12 @@ describe('compass calibration command', () => {
     expect(ctx.complete).toHaveLength(0);
   });
 
-  it('fails on a "bad orientation" STATUSTEXT', async () => {
+  it('shows a "bad orientation" STATUSTEXT as a retry, not the end of the run', async () => {
     await startMavlinkCalibration('compass');
     handleCalibrationStatusText('Compass 1 calibration bad orientation', 4);
-    expect(ctx.complete).toHaveLength(1);
-    expect(ctx.complete[0]!.success).toBe(false);
-    expect(ctx.complete[0]!.error).toMatch(/orientation/i);
+    expect(ctx.complete).toHaveLength(0);
+    const last = ctx.progress.at(-1) as { statusText: string };
+    expect(last.statusText).toMatch(/orientation/i);
   });
 
   it('captures per-compass fitness + orientation and reports it on completion', async () => {

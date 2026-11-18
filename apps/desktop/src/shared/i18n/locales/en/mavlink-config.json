@@ -1790,7 +1790,8 @@
     "testMax": "Max",
     "testMin": "Min",
     "testTrim": "Trim",
-    "unknownFunction": "Unknown ({{value}})"
+    "unknownFunction": "Unknown ({{value}})",
+    "liveNudgeTip": "Arrow keys or scroll: ±1 µs, Shift: ±10. Each step is sent to the vehicle at once. Esc puts back the value from before."
   },
   "sitlBatteryCard": {
     "ahSet": "{{ah}} Ah set",

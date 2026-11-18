@@ -40,6 +40,7 @@
     "notPersisted_other": "{{count}} 个校准值在重新启动后没有保留。",
     "nothingToVerify": "没有可验证的项目。",
     "persisted": "校准已在重新启动后于载具上确认。",
+    "readBackConfirmed": "已从飞控回读校准数值。",
     "readBackFailed": "无法从载具回读校准。",
     "noCompassFitness": "没有报告罗盘适配度。",
     "recorded": "已记录。"

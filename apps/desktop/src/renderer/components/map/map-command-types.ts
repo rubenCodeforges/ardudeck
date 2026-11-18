@@ -288,7 +288,7 @@ export async function dispatchMapCommand(
  * Carries enough info to render the right overlay per command type.
  */
 export type ActiveCommandTarget =
-  | { type: 'goto'; lat: number; lon: number; alt: number; px4Amsl?: number }
+  | { type: 'goto'; lat: number; lon: number; alt: number; px4Amsl?: number; frame?: AltReferenceFrame }
   | { type: 'orbit'; lat: number; lon: number; alt: number; radius: number }
   | { type: 'spiral'; lat: number; lon: number; radius: number; startAlt: number; targetAlt: number }
   | { type: 'watchtower'; lat: number; lon: number; alt: number; yawRate: number }
@@ -311,4 +311,12 @@ async function sendChangeSpeed(speedMs: number, options: DispatchOptions): Promi
   } catch {
     // A refused speed must not cancel the move the pilot actually asked for.
   }
+}
+
+/** Within a few metres: the autopilot echoes a sent target at about the same spot. */
+export function isSameSpot(a: { lat: number; lon: number }, b: { lat: number; lon: number }, toleranceM = 5): boolean {
+  const mPerDeg = 111_320;
+  const dy = (a.lat - b.lat) * mPerDeg;
+  const dx = (a.lon - b.lon) * mPerDeg * Math.cos((a.lat * Math.PI) / 180);
+  return Math.hypot(dx, dy) <= toleranceM;
 }

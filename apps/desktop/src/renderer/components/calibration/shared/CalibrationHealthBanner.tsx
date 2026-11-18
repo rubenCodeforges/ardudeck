@@ -21,7 +21,7 @@ import { AlertTriangle, CheckCircle2, HelpCircle, ShieldAlert } from 'lucide-rea
 import { useConnectionStore } from '../../../stores/connection-store';
 import { useCalibrationStore } from '../../../stores/calibration-store';
 import { CALIBRATION_TYPES, calibrationTypeName } from '../../../../shared/calibration-types';
-import type { CalibrationRecordIpc } from '../../../../shared/calibration-quality';
+import { calibrationNeedsReboot, type CalibrationRecordIpc } from '../../../../shared/calibration-quality';
 
 type Tone = 'good' | 'warn' | 'danger' | 'neutral';
 
@@ -53,7 +53,9 @@ function assess(record: CalibrationRecordIpc, t: TFunction): { tone: Tone; headl
     return {
       tone: 'warn',
       headline: t('calibration:calibrationHealthBanner.notConfirmed', { name }),
-      detail: t('calibration:calibrationHealthBanner.notConfirmedDetail'),
+      detail: calibrationNeedsReboot(record.type)
+        ? t('calibration:calibrationHealthBanner.notConfirmedDetail')
+        : t('calibration:calibrationHealthBanner.notReadBackDetail'),
     };
   }
   if (record.verdict === 'bad' || record.verdict === 'marginal') {

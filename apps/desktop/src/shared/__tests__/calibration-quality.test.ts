@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   assessAccelCalibration,
   assessCompassFitness,
+  buildCalibrationRecord,
+  confirmFromReadBack,
   verifyCalibrationPersisted,
 } from '../calibration-quality';
 
@@ -134,5 +136,25 @@ describe('verifyCalibrationPersisted', () => {
     });
     expect(result.state).toBe('not-persisted');
     expect(result.mismatched).toEqual(['INS_ACCOFFS_X']);
+  });
+});
+
+describe('confirmFromReadBack (#159)', () => {
+  const accel = { INS_ACCOFFS_X: 0.12, INS_ACCSCAL_X: 1.01 };
+
+  it('confirms an accel calibration from the read-back, no reboot needed', () => {
+    const record = confirmFromReadBack(buildCalibrationRecord('accel-6point', accel, []), { ...accel });
+    expect(record.persistence?.state).toBe('verified');
+    expect(record.persistence?.readBackOnly).toBe(true);
+  });
+
+  it('leaves compass waiting for the reboot its offsets need', () => {
+    const mag = { COMPASS_OFS_X: 40 };
+    expect(confirmFromReadBack(buildCalibrationRecord('compass', mag, [2]), { ...mag }).persistence).toBeNull();
+  });
+
+  it('does not confirm when the read-back differs or is missing', () => {
+    expect(confirmFromReadBack(buildCalibrationRecord('accel-6point', accel, []), { ...accel, INS_ACCOFFS_X: 0.5 }).persistence).toBeNull();
+    expect(confirmFromReadBack(buildCalibrationRecord('accel-6point', accel, []), {}).persistence).toBeNull();
   });
 });

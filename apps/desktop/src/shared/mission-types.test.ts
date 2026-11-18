@@ -88,3 +88,14 @@ describe('calculateMissionDistance', () => {
     expect(calculateMissionDistance(withTakeoff)).toBeCloseTo(calculateMissionDistance(straight), 6);
   });
 });
+
+describe('mavFrameToAltFrame (#153)', () => {
+  it('reads every MAVLink global frame, int variants included', async () => {
+    const { mavFrameToAltFrame, MAV_FRAME } = await import('./mission-types');
+    expect(MAV_FRAME.GLOBAL_INT).toBe(5);
+    expect(MAV_FRAME.GLOBAL_RELATIVE_ALT_INT).toBe(6);
+    expect([0, 5].map(mavFrameToAltFrame)).toEqual(['asl', 'asl']);
+    expect([3, 6].map(mavFrameToAltFrame)).toEqual(['relative', 'relative']);
+    expect([10, 11].map(mavFrameToAltFrame)).toEqual(['terrain', 'terrain']);
+  });
+});

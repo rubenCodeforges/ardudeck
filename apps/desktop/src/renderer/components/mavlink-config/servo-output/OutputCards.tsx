@@ -2,7 +2,7 @@ import React, { useMemo, useCallback, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useParameterStore } from '../../../stores/parameter-store';
 import { DraggableSlider } from '../../ui/DraggableSlider';
-import { DraftNumberInput } from '../../../hooks/useNumericDraft';
+import { LivePwmInput, useLiveParamWriter } from './LivePwmInput';
 import { OutputVisual } from './OutputVisual';
 import { GimbalRangeDialog, type GimbalRangeTarget } from './GimbalRangeDialog';
 import { classifyOutput, isTravelEditable, travelFromEndpoints, type OutputShape } from './output-shape';
@@ -56,6 +56,7 @@ export const OutputCards: React.FC<OutputCardsProps> = ({
   const parameters = useParameterStore((s) => s.parameters);
   const metadata = useParameterStore((s) => s.metadata);
   const setParameter = useParameterStore((s) => s.setParameter);
+  const writeLive = useLiveParamWriter();
 
   const groups = useMemo(() => {
     const byFunction = new Map<number, OutputGroup>();
@@ -148,20 +149,20 @@ export const OutputCards: React.FC<OutputCardsProps> = ({
 
   const setEndpoint = useCallback(
     (group: OutputGroup, field: 'MIN' | 'TRIM' | 'MAX', value: number) => {
-      for (const ch of group.channels) setParameter(`SERVO${ch}_${field}`, Math.round(value));
+      for (const ch of group.channels) writeLive(`SERVO${ch}_${field}`, Math.round(value));
     },
-    [setParameter]
+    [writeLive]
   );
 
   const setTravel = useCallback(
     (group: OutputGroup, percent: number) => {
       const t = Math.round((percent / 100) * SERVO_TRAVEL_MAX_US);
       for (const ch of group.channels) {
-        setParameter(`SERVO${ch}_MIN`, group.trim - t);
-        setParameter(`SERVO${ch}_MAX`, group.trim + t);
+        writeLive(`SERVO${ch}_MIN`, group.trim - t);
+        writeLive(`SERVO${ch}_MAX`, group.trim + t);
       }
     },
-    [setParameter]
+    [writeLive]
   );
 
   if (groups.length === 0) {
@@ -292,12 +293,11 @@ export const OutputCards: React.FC<OutputCardsProps> = ({
               {(['MIN', 'TRIM', 'MAX'] as const).map((field) => (
                 <label key={field} className="text-[10px] uppercase tracking-wide text-content-tertiary">
                   {field}
-                  <DraftNumberInput
+                  <LivePwmInput
                     value={field === 'MIN' ? g.min : field === 'TRIM' ? g.trim : g.max}
-                    onCommit={(v) => setEndpoint(g, field, v)}
+                    onWrite={(v) => setEndpoint(g, field, v)}
                     min={PWM_FLOOR}
                     max={PWM_CEILING}
-                    integer
                     className="mt-0.5 w-full px-2 py-1 text-center text-xs bg-surface-input border border-border rounded text-content tabular-nums"
                   />
                 </label>

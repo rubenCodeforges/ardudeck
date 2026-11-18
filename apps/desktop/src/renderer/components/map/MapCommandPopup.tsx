@@ -21,6 +21,7 @@ import { useParameterStore } from '../../stores/parameter-store';
 import { useVehicleClass } from '../../hooks/useVehicleClass';
 import { guidedSpeedRange, speedRangeHint } from './guided-speed-range';
 import type { AltReferenceFrame } from '../../../shared/mission-types.js';
+import { AltFrameSeg } from './AltFrameSeg';
 import {
   altitudeValueFromMeters,
   distanceValueFromMeters,
@@ -556,7 +557,7 @@ export const MapCommandPopup: React.FC<MapCommandPopupProps> = ({
                   </ParamRow>
                   {altFrameSelectable && (
                     <ParamRow label={t('map:mapCommand.above')}>
-                      <FrameSeg value={altFrame} onChange={chooseAltFrame} />
+                      <AltFrameSeg value={altFrame} onChange={chooseAltFrame} />
                     </ParamRow>
                   )}
                   {(meta.id === 'fly' || meta.id === 'orbit') && (
@@ -768,34 +769,6 @@ function ParamRow({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
-
-/** Altitude reference picker: Home / Terrain / Sea. Tooltips carry the detail
- *  so the labels stay short. Mirrors DirSeg geometry so the row lines up. */
-function FrameSeg({ value, onChange }: { value: AltReferenceFrame; onChange: (f: AltReferenceFrame) => void }) {
-  const { t } = useTranslation();
-  const opts: { id: AltReferenceFrame; label: string; tip: string }[] = [
-    { id: 'relative', label: t('map:mapCommand.frameHome'), tip: t('map:mapCommand.frameHomeTip') },
-    { id: 'terrain', label: t('map:mapCommand.frameTerrain'), tip: t('map:mapCommand.frameTerrainTip') },
-    { id: 'asl', label: t('map:mapCommand.frameSea'), tip: t('map:mapCommand.frameSeaTip') },
-  ];
-  return (
-    <div className="flex h-7 items-stretch overflow-hidden rounded-lg border border-subtle">
-      {opts.map((o, i) => (
-        <button
-          key={o.id}
-          type="button"
-          data-tip={o.tip}
-          onClick={() => onChange(o.id)}
-          className={`flex-1 text-[10.5px] transition-colors ${i > 0 ? 'border-l border-subtle' : ''} ${
-            value === o.id ? 'bg-surface-raised font-semibold text-content' : 'bg-surface-input text-content-secondary hover:text-content'
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 function DirSeg({ value, onChange }: { value: 'cw' | 'ccw'; onChange: (d: 'cw' | 'ccw') => void }) {
   const { t } = useTranslation();

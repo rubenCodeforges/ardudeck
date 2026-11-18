@@ -370,6 +370,7 @@
     "compassFailure": "Compass {{n}} ({{reason}})",
     "compassMotInProgress": "CompassMot already in progress",
     "compassNotConverging": "Compass calibration is not converging. Check the compass is healthy (prearm \"Compass not healthy\" means it is not), move away from metal/magnets/wiring, and rotate through all axes. If this FC has no working compass, disable it (COMPASS_ENABLE=0). Stabilize does not need one.",
+    "compassRetrying": "Attempt failed ({{reason}}). Retrying, keep rotating.",
     "compassRefusedStart": "The vehicle refused to start: it only calibrates compasses that are switched on AND reporting. Check the Compasses card, at least one must be In use and healthy. Power the vehicle from its battery, not USB alone.",
     "fcBusy": "Flight controller is busy. Disarm, wait a few seconds, and try again.",
     "fitNotConverged": "the fit did not converge",

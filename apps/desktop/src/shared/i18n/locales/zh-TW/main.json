@@ -370,6 +370,7 @@
     "compassFailure": "羅盤 {{n}}({{reason}})",
     "compassMotInProgress": "CompassMot 已在進行中",
     "compassNotConverging": "羅盤校準無法收斂。請確認羅盤狀態正常(解鎖前檢查出現「Compass not healthy」就表示不正常),遠離金屬/磁鐵/線路,並在所有軸向旋轉。若此飛控沒有可用的羅盤,請停用它 (COMPASS_ENABLE=0)。Stabilize 並不需要羅盤。",
+    "compassRetrying": "本次嘗試失敗（{{reason}}）。正在重試，請繼續旋轉。",
     "compassRefusedStart": "載具拒絕開始:它只會校準已開啟且有回報的羅盤。請檢查羅盤卡片,至少要有一個處於使用中且狀態正常。請以電池為載具供電,不要只靠 USB。",
     "fcBusy": "飛控忙碌中。請上鎖,等待幾秒後再試一次。",
     "fitNotConverged": "擬合沒有收斂",

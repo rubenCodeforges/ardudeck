@@ -2,13 +2,13 @@
  * ServoRow — one channel in the Servo Output table.
  *
  * Renders live PWM bar + Reverse / Function / Min / Trim / Max editors.
- * Number inputs keep their own draft state and commit on blur or Enter, so
- * the user can type freely without partial values being sent mid-stroke.
+ * Min / Trim / Max write live (LivePwmInput); Function commits on blur or Enter.
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ParameterWithMeta } from '../../../../shared/parameter-types';
+import { LivePwmInput, useLiveParamWriter } from './LivePwmInput';
 
 interface Option {
   value: number;
@@ -30,6 +30,7 @@ export const ServoRow: React.FC<ServoRowProps> = React.memo(
   ({ channel, parameters, setParameter, functionOptions, livePwm, liveStale, pwmMin, pwmMax }) => {
     const { t } = useTranslation();
     const prefix = `SERVO${channel}`;
+    const writeLive = useLiveParamWriter();
     const functionParam = parameters.get(`${prefix}_FUNCTION`);
     const reversedParam = parameters.get(`${prefix}_REVERSED`);
     const minParam = parameters.get(`${prefix}_MIN`);
@@ -140,29 +141,29 @@ export const ServoRow: React.FC<ServoRowProps> = React.memo(
         </div>
 
         {/* Min / Trim / Max */}
-        <NumberCell
-          param={`${prefix}_MIN`}
+        <LivePwmInput
           value={minParam?.value ?? 0}
           disabled={!minParam}
-          setParameter={setParameter}
+          onWrite={(v) => writeLive(`${prefix}_MIN`, v)}
           min={pwmMin}
           max={pwmMax}
+          className={CELL_CLASS}
         />
-        <NumberCell
-          param={`${prefix}_TRIM`}
+        <LivePwmInput
           value={trimParam?.value ?? 0}
           disabled={!trimParam}
-          setParameter={setParameter}
+          onWrite={(v) => writeLive(`${prefix}_TRIM`, v)}
           min={pwmMin}
           max={pwmMax}
+          className={CELL_CLASS}
         />
-        <NumberCell
-          param={`${prefix}_MAX`}
+        <LivePwmInput
           value={maxParam?.value ?? 0}
           disabled={!maxParam}
-          setParameter={setParameter}
+          onWrite={(v) => writeLive(`${prefix}_MAX`, v)}
           min={pwmMin}
           max={pwmMax}
+          className={CELL_CLASS}
         />
 
         {/* Test buttons: pulse to MIN/TRIM/MAX, then release autopilot control.
@@ -218,6 +219,9 @@ interface NumberCellProps {
   min: number;
   max: number;
 }
+
+const CELL_CLASS =
+  'h-8 w-full px-2 text-sm text-center rounded bg-surface-base border border-subtle text-content font-mono disabled:opacity-40 focus:outline-none focus:border-pink-500/60';
 
 const NumberCell: React.FC<NumberCellProps> = ({ param, value, disabled, setParameter, min, max }) => {
   const [draft, setDraft] = useState(String(value));

@@ -35,8 +35,11 @@ import {
   commandHasLocation,
   hasValidCoordinates,
   isNavigationCommand,
+  mavFrameToAltFrame,
+  altFrameToMavFrame,
   type MissionItem
 } from '../../../shared/mission-types';
+import { AltFrameSeg } from '../map/AltFrameSeg';
 import { FenceListPanel } from '../geofence/FenceListPanel';
 import { RallyListPanel } from '../rally/RallyListPanel';
 import { useFenceStore } from '../../stores/fence-store';
@@ -3821,6 +3824,14 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                         step={param.step}
                         live
                       />
+                    )}
+                    {param.key === 'altitude' && commandHasLocation(selectedWaypoint.command) && (
+                      <div className="mt-1.5" data-testid="waypoint-alt-frame">
+                        <AltFrameSeg
+                          value={mavFrameToAltFrame(selectedWaypoint.frame)}
+                          onChange={(f) => updateWaypoint(selectedWaypoint.seq, { frame: altFrameToMavFrame(f) })}
+                        />
+                      </div>
                     )}
                   </div>
                 );

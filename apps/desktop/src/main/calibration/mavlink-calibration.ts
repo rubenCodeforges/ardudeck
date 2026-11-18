@@ -159,6 +159,10 @@ let activeFirmware: CalibrationFirmware = 'ardupilot';
 let compassCalTimeoutId: ReturnType<typeof setTimeout> | null = null;
 /** No progress for this long ends the run. Re-armed on every advance. */
 const COMPASS_CAL_STALL_MS = 150000;
+/** Hard limit for the whole run. The firmware retries a failed fit without end, and every retry restarts the
+ *  progress (which re-arms the stall timer), so this is what bounds a compass that never converges. */
+const COMPASS_CAL_MAX_MS = 300000;
+let compassCalMaxTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 // PX4 whole-run watchdog (armed for every PX4 cal type) and 6-point side
 // bookkeeping driven by "[cal] <side> side done" messages.
@@ -175,6 +179,13 @@ const magCalSuccesses = new Set<number>();
 // calibrates and autosaves each compass independently, so one bad fit must not
 // discard the good ones: the run completes with whatever converged.
 const magCalFailures = new Map<number, string>();
+
+// With the firmware retrying (as Mission Planner runs it, #159), a failed fit is not the end: the compass starts
+// over while the pilot keeps rotating. The latest reason per compass is kept here and only becomes a failure
+// when the run times out. -1 = a reason from STATUSTEXT that names no compass.
+const magCalRetryReasons = new Map<number, string>();
+// How many compasses the run calibrates, from MAG_CAL_REPORT's cal_mask once one arrives.
+let magCalExpected = 0;
 
 // Live per-compass completion percentage from MAG_CAL_PROGRESS, keyed by
 // 0-based compass_id. Drives the per-compass progress bars; the overall bar
@@ -450,6 +461,10 @@ function cancelMavlinkCalibration(): void {
     clearTimeout(compassCalTimeoutId);
     compassCalTimeoutId = null;
   }
+  if (compassCalMaxTimeoutId) {
+    clearTimeout(compassCalMaxTimeoutId);
+    compassCalMaxTimeoutId = null;
+  }
   if (sixPointFallbackTimerId) {
     clearTimeout(sixPointFallbackTimerId);
     sixPointFallbackTimerId = null;
@@ -469,6 +484,8 @@ function cancelMavlinkCalibration(): void {
   positionStatus = [false, false, false, false, false, false];
   magCalSuccesses.clear();
   magCalFailures.clear();
+  magCalRetryReasons.clear();
+  magCalExpected = 0;
   magCalResults.clear();
   magCalPcts.clear();
   px4SidesDone = new Set();
@@ -540,6 +557,11 @@ function handleCalibrationStatusText(text: string, severity: number): void {
       success: true,
     });
     cancelMavlinkCalibration();
+    return;
+  }
+
+  if (activeCalType === 'compass' && (lower.includes('calibration failed') || lower.includes('cal failed'))) {
+    noteMagCalRetry(compassNumberIn(text), t('main:mavlinkCalibration.fitNotConverged'), text);
     return;
   }
 
@@ -615,9 +637,7 @@ function handleCalibrationStatusText(text: string, severity: number): void {
       const reason = lower.includes('bad orientation')
         ? t('main:mavlinkCalibration.badOrientationMounting')
         : t('main:mavlinkCalibration.badRadiusInterference');
-      deps.sendLog('error', `Compass calibration failed: ${text}`);
-      deps.sendComplete({ type: 'compass', success: false, error: t('main:mavlinkCalibration.compassFailedReason', { reason }) });
-      cancelMavlinkCalibration();
+      noteMagCalRetry(compassNumberIn(text), reason, text);
       return;
     }
 
@@ -907,8 +927,11 @@ function handleMagCalReport(compassId: number, calMask: number, calStatus: numbe
 
   const label = `Compass ${compassId + 1}`;
 
+  magCalExpected = Math.max(magCalExpected, popcount(calMask));
+
   if (calStatus === MAG_CAL_SUCCESS) {
     magCalSuccesses.add(compassId);
+    magCalRetryReasons.delete(compassId);
     const prev = magCalResults.get(compassId);
     magCalResults.set(compassId, { fitness, orientation: prev?.orientation ?? null });
     deps.sendLog('info', `${label} calibrated (fitness ${fitness.toFixed(1)} mGauss)`);
@@ -923,10 +946,52 @@ function handleMagCalReport(compassId: number, calMask: number, calStatus: numbe
         : calStatus === MAG_CAL_BAD_RADIUS
           ? t('main:mavlinkCalibration.badRadius')
           : t('main:mavlinkCalibration.fitNotConverged');
-    magCalFailures.set(compassId, reason);
-    deps.sendLog('error', `${label} calibration failed: ${reason}`);
-    finishMagCalIfDone(popcount(calMask));
+    noteMagCalRetry(compassId, reason, `${label} calibration failed: ${reason}`); // i18n-exempt
   }
+}
+
+/** 0-based compass id from "Mag(1) ..." or "Compass 1 ...", or -1 when the text names none. */
+function compassNumberIn(text: string): number {
+  const m = /(?:mag\(|compass\s+)(\d+)/i.exec(text);
+  return m ? parseInt(m[1]!, 10) - 1 : -1;
+}
+
+/**
+ * A fit failed and the firmware is starting that compass over. Say why and keep the pilot rotating: the run
+ * ends on success, or on the time limits, which turn the latest reasons into the final result.
+ */
+function noteMagCalRetry(compassId: number, reason: string, logText: string): void {
+  if (!deps) return;
+  magCalRetryReasons.set(compassId, reason);
+  if (compassId >= 0) magCalPcts.set(compassId, 0);
+  deps.sendLog('warn', `Compass fit failed, retrying: ${logText}`); // i18n-exempt
+  deps.sendProgress({
+    type: 'compass',
+    progress: magCalPcts.size > 0 ? Math.min(...magCalPcts.values()) : 0,
+    statusText: t('main:mavlinkCalibration.compassRetrying', { reason }),
+  });
+}
+
+/** Time is up: whatever converged stands, every compass still retrying fails with its latest reason. */
+function finishMagCalOnTimeout(): void {
+  if (!deps || activeCalType !== 'compass') return;
+  for (const [id, reason] of magCalRetryReasons) {
+    if (id >= 0 && !magCalSuccesses.has(id)) magCalFailures.set(id, reason);
+  }
+  const anyReason = [...magCalRetryReasons.values()].at(-1);
+  if (magCalSuccesses.size === 0 && magCalFailures.size === 0) {
+    deps.sendLog('error', 'Compass calibration did not converge within the time limit'); // i18n-exempt
+    deps.sendComplete({
+      type: 'compass',
+      success: false,
+      error: anyReason
+        ? t('main:mavlinkCalibration.compassFailedReason', { reason: anyReason })
+        : t('main:mavlinkCalibration.compassNotConverging'),
+    });
+    cancelMavlinkCalibration();
+    return;
+  }
+  finishMagCalIfDone(Math.max(magCalExpected, magCalSuccesses.size + magCalFailures.size), true);
 }
 
 /**
@@ -934,10 +999,10 @@ function handleMagCalReport(compassId: number, calMask: number, calStatus: numbe
  * converged has already been saved by the firmware, so a mixed result is a
  * success with a named casualty, not a failed run.
  */
-function finishMagCalIfDone(expected: number): void {
+function finishMagCalIfDone(expected: number, timedOut = false): void {
   if (!deps) return;
-  const reported = magCalSuccesses.size + magCalFailures.size;
-  if (expected <= 0 || reported < expected) return;
+  if (!timedOut && magCalSuccesses.size < expected) return;
+  if (expected <= 0) return;
 
   const failed = [...magCalFailures.entries()]
     .map(([id, reason]) => t('main:mavlinkCalibration.compassFailure', { n: id + 1, reason }))
@@ -1323,7 +1388,7 @@ async function startCompass(): Promise<{ success: boolean; error?: string }> {
 
   const sent = await deps.sendCommandLong(MAV_CMD_DO_START_MAG_CAL, {
     param1: 0, // mag_mask: 0 = calibrate all enabled compasses
-    param2: 0, // no retry: the firmware's retry has no attempt limit and hides the failure reason
+    param2: 1, // retry a failed fit, as Mission Planner does (#159); COMPASS_CAL_MAX_MS bounds it
     param3: 1, // autosave offsets when the fit succeeds
     param4: 0, // delay before start (s)
     param5: 0, // autoreboot
@@ -1340,6 +1405,11 @@ async function startCompass(): Promise<{ success: boolean; error?: string }> {
   // in time, the fit isn't converging (unhealthy compass, interference, or too
   // little rotation). Fail with a clear message instead of hanging at 95%.
   armCompassStallTimer();
+  if (compassCalMaxTimeoutId) clearTimeout(compassCalMaxTimeoutId);
+  compassCalMaxTimeoutId = setTimeout(() => {
+    compassCalMaxTimeoutId = null;
+    finishMagCalOnTimeout();
+  }, COMPASS_CAL_MAX_MS);
 
   // The ONLY progress source from here on is the vehicle itself
   // (MAG_CAL_PROGRESS / STATUSTEXT percentages). No synthetic time-based
@@ -1370,14 +1440,7 @@ function armCompassStallTimer(): void {
   if (compassCalTimeoutId) clearTimeout(compassCalTimeoutId);
   compassCalTimeoutId = setTimeout(() => {
     compassCalTimeoutId = null;
-    if (!deps || activeCalType !== 'compass') return;
-    deps.sendLog('error', 'Compass calibration did not converge within the time limit'); // i18n-exempt
-    deps.sendComplete({
-      type: 'compass',
-      success: false,
-      error: t('main:mavlinkCalibration.compassNotConverging'),
-    });
-    cancelMavlinkCalibration();
+    finishMagCalOnTimeout();
   }, COMPASS_CAL_STALL_MS);
 }
 

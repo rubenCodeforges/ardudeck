@@ -15,6 +15,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ParameterWithMeta } from '../../../../shared/parameter-types';
+import { LivePwmInput, useLiveParamWriter } from './LivePwmInput';
 
 interface Option {
   value: number;
@@ -38,6 +39,7 @@ interface Px4ServoRowProps {
 
 export const Px4ServoRow: React.FC<Px4ServoRowProps> = React.memo(
   ({ channel, bankPrefix, parameters, setParameter, functionOptions, livePwm, liveStale, pwmMin, pwmMax }) => {
+    const writeLive = useLiveParamWriter();
     const { t } = useTranslation();
     const functionParam = parameters.get(`${bankPrefix}_FUNC${channel}`);
     const minParam = parameters.get(`${bankPrefix}_MIN${channel}`);
@@ -130,29 +132,29 @@ export const Px4ServoRow: React.FC<Px4ServoRowProps> = React.memo(
         </div>
 
         {/* Min / Max / Disarmed */}
-        <Px4NumberCell
-          param={`${bankPrefix}_MIN${channel}`}
+        <LivePwmInput
           value={minParam?.value ?? 0}
           disabled={!minParam}
-          setParameter={setParameter}
+          onWrite={(val) => writeLive(`${bankPrefix}_MIN${channel}`, val)}
           min={pwmMin}
           max={pwmMax}
+          className={CELL_CLASS}
         />
-        <Px4NumberCell
-          param={`${bankPrefix}_MAX${channel}`}
+        <LivePwmInput
           value={maxParam?.value ?? 0}
           disabled={!maxParam}
-          setParameter={setParameter}
+          onWrite={(val) => writeLive(`${bankPrefix}_MAX${channel}`, val)}
           min={pwmMin}
           max={pwmMax}
+          className={CELL_CLASS}
         />
-        <Px4NumberCell
-          param={`${bankPrefix}_DIS${channel}`}
+        <LivePwmInput
           value={disParam?.value ?? 0}
           disabled={!disParam}
-          setParameter={setParameter}
+          onWrite={(val) => writeLive(`${bankPrefix}_DIS${channel}`, val)}
           min={pwmMin}
           max={pwmMax}
+          className={CELL_CLASS}
         />
       </div>
     );
@@ -169,6 +171,9 @@ interface Px4NumberCellProps {
   min: number;
   max: number;
 }
+
+const CELL_CLASS =
+  'h-8 w-full px-2 text-sm text-center rounded bg-surface-base border border-subtle text-content font-mono disabled:opacity-40 focus:outline-none focus:border-pink-500/60';
 
 const Px4NumberCell: React.FC<Px4NumberCellProps> = ({ param, value, disabled, setParameter, min, max }) => {
   const [draft, setDraft] = useState(String(value));

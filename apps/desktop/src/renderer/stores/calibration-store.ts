@@ -32,7 +32,7 @@ import {
   type CalibrationParamInfo,
 } from '../../shared/calibration-param-groups';
 import { useParameterStore } from './parameter-store';
-import { buildCalibrationRecord } from '../../shared/calibration-quality';
+import { buildCalibrationRecord, confirmFromReadBack } from '../../shared/calibration-quality';
 
 // ============================================================================
 // Types — Force-accept calibration from file
@@ -1027,7 +1027,12 @@ async function recordCalibrationOutcome(
         .map((r) => r.fitness)
         .filter((f): f is number => typeof f === 'number')
     : [];
-  await window.electronAPI?.calibrationRecordSave(boardUid, buildCalibrationRecord(calType, written, fits));
+  const record = buildCalibrationRecord(calType, written, fits);
+  // Accel, level, gyro and the rest are live once the FC reports success: the settled read is the confirmation.
+  // Compass keeps waiting for the reboot its offsets need.
+  const saved = settled?.success ? confirmFromReadBack(record, settled.values) : record;
+  await window.electronAPI?.calibrationRecordSave(boardUid, saved);
+  useCalibrationStore.setState((s) => ({ recordsVersion: s.recordsVersion + 1 }));
 }
 
 

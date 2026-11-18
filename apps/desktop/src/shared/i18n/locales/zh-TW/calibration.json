@@ -85,6 +85,7 @@
     "confirmed": "{{name}} 校準已在載具上確認",
     "notConfirmed": "{{name}} 校準尚未確認",
     "notConfirmedDetail": "請重新啟動飛控並重新連線。ArduDeck 會回讀數值並確認它們已保留。",
+    "notReadBackDetail": "ArduDeck 暫時無法回讀數值。下次連線時會再次檢查。",
     "notSurvived": "{{name}} 校準未能在重新啟動後保留",
     "notSurvivedDetail": "{{summary}} 請勿使用此校準飛行。請重新執行。",
     "weak": "{{name}} 校準已在載具上,但品質偏弱"

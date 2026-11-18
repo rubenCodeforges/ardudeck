@@ -1790,7 +1790,8 @@
     "testMax": "最大",
     "testMin": "最小",
     "testTrim": "配平",
-    "unknownFunction": "未知 ({{value}})"
+    "unknownFunction": "未知 ({{value}})",
+    "liveNudgeTip": "方向鍵或滾輪：±1 µs，按住 Shift：±10。每一步都會立即傳送到飛行器。按 Esc 還原先前的值。"
   },
   "sitlBatteryCard": {
     "ahSet": "已設定 {{ah}} Ah",

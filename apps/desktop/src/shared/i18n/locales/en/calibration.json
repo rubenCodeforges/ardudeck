@@ -85,6 +85,7 @@
     "confirmed": "{{name}} calibration confirmed on the vehicle",
     "notConfirmed": "{{name}} calibration not yet confirmed",
     "notConfirmedDetail": "Reboot the flight controller and reconnect. ArduDeck will read the values back and confirm they stuck.",
+    "notReadBackDetail": "ArduDeck could not read the values back yet. It checks again the next time you connect.",
     "notSurvived": "{{name}} calibration did not survive the reboot",
     "notSurvivedDetail": "{{summary}} Do not fly on this calibration. Run it again.",
     "weak": "{{name}} calibration is on the vehicle, but weak"

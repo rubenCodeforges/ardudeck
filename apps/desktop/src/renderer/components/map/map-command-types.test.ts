@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { dispatchMapCommand } from './map-command-types';
+import { dispatchMapCommand, isSameSpot } from './map-command-types';
 import { encodePx4CustomMode } from '../../../shared/telemetry-types';
 
 // Focused test for the firmware-aware `land` map command. PX4 ignores the
@@ -95,5 +95,15 @@ describe('dispatchMapCommand goto altitude frames (firmware-aware)', () => {
       { firmware: 'ardupilot' },
     );
     expect(api.mavlinkGoto).toHaveBeenCalledWith(42.44, 19.26, 50, 6);
+  });
+});
+
+describe('isSameSpot (#166)', () => {
+  it('matches the autopilot echo of a sent target within a few metres', () => {
+    expect(isSameSpot({ lat: 42.1, lon: 19.1 }, { lat: 42.10002, lon: 19.10002 })).toBe(true);
+  });
+
+  it('does not match a target elsewhere', () => {
+    expect(isSameSpot({ lat: 42.1, lon: 19.1 }, { lat: 42.1003, lon: 19.1 })).toBe(false);
   });
 });

@@ -1790,7 +1790,8 @@
     "testMax": "Max",
     "testMin": "Min",
     "testTrim": "Trim",
-    "unknownFunction": "Unbekannt ({{value}})"
+    "unknownFunction": "Unbekannt ({{value}})",
+    "liveNudgeTip": "Pfeiltasten oder Mausrad: ±1 µs, Umschalt: ±10. Jeder Schritt wird sofort an das Fahrzeug gesendet. Esc stellt den vorherigen Wert wieder her."
   },
   "sitlBatteryCard": {
     "ahSet": "{{ah}} Ah gesetzt",

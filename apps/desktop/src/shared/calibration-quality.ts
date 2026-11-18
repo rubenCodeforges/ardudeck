@@ -29,6 +29,8 @@ export interface CalibrationRecordIpc {
     summary: string;
     mismatched: string[];
     checkedAt: number;
+    /** Confirmed from the read-back right after the run, not yet re-checked on a later connect. */
+    readBackOnly?: boolean;
   };
 }
 
@@ -255,6 +257,30 @@ export function assessCalibrationOutcome(
     return assessAccelCalibration({ offsets, scales });
   }
   return { verdict: 'unknown', summary: t('shared:calibrationQuality.recorded') };
+}
+
+/**
+ * Only compass offsets wait for a reboot to take effect on ArduPilot. Every other calibration is live and
+ * stored by the flight controller as soon as it reports success, so asking for a reboot to confirm it reads
+ * as "ArduDeck needs a reboot to save" (#159).
+ */
+export function calibrationNeedsReboot(calType: string): boolean {
+  return calType === 'compass';
+}
+
+/** Confirm a calibration that does not need a reboot from the values read back off the flight controller. */
+export function confirmFromReadBack(
+  record: CalibrationRecordIpc,
+  readBack: Record<string, number | undefined>,
+  checkedAt = Date.now(),
+): CalibrationRecordIpc {
+  if (calibrationNeedsReboot(record.type)) return record;
+  const result = verifyCalibrationPersisted(record.written, readBack);
+  if (result.state !== 'verified') return record;
+  return {
+    ...record,
+    persistence: { ...result, summary: t('shared:calibrationQuality.readBackConfirmed'), checkedAt, readBackOnly: true },
+  };
 }
 
 export function buildCalibrationRecord(

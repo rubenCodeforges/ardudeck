@@ -34,7 +34,7 @@ import { isFleetCommandTarget } from '../../lib/command-target';
 import { useVehicleColor } from '../../stores/vehicle-appearance-store';
 import { useTelemMissionViewStore } from '../../stores/telem-mission-view-store';
 import { mavTypeToTacticalClass, type VehicleState } from '../map/tactical-icon-pool';
-import { dispatchMapCommand, type ActiveCommandTarget, type MapCommand } from '../map/map-command-types';
+import { dispatchMapCommand, isSameSpot, type ActiveCommandTarget, type MapCommand } from '../map/map-command-types';
 import { useCommandTargetStore, useActiveVehicleTarget, commandTargetKey } from '../../stores/command-target-store';
 import { useImperativeMapLayer } from '../map/ImperativeMapLayer';
 import { MapCommandPopup } from '../map/MapCommandPopup';
@@ -2508,9 +2508,17 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
     setCommandPopup({ lat, lon });
   }, [isSelected, showMapNotice, t]);
 
-  // The vehicle's own target reports its altitude frame; a desktop-issued target keeps the card's default frame.
+  // ArduPilot reports every guided target as MAV_FRAME_GLOBAL (AMSL), so a target this desktop sent
+  // reopens in the frame and altitude it was sent with; only a foreign target falls back to the report.
+  const localTargetRef = useRef(localTarget);
+  localTargetRef.current = localTarget;
   const handleTargetClick = useCallback((lat: number, lon: number, alt: number) => {
     if (!isSelected || !useTelemetryStore.getState().flight.armed) return;
+    const local = localTargetRef.current;
+    if (local?.type === 'goto' && local.frame && isSameSpot(local, { lat, lon })) {
+      setCommandPopup({ lat: local.lat, lon: local.lon, alt: local.alt, altFrame: local.frame });
+      return;
+    }
     const reported = useTelemetryStore.getState().guidedTarget;
     setCommandPopup({ lat, lon, alt, altFrame: reported ? altFrameFromMavFrame(reported.frame) : undefined });
   }, [isSelected]);
@@ -2593,7 +2601,7 @@ const TelemetryMap2D = React.memo(function TelemetryMap2D() {
     if (result.success) {
       // ActiveTarget mirrors the issued command's variant for correct overlay rendering.
       if (command.type === 'goto') {
-        setActiveTarget({ type: 'goto', lat: command.lat, lon: command.lon, alt: command.alt, px4Amsl: result.px4Amsl });
+        setActiveTarget({ type: 'goto', lat: command.lat, lon: command.lon, alt: command.alt, px4Amsl: result.px4Amsl, frame: command.frame });
         // ArduPilot resets guided yaw behaviour on every new destination, which
         // silently cancels an active ROI (verified in SITL: yaw snapped from the
         // ROI bearing to face-travel on DO_REPOSITION). Re-assert the lock so

@@ -85,6 +85,7 @@
     "confirmed": "{{name}}-Kalibrierung auf dem Fahrzeug bestätigt",
     "notConfirmed": "{{name}}-Kalibrierung noch nicht bestätigt",
     "notConfirmedDetail": "Starten Sie den Flugcontroller neu und verbinden Sie sich erneut. ArduDeck liest die Werte zurück und bestätigt, dass sie erhalten geblieben sind.",
+    "notReadBackDetail": "ArduDeck konnte die Werte noch nicht zurücklesen. Beim nächsten Verbinden wird erneut geprüft.",
     "notSurvived": "{{name}}-Kalibrierung hat den Neustart nicht überstanden",
     "notSurvivedDetail": "{{summary}} Fliegen Sie nicht mit dieser Kalibrierung. Führen Sie sie erneut durch.",
     "weak": "{{name}}-Kalibrierung ist auf dem Fahrzeug, aber schwach"

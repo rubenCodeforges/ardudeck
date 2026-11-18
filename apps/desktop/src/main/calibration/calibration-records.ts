@@ -45,7 +45,8 @@ export async function verifyCalibrationRecords(
 
   // Anything not yet verified is read again, failures included: a record wrongly condemned once (a dropped
   // reply, a read taken before the FC finished writing) heals on the next connect, a real loss stays flagged.
-  const needsCheck = (r: CalibrationRecord): boolean => r.persistence === null || r.persistence.state !== 'verified';
+  const needsCheck = (r: CalibrationRecord): boolean =>
+    r.persistence === null || r.persistence.state !== 'verified' || r.persistence.readBackOnly === true;
   const unchecked = records.filter(needsCheck);
   if (unchecked.length === 0) return records;
 
@@ -57,6 +58,8 @@ export async function verifyCalibrationRecords(
     if (!needsCheck(record)) return record;
     const result = verifyCalibrationPersisted(record.written, readBack);
     if (result.state === 'unverified') return record;
+    // A read-back confirmation that still holds stays as it was: the re-check only speaks up when a value is lost.
+    if (record.persistence?.readBackOnly && result.state === 'verified') return record;
     const settled = { ...record, persistence: { ...result, checkedAt } };
     onSettled?.(settled, result.state === 'verified');
     return settled;
