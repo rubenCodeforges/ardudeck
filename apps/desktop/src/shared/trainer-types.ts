@@ -1,5 +1,17 @@
 /** Shapes shared between the Trainer's main-process module and its renderer view. */
 
+/** A Trainer running on its own with its own SITL, as announced in `~/.ardudeck/trainer-live.json`. */
+export interface TrainerLive {
+  pid: number;
+  trainerVersion: string | null;
+  vehicle: string | null;
+  region: string | null;
+  /** Always loopback. */
+  host: string;
+  port: number;
+  handoverSupported: boolean;
+}
+
 export interface TrainerStatus {
   /**
    * Whether the Trainer surfaces belong on screen at all.

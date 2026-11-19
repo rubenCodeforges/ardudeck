@@ -23,6 +23,7 @@ import { RadioPreflightCard } from './RadioPreflightCard';
 import type { StreamDiagnosis } from '../../../shared/link-doctor-types';
 import { hardwareCatalogRegistry, matchUsbProduct } from '../../modules/module-extension-registries';
 import { isPrimaryLinkUp } from '../../lib/primary-link';
+import type { TrainerLive } from '../../../shared/trainer-types';
 
 const BAUD_RATES = [1500000, 921600, 460800, 230400, 115200, 57600, 38400, 19200, 9600, 4800];
 
@@ -414,6 +415,50 @@ export function ConnectionPanel() {
     setError(t('connection:connectionPanel.sitlConnectFailed'));
   };
 
+  const offerTrainerConnect = useSettingsStore((s) => s.offerTrainerConnect);
+  const [trainerLive, setTrainerLive] = useState<TrainerLive | null>(null);
+  const [trainerConnect, setTrainerConnect] = useState<'idle' | 'connecting' | 'failed'>('idle');
+
+  useEffect(() => {
+    if (!offerTrainerConnect || primaryLinkUp) {
+      setTrainerLive(null);
+      return;
+    }
+    let alive = true;
+    const refresh = (): void => {
+      window.electronAPI.trainerLive()
+        .then((live) => { if (alive) setTrainerLive(live); })
+        .catch(() => { if (alive) setTrainerLive(null); });
+    };
+    refresh();
+    const timer = setInterval(refresh, 2000);
+    return () => { alive = false; clearInterval(timer); };
+  }, [offerTrainerConnect, primaryLinkUp]);
+
+  useEffect(() => {
+    if (!trainerLive) setTrainerConnect('idle');
+  }, [trainerLive]);
+
+  // The Trainer announces itself as soon as SITL is spawned, so the port can lag by a few seconds.
+  const handleTrainerConnect = async (live: TrainerLive): Promise<void> => {
+    setError(null);
+    setTrainerConnect('connecting');
+    for (let attempt = 1; attempt <= 8; attempt++) {
+      try {
+        if (await connect({ type: 'tcp', host: live.host, tcpPort: live.port, protocol: 'mavlink' })) {
+          setTrainerConnect('idle');
+          return;
+        }
+      } catch { /* retry */ }
+      if (isPrimaryLinkUp(useConnectionStore.getState().connectionState)) {
+        setTrainerConnect('idle');
+        return;
+      }
+      if (attempt < 8) await new Promise((r) => setTimeout(r, 1000));
+    }
+    setTrainerConnect('failed');
+  };
+
   // Respond to SITL starting - switch to TCP and auto-connect with retry
   useEffect(() => {
     if (pendingSitlSwitch && !primaryLinkUp) {
@@ -671,6 +716,9 @@ export function ConnectionPanel() {
     }
   };
 
+  // Starting our own SITL frees TCP 5760 by force, which would kill the Trainer's flight.
+  const trainerBlocksSitl = trainerLive !== null && !anySitlRunning;
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -708,9 +756,60 @@ export function ConnectionPanel() {
         {/* SITL Quick Start - only show when not connected */}
         {!primaryLinkUp && !connectionState.isWaitingForHeartbeat && (
           <div className="space-y-0">
+            {trainerLive && (
+              <button
+                onClick={() => void handleTrainerConnect(trainerLive)}
+                disabled={trainerConnect === 'connecting' || isConnecting}
+                className="mb-2 w-full rounded-xl transition-all disabled:cursor-wait overflow-hidden bg-emerald-600/10 hover:bg-emerald-600/15 border border-emerald-500/30 hover:border-emerald-500/50"
+              >
+                <div className="flex items-center gap-3 px-4 pt-3.5 pb-2">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-emerald-600/20">
+                    {trainerConnect === 'connecting' ? (
+                      <svg className="w-5 h-5 animate-spin text-emerald-400" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-[18px] h-[18px] text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5L12 15.6l-4.9 2.6.9-5.5-4-3.9L9.5 8z" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex-1 text-left min-w-0">
+                    <div className="text-[13px] font-medium text-content">{t('connection:connectionPanel.trainerRunning')}</div>
+                    <div className={`text-[11px] mt-0.5 ${trainerConnect === 'failed' ? 'text-amber-400' : 'text-content-secondary'}`}>
+                      {trainerConnect === 'connecting' ? t('connection:connectionPanel.trainerConnecting')
+                        : trainerConnect === 'failed' ? t('connection:connectionPanel.trainerNoAnswer', { port: trainerLive.port })
+                        : t('connection:connectionPanel.trainerConnect')}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    {trainerConnect === 'failed' ? (
+                      <span className="text-[11px] font-medium text-emerald-400">{t('connection:connectionPanel.trainerTryAgain')}</span>
+                    ) : (
+                      <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 px-4 pb-3">
+                  {trainerLive.vehicle && (
+                    <span className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-emerald-500/15 text-emerald-400">{cap(trainerLive.vehicle)}</span>
+                  )}
+                  {trainerLive.region && (
+                    <span className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-emerald-500/15 text-emerald-400">{trainerLive.region}</span>
+                  )}
+                  <span className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-emerald-500/15 text-emerald-400">
+                    {t('connection:connectionPanel.trainerTcpTag', { port: trainerLive.port })}
+                  </span>
+                </div>
+              </button>
+            )}
             <button
               onClick={anySitlRunning ? handleSitlConnect : handleSitlQuickStart}
-              disabled={anySitlStarting || isConnecting || anySitlDownloading}
+              disabled={anySitlStarting || isConnecting || anySitlDownloading || trainerBlocksSitl}
               className={`w-full rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden ${sitlStyle.card}`}
             >
               {/* Header row */}
@@ -723,7 +822,7 @@ export function ConnectionPanel() {
                 <div className="flex-1 text-left min-w-0">
                   <div className="text-[13px] font-medium text-content">{t('common:sitlSimulator')}</div>
                   <div className="text-[11px] text-content-secondary mt-0.5">
-                    {sitlSubtitle}
+                    {trainerBlocksSitl ? t('connection:connectionPanel.sitlPausedForTrainer') : sitlSubtitle}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -751,6 +850,11 @@ export function ConnectionPanel() {
                 <span className={`px-2 py-0.5 text-[10px] font-medium rounded-md ${sitlStyle.badge}`}>
                   {sitlLabel}
                 </span>
+                {trainerBlocksSitl && (
+                  <span className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-amber-500/15 text-amber-400">
+                    {t('connection:connectionPanel.trainerHasPorts')}
+                  </span>
+                )}
                 {activeNeedsDownload && (
                   <span className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-amber-500/15 text-amber-400">
                     {t('connection:connectionPanel.downloadNeeded')}

@@ -55,6 +55,7 @@ import type {
   TrainerLocusSurvey,
   TrainerCatalogue,
   TrainerLaunchInput,
+  TrainerLive,
   TrainerStatus,
 } from '../shared/trainer-types.js';
 import { BASEMAP_IPC, type ModuleBasemapInfo } from '../shared/basemap-types.js';
@@ -2999,6 +3000,7 @@ const api = {
 
   // ─── ArduDeck Trainer ───
   trainerStatus: (): Promise<TrainerStatus> => ipcRenderer.invoke(IPC_CHANNELS.TRAINER_STATUS),
+  trainerLive: (): Promise<TrainerLive | null> => ipcRenderer.invoke(IPC_CHANNELS.TRAINER_LIVE),
   trainerBake: (request: TrainerBakeRequest): Promise<TrainerBakeDone> =>
     ipcRenderer.invoke(IPC_CHANNELS.TRAINER_BAKE, request),
   trainerBakeCancel: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.TRAINER_BAKE_CANCEL),

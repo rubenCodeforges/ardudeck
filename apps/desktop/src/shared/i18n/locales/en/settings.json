@@ -583,6 +583,12 @@
       "disarmed": "Disarmed",
       "armed": "Armed",
       "silent": "Silent"
+    },
+    "trainerDetect": {
+      "title": "Trainer",
+      "offer": "Offer to connect to a running Trainer",
+      "offerHint": "When the Trainer is open on this computer, the connection screen shows a card to connect to its simulated drone with one click.",
+      "offerNot": "It does not start the Trainer, connect without your click, or change anything in the Trainer. It only reads a small status file the Trainer writes on this computer. Nothing goes over the network."
     }
   },
   "signingSection": {

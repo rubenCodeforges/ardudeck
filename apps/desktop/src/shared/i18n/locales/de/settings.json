@@ -583,6 +583,12 @@
       "disarmed": "Unscharf",
       "armed": "Scharf",
       "silent": "Stumm"
+    },
+    "trainerDetect": {
+      "title": "Trainer",
+      "offer": "Verbindung zu einem laufenden Trainer anbieten",
+      "offerHint": "Wenn der Trainer auf diesem Computer geöffnet ist, zeigt der Verbindungsbildschirm eine Karte, um sich mit einem Klick mit seiner simulierten Drohne zu verbinden.",
+      "offerNot": "Es startet den Trainer nicht, verbindet nicht ohne Ihren Klick und ändert nichts im Trainer. Es liest nur eine kleine Statusdatei, die der Trainer auf diesem Computer schreibt. Nichts geht über das Netzwerk."
     }
   },
   "signingSection": {

@@ -22,6 +22,7 @@ import {
 import type { TrainerBakeDone } from '../../shared/trainer-types.js';
 import { t } from '../../shared/i18n/index.js';
 import { listLocusSurveys } from './locus-surveys.js';
+import { readTrainerLive } from './trainer-live.js';
 
 /**
  * Flying what is planned here, in the Trainer, without leaving this app first.
@@ -226,4 +227,5 @@ export function setupTrainerHandlers(mainWindow: BrowserWindow | null, deps: Tra
   );
 
   ipcMain.handle(IPC_CHANNELS.TRAINER_SESSION_ACTIVE, (): boolean => trainerSessionActive);
+  ipcMain.handle(IPC_CHANNELS.TRAINER_LIVE, () => readTrainerLive(app.getPath('home')));
 }

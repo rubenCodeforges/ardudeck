@@ -80,7 +80,15 @@
     "flowControl": "硬件流控（RTS/CTS）",
     "flowControlTip": "当无线电设为 RTS/CTS 流控时开启，RFD900 和 RFD868 无线电通常如此。需要连接 RTS 和 CTS 线。",
     "holdLinesHigh": "保持 DTR/RTS 高电平",
-    "holdLinesHighTip": "仅对在 DTR 拉高之前保持静默的设备开启，例如某些带独立 USB 的主板。对 ELRS 及其他基于 ESP32 的模块请保持关闭：它们会在这两条线上复位。"
+    "holdLinesHighTip": "仅对在 DTR 拉高之前保持静默的设备开启，例如某些带独立 USB 的主板。对 ELRS 及其他基于 ESP32 的模块请保持关闭：它们会在这两条线上复位。",
+    "trainerRunning": "Trainer 正在运行",
+    "trainerConnect": "连接到它的模拟无人机",
+    "trainerConnecting": "正在连接，模拟器可能仍在启动…",
+    "trainerNoAnswer": "8 秒后 TCP {{port}} 无响应。Trainer 中是否已开始飞行？",
+    "trainerTryAgain": "重试",
+    "trainerTcpTag": "TCP {{port}}",
+    "sitlPausedForTrainer": "Trainer 飞行期间已暂停",
+    "trainerHasPorts": "Trainer 正在占用模拟器端口"
   },
   "driverAssistant": {
     "bundled": "已内置",

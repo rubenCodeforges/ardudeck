@@ -80,7 +80,15 @@
     "flowControl": "Hardware-Flusskontrolle (RTS/CTS)",
     "flowControlTip": "Einschalten, wenn das Funkmodul auf RTS/CTS-Flusskontrolle steht, wie oft bei RFD900 und RFD868. Braucht angeschlossene RTS- und CTS-Leitungen.",
     "holdLinesHigh": "DTR/RTS hoch halten",
-    "holdLinesHighTip": "Nur einschalten, wenn ein Gerät stumm bleibt, bis DTR anliegt, etwa manche Boards mit eigenem USB. Für ELRS und andere ESP32-Module aus lassen: sie starten auf diesen Leitungen neu."
+    "holdLinesHighTip": "Nur einschalten, wenn ein Gerät stumm bleibt, bis DTR anliegt, etwa manche Boards mit eigenem USB. Für ELRS und andere ESP32-Module aus lassen: sie starten auf diesen Leitungen neu.",
+    "trainerRunning": "Trainer läuft",
+    "trainerConnect": "Mit seiner simulierten Drohne verbinden",
+    "trainerConnecting": "Verbinde, der Simulator startet eventuell noch…",
+    "trainerNoAnswer": "Keine Antwort auf TCP {{port}} nach 8 s. Ist im Trainer ein Flug gestartet?",
+    "trainerTryAgain": "Erneut versuchen",
+    "trainerTcpTag": "TCP {{port}}",
+    "sitlPausedForTrainer": "Pausiert, solange der Trainer fliegt",
+    "trainerHasPorts": "Trainer belegt die Simulator-Ports"
   },
   "driverAssistant": {
     "bundled": "Mitgeliefert",

@@ -91,7 +91,6 @@
     "windBlocked": "逆风航段",
     "windBlockedDetail": "风速达到或超过巡航速度：无法保持这些航段",
     "windLayerIncludedDetail": "上方飞行时间已计入 {{altitude}} 的风层"
-
   },
   "flightPreviewPanel": {
     "cameraTurns": "相机转向",
@@ -589,6 +588,7 @@
       "replayTip": "重播覆盖计划",
       "saveArea": "将区域保存到任务库",
       "selectWaypoints": "选择航点",
+      "makePolygon": "生成多边形并规划测绘",
       "setColor": "设置颜色 {{color}}",
       "staleOnVehicle": "载具上已过时",
       "staleOnVehicleTip": "此群组先前已上传，但之后又被编辑过。载具上的内容已过期。",
@@ -626,7 +626,7 @@
       "copied": "已复制",
       "copyAllTip": "复制所有航点的纬度、经度（每行一个）",
       "copyCoords": "复制坐标",
-      "makePolygon": "多边形",
+      "makePolygon": "生成多边形",
       "makePolygonTip": "按任务顺序把所选航点连成多边形，并在其上规划测绘。适合步行或飞行采集后下载的边界。需要至少 3 个有坐标的航点。",
       "polygonName": "航点 {{from}}-{{to}} 多边形",
       "copySelectedTip": "复制所选航点的纬度、经度（每行一个）",

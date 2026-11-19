@@ -583,6 +583,12 @@
       "disarmed": "已上鎖",
       "armed": "已解鎖",
       "silent": "靜音"
+    },
+    "trainerDetect": {
+      "title": "Trainer",
+      "offer": "提示連線到正在執行的 Trainer",
+      "offerHint": "當 Trainer 在本機開啟時，連線畫面會顯示一張卡片，一鍵連線到它的模擬無人機。",
+      "offerNot": "它不會啟動 Trainer，不會在未點擊時自動連線，也不會變更 Trainer 中的任何內容。它只讀取 Trainer 在本機寫入的一個小狀態檔。不經過網路傳輸任何資料。"
     }
   },
   "signingSection": {

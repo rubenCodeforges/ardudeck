@@ -924,6 +924,8 @@ export const IPC_CHANNELS = {
   TRAINER_LOG: 'trainer:log',
   TRAINER_SESSION: 'trainer:session',
   TRAINER_SESSION_ACTIVE: 'trainer:session-active',
+  /** Renderer -> main: a Trainer started on its own, flying its own SITL, or null. */
+  TRAINER_LIVE: 'trainer:live',
   /** Renderer -> main: Locus surveys on this machine that a region can be baked from. */
   TRAINER_LOCUS_SURVEYS: 'trainer:locus-surveys',
 

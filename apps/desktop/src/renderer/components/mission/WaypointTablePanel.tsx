@@ -1456,6 +1456,7 @@ function GroupHeaderRow({
   flightEnd,
   onSetEndsFlight,
   onSelectWaypoints,
+  onMakePolygon,
   bulkSelected,
   pickIndex,
   linkMode,
@@ -1540,6 +1541,8 @@ function GroupHeaderRow({
   onSetEndsFlight?: (ends: boolean) => void;
   /** Add all of this group's waypoints to the multi-selection. */
   onSelectWaypoints?: () => void;
+  /** Turn this group's waypoints into a polygon and open a survey on it. */
+  onMakePolygon?: () => void;
   /** Ticked for bulk actions. Undefined hides the checkbox entirely. */
   bulkSelected?: boolean;
   /** 1-based position in the connect order, when more than one is ticked. */
@@ -1989,6 +1992,18 @@ function GroupHeaderRow({
                       className="w-full text-left px-3 py-1.5 text-xs text-content hover:bg-surface-raised transition-colors"
                     >
                       {t('mission:waypointTable.group.selectWaypoints')}
+                    </button>
+                  )}
+                  {onMakePolygon && (
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onMakePolygon();
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-content hover:bg-surface-raised transition-colors"
+                      data-tip={t('mission:waypointTable.list.makePolygonTip')}
+                    >
+                      {t('mission:waypointTable.group.makePolygon')}
                     </button>
                   )}
                   {flightEnd && onSetEndsFlight && (
@@ -2765,8 +2780,14 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
   // #164: the selected waypoints (e.g. a boundary walked or flown and downloaded) become a
   // polygon guide in mission order, and a survey draft opens on it right away.
   const handleMakePolygon = () => {
-    const source = multiSelected.size > 0 ? missionItems.filter(w => multiSelected.has(w.seq)) : missionItems;
-    const located = source.filter(w => commandHasLocation(w.command) && hasValidCoordinates(w.latitude, w.longitude));
+    makePolygonFrom(multiSelected.size > 0 ? missionItems.filter(w => multiSelected.has(w.seq)) : missionItems);
+  };
+
+  const locatedOf = (items: MissionItem[]) =>
+    items.filter(w => commandHasLocation(w.command) && hasValidCoordinates(w.latitude, w.longitude));
+
+  const makePolygonFrom = (source: MissionItem[]) => {
+    const located = locatedOf(source);
     if (located.length < 3) return;
     const guides = useGuideStore.getState();
     const res = guides.addSurveyedPoints(
@@ -3378,6 +3399,11 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
                     onSelectWaypoints={
                       (itemCountByGroup.get(group.id) ?? 0) > 0
                         ? () => selectGroupWaypoints(group.id)
+                        : undefined
+                    }
+                    onMakePolygon={
+                      group.kind !== 'survey' && locatedOf(missionItems.filter((it) => it.groupId === group.id)).length >= 3
+                        ? () => makePolygonFrom(missionItems.filter((it) => it.groupId === group.id))
                         : undefined
                     }
                     onDuplicate={() => duplicateGroup(group.id)}

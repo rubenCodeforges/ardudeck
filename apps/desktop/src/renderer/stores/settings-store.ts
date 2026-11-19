@@ -366,6 +366,8 @@ interface SettingsStore {
   setServeTerrain: (enabled: boolean) => void;
   recordTlog: boolean;
   setRecordTlog: (enabled: boolean) => void;
+  offerTrainerConnect: boolean;
+  setOfferTrainerConnect: (enabled: boolean) => void;
   /** Voice volume 0-100 while every vehicle is disarmed (setup on the bench) and while one is armed (#165). */
   voiceVolumeDisarmed: number;
   voiceVolumeArmed: number;
@@ -880,6 +882,11 @@ export const useSettingsStore = create<SettingsStore>()(
     set({ recordTlog: enabled });
     void get()._saveSettings();
   },
+  offerTrainerConnect: true,
+  setOfferTrainerConnect: (enabled: boolean) => {
+    set({ offerTrainerConnect: enabled });
+    void get()._saveSettings();
+  },
 
   gcsSysid: 255,
   setGcsSysid: (sysid: number) => {
@@ -1067,6 +1074,7 @@ export const useSettingsStore = create<SettingsStore>()(
           showDebugLogs: !!settingsRecord.showDebugLogs,
           serveTerrain: settingsRecord.serveTerrain !== false,
           recordTlog: settingsRecord.recordTlog !== false,
+          offerTrainerConnect: settingsRecord.offerTrainerConnect !== false,
           voiceVolumeDisarmed: typeof settingsRecord.voiceVolumeDisarmed === 'number' ? Math.max(0, Math.min(100, settingsRecord.voiceVolumeDisarmed as number)) : 100,
           voiceVolumeArmed: typeof settingsRecord.voiceVolumeArmed === 'number' ? Math.max(0, Math.min(100, settingsRecord.voiceVolumeArmed as number)) : 100,
           gcsSysid: typeof settingsRecord.gcsSysid === 'number'
@@ -1111,6 +1119,7 @@ export const useSettingsStore = create<SettingsStore>()(
         preferredFirmwareSource: state.preferredFirmwareSource,
         serveTerrain: state.serveTerrain,
         recordTlog: state.recordTlog,
+        offerTrainerConnect: state.offerTrainerConnect,
         voiceVolumeDisarmed: state.voiceVolumeDisarmed,
         voiceVolumeArmed: state.voiceVolumeArmed,
         telemetrySpeed: state.telemetrySpeed,

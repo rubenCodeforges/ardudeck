@@ -80,7 +80,15 @@
     "flowControl": "Hardware flow control (RTS/CTS)",
     "flowControlTip": "Turn on when the radio is set to RTS/CTS flow control, as RFD900 and RFD868 radios often are. Needs the RTS and CTS wires connected.",
     "holdLinesHigh": "Hold DTR/RTS high",
-    "holdLinesHighTip": "Turn on only for a device that stays silent until DTR is up, such as some boards with their own USB. Leave off for ELRS and other ESP32-based modules: they reset on these lines."
+    "holdLinesHighTip": "Turn on only for a device that stays silent until DTR is up, such as some boards with their own USB. Leave off for ELRS and other ESP32-based modules: they reset on these lines.",
+    "trainerRunning": "Trainer is running",
+    "trainerConnect": "Connect to its simulated drone",
+    "trainerConnecting": "Connecting, the simulator may still be booting…",
+    "trainerNoAnswer": "No answer on TCP {{port}} after 8 s. Is a flight started in the Trainer?",
+    "trainerTryAgain": "Try again",
+    "trainerTcpTag": "TCP {{port}}",
+    "sitlPausedForTrainer": "Paused while the Trainer flies",
+    "trainerHasPorts": "Trainer has the simulator ports"
   },
   "driverAssistant": {
     "bundled": "Bundled",

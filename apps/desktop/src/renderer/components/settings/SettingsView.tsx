@@ -2053,6 +2053,7 @@ export function SettingsView() {
             <TerrainUplinkSection />
             <VoiceVolumeSection />
             <TelemetryLogSection />
+            <TrainerDetectSection />
             {/* SECTION: Console */}
             <ConsoleSettingsSection />
             {/* SECTION: Experimental Features (AI Flight Analysis lives here). */}
@@ -2309,6 +2310,36 @@ function TelemetryLogSection() {
             className="ml-2 h-8 px-3 rounded-lg border border-subtle text-xs text-content-secondary hover:text-content hover:bg-surface-raised disabled:opacity-50"
           >
             {t('settings:settingsView.telemetryLog.replay')}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function TrainerDetectSection() {
+  const { t } = useTranslation();
+  const offer = useSettingsStore((s) => s.offerTrainerConnect);
+  const setOffer = useSettingsStore((s) => s.setOfferTrainerConnect);
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-1.5 h-5 bg-emerald-500 rounded-full" />
+        <h2 className="text-sm font-medium text-content uppercase tracking-wider">{t('settings:settingsView.trainerDetect.title')}</h2>
+      </div>
+      <section className="bg-gradient-to-br from-surface to-surface-base rounded-xl border border-subtle p-5">
+        <div className="flex items-center justify-between bg-surface-input rounded-lg p-3">
+          <div className="flex-1 mr-3">
+            <div className="text-sm text-content font-medium">{t('settings:settingsView.trainerDetect.offer')}</div>
+            <div className="text-xs text-content-secondary mt-0.5">{t('settings:settingsView.trainerDetect.offerHint')}</div>
+            <div className="text-xs text-content-tertiary mt-1">{t('settings:settingsView.trainerDetect.offerNot')}</div>
+          </div>
+          <button
+            onClick={() => setOffer(!offer)}
+            className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${offer ? 'bg-blue-600' : 'bg-surface-inset'}`}
+          >
+            <div className={`w-4 h-4 rounded-full bg-white border border-strong shadow-sm absolute top-0.5 transition-all ${offer ? 'left-[18px]' : 'left-0.5'}`} />
           </button>
         </div>
       </section>

@@ -583,6 +583,12 @@
       "disarmed": "已上锁",
       "armed": "已解锁",
       "silent": "静音"
+    },
+    "trainerDetect": {
+      "title": "Trainer",
+      "offer": "提示连接正在运行的 Trainer",
+      "offerHint": "当 Trainer 在本机打开时，连接界面会显示一张卡片，一键连接到它的模拟无人机。",
+      "offerNot": "它不会启动 Trainer，不会在未点击时自动连接，也不会更改 Trainer 中的任何内容。它只读取 Trainer 在本机写入的一个小状态文件。不经过网络传输任何数据。"
     }
   },
   "signingSection": {
