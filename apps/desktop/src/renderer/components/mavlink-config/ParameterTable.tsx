@@ -41,8 +41,10 @@ interface Toast {
   type: ToastType;
 }
 
-// Column widths kept in one place so header and rows stay aligned.
-const PARAM_GRID_COLUMNS = 'minmax(220px, 260px) minmax(140px, 200px) 96px minmax(220px, 320px) minmax(0, 1fr) 140px';
+// Column widths kept in one place so header and rows stay aligned. Options and description share the free space
+// and description keeps a floor: with a fixed-width Options column and a 0px floor, the Default column (Beta 1.3)
+// squeezed the description to nothing on a 1366px-class window (#173).
+const PARAM_GRID_COLUMNS = 'minmax(200px, 240px) minmax(130px, 180px) 88px minmax(160px, 1fr) minmax(240px, 2fr) 140px';
 
 // Group tab colors keyed by PARAMETER_GROUPS[].color. Literal class strings so
 // Tailwind's content scan keeps them; runtime-built `bg-${c}-500/20` strings get purged.

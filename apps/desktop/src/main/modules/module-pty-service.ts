@@ -1,10 +1,10 @@
-import * as pty from 'node-pty';
+import type * as Pty from 'node-pty';
 import { randomUUID } from 'node:crypto';
 import { BrowserWindow } from 'electron';
 import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
 
 interface Session {
-  ptyProc: pty.IPty;
+  ptyProc: Pty.IPty;
   moduleSlug: string;
   windowId: number;
 }
@@ -22,7 +22,23 @@ export interface PtySpawnOpts {
   rows?: number;
 }
 
-export function spawnPty(opts: PtySpawnOpts): string {
+let ptyModule: Promise<typeof Pty> | null = null;
+
+/**
+ * node-pty is a native addon. Loaded at startup, a build without its binary (the Linux AppImage of RC3 had none)
+ * killed the main process before any window opened. Loading it on the first terminal keeps a missing binary
+ * down to that one cargo feature.
+ */
+function loadPty(): Promise<typeof Pty> {
+  ptyModule ??= import('node-pty').catch((err: unknown) => {
+    ptyModule = null;
+    throw new Error(`terminal support is not available in this build: ${err instanceof Error ? err.message : String(err)}`); // i18n-exempt
+  });
+  return ptyModule;
+}
+
+export async function spawnPty(opts: PtySpawnOpts): Promise<string> {
+  const pty = await loadPty();
   const id = `${opts.moduleSlug}:${randomUUID()}`;
   const ptyProc = pty.spawn(opts.shell, opts.args ?? [], {
     name: 'xterm-256color',

@@ -95,11 +95,23 @@ jobs:
       - name: Build packages
         run: pnpm build
 
+      # node-pty ships prebuilds for macOS and Windows only, and npmRebuild is off, so the Linux
+      # package had no pty.node and the AppImage died on start (RC3). Compile it for Electron here.
+      - name: Build node-pty for Electron (linux x64)
+        working-directory: node_modules/node-pty
+        run: |
+          ELECTRON_VERSION=$(node -p "require('../../apps/desktop/package.json').build.electronVersion")
+          npx --yes node-gyp@11.2.0 rebuild --runtime=electron --target="$ELECTRON_VERSION" --dist-url=https://electronjs.org/headers --arch=x64
+          test -f build/Release/pty.node
+
       - name: Build Linux x64
         working-directory: apps/desktop
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm package --linux --publish never
+
+      - name: Check the package carries pty.node
+        run: test -f apps/desktop/release/linux-unpacked/resources/app.asar.unpacked/node_modules/node-pty/build/Release/pty.node
 
       - name: Upload Linux AppImage
         uses: actions/upload-artifact@v4
