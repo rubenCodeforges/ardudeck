@@ -21,7 +21,7 @@ import { AlertTriangle, CheckCircle2, HelpCircle, ShieldAlert } from 'lucide-rea
 import { useConnectionStore } from '../../../stores/connection-store';
 import { useCalibrationStore } from '../../../stores/calibration-store';
 import { CALIBRATION_TYPES, calibrationTypeName } from '../../../../shared/calibration-types';
-import { calibrationNeedsReboot, type CalibrationRecordIpc } from '../../../../shared/calibration-quality';
+import { calibrationNeedsReboot, calibrationRecordSummary, type CalibrationRecordIpc } from '../../../../shared/calibration-quality';
 
 type Tone = 'good' | 'warn' | 'danger' | 'neutral';
 
@@ -46,7 +46,11 @@ function assess(record: CalibrationRecordIpc, t: TFunction): { tone: Tone; headl
     return {
       tone: 'danger',
       headline: t('calibration:calibrationHealthBanner.notSurvived', { name }),
-      detail: t('calibration:calibrationHealthBanner.notSurvivedDetail', { summary: record.persistence.summary }),
+      detail: t('calibration:calibrationHealthBanner.notSurvivedDetail', {
+        summary: record.persistence.state === 'not-persisted'
+          ? t('shared:calibrationQuality.notPersisted', { count: record.persistence.mismatched.length })
+          : record.persistence.summary,
+      }),
     };
   }
   if (!record.persistence) {
@@ -62,13 +66,13 @@ function assess(record: CalibrationRecordIpc, t: TFunction): { tone: Tone; headl
     return {
       tone: record.verdict === 'bad' ? 'danger' : 'warn',
       headline: t('calibration:calibrationHealthBanner.weak', { name }),
-      detail: record.summary,
+      detail: calibrationRecordSummary(record),
     };
   }
   return {
     tone: 'good',
     headline: t('calibration:calibrationHealthBanner.confirmed', { name }),
-    detail: record.summary,
+    detail: calibrationRecordSummary(record),
   };
 }
 

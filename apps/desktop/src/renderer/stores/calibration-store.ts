@@ -1027,7 +1027,11 @@ async function recordCalibrationOutcome(
         .map((r) => r.fitness)
         .filter((f): f is number => typeof f === 'number')
     : [];
-  const record = buildCalibrationRecord(calType, written, fits);
+  const observed = settledCalibrationValues(
+    verification.results.filter((row) => row.after !== undefined && row.after !== null),
+    settled?.success ? settled.values : undefined,
+  );
+  const record = buildCalibrationRecord(calType, written, fits, Date.now(), observed);
   // Accel, level, gyro and the rest are live once the FC reports success: the settled read is the confirmation.
   // Compass keeps waiting for the reboot its offsets need.
   const saved = settled?.success ? confirmFromReadBack(record, settled.values) : record;

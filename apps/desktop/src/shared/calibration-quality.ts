@@ -23,6 +23,8 @@ export interface CalibrationRecordIpc {
   written: Record<string, number>;
   verdict: CalibrationVerdict | string;
   summary: string;
+  /** What the summary was judged on, so it can be said again in the language the pilot uses now. */
+  assessedOn?: { values: Record<string, number>; fitnesses: number[] };
   completedAt: number;
   persistence: null | {
     state: CalibrationPersistence | string;
@@ -283,18 +285,33 @@ export function confirmFromReadBack(
   };
 }
 
+function assessmentText(a: CalibrationAssessment): string {
+  return a.advice ? `${a.summary} ${a.advice}` : a.summary;
+}
+
+/** The record's quality line in the current language. The stored summary is in whatever language it was run in. */
+export function calibrationRecordSummary(record: CalibrationRecordIpc): string {
+  if (!record.assessedOn) return record.summary;
+  return assessmentText(assessCalibrationOutcome(record.type, record.assessedOn.values, record.assessedOn.fitnesses));
+}
+
 export function buildCalibrationRecord(
   calType: string,
   written: Record<string, number>,
   compassFitnesses: number[],
   completedAt = Date.now(),
+  /** Every calibration value read after the run. `written` holds only what moved, and a six-point run that left
+   *  the X offset where it was would otherwise be judged as "values not read" (#159). */
+  observed: Record<string, number> = written,
 ): CalibrationRecordIpc {
-  const a = assessCalibrationOutcome(calType, written, compassFitnesses);
+  const values = { ...observed, ...written };
+  const a = assessCalibrationOutcome(calType, values, compassFitnesses);
   return {
     type: calType,
     written,
     verdict: a.verdict,
-    summary: a.advice ? `${a.summary} ${a.advice}` : a.summary,
+    summary: assessmentText(a),
+    assessedOn: { values, fitnesses: compassFitnesses },
     completedAt,
     persistence: null,
   };
