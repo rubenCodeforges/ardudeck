@@ -510,6 +510,112 @@ pub fn record_flight(
     FlightRecord { name: name.to_string(), frames }
 }
 
+/// Load a real ArduPilot DataFlash `.bin` into a [`FlightRecord`].
+///
+/// One frame per primary IMU sample (IMU instance 0), with every other message
+/// held at its latest value at or before that sample: RCOU C1..C`channels` for
+/// the servo outputs, XKF1 (core 0) for NED position and velocity, ATT for
+/// attitude, ARSP for airspeed, XKF2 VWN/VWE for the EKF wind, and ESC RPM for
+/// rotor speed when every ESC has reported.
+pub fn load_dataflash(bytes: &[u8], name: &str, channels: usize) -> anyhow::Result<FlightRecord> {
+    use flightlog_core::column::Table;
+    use flightlog_core::{dataflash, ReadOptions};
+
+    struct Track {
+        t: Vec<f64>,
+        cols: Vec<Vec<f64>>,
+    }
+    impl Track {
+        /// Values of the last row at or before `us`.
+        fn at(&self, us: f64) -> Option<Vec<f64>> {
+            let i = self.t.partition_point(|&x| x <= us).checked_sub(1)?;
+            Some(self.cols.iter().map(|c| c[i]).collect())
+        }
+    }
+    let col = |t: &Table, c: &str| {
+        t.f64s(c)
+            .ok_or_else(|| anyhow::anyhow!("{name}: {} has no {c}", t.name))
+    };
+    let track = |t: Option<Table>, cols: &[&str]| -> anyhow::Result<Option<Track>> {
+        let Some(t) = t.filter(|t| !t.is_empty()) else {
+            return Ok(None);
+        };
+        Ok(Some(Track {
+            t: col(&t, "TimeUS")?,
+            cols: cols.iter().map(|c| col(&t, c)).collect::<anyhow::Result<_>>()?,
+        }))
+    };
+
+    let opts = ReadOptions {
+        types: Some(
+            ["IMU", "RCOU", "ATT", "XKF1", "XKF2", "ARSP", "ESC"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        ),
+        ..ReadOptions::default()
+    };
+    let log = dataflash::read(bytes, &opts);
+    // Rows of one sensor or EKF core, by the field ArduPilot writes the
+    // instance into (IMU/ARSP "I", XKF "C", ESC "Instance").
+    let rows_of = |t: &Table, field: &str, v: f64| match t.f64s(field) {
+        Some(ids) => t.take(&(0..t.len()).filter(|&i| ids[i] == v).collect::<Vec<_>>()),
+        None => t.clone(),
+    };
+    let first = |table: &str, field: &str| log.table(table).map(|t| rows_of(t, field, 0.0));
+    let need = |t: Option<Track>, what: &str| t.ok_or_else(|| anyhow::anyhow!("{name}: no {what} messages"));
+
+    let rc: Vec<String> = (1..=channels).map(|i| format!("C{i}")).collect();
+    let rc: Vec<&str> = rc.iter().map(String::as_str).collect();
+    let rcou = need(track(log.table("RCOU").cloned(), &rc)?, "RCOU")?;
+    let ekf = need(track(first("XKF1", "C"), &["PN", "PE", "PD", "VN", "VE", "VD"])?, "XKF1")?;
+    let att = need(track(log.table("ATT").cloned(), &["Roll", "Pitch", "Yaw"])?, "ATT")?;
+    let imu = need(
+        track(first("IMU", "I"), &["GyrX", "GyrY", "GyrZ", "AccX", "AccY", "AccZ"])?,
+        "IMU",
+    )?;
+    let arsp = track(first("ARSP", "I"), &["Airspeed"])?;
+    let wind = track(first("XKF2", "C"), &["VWN", "VWE"])?;
+    let mut esc: Vec<Track> = Vec::new();
+    if let Some(t) = log.table("ESC") {
+        let mut ids = t.f64s("Instance").unwrap_or_default();
+        ids.sort_by(f64::total_cmp);
+        ids.dedup();
+        for id in ids {
+            esc.extend(track(Some(rows_of(t, "Instance", id)), &["RPM"])?);
+        }
+    }
+
+    let t0 = imu.t.first().copied().unwrap_or(0.0);
+    let mut frames = Vec::with_capacity(imu.t.len());
+    for (i, &us) in imu.t.iter().enumerate() {
+        let (Some(pwm), Some(e), Some(a)) = (rcou.at(us), ekf.at(us), att.at(us)) else {
+            continue;
+        };
+        let g = |k: usize| imu.cols[k][i];
+        let rpm = if esc.is_empty() {
+            None
+        } else {
+            esc.iter()
+                .map(|m| m.at(us).map(|r| r[0] * std::f64::consts::TAU / 60.0))
+                .collect()
+        };
+        frames.push(RecordFrame {
+            t: (us - t0) * 1e-6,
+            pwm,
+            position: Vec3::new(e[0], e[1], e[2]),
+            velocity: Vec3::new(e[3], e[4], e[5]),
+            attitude: Quat::from_euler(a[0].to_radians(), a[1].to_radians(), a[2].to_radians()),
+            gyro: Vec3::new(g(0), g(1), g(2)),
+            accel_body: Vec3::new(g(3), g(4), g(5)),
+            airspeed: arsp.as_ref().and_then(|s| s.at(us)).map(|v| v[0]),
+            wind: wind.as_ref().and_then(|s| s.at(us)).map(|v| Vec3::new(v[0], v[1], 0.0)),
+            rpm,
+        });
+    }
+    Ok(FlightRecord { name: name.to_string(), frames })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -788,6 +894,75 @@ mod tests {
         let windy = replay(&mut vehicle(), &record, Mode::Derivative).overall.accel_error();
         assert!(windy > calm + 1e-6,
             "wind ignored: calm {calm:.3e} windy {windy:.3e}");
+    }
+
+    /// A real `.bin` loads into the harness: RCOU, XKF1, ATT, IMU, ARSP, XKF2
+    /// and ESC land in the right fields, scaled and in SI units.
+    #[test]
+    fn a_dataflash_bin_loads_into_a_flight_record() {
+        fn pad(s: &str, n: usize) -> Vec<u8> {
+            let mut b = s.as_bytes().to_vec();
+            b.resize(n, 0);
+            b
+        }
+        fn f(v: &[f32]) -> Vec<u8> {
+            v.iter().flat_map(|x| x.to_le_bytes()).collect()
+        }
+        let mut bin = Vec::new();
+        for (id, name, fmt, cols, len) in [
+            (128u8, "FMT", "BBnNZ", "Type,Length,Name,Format,Columns", 89u8),
+            (10, "IMU", "QBffffff", "TimeUS,I,GyrX,GyrY,GyrZ,AccX,AccY,AccZ", 36),
+            (11, "RCOU", "QHHHH", "TimeUS,C1,C2,C3,C4", 19),
+            (12, "ATT", "Qccc", "TimeUS,Roll,Pitch,Yaw", 17),
+            (13, "XKF1", "QBffffff", "TimeUS,C,PN,PE,PD,VN,VE,VD", 36),
+            (14, "ARSP", "QBf", "TimeUS,I,Airspeed", 16),
+            (15, "XKF2", "QBff", "TimeUS,C,VWN,VWE", 20),
+            (16, "ESC", "QBi", "TimeUS,Instance,RPM", 16),
+        ] {
+            bin.extend_from_slice(&[0xA3, 0x95, 0x80, id, len]);
+            bin.extend(pad(name, 4));
+            bin.extend(pad(fmt, 16));
+            bin.extend(pad(cols, 64));
+        }
+        let mut msg = |id: u8, t: u64, rest: Vec<u8>| {
+            bin.extend_from_slice(&[0xA3, 0x95, id]);
+            bin.extend_from_slice(&t.to_le_bytes());
+            bin.extend(rest);
+        };
+        let t = 1_000_000;
+        msg(11, t, [1100u16, 1200, 1300, 1400].iter().flat_map(|x| x.to_le_bytes()).collect());
+        msg(12, t, [0i16, 0, 9000].iter().flat_map(|x| x.to_le_bytes()).collect());
+        msg(13, t, [vec![0], f(&[1.0, 2.0, -3.0, 4.0, 5.0, 6.0])].concat());
+        msg(13, t, [vec![1], f(&[9.0; 6])].concat());
+        msg(14, t, [vec![0], f(&[12.5])].concat());
+        msg(15, t, [vec![0], f(&[-3.0, 1.0])].concat());
+        for i in 0..4u8 {
+            msg(16, t, [vec![i], 6000i32.to_le_bytes().to_vec()].concat());
+        }
+        msg(10, t + 2_500, [vec![0], f(&[0.1, 0.2, 0.3, 0.0, 0.0, -9.8])].concat());
+        msg(10, t + 2_500, [vec![1], f(&[7.0; 6])].concat());
+        msg(10, t + 5_000, [vec![0], f(&[0.0; 6])].concat());
+
+        let rec = load_dataflash(&bin, "real", 4).unwrap();
+        assert_eq!(rec.frames.len(), 2, "one frame per primary IMU sample");
+        let fr = &rec.frames[0];
+        assert_eq!(fr.t, 0.0);
+        assert!((rec.frames[1].t - 0.0025).abs() < 1e-9);
+        assert_eq!(fr.pwm, vec![1100.0, 1200.0, 1300.0, 1400.0]);
+        assert_eq!((fr.position.x, fr.position.y, fr.position.z), (1.0, 2.0, -3.0));
+        assert_eq!((fr.velocity.x, fr.velocity.y, fr.velocity.z), (4.0, 5.0, 6.0));
+        let yaw90 = Quat::from_euler(0.0, 0.0, 90f64.to_radians());
+        assert!(attitude_error(fr.attitude, yaw90) < 1e-6, "ATT centidegrees not scaled");
+        assert!((fr.gyro.x - 0.1).abs() < 1e-6 && (fr.accel_body.z + 9.8).abs() < 1e-5);
+        assert_eq!(fr.airspeed, Some(12.5));
+        let w = fr.wind.unwrap();
+        assert_eq!((w.x, w.y), (-3.0, 1.0));
+        let rpm = fr.rpm.as_ref().unwrap();
+        assert_eq!(rpm.len(), 4);
+        assert!((rpm[0] - 6000.0 * std::f64::consts::TAU / 60.0).abs() < 1e-9);
+        // The loaded record runs through the harness.
+        let r = replay(&mut vehicle(), &rec, Mode::Derivative);
+        assert_eq!(r.overall.samples(), 1);
     }
 
     #[test]
