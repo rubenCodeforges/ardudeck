@@ -62,7 +62,7 @@ jobs:
         include:
           - os: ubuntu-latest
             suffix: linux-x64
-          - os: macos-14
+          - os: macos-15
             suffix: macos-arm64
     runs-on: ${{ matrix.os }}
     steps:
