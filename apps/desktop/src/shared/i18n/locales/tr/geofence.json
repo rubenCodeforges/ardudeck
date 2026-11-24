@@ -1,0 +1,34 @@
+{
+  "fenceListPanel": {
+    "aboveMaxAlt": "Maksimum irtifanın üzerinde",
+    "alt": "İrtifa: {{value}}",
+    "belowMinAlt": "Minimum irtifanın altında",
+    "breachCount_one": "{{count}} ihlal",
+    "breachCount_other": "{{count}} ihlal",
+    "circleCount_one": "{{count}} daire",
+    "circleCount_other": "{{count}} daire",
+    "circleRadius": "Daire ({{radius}}m)",
+    "editHint": "Taşımak, şeklini değiştirmek veya silmek için bir bölgeye (burada ya da haritada) tıkla.",
+    "exclusionZones": "Hariç Tutma Bölgeleri ({{count}})",
+    "fenceBreached": "Çit ihlal edildi",
+    "inclusionZones": "Dahil Etme Bölgeleri ({{count}})",
+    "mspUnsupported": "Geofence, iNav/Betaflight kartlarında desteklenmez. Yine de çitleri planlayıp referans için dosyaya kaydedebilirsin.",
+    "noExclusionZones": "Hariç tutma bölgesi yok",
+    "noInclusionZones": "Dahil etme bölgesi yok",
+    "noReturnPoint": "Dönüş noktası ayarlanmadı",
+    "outsideBoundary": "Sınırın dışında",
+    "polygonCount_one": "{{count}} çokgen",
+    "polygonCount_other": "{{count}} çokgen",
+    "polygonPts": "Çokgen ({{count}} nokta)",
+    "returnPoint": "Dönüş Noktası",
+    "radiusLabel": "Yarıçap"
+  },
+  "fenceMapOverlay": {
+    "clickToEdit": "Bu bölgeyi düzenlemek veya silmek için tıkla",
+    "delete": "Sil",
+    "deleteZone": "Bu bölgeyi sil (Del)",
+    "dragToMove": "Tüm bölgeyi taşımak için sürükle",
+    "rightClickDelete": "Silmek için sağ tıkla",
+    "radiusHandle": "Yarıçap {{radius}} m\nBoyutlandırmak için sürükle veya bu noktanın üzerinde kaydır"
+  }
+}

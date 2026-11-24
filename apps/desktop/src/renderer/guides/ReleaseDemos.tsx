@@ -105,8 +105,8 @@ export function AdjustDemo() {
   );
 }
 
-const LANGUAGES = ['English', 'Deutsch', '简体中文', '繁體中文', 'Українська']; // i18n-exempt: languages in their own names
-const LANGUAGE_PHASES = [1100, 1100, 1100, 1100, 1100];
+const LANGUAGES = ['English', 'Deutsch', '简体中文', '繁體中文', 'Українська', 'Türkçe']; // i18n-exempt: languages in their own names
+const LANGUAGE_PHASES = [1100, 1100, 1100, 1100, 1100, 1100];
 
 /** The language picker cycling through the shipped languages. */
 export function LanguageDemo() {

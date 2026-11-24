@@ -1,0 +1,66 @@
+{
+  "appShell": {
+    "about": "ArduDeck Hakkında",
+    "clickToDisconnect": "Bağlantıyı kesmek için tıklayın",
+    "disconnected": "Bağlantı kesildi",
+    "fleetCount": "Filo ({{count}})",
+    "fleetTitle": "Çoklu araç bağlantılarıyla bağlı filo. Telemetriyi açmak için tıklayın.",
+    "noneSelected": " · seçili yok",
+    "staleDisconnect": "{{seconds}} sn veri yok. Bağlantıyı kesmek için tıklayın",
+    "staleShort": "{{seconds}} sn veri yok",
+    "voiceMuted": "Sesli uyarılar kapalı. Açmak için tıklayın",
+    "voiceOn": "Sesli uyarılar açık. Kapatmak için tıklayın",
+    "waiting": "Bekleniyor...",
+    "osBadge": "OS",
+    "osBadgeTitle": "{{osName}} üzerinde çalışıyor. Araç bağlantısı ve parametre önbelleği sistem tarafından sağlanır."
+  },
+  "armDisarm": {
+    "arm": "ARM",
+    "armNotConfigured": "FC üzerinde ARM modu yapılandırılmamış. Modlar sekmesinde ARM için bir AUX kanalı ayarlayın.",
+    "armTitle": "Arm",
+    "armingBlocked": "Arm engellendi",
+    "disarm": "DISARM",
+    "disarmTitle": "Disarm",
+    "forceArm": "ZORLA ARM",
+    "forceArmHint": "Arm öncesi güvenlik kontrollerini atla",
+    "forceArmLabel": "Zorla ARM",
+    "forceArmTitle": "Zorla arm (kontrolleri atlar)",
+    "mspUnknown": "Bilinmiyor",
+    "preArmFailed": "Arm öncesi kontroller başarısız",
+    "title": "{{action}} - Seçenekler için sağ tıklayın"
+  },
+  "quickLaunch": {
+    "areaEditorDesc": "Görev alanları çizin: çoklu alan, delikler, KML",
+    "button": "Hızlı Başlat",
+    "buttonTitle": "Hızlı Başlat: araçları kendi pencerelerinde açın",
+    "inspectorDesc": "Canlı mesajları ve grafikleri izleyin",
+    "simWorldDesc": "SITL'i kalıcı bir 3D dünyada uçurun: engeller, çitler, görevler",
+    "telemetryDashboard": "Telemetri Panosu",
+    "telemetryDashboardDesc": "Canlı telemetri kendi ekranında",
+    "locusDesc": "ArduDeck Locus'u açın: PPK, fotogrametri ve LiDAR"
+  },
+  "updateBanner": {
+    "available": "<b>ArduDeck {{version}}</b> kullanılabilir{{name}}",
+    "downloading": "<b>ArduDeck {{version}}</b> indiriliyor",
+    "newVersion": "yeni sürüm",
+    "ready": "<b>ArduDeck {{version}}</b> yüklemeye hazır",
+    "restartToUpdate": "Güncellemek için yeniden başlat",
+    "viewRelease": "Sürümü görüntüle"
+  },
+  "bridgeMoved": {
+    "text": "Sir Patrick Stewart anısına hazırlanan Bridge teması artık Hangar'da bir Cargo.",
+    "open": "Hangar'da aç"
+  },
+  "voiceLevel": {
+    "title": "Sesli bildirimler",
+    "all": "Tümü",
+    "allDesc": "Tüm bildirimler: modlar, bekleme noktaları, kalkış ve iniş, uyarılar",
+    "allTip": "Ses: tüm bildirimler",
+    "important": "Yalnızca önemliler",
+    "importantDesc": "Uyarılar, failsafe'ler, alarmlar ve arm / disarm",
+    "importantTip": "Ses: yalnızca önemliler",
+    "off": "Kapalı",
+    "offDesc": "Hiç ses yok",
+    "offTip": "Ses: kapalı"
+  }
+}

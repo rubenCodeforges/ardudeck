@@ -1,0 +1,390 @@
+{
+  "flightBriefing": {
+    "batteries": "Bataryalar",
+    "ceiling": "tavan {{altitude}} AGL",
+    "distance": "Mesafe",
+    "flightTime": "Uçuş süresi",
+    "flightTimeDetail": "seyir hızında tahmini",
+    "gusts": "hamleler {{speed}}",
+    "maxAltitude": "Maks irtifa",
+    "maxFromHome": "Home'dan maks uzaklık",
+    "reserve": "Rezerv",
+    "reserveDetail": "son bataryada",
+    "setProfile": "dayanıklılık için bir araç profili belirle",
+    "unknown": "bilinmiyor",
+    "usableEach": "her biri ~{{duration}} kullanılabilir",
+    "wind": "Rüzgar",
+    "flightTimeWindDetail": "tahmini yüzey rüzgarına karşı (durgun havada {{duration}}); irtifadaki rüzgar genellikle daha güçlüdür",
+    "windBlocked": "Rüzgara karşı bacaklar",
+    "windBlockedDetail": "bu bacaklarda tahmini rüzgar seyir hızına eşit veya üzerinde, bu yüzden hava aracı bunları tutamaz",
+    "flightTimeLayerWindDetail": "{{altitude}} irtifasındaki rüzgar katmanının rüzgarına karşı (durgun havada {{duration}})"
+  },
+  "joystickSafety": {
+    "assign": "Önce {{names}} ata",
+    "offTarget": "{{name}} (CH{{ch}}) {{pwm}} değerinde, {{want}} olmalı",
+    "channel": "CH{{n}}",
+    "role": {
+      "roll": "Roll",
+      "pitch": "Pitch",
+      "throttle": "Gaz",
+      "yaw": "Yaw"
+    },
+    "want": {
+      "centre": "yaklaşık {{pwm}} (orta)",
+      "idle": "{{pwm}} veya altı (rölanti)",
+      "zeroThrust": "yaklaşık {{pwm}} (sıfır itki)",
+      "radio": "yaklaşık {{pwm}} (vericin)",
+      "low": "{{pwm}} veya altı (düşük)",
+      "high": "{{pwm}} veya üstü (yüksek)"
+    }
+  },
+  "osdCategories": {
+    "altitude": {
+      "description": "İrtifa, MSL, variometre",
+      "name": "İrtifa ve Vario"
+    },
+    "attitude": {
+      "description": "Artı işareti, ufuk, pitch, roll, yön",
+      "name": "Duruş"
+    },
+    "battery": {
+      "description": "Voltaj, akım, kapasite, verimlilik",
+      "name": "Batarya ve Güç"
+    },
+    "general": {
+      "description": "Uçuş modu, uyarılar, araç bilgisi",
+      "name": "Genel"
+    },
+    "gps": {
+      "description": "Uydular, HDOP, koordinatlar",
+      "name": "GPS"
+    },
+    "mission": {
+      "description": "VTX, rüzgar göstergeleri",
+      "name": "Görev"
+    },
+    "radio": {
+      "description": "RSSI, gaz konumu",
+      "name": "Radyo ve Kontrol"
+    },
+    "sensors": {
+      "description": "Sıcaklık, G kuvveti, ESC verisi",
+      "name": "Sensörler"
+    },
+    "speed": {
+      "description": "Yer hızı, hava hızı, mesafe",
+      "name": "Hız ve Mesafe"
+    },
+    "timers": {
+      "description": "Uçuş süresi, açık kalma süresi, kalan",
+      "name": "Zamanlayıcılar"
+    }
+  },
+  "osdElements": {
+    "airspeed": {
+      "description": "Pitot tüpünden gösterilen hava hızı",
+      "name": "Hava Hızı"
+    },
+    "altitude": {
+      "description": "Yer seviyesinden / home'dan irtifa",
+      "name": "İrtifa (AGL)"
+    },
+    "armed_status": {
+      "description": "ARMED veya DISARMED durumunu gösterir",
+      "name": "Arm Durumu"
+    },
+    "artificial_horizon": {
+      "description": "Duruş ufuk çizgisi göstergesi",
+      "name": "Yapay Ufuk"
+    },
+    "baro_temp": {
+      "description": "Barometre sensörü sıcaklığı",
+      "name": "Baro Sıcaklığı"
+    },
+    "battery_cell_voltage": {
+      "description": "Hücre başına ortalama voltaj",
+      "name": "Hücre Voltajı"
+    },
+    "battery_percent": {
+      "description": "Kalan batarya şarjı yüzdesi",
+      "name": "Batarya Yüzdesi"
+    },
+    "battery_voltage": {
+      "description": "Toplam batarya paketi voltajı",
+      "name": "Batarya Voltajı"
+    },
+    "coordinates": {
+      "description": "Enlem ve boylam iki satırda",
+      "name": "Koordinatlar"
+    },
+    "craft_name": {
+      "description": "Kullanıcının ayarladığı hava aracı adı",
+      "name": "Araç Adı"
+    },
+    "crosshairs": {
+      "description": "Ekran ortasında hava aracı göstergesi",
+      "name": "Artı İşareti"
+    },
+    "current_draw": {
+      "description": "Anlık akım çekişi (amper)",
+      "name": "Akım Çekişi"
+    },
+    "distance": {
+      "description": "Home noktasına uzaklık",
+      "name": "Home Mesafesi"
+    },
+    "efficiency": {
+      "description": "km başına mAh verimlilik göstergesi",
+      "name": "Verimlilik"
+    },
+    "esc_rpm": {
+      "description": "ESC telemetrisinden motor RPM",
+      "name": "ESC RPM"
+    },
+    "esc_temp": {
+      "description": "Elektronik hız kontrolcüsü sıcaklığı",
+      "name": "ESC Sıcaklığı"
+    },
+    "flight_time": {
+      "description": "Arm'dan bu yana geçen süre",
+      "name": "Uçuş Süresi"
+    },
+    "flymode": {
+      "description": "Geçerli uçuş modu adı (ANGLE, HORIZON vb.)",
+      "name": "Uçuş Modu"
+    },
+    "g_force": {
+      "description": "Anlık G kuvveti yüklemesi",
+      "name": "G Kuvveti"
+    },
+    "gps_hdop": {
+      "description": "Yatay hassasiyet seyrelmesi",
+      "name": "GPS HDOP"
+    },
+    "gps_sats": {
+      "description": "Görüş alanındaki GPS uydularının sayısı",
+      "name": "GPS Uyduları"
+    },
+    "heading": {
+      "description": "Derece cinsinden pusula yönü",
+      "name": "Yön"
+    },
+    "heading_graph": {
+      "description": "Grafik pusula yön şeridi",
+      "name": "Yön Grafiği"
+    },
+    "home_direction": {
+      "description": "Home yönünü gösteren ok",
+      "name": "Home Yönü"
+    },
+    "horizon_sidebars": {
+      "description": "Yapay ufuk için yan işaretler",
+      "name": "Ufuk Yan Çubukları"
+    },
+    "imu_temp": {
+      "description": "IMU/jiroskop sensörü sıcaklığı",
+      "name": "IMU Sıcaklığı"
+    },
+    "latitude": {
+      "description": "Geçerli enlem koordinatı",
+      "name": "Enlem"
+    },
+    "longitude": {
+      "description": "Geçerli boylam koordinatı",
+      "name": "Boylam"
+    },
+    "mah_drawn": {
+      "description": "Tüketilen toplam miliamper-saat",
+      "name": "Çekilen mAh"
+    },
+    "max_speed": {
+      "description": "Uçuşta ulaşılan maksimum hız",
+      "name": "Maks Hız"
+    },
+    "messages": {
+      "description": "FC durum mesajları ve bildirimleri",
+      "name": "Mesajlar"
+    },
+    "msl_altitude": {
+      "description": "Ortalama deniz seviyesinden irtifa",
+      "name": "MSL İrtifa"
+    },
+    "on_time": {
+      "description": "Güç verilmesinden bu yana geçen süre",
+      "name": "Açık Kalma Süresi"
+    },
+    "pitch": {
+      "description": "Derece cinsinden hava aracı pitch açısı",
+      "name": "Pitch Açısı"
+    },
+    "power_watts": {
+      "description": "Anlık güç tüketimi",
+      "name": "Güç (Watt)"
+    },
+    "remaining_flight_time": {
+      "description": "Tahmini kalan uçuş süresi",
+      "name": "Kalan Süre"
+    },
+    "roll": {
+      "description": "Derece cinsinden hava aracı roll/yatış açısı",
+      "name": "Roll Açısı"
+    },
+    "rssi": {
+      "description": "Alınan sinyal gücü göstergesi (%)",
+      "name": "RSSI"
+    },
+    "rssi_dbm": {
+      "description": "dBm cinsinden sinyal gücü (ELRS, Crossfire)",
+      "name": "RSSI (dBm)"
+    },
+    "rtc_time": {
+      "description": "Gerçek zamanlı saat (geçerli saat)",
+      "name": "RTC Saati"
+    },
+    "speed": {
+      "description": "Yere göre hız",
+      "name": "Yer Hızı"
+    },
+    "throttle": {
+      "description": "Geçerli gaz konumu yüzdesi",
+      "name": "Gaz"
+    },
+    "throttle_gauge": {
+      "description": "Görsel gaz çubuğu göstergesi",
+      "name": "Gaz Göstergesi"
+    },
+    "vario": {
+      "description": "Dikey hız göstergesi (tırmanış/alçalış)",
+      "name": "Variometre"
+    },
+    "vtx_channel": {
+      "description": "Video vericisi bandı/kanalı/gücü",
+      "name": "VTX Kanalı"
+    },
+    "warnings": {
+      "description": "Sistem uyarıları (düşük batarya, GPS kaybı vb.)",
+      "name": "Uyarılar"
+    },
+    "wind_horizontal": {
+      "description": "Yatay rüzgar hızı ve yönü",
+      "name": "Rüzgar (Yatay)"
+    },
+    "wind_vertical": {
+      "description": "Dikey rüzgar bileşeni",
+      "name": "Rüzgar (Dikey)"
+    }
+  },
+  "radioPreflight": {
+    "firmwareFail": "ArduPilot {{major}}.{{minor}}, MAVLink üzerinden stick kontrolü için çok eski: uçuş kontrolcüsünü 4.6 veya daha yeni bir sürüme güncelle. Telemetri yine de çalışır.",
+    "firmwarePass": "ArduPilot {{major}}.{{minor}}, MAVLink radyosu üzerinden stick kontrolünü destekler.",
+    "firmwareUnknown": "Firmware sürümü henüz belirlenemedi.",
+    "firmwareVersion": "Firmware radyo üzerinden RC'yi destekliyor",
+    "rcOverMavlink": "Radyo bağlantısı üzerinden stick kontrolü",
+    "rcOverMavlinkFail": "Araç, radyo bağlantısından gelen RC'yi yok sayacak şekilde ayarlı, bu yüzden stick'lerin hiçbir şey yapmaz (radyo failsafe). Düzeltme, mevcut alıcı protokollerini etkin tutar.",
+    "rcOverMavlinkPass": "Araç, MAVLink radyosu üzerinden iletilen RC'yi kabul ediyor.",
+    "rssiSource": "Bağlantı sinyal gücü göstergesi",
+    "rssiSourceFail": "Sinyal gücü radyo bağlantısından alınmıyor, bu yüzden RSSI boş veya yanlış görünür.",
+    "rssiSourcePass": "Araç, radyo sinyal gücünü doğrudan bağlantıdan raporluyor.",
+    "waitingParams": "Parametrelerin yüklenmesi bekleniyor."
+  },
+  "rcSourceArbiter": {
+    "joystickOwns": "RC bağlantısı joystick kontrolünde",
+    "slidersOwn": "RC bağlantısı sanal RC kaydırıcılarında",
+    "trainerOwnsSticks": "Trainer oturumu etkin: stick'ler Trainer'da"
+  },
+  "receiverConstants": {
+    "hint": {
+      "CRSF": "Düşük gecikmeli dijital bağlantı. TBS Crossfire ve ExpressLRS alıcılarında kullanılır.",
+      "FPORT": "FrSky F.Port, SBUS + telemetriyi tek kabloda birleştirir.",
+      "GHST": "ImmersionRC Ghost ultra düşük gecikmeli protokol.",
+      "IBUS": "FlySky dijital protokolü. Boş bir UART RX pedine bağla.",
+      "MSP": "Yalnızca GCS/SITL kontrolü için. Fiziksel alıcıyla kullanma.",
+      "SBUS": "Ters çevrilmiş seri protokol. FrSky ve RadioLink alıcılarda yaygın. Bazı kartlar donanımsal ters çevirici gerektirir.",
+      "SBUS_SHORT": "Ters çevrilmiş seri protokol. FrSky ve RadioLink alıcılarda yaygın.",
+      "SPEK2048": "Spektrum uydu alıcısı. Önce vericiyle eşle (bind), sonra UART'a bağla.",
+      "SPEK2048_SHORT": "Spektrum uydu alıcısı. Önce vericiyle eşle (bind).",
+      "SRXL2": "Spektrum SRXL2 çift yönlü seri protokol."
+    },
+    "receiverType": {
+      "NONE": "Yok",
+      "SERIAL": "Seri"
+    }
+  },
+  "rssiState": {
+    "noLink": "Telemetri bağlantısı yok",
+    "off": "Araçta RSSI raporlama kapalı (RSSI_TYPE = 0)",
+    "unconfigured": "Alıcı bağlı ama sinyal gücü raporlamıyor. RSSI_TYPE alıcıyla eşleşmeli (CRSF/ELRS için 3)."
+  },
+  "rubyOsd": {
+    "category": {
+      "Flight": "Uçuş",
+      "GPS": "GPS",
+      "Grid": "Izgara",
+      "Instruments": "Göstergeler",
+      "Link": "Bağlantı",
+      "Navigation": "Navigasyon",
+      "Power": "Güç",
+      "System": "Sistem",
+      "Video": "Video"
+    },
+    "element": {
+      "ahi_heading": "AHI yönü",
+      "air_speed": "Hava hızı",
+      "alt_graph": "İrtifa grafiği",
+      "altitude": "İrtifa",
+      "battery": "Batarya",
+      "battery_cells": "Batarya hücreleri",
+      "cpu_info": "CPU bilgisi",
+      "distance": "Mesafe",
+      "efficiency": "Verimlilik",
+      "fc_temperature": "FC sıcaklığı",
+      "flight_mode": "Uçuş modu",
+      "flight_mode_change": "Uçuş modu değişimi",
+      "gps_info": "GPS bilgisi",
+      "gps_position": "GPS konumu",
+      "grid_crosshair": "Artı işareti",
+      "grid_diagonal": "Çapraz ızgara",
+      "grid_squares": "Kare ızgara",
+      "grid_thirds": "Üçler kuralı",
+      "ground_speed": "Yer hızı",
+      "heading": "Yön",
+      "home": "Home",
+      "horizon": "Ufuk",
+      "instruments": "Göstergeler",
+      "link_quality_bars": "Bağlantı kalitesi çubukları",
+      "link_quality_numbers": "Bağlantı kalitesi sayıları",
+      "pitch": "Pitch",
+      "radio_interfaces": "Radyo arayüzleri",
+      "radio_links": "Radyo bağlantıları",
+      "rc_rssi": "RC RSSI",
+      "signal_bars": "Sinyal çubukları",
+      "speed_alt": "Hız ve irtifa",
+      "speed_to_sides": "Hız yanlarda",
+      "throttle": "Gaz",
+      "time": "Zaman",
+      "time_lower": "Zaman (alt)",
+      "total_distance": "Toplam mesafe",
+      "tx_power": "TX gücü",
+      "vehicle_radio_links": "Araç radyo bağlantıları",
+      "vertical_speed": "Dikey hız",
+      "video_bitrate_history": "Video bitrate geçmişi",
+      "video_mbps": "Video Mbps",
+      "video_mode": "Video modu",
+      "wind": "Rüzgar"
+    }
+  },
+  "stickAssign": {
+    "air": {
+      "pitch": "Pitch",
+      "roll": "Roll",
+      "throttle": "Gaz",
+      "yaw": "Yaw"
+    },
+    "ground": {
+      "pitch": "Pitch (kullanılmıyor)",
+      "roll": "Direksiyon",
+      "throttle": "Gaz",
+      "yaw": "Yaw (kullanılmıyor)"
+    }
+  }
+}

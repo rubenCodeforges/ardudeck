@@ -1,0 +1,16 @@
+{
+  "detachedRoot": {
+    "closeTitle": "Bu pencereyi kapat ve ArduDeck'e dön",
+    "dockBack": "Geri yerleştir",
+    "keepOnTop": "Bu pencereyi ArduDeck'in üstünde tut",
+    "missing": "(eksik)",
+    "notRegistered": "componentId <code>{{id}}</code> kayıtlı değil.",
+    "pinned": "Üste sabitlendi, sabitlemeyi kaldırmak için tıkla",
+    "toggleOnTop": "Her zaman üstte seçeneğini aç/kapat",
+    "unknownComponent": "Bilinmeyen bileşen"
+  },
+  "surface": {
+    "linkServiceOff": "ArduDeck OS bağlantı servisi çalışmıyor",
+    "searching": "Araç aranıyor…"
+  }
+}

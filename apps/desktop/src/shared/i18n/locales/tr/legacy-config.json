@@ -1,0 +1,209 @@
+{
+  "legacyConfigView": {
+    "badge": "Legacy CLI",
+    "configError": "Yapılandırma Hatası",
+    "howItWorks": "<b>Nasıl çalışır:</b> Değişiklikler CLI komutları olarak anında gönderilir. Gönderilen komutları görmek için CLI terminaline bak. İşin bitince değişiklikleri kalıcı yapmak için \"Save to EEPROM\" düğmesine tıkla (kart yeniden başlar).",
+    "loading": "Yapılandırma CLI'dan yükleniyor...",
+    "notConnected": "Yapılandırmak için bir legacy karta bağlan",
+    "reboot": {
+      "done": "Kayıt Tamamlandı",
+      "error": "Kayıt Başarısız",
+      "rebooting": "Kart Yeniden Başlatılıyor",
+      "reconnecting": "Yeniden Bağlanılıyor",
+      "saving": "Yapılandırma Kaydediliyor"
+    },
+    "runningDump": "Dump komutu çalıştırılıyor",
+    "saveAndReboot": "Kaydet ve Yeniden Başlat",
+    "saveConfirmBody": "Bu, tüm değişiklikleri uçuş kontrolcüsüne kaydeder ve <b>kartı yeniden başlatır</b>. Yeniden başlatma bittikten sonra tekrar bağlanman gerekir.",
+    "saveConfirmTitle": "EEPROM'a kaydedilsin mi?",
+    "saveToEeprom": "Save to EEPROM",
+    "subtitle": "CLI komutlarıyla yapılandırma (F3 kart)",
+    "tabs": {
+      "mixer": "Mixer",
+      "modes": "Modlar",
+      "pid": "PID",
+      "rates": "Rate'ler",
+      "servo": "Servo"
+    },
+    "unsavedChanges": "Kaydedilmemiş değişiklikler"
+  },
+  "legacyMixerTab": {
+    "addMotor": "Motor Ekle ({{count}}/{{max}})",
+    "addServoRule": "Servo Kuralı Ekle ({{count}}/{{max}})",
+    "description": "Motorların ve servoların uçuş kontrolcüsü çıkışlarına nasıl tepki vereceğini tanımla. Değerler -1,0 ile 1,0 arasındadır. Değişiklikler anında gönderilir.",
+    "inputSource": "Giriş Kaynağı",
+    "mixStrength": "Mix şiddeti:",
+    "motorMixerTab": "Motor Mixer ({{count}})",
+    "motorN": "Motor {{index}}",
+    "noMotorRules": "Motor mixer kuralı bulunamadı.",
+    "noMotorRulesHint": "Sabit kanatlı hava araçlarında bu normaldir.",
+    "noServoRules": "Servo mixer kuralı bulunamadı.",
+    "noServoRulesHint": "Servoları uçuş kontrolcüsü çıkışlarından sürmek için kural ekle.",
+    "outputChannel": "Çıkış kanalı",
+    "pitch": "Pitch",
+    "rateLabel": "Rate:",
+    "ratePercent": "Rate (%)",
+    "removeMotor": "Motor mixer'ı kaldır",
+    "removeServoRule": "Servo mixer kuralını kaldır",
+    "roll": "Roll",
+    "ruleN": "Kural #{{index}}",
+    "servoMixerTab": "Servo Mixer ({{count}})",
+    "servoN": "Servo {{index}}",
+    "sourceN": "Kaynak {{index}}",
+    "sources": {
+      "rcAux1": "RC AUX 1",
+      "rcAux2": "RC AUX 2",
+      "rcAux3": "RC AUX 3",
+      "rcAux4": "RC AUX 4",
+      "rcPitch": "RC Pitch",
+      "rcRoll": "RC Roll",
+      "rcThrottle": "RC Throttle",
+      "rcYaw": "RC Yaw",
+      "stabPitch": "Stabilize Pitch",
+      "stabRoll": "Stabilize Roll",
+      "stabThrottle": "Stabilize Throttle",
+      "stabYaw": "Stabilize Yaw"
+    },
+    "speed": "Hız",
+    "targetServo": "Hedef Servo",
+    "throttle": "Throttle",
+    "title": "Mixer Yapılandırması",
+    "yaw": "Yaw"
+  },
+  "legacyModesTab": {
+    "activationRange": "Etkinleştirme Aralığı",
+    "activeModes": "Etkin Modlar ({{count}})",
+    "clickToEnable": "#{{index}} - Etkinleştirmek için tıkla",
+    "description": "Hangi AUX anahtar konumlarının her uçuş modunu etkinleştireceğini ayarla. Aralık tutamaçlarını sürükle veya değerleri doğrudan gir. Devre dışı bırakmak için ikisini de 900 yap.",
+    "disableMode": "Modu Devre Dışı Bırak",
+    "disabledModes": "Devre Dışı ({{count}})",
+    "mode": "Mod",
+    "modeDescriptions": {
+      "m0": "Motorları etkinleştir",
+      "m1": "Kendini dengeleme modu",
+      "m10": "Eve dönüş",
+      "m11": "GPS konumunu tut",
+      "m12": "Doğrudan geçiş",
+      "m13": "Quad'ımı bul",
+      "m19": "OSD'yi aç/kapat",
+      "m2": "Hibrit kendini dengeleme + acro",
+      "m20": "Telemetriyi etkinleştir",
+      "m26": "Uçuş verisini kaydet",
+      "m27": "Acil failsafe",
+      "m28": "Waypoint görevi",
+      "m3": "İrtifayı tut",
+      "m35": "Flaperon kontrolü",
+      "m36": "Koordineli dönüşler",
+      "m38": "Servoları otomatik trimle",
+      "m39": "Kamera kontrolü 1",
+      "m40": "Kamera kontrolü 2",
+      "m41": "Kamera kontrolü 3",
+      "m45": "Cruise kontrolü",
+      "m46": "Multirotor frenleme",
+      "m5": "Pusula yönünü tut",
+      "m6": "Headless modu",
+      "m7": "Headfree referansını ayarla"
+    },
+    "modeN": "Mod {{id}}",
+    "noRules": "Aux mod kuralı bulunamadı.",
+    "switchChannel": "Anahtar Kanalı",
+    "title": "Uçuş Modu Yapılandırması",
+    "unknownMode": "Bilinmeyen mod"
+  },
+  "legacyPidTab": {
+    "axis": {
+      "pitch": "pitch",
+      "roll": "roll",
+      "yaw": "yaw"
+    },
+    "dHint": "Aşımları sönümler",
+    "dLabel": "D - Türev",
+    "ffHint": "Çubuk hareketini önceden sezer",
+    "ffLabel": "FF - Feed Forward",
+    "iHint": "Zamanla oluşan sapmayı düzeltir",
+    "iLabel": "I - İntegral",
+    "infoFixedWing": "<b>Legacy CLI Modu (Sabit Kanat):</b> Değişiklikler CLI komutlarıyla anında gönderilir. İşin bitince değişiklikleri kalıcı yapmak için \"Save to EEPROM\" düğmesine tıkla.",
+    "infoMultirotor": "<b>Legacy CLI Modu (Multirotor):</b> Değişiklikler CLI komutlarıyla anında gönderilir. İşin bitince değişiklikleri kalıcı yapmak için \"Save to EEPROM\" düğmesine tıkla.",
+    "levelDHint": "Salınımı azaltır",
+    "levelDLabel": "D - Sönümleme",
+    "levelIHint": "Zamanla düz konumu tutar",
+    "levelPHint": "Kendini ne kadar sert dengelediği",
+    "levelPLabel": "P - Şiddet",
+    "levelTitle": "Level (Angle Modu)",
+    "noData": "PID verisi yüklenmedi. Önce dump komutunu çalıştır.",
+    "pHint": "Çubuk girişine duyarlılık",
+    "pLabel": "P - Oransal",
+    "presets": {
+      "beginner": {
+        "description": "Yumuşak ve bağışlayıcı, öğrenmek için ideal",
+        "name": "Başlangıç"
+      },
+      "cinematic": {
+        "description": "Video için ultra yumuşak",
+        "name": "Sinematik"
+      },
+      "freestyle": {
+        "description": "Figürler için duyarlı ve yumuşak",
+        "name": "Freestyle"
+      },
+      "racing": {
+        "description": "Hız için çevik ve hassas",
+        "name": "Yarış"
+      }
+    },
+    "profileNamePlaceholder": "Profil adı...",
+    "quickPresets": "Hızlı Ön Ayarlar",
+    "saveAsProfile": "+ Mevcut Ayarı Profil Olarak Kaydet",
+    "saveDialogTitle": "Mevcut PID'leri Profil Olarak Kaydet",
+    "yourProfiles": "Profillerin"
+  },
+  "legacyRatesTab": {
+    "expoHint": "Orta çubuk hassasiyeti",
+    "globalSettings": "Genel Ayarlar",
+    "info": "<b>Legacy CLI Modu:</b> Değişiklikler CLI komutlarıyla anında gönderilir. İşin bitince değişiklikleri kalıcı yapmak için \"Save to EEPROM\" düğmesine tıkla.",
+    "maxRate": "Maks: <v>{{rate}}°/s</v>",
+    "noData": "Rate verisi yüklenmedi. Önce dump komutunu çalıştır.",
+    "presets": {
+      "beginner": {
+        "description": "Yavaş ve öngörülebilir, öğrenmek için ideal"
+      },
+      "cinematic": {
+        "description": "Çekim için ultra yumuşak"
+      },
+      "freestyle": {
+        "description": "Figürler ve akış için dengeli"
+      },
+      "racing": {
+        "description": "Hız için hızlı ve duyarlı"
+      }
+    },
+    "rateHint": "Maksimum dönüş hızı",
+    "rcRate": "RC Rate",
+    "rcRateHint": "Genel çubuk hassasiyet çarpanı",
+    "responseCurve": "Tepki Eğrisi",
+    "saveDialogTitle": "Mevcut Rate'leri Profil Olarak Kaydet",
+    "stick": "Çubuk",
+    "throttleExpo": "Throttle Expo",
+    "throttleExpoHint": "Throttle eğrisi",
+    "throttleMid": "Throttle Mid",
+    "throttleMidHint": "Hover noktası",
+    "tpaBreakpoint": "TPA Breakpoint",
+    "tpaBreakpointHint": "TPA'nın başladığı throttle seviyesi",
+    "tpaDescription": "Hızlı uçuşta salınımları önlemek için yüksek throttle'da PID şiddetini azaltır.",
+    "tpaRate": "TPA Rate",
+    "tpaRateHint": "Tam throttle'da PID'lerin ne kadar azaltılacağı",
+    "tpaTitle": "Throttle PID Attenuation"
+  },
+  "legacyServoTab": {
+    "description": "Her servo için min/maks/orta konumları ve rate'i yapılandır. Aralık: legacy F3 kartlar için 750-2250μs. Değişiklikler anında gönderilir.",
+    "fullRange": "Tam Aralık",
+    "maximum": "Maksimum",
+    "minimum": "Minimum",
+    "noConfigs": "Servo yapılandırması bulunamadı.",
+    "noConfigsHint": "Yapılandırmayı yüklemek için dump komutunu çalıştır.",
+    "resetDefault": "Varsayılana Sıfırla",
+    "safeRange": "Güvenli Aralık",
+    "title": "Servo Uç Nokta Yapılandırması",
+    "travel": "Hareket: {{range}}μs"
+  }
+}

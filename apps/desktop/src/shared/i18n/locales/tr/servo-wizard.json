@@ -1,0 +1,296 @@
+{
+  "diagrams": {
+    "camera": "Kamera",
+    "deltaHint": "Dikey kuyruklu delta",
+    "elevator": "İrtifa Dümeni",
+    "flyingWingHint": "Elevon = Kanatçık + İrtifa Dümeni birleşik",
+    "front": "ÖN",
+    "gimbalHint": "Pan = yatay, Tilt = dikey",
+    "leftAileron": "Sol Kanatçık",
+    "leftElevon": "Sol Elevon",
+    "leftVTail": "Sol V-Kuyruk",
+    "motor1": "Motor 1",
+    "motor2": "Motor 2",
+    "panServo": "Pan Servosu",
+    "rightAileron": "Sağ Kanatçık",
+    "rightElevon": "Sağ Elevon",
+    "rightVTail": "Sağ V-Kuyruk",
+    "rudder": "Yön Dümeni",
+    "tiltServo": "Tilt Servosu",
+    "tricopterHint": "Yalnızca yaw servosu yapılandırma gerektirir",
+    "yawServo": "Yaw Servosu"
+  },
+  "planeTypeStep": {
+    "continue": "Devam →",
+    "gimbalSubtitle": "Kartınız multirotor olarak yapılandırılmış. Kamera kontrolü için gimbal servolarını kurabilirsiniz.",
+    "gimbalTip": "Gimbal, kamera stabilizasyonu için pan/tilt servolarını kontrol etmekte RC çubuk girişini kullanır.",
+    "gimbalTitle": "Gimbal Servo Kurulumu",
+    "noServos": "Servo yok",
+    "quadHex": "Quad/Hex",
+    "servoCount_one": "{{count}} servo",
+    "servoCount_other": "{{count}} servo",
+    "subtitle": "Doğru servo kurulumu için hava aracı türünüzü seçin.",
+    "tip": "<b>Kameralı quad mı?</b> Gimbal'ı seçin. <b2>Uçak mı?</b2> Çoğu Geleneksel'dir.",
+    "title": "Ne tür bir hava aracınız var?"
+  },
+  "servoAssignmentStep": {
+    "clickToHighlight": "Vurgulamak için bir kontrol yüzeyine tıklayın",
+    "continue": "Devam: Servoları Test Et →",
+    "duplicateWarning": "Uyarı: Birden fazla yüzey aynı servoya atanmış!",
+    "noAircraft": "Hava aracı türü seçilmedi",
+    "subtitle": "Her kontrol yüzeyini, uçuş kontrolcünüzde bağlı olduğu servo çıkışıyla eşleştirin.",
+    "tip": "<b>İpucu:</b> FC kablolamanızı kontrol edin. Servo çıkışları genellikle S1-S8 veya SERVO1-8 olarak etiketlenir. iNav'da S1 = Servo 0.",
+    "title": "Servoları Kontrol Yüzeylerine Atayın"
+  },
+  "servoEndpointSlider": {
+    "centerHandle": "orta",
+    "centerUs": "Orta (µs)",
+    "maxHandle": "maks",
+    "maxUs": "Maks (µs)",
+    "minHandle": "min",
+    "minUs": "Min (µs)",
+    "testCenter": "Ortayı Test Et",
+    "testMax": "Maks'ı Test Et",
+    "testMin": "Min'i Test Et"
+  },
+  "servoEndpointsStep": {
+    "continue": "Devam: İnceleme →",
+    "enableFeedback": "Canlı servo geri bildirimini etkinleştir",
+    "feedbackEnabled": "● Canlı servo geri bildirimi etkin",
+    "livePosition": "Canlı Konum",
+    "quickTips": "Hızlı ipuçları:",
+    "rate": "Rate:",
+    "rateHint": "Hareket aralığını azaltır. %100 = tam hareket, %50 = yarım hareket.",
+    "subtitle": "Her servonun ne kadar hareket edebileceğini ayarlayın. Servonuz tam çubukta gıcırtı sesi çıkarıyorsa buradan limitleri düşürün.",
+    "testingPosition": "Servo konumu test ediliyor...",
+    "tipGrinding": "<b>Gıcırtı sesi mi var?</b> Min veya Maks değerini düşürün",
+    "tipNotLevel": "<b>Çubuk ortadayken düz değil mi?</b> Orta değerini ayarlayın",
+    "tipSensitive": "<b>Çok hassas mı?</b> Rate yüzdesini düşürün",
+    "title": "Servo Hareketine İnce Ayar"
+  },
+  "servoPresets": {
+    "aircraft": {
+      "delta": {
+        "description": "Elevon ve yön dümenli delta kanat",
+        "name": "Delta",
+        "tip": "Uçan kanat gibi ama yön dümeni için dikey kuyruklu."
+      },
+      "flyingWing": {
+        "description": "2 elevonlu delta/uçan kanat",
+        "name": "Uçan Kanat",
+        "tip": "Elevonlar kanatçık ve irtifa dümeni işlevini birleştirir. Kuyruk yüzeyi yok."
+      },
+      "gimbal": {
+        "description": "2 eksenli kamera gimbalı (pan/tilt)",
+        "name": "Gimbal",
+        "tip": "Kamera stabilizasyonu için. RC girişini kullanır, stabilize çıkışı değil."
+      },
+      "traditional": {
+        "description": "Kanatçık, irtifa dümeni ve yön dümenli standart uçak",
+        "name": "Geleneksel",
+        "tip": "Uçaklar için en yaygın kurulum. Her eksen için ayrı kontrol yüzeyi."
+      },
+      "tricopter": {
+        "description": "Yaw servolu tricopter",
+        "name": "Tricopter",
+        "tip": "Yalnızca arka yaw servosu yapılandırma gerektirir. Motorlar ayrıca ele alınır."
+      },
+      "vtail": {
+        "description": "V-kuyruklu uçak (ruddervator)",
+        "name": "V-Kuyruk",
+        "tip": "V-kuyruk yüzeyleri irtifa ve yön dümenini birleştirir. Standart kanatçıklar."
+      }
+    },
+    "inputSource": {
+      "gimbalPitch": "Gimbal Pitch",
+      "gimbalRoll": "Gimbal Roll",
+      "pitch": "Pitch",
+      "rcPitch": "RC Pitch (manuel)",
+      "rcRoll": "RC Roll (manuel)",
+      "rcThrottle": "RC Throttle (manuel)",
+      "rcYaw": "RC Yaw (manuel)",
+      "roll": "Roll",
+      "throttle": "Throttle",
+      "yaw": "Yaw"
+    },
+    "surface": {
+      "aileronLeft": {
+        "description": "Aşağıdayken uçağı sola yatırır",
+        "name": "Sol Kanatçık",
+        "shortName": "Sol Kan"
+      },
+      "aileronRight": {
+        "description": "Aşağıdayken uçağı sağa yatırır",
+        "name": "Sağ Kanatçık",
+        "shortName": "Sağ Kan"
+      },
+      "elevator": {
+        "description": "Firar kenarı yukarı gidince burnu yukarı kaldırır",
+        "name": "İrtifa Dümeni",
+        "shortName": "İrt"
+      },
+      "elevonLeft": {
+        "description": "Uçan kanat - roll ve pitch'i birleştirir",
+        "name": "Sol Elevon",
+        "shortName": "Sol Elev"
+      },
+      "elevonRight": {
+        "description": "Uçan kanat - roll ve pitch'i birleştirir",
+        "name": "Sağ Elevon",
+        "shortName": "Sağ Elev"
+      },
+      "gimbalPan": {
+        "description": "Kamera gimbalı yatay dönüş",
+        "name": "Gimbal Pan",
+        "shortName": "Pan"
+      },
+      "gimbalTilt": {
+        "description": "Kamera gimbalı dikey dönüş",
+        "name": "Gimbal Tilt",
+        "shortName": "Tilt"
+      },
+      "rudder": {
+        "description": "Uçağı sola/sağa yaw yaptırır",
+        "name": "Yön Dümeni",
+        "shortName": "Yön"
+      },
+      "vtailLeft": {
+        "description": "V-kuyruk - irtifa ve yön dümenini birleştirir",
+        "name": "Sol V-Kuyruk",
+        "shortName": "Sol VK"
+      },
+      "vtailRight": {
+        "description": "V-kuyruk - irtifa ve yön dümenini birleştirir",
+        "name": "Sağ V-Kuyruk",
+        "shortName": "Sağ VK"
+      },
+      "yawServo": {
+        "description": "Yaw kontrolü için tricopter kuyruk servosu",
+        "name": "Yaw Servosu",
+        "shortName": "Yaw"
+      }
+    }
+  },
+  "servoReviewStep": {
+    "beforeSaving": "Kaydetmeden önce:",
+    "controlSurface": "Kontrol Yüzeyi",
+    "input": "Giriş",
+    "mixerPreview": "Mixer Kuralları Önizlemesi",
+    "noteConnected": "Uçuş kontrolcünüzün bağlı olduğundan emin olun",
+    "noteEeprom": "Ayarlar EEPROM'da saklanır (güç kesildikten sonra da kalır)",
+    "notePropellers": "Güvenlik için pervaneleri çıkarın",
+    "noteTest": "Kaydettikten sonra uçuştan önce tüm kontrolleri test edin",
+    "nothingToReview": "İncelenecek yapılandırma yok",
+    "rev": "TERS",
+    "saveFailed": "Yapılandırma kaydedilemedi",
+    "saveToFc": "Uçuş Kontrolcüsüne Kaydet",
+    "saved": "Yapılandırma başarıyla kaydedildi!",
+    "savedHint": "Ayarlar uçuş kontrolcüsüne yazıldı. Artık bu sihirbazı kapatabilirsiniz.",
+    "source": "Kaynak {{source}}",
+    "subtitle": "Uçuş kontrolcüsüne kaydetmeden önce servo yapılandırmanızı doğrulayın.",
+    "title": "Yapılandırmanızı İnceleyin"
+  },
+  "servoTestStep": {
+    "checkAilerons": "<b>Kanatçıklar:</b> Roll çubuğu sağa → sağ kanatçık YUKARI, sol kanatçık AŞAĞI gitmeli",
+    "checkElevator": "<b>İrtifa dümeni:</b> Çubuğu geri çekin → firar kenarı YUKARI gitmeli",
+    "checkElevons": "<b>Elevonlar:</b> Hem roll hem pitch hareketlerini test edin",
+    "checkRudder": "<b>Yön dümeni:</b> Yaw çubuğu sağa → yön dümeni SAĞA hareket etmeli",
+    "continue": "Devam: Kalibre Et →",
+    "enablePolling": "Canlı servo okumasını etkinleştir",
+    "howToCheck": "Yön nasıl kontrol edilir:",
+    "instruction": {
+      "aileronLeft": "Roll çubuğunu SAĞA hareket ettirin → bu servo AŞAĞI hareket etmeli",
+      "aileronRight": "Roll çubuğunu SAĞA hareket ettirin → bu servo YUKARI hareket etmeli",
+      "default": "İlgili çubuğu hareket ettirin",
+      "elevator": "Pitch çubuğunu GERİ çekin → firar kenarı YUKARI gitmeli",
+      "elevonLeft": "Roll SAĞA → AŞAĞI. Pitch GERİ → YUKARI (firar kenarı)",
+      "elevonRight": "Roll SAĞA → YUKARI. Pitch GERİ → YUKARI (firar kenarı)",
+      "gimbalPan": "Yaw çubuğunu hareket ettirin → kamera yatay dönmeli",
+      "gimbalTilt": "Pitch çubuğunu hareket ettirin → kamera yukarı/aşağı eğilmeli",
+      "rudder": "Yaw çubuğunu SAĞA hareket ettirin → yön dümeni SAĞA sapmalı",
+      "vtailLeft": "Pitch GERİ ve Yaw SAĞA → iki hareketi de test edin",
+      "vtailRight": "Pitch GERİ ve Yaw SAĞA → iki hareketi de test edin",
+      "yawServo": "Yaw çubuğunu hareket ettirin → motor eğilmeli"
+    },
+    "moveStick": "Test için çubuğu hareket ettirin",
+    "pollingEnabled": "● Canlı servo okuması etkin",
+    "responding": "Servo yanıt veriyor",
+    "reverseHint": "Bir servo <b>yanlış yöne</b> hareket ediyorsa <rev>Ters Çevir</rev>'e tıklayın.",
+    "servoIndex": "Servo {{index}}",
+    "subtitle": "Verici çubuklarınızı hareket ettirin ve her servonun doğru yanıt verdiğini doğrulayın.",
+    "title": "Servolarınızı Test Edin",
+    "undoReverse": "Ters Çevirmeyi Geri Al"
+  },
+  "servoTuningCard": {
+    "clickToReverse": "Ters çevirmek için tıklayın",
+    "fwd": "İLERİ",
+    "reversedTip": "Servo ters çevrildi",
+    "testMax": "Maks →",
+    "testMin": "← Min"
+  },
+  "servoTuningView": {
+    "clickToSelect": "Seçmek için yüzeye tıklayın",
+    "noConfig": "Servo Yapılandırması Yok",
+    "saveFailed": "Kaydedilemedi: {{error}}",
+    "saveToFc": "FC'ye Kaydet",
+    "saved": "Uçuş kontrolcüsüne kaydedildi",
+    "useWizard": "Önce servolarınızı yapılandırmak için Sihirbazı kullanın."
+  },
+  "servoWizard": {
+    "boardIsMultirotor": "Kart Multirotor Olarak Yapılandırılmış",
+    "changeMixerHint": "Bu işlem mixer türünü AIRPLANE olarak değiştirir, EEPROM'a kaydeder ve kartı yeniden başlatır.",
+    "checkingSupport": "Servo desteği kontrol ediliyor...",
+    "completeWizardFirst": "Önce sihirbazı tamamlayın",
+    "configureAsAirplane": "Uçak Olarak Yapılandır",
+    "configureAsPlaneQuestion": "Bu kartı uçak olarak yapılandırmak ister misiniz?",
+    "configuring": "Yapılandırılıyor...",
+    "disconnecting": "Bağlantı kesiliyor...",
+    "failedWithMessage": "Başarısız: {{message}}. iNav Configurator CLI'yı deneyin.",
+    "fineTuneServos": "Servolara ince ayar",
+    "notAvailable": "Servo Kurulumu Kullanılamıyor",
+    "oldFirmwareNote": "<b>Not:</b> iNav 2.0.0 çok eski. Bu işe yaramazsa iNav Configurator CLI kullanmanız gerekebilir: <code>mixer AIRPLANE</code> ardından <code>save</code>",
+    "platformChangeFailed": "Platform değiştirilemedi. iNav 2.0.0 için iNav Configurator CLI'yı deneyin: mixer AIRPLANE ardından save",
+    "platformChanged": "Platform AIRPLANE olarak değiştirildi! Doğrulamak için yeniden bağlanın.",
+    "rebooting": "Kart yeniden başlatılıyor...",
+    "reconnectHint": "Yeniden bağlanmak için üstteki bağlantı panelini kullanın.",
+    "reconnecting": "Yeniden bağlanılıyor...",
+    "savingEeprom": "Platform değişikliği gönderildi. EEPROM'a kaydediliyor...",
+    "sendingPlatform": "Platform yapılandırması gönderiliyor (MSP2 + CLI yedeği)...",
+    "servoCount": "- {{count}} servo",
+    "settingPlatform": "Platform türü AIRPLANE olarak ayarlanıyor...",
+    "steps": {
+      "aircraft": {
+        "description": "Hava aracı türünüzü seçin",
+        "label": "Hava Aracı"
+      },
+      "assign": {
+        "description": "Servoları kontrol yüzeylerine eşleyin",
+        "label": "Ata"
+      },
+      "endpoints": {
+        "description": "Servo limitlerini ayarlayın",
+        "label": "Kalibre Et"
+      },
+      "review": {
+        "description": "İnceleyin ve kaydedin",
+        "label": "Kaydet"
+      },
+      "test": {
+        "description": "Servo hareketini doğrulayın",
+        "label": "Test"
+      }
+    },
+    "tune": "Ayarla",
+    "unknownError": "Bilinmeyen hata",
+    "useConnectionPanel": "Kartınıza yeniden bağlanmak için lütfen bağlantı panelini kullanın.",
+    "usedFor": "Servo Kurulumu şunlar için kullanılır:",
+    "usedForFixedWing": "<b>Sabit kanatlı hava araçları</b> - kanatçık, irtifa dümeni, yön dümeni",
+    "usedForFlyingWing": "<b>Uçan kanatlar</b> - elevon karışımı",
+    "usedForGimbal": "<b>Gimbal servoları</b> - kamera pan/tilt (uyumlu kart gerekir)",
+    "waitingReboot": "Kartın yeniden başlaması bekleniyor (5 sn)...",
+    "wizard": "Sihirbaz"
+  },
+  "wizardNav": {
+    "back": "← Geri"
+  }
+}

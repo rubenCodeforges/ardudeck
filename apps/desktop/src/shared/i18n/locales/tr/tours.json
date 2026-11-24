@@ -1,0 +1,36 @@
+{
+  "activeTour": {
+    "nextFeature": "Sonraki özellik",
+    "nextTitle": "Sıradaki: {{title}}"
+  },
+  "tourLaunchGate": {
+    "apNotInstalled": "ArduPilot SITL henüz yüklü değil. İkili dosyayı indirmek için SITL görünümüne git; bağlandığında tur kendiliğinden devam eder.",
+    "apNotSupported": "ArduPilot SITL bu platformda desteklenmiyor.",
+    "connectOwnFc": "Kendi FC'mi bağlayacağım",
+    "connectOwnToContinue": "Ture devam etmek için kendi FC'ni bağla.",
+    "failedToStartSitl": "SITL başlatılamadı",
+    "goToSitlInstall": "Yüklemek için SITL'e git",
+    "intro": "Bu tanıtım, canlı bir uçuş kontrolcüsü gerektiren özellikleri gösterir. Denemek için güvenli bir <b>{{sitl}}</b> simülasyonu başlatabilir ya da kendi FC'ni bağlayabilirsin.",
+    "launch": "{{sitl}} başlat",
+    "needsVehicle": "Tur için bir araç gerekli",
+    "notNow": "Şimdi değil",
+    "startingSitl": "SITL başlatılıyor...",
+    "tcpConnectionFailed": "SITL başladı ama TCP bağlantısı kurulamadı"
+  },
+  "tourPanelsGate": {
+    "layoutAdjustment": "Düzen ayarı",
+    "missing": "Eksik: <b>{{panels}}</b>",
+    "panelsNotInLayout": "Bu tur, mevcut düzeninde bulunmayan panelleri gezdiriyor:",
+    "recommendedLayout": "önerilen düzen",
+    "skipTour": "Bu turu atla",
+    "switchPrompt": "Turu görmek için <b>{{preset}}</b> düzenine geçilsin mi? Mevcut düzenin kayıtlı kalır, düzen açılır listesinden istediğin zaman geri dönebilirsin.",
+    "switchTo": "{{preset}} düzenine geç"
+  },
+  "tourPrompt": {
+    "dontOfferAgain": "Turları bir daha önerme",
+    "noThanks": "Hayır, teşekkürler",
+    "quickTour": "Hızlı tur",
+    "remindLater": "Daha sonra hatırlat",
+    "showMe": "Göster"
+  }
+}

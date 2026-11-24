@@ -1,0 +1,767 @@
+{
+  "boardUartLabels": {
+    "sbusUart1Inverter": "UART1 üzerindeki SBUS pad'inde yerleşik inverter var",
+    "sbusUart2": "UART2 üzerindeki SBUS pad'i",
+    "sbusUart2Inverter": "UART2 üzerindeki SBUS pad'inde yerleşik inverter var"
+  },
+  "calibrationOrientation": {
+    "leftSide": "Aracı SOL yanına yatır",
+    "level": "Aracı düz, doğru yönde yerleştir",
+    "noseDown": "Aracı BURNU AŞAĞI dikey tut",
+    "noseUp": "Aracı BURNU YUKARI dikey tut",
+    "pitchDown": "{{deg}}° aşağı pitch yap",
+    "pitchUp": "{{deg}}° yukarı pitch yap",
+    "rightSide": "Aracı SAĞ yanına yatır",
+    "rollLeft": "{{deg}}° sola roll yap",
+    "rollRight": "{{deg}}° sağa roll yap",
+    "upsideDown": "Aracı TERS ÇEVİR"
+  },
+  "calibrationQuality": {
+    "accelDriftingAdvice": "Arm sınırları içinde ama kayıyor. Her konumu sabit tutarak düz bir yüzeyde yeniden kalibre et.",
+    "accelFactoryDefaults": "Fabrika varsayılanları: bu ivmeölçer hiç kalibre edilmemiş.",
+    "accelFactoryDefaultsAdvice": "Uçmadan önce altı noktalı ivmeölçer kalibrasyonunu çalıştır.",
+    "accelGood": "İyi.",
+    "accelGoodOffsets": "İyi: ofsetler {{offsets}} m/s/s.",
+    "accelNotRead": "Kalibrasyon değerleri araçtan okunamadı.",
+    "accelOffsetsHigh": "Kabul edildi ama yüksek: ofsetler {{offsets}} m/s/s.",
+    "accelOffsetsPastLimit": "Ofsetler {{offsets}} m/s/s, {{limit}} arm sınırını aşıyor.",
+    "accelOffsetsPastLimitAdvice": "Araç arm olmayı reddedecek. Gerçekten düz bir yüzeyde yeniden kalibre et.",
+    "accelScaleHigh": "Kabul edildi ama yüksek: ölçek %{{percent}} sapıyor.",
+    "accelScalePastLimit": "Ölçek %{{percent}} sapıyor, arm sınırını aşıyor.",
+    "accelScalePastLimitAdvice": "Araç arm olmayı reddedecek. Her konumu sabit tutarak yeniden kalibre et.",
+    "fitnessGood": "İyi: {{value}}.",
+    "fitnessRejected": "Reddedildi: {{value}}, {{limit}} sınırını aşıyor.",
+    "fitnessRejectedAdvice": "Metalden, bataryalardan ve kablolardan uzaklaş, sonra yeniden kalibre et.",
+    "fitnessValue": "fitness {{value}} mGauss",
+    "fitnessWeak": "Kabul edildi ama zayıf: {{value}}.",
+    "fitnessWeakAdvice": "Uçuş kontrolcüsü bunu kabul etti ama yön kayması olası. {{good}} altında bir fitness için metalden ve güç kablolarından uzakta, her eksende döndürerek yeniden kalibre et.",
+    "noFitness": "Uçuş kontrolcüsü fitness bildirmedi.",
+    "notPersisted_one": "{{count}} kalibrasyon değeri yeniden başlatmadan sonra korunmadı.",
+    "notPersisted_other": "{{count}} kalibrasyon değeri yeniden başlatmadan sonra korunmadı.",
+    "nothingToVerify": "Doğrulanacak bir şey yok.",
+    "persisted": "Kalibrasyon yeniden başlatmadan sonra araçta doğrulandı.",
+    "readBackConfirmed": "Kalibrasyon uçuş kontrolcüsünden geri okundu.",
+    "readBackFailed": "Kalibrasyon araçtan geri okunamadı.",
+    "noCompassFitness": "Pusula fitness değeri bildirilmedi.",
+    "recorded": "Kaydedildi."
+  },
+  "calibrationTypes": {
+    "accel6point": {
+      "description": "Azami doğruluk için tam 6 konumlu kalibrasyon.",
+      "name": "İvmeölçer (6 Nokta)"
+    },
+    "accelLevel": {
+      "description": "Hızlı, tek konumlu düz kalibrasyon. Aracını düz bir yüzeye yerleştir.",
+      "name": "İvmeölçer (Düz)"
+    },
+    "accelQuick": {
+      "description": "Tek konum, araç düz ve sabit. Aracı ters çevirmeden ArduPilot'un arm olmadan önce istediği ofsetleri yazar.",
+      "name": "İvmeölçer (Hızlı)"
+    },
+    "compass": {
+      "description": "Pusulayı kalibre etmek için aracını her yöne döndür.",
+      "name": "Pusula / Manyetometre"
+    },
+    "gyro": {
+      "description": "Hızlı gyro kalibrasyonu. Aracını tamamen sabit tut.",
+      "name": "Jiroskop"
+    },
+    "opflow": {
+      "description": "Optik akış sensörünü kalibre et. Yalnızca iNav.",
+      "name": "Optik Akış"
+    },
+    "position": {
+      "inverted": "Ters (Üstü Aşağı)",
+      "leftSide": "Sol Yan Aşağı",
+      "level": "Düz (Üstü Yukarı)",
+      "noseDown": "Burun Aşağı",
+      "noseUp": "Burun Yukarı",
+      "rightSide": "Sağ Yan Aşağı"
+    }
+  },
+  "cameraTypes": {
+    "srtHint": "ffmpeg, OBS, VLC (yalnızca H264)",
+    "webrtcHint": "Herhangi bir tarayıcıda aç, en düşük gecikme"
+  },
+  "devLoadGuard": {
+    "alreadyInstalled": "{{slug}} zaten kurulu. Önce kaldır.",
+    "noSlug": "Manifest'te slug yok",
+    "reserved": "{{slug}} yerleşik bir özelliği denetliyor ve geliştirici olarak yüklenemez"
+  },
+  "dronebridgeTypes": {
+    "esp32Mode": {
+      "accessPoint": "Erişim Noktası",
+      "longRange": "Uzun Menzil",
+      "station": "İstasyon (İstemci)"
+    }
+  },
+  "firmwareTypes": {
+    "customFile": "Özel Dosya"
+  },
+  "fleetLogMaintenance": {
+    "batteryDetail": "Minimum paket voltajı önceki uçuşlara göre ~{{drop}} V düştü. Paket yaşlanıyor olabilir.",
+    "batteryTitle": "Batarya voltaj düşüşü artıyor",
+    "labelCompass": "pusula",
+    "labelPower": "güç",
+    "labelVibration": "titreşim",
+    "recurringDetail": "Son {{total}} uçuşun {{bad}} tanesinde {{label}} işaretlendi. Sonraki görevden önce incele.",
+    "recurringTitle": "Tekrarlayan {{label}} sorunu",
+    "vibrationDetail": "Son zirve titreşim ortalaması {{recent}} m/s2, öncesinde {{prior}}. Motor/pervane dengesini ve izolasyonu kontrol et.",
+    "vibrationTitle": "Titreşim artış eğiliminde"
+  },
+  "flightModeMeta": {
+    "commit": "commit",
+    "gps": "GPS",
+    "group": {
+      "assisted": "Destekli",
+      "auto": "Otonom / Nav",
+      "manual": "Manuel / Acro",
+      "return": "Dönüş ve İniş",
+      "tuning": "Tuning"
+    },
+    "inFlight": "uçuşta",
+    "mustBeArmed": "Araç arm olmalı",
+    "needsGps": "GPS / konum kilidi gerekir",
+    "noGps": "GPS gerekmez"
+  },
+  "gisAreaImport": {
+    "invalidKml": "Geçersiz KML: XML ayrıştırılamadı",
+    "invalidKmlDetail": "Geçersiz KML: XML ayrıştırılamadı ({{detail}})"
+  },
+  "mapLayers": {
+    "bingHybrid": "Bing Hibrit",
+    "bingSat": "Bing Uydu",
+    "dark": "Koyu",
+    "dem": "DEM",
+    "googleHybrid": "Hibrit",
+    "googleSat": "Google Uydu",
+    "openaip": "OpenAIP",
+    "osm": "Sokak",
+    "radar": "Radar",
+    "satellite": "Uydu",
+    "terrain": "Arazi"
+  },
+  "mavlinkChannels": {
+    "rateGroup": {
+      "attitude": "Ufuk akıcılığı",
+      "extra3": "Ek sensörler",
+      "position": "Harita / konum",
+      "raw": "Ham IMU (yalnızca tuning)",
+      "rc": "RC girişleri",
+      "status": "Batarya ve durum",
+      "vfr": "Hız, irtifa, throttle"
+    }
+  },
+  "missionTypes": {
+    "command": {
+      "CONDITION_CHANGE_ALT": {
+        "description": "İrtifaya tırman/alçal, sonra devam et",
+        "name": "Condition Alt"
+      },
+      "CONDITION_DELAY": {
+        "description": "Sonraki komuttan önce saniye boyunca bekle",
+        "name": "Condition Delay"
+      },
+      "CONDITION_DISTANCE": {
+        "description": "Sonraki waypoint'e belirli mesafeye girene kadar bekle",
+        "name": "Condition Dist"
+      },
+      "CONDITION_YAW": {
+        "description": "Sonraki komuttan önce hedef yöne ulaş",
+        "name": "Condition Yaw"
+      },
+      "DO_AUTOTUNE_ENABLE": {
+        "description": "Autotune'u aç/kapat",
+        "name": "Autotune"
+      },
+      "DO_AUX_FUNCTION": {
+        "description": "Yardımcı fonksiyon anahtarını tetikle",
+        "name": "Aux Function"
+      },
+      "DO_CHANGE_ALTITUDE": {
+        "description": "İrtifayı belirtilen hızda değiştir",
+        "name": "Change Altitude"
+      },
+      "DO_CHANGE_SPEED": {
+        "description": "Hedef hızı değiştir",
+        "name": "Change Speed"
+      },
+      "DO_CONTROL_VIDEO": {
+        "description": "Araç üstü video sistemini kontrol et",
+        "name": "Control Video"
+      },
+      "DO_DIGICAM_CONFIGURE": {
+        "description": "Dijital kamera ayarlarını yapılandır",
+        "name": "Digicam Config"
+      },
+      "DO_DIGICAM_CONTROL": {
+        "description": "Kamera deklanşörünü tetikle",
+        "name": "Digicam Control"
+      },
+      "DO_ENGINE_CONTROL": {
+        "description": "Motoru çalıştır/durdur",
+        "name": "Engine Control"
+      },
+      "DO_FENCE_ENABLE": {
+        "description": "Geofence'i aç/kapat",
+        "name": "Fence Enable"
+      },
+      "DO_FLIGHTTERMINATION": {
+        "description": "Uçuşu hemen sonlandır",
+        "name": "Flight Termination"
+      },
+      "DO_GIMBAL_MANAGER_PITCHYAW": {
+        "description": "Gimbal pitch ve yaw açılarını ayarla",
+        "name": "Gimbal Pitch/Yaw"
+      },
+      "DO_GO_AROUND": {
+        "description": "İnişi iptal et ve pas geç",
+        "name": "Go Around"
+      },
+      "DO_GRIPPER": {
+        "description": "Gripper'ı aç/kapat",
+        "name": "Gripper"
+      },
+      "DO_GUIDED_LIMITS": {
+        "description": "Guided mod için sınırları ayarla",
+        "name": "Guided Limits"
+      },
+      "DO_INVERTED_FLIGHT": {
+        "description": "Ters uçuşu aç/kapat",
+        "name": "Inverted Flight"
+      },
+      "DO_JUMP": {
+        "description": "N numaralı waypoint'e atla ve X kez tekrarla",
+        "name": "Jump"
+      },
+      "DO_JUMP_TAG": {
+        "description": "Etiketli görev öğesine atla",
+        "name": "Do Jump Tag"
+      },
+      "DO_LAND_START": {
+        "description": "İniş dizisinin başlangıç işareti",
+        "name": "Land Start"
+      },
+      "DO_MOTOR_TEST": {
+        "description": "Tek bir motoru test et",
+        "name": "Motor Test"
+      },
+      "DO_MOUNT_CONFIGURE": {
+        "description": "Gimbal montaj modunu yapılandır",
+        "name": "Mount Config"
+      },
+      "DO_MOUNT_CONTROL": {
+        "description": "Gimbal açılarını kontrol et",
+        "name": "Mount Control"
+      },
+      "DO_PARACHUTE": {
+        "description": "Paraşütü aç veya otomatik açmayı etkinleştir",
+        "name": "Parachute"
+      },
+      "DO_PAUSE_CONTINUE": {
+        "description": "Mevcut görevi duraklat veya sürdür",
+        "name": "Pause/Continue"
+      },
+      "DO_RALLY_LAND": {
+        "description": "Rally noktasına uç ve in",
+        "name": "Rally Land"
+      },
+      "DO_REPEAT_RELAY": {
+        "description": "Röleyi N kez aç/kapat döngüsüne sok",
+        "name": "Repeat Relay"
+      },
+      "DO_REPEAT_SERVO": {
+        "description": "Servoyu PWM değerleri arasında döngüye sok",
+        "name": "Repeat Servo"
+      },
+      "DO_REPOSITION": {
+        "description": "Aracı bir konuma yeniden konumlandır",
+        "name": "Reposition"
+      },
+      "DO_SEND_SCRIPT_MESSAGE": {
+        "description": "Araç üstü Lua betiğine mesaj gönder",
+        "name": "Script Message"
+      },
+      "DO_SET_ACTUATOR": {
+        "description": "Bir aktüatör çıkışını ayarla (PX4)",
+        "name": "Set Actuator"
+      },
+      "DO_SET_CAM_TRIGG_DIST": {
+        "description": "Kamerayı mesafe aralıklarıyla tetikle",
+        "name": "Camera Trigger"
+      },
+      "DO_SET_CAM_TRIGG_INTERVAL": {
+        "description": "Kamerayı zaman aralıklarıyla tetikle",
+        "name": "Camera Interval"
+      },
+      "DO_SET_HOME": {
+        "description": "Yeni home konumu ayarla",
+        "name": "Set Home"
+      },
+      "DO_SET_MISSION_CURRENT": {
+        "description": "Saymadan görev öğesine atla",
+        "name": "Set Mission Item"
+      },
+      "DO_SET_MODE": {
+        "description": "Uçuş modunu ayarla",
+        "name": "Set Mode"
+      },
+      "DO_SET_PARAMETER": {
+        "description": "Bir uçuş kontrolcüsü parametresi ayarla",
+        "name": "Set Parameter"
+      },
+      "DO_SET_RELAY": {
+        "description": "Röleyi aç/kapat",
+        "name": "Set Relay"
+      },
+      "DO_SET_RESUME_REPEAT_DIST": {
+        "description": "RTL sonrası görev devamı için mesafeyi ayarla",
+        "name": "Resume Repeat Dist"
+      },
+      "DO_SET_REVERSE": {
+        "description": "Hareket yönünü ileri/geri ayarla",
+        "name": "Set Reverse"
+      },
+      "DO_SET_ROI": {
+        "description": "Kamera için ilgi bölgesini ayarla",
+        "name": "Set ROI"
+      },
+      "DO_SET_ROI_LOCATION": {
+        "description": "Kamerayı bir konuma çevir",
+        "name": "ROI Location"
+      },
+      "DO_SET_ROI_NONE": {
+        "description": "ROI'yi iptal et - takibi durdur",
+        "name": "ROI None"
+      },
+      "DO_SET_ROI_SYSID": {
+        "description": "Başka bir aracı sistem ID'siyle takip et",
+        "name": "ROI System"
+      },
+      "DO_SET_ROI_WPNEXT_OFFSET": {
+        "description": "Kamerayı sonraki waypoint'e çevir",
+        "name": "ROI Next WP"
+      },
+      "DO_SET_SERVO": {
+        "description": "Servoyu PWM değerine ayarla",
+        "name": "Set Servo"
+      },
+      "DO_SPRAYER": {
+        "description": "Tarım püskürtücüsünü aç/kapat",
+        "name": "Sprayer"
+      },
+      "DO_VTOL_TRANSITION": {
+        "description": "VTOL ile sabit kanat arasında geçiş yap",
+        "name": "VTOL Transition"
+      },
+      "DO_WINCH": {
+        "description": "Vinç motorunu kontrol et",
+        "name": "Winch"
+      },
+      "IMAGE_START_CAPTURE": {
+        "description": "Aralıklarla fotoğraf çekmeye başla",
+        "name": "Start Capture"
+      },
+      "IMAGE_STOP_CAPTURE": {
+        "description": "Fotoğraf çekmeyi durdur",
+        "name": "Stop Capture"
+      },
+      "JUMP_TAG": {
+        "description": "DO_JUMP_TAG için bir etiket işaretle",
+        "name": "Jump Tag"
+      },
+      "NAV_ALTITUDE_WAIT": {
+        "description": "Tırmanma hızına ulaşılana kadar irtifada bekle",
+        "name": "Altitude Wait"
+      },
+      "NAV_ARC_WAYPOINT": {
+        "description": "Waypoint üzerinden kavisli bir yay yolunda uç",
+        "name": "Arc Waypoint"
+      },
+      "NAV_ATTITUDE_TIME": {
+        "description": "Belirtilen süre boyunca attitude'u tut",
+        "name": "Attitude Time"
+      },
+      "NAV_CONTINUE_AND_CHANGE_ALT": {
+        "description": "İrtifa değiştirirken sonraki WP'ye devam et",
+        "name": "Continue/Change Alt"
+      },
+      "NAV_DELAY": {
+        "description": "Belirtilen süre veya günün saatine kadar bekle",
+        "name": "Delay"
+      },
+      "NAV_GUIDED_ENABLE": {
+        "description": "Yardımcı bilgisayardan guided modu aç/kapat",
+        "name": "Guided Enable"
+      },
+      "NAV_LAND": {
+        "description": "Belirtilen konuma in",
+        "name": "Land"
+      },
+      "NAV_LAND_LOCAL": {
+        "name": "Land Local"
+      },
+      "NAV_LOITER_TIME": {
+        "description": "Konumda X saniye loiter yap",
+        "name": "Loiter Time"
+      },
+      "NAV_LOITER_TO_ALT": {
+        "description": "Loiter yap ve irtifaya tırman/alçal",
+        "name": "Loiter to Alt"
+      },
+      "NAV_LOITER_TURNS": {
+        "description": "Konum etrafında N tur loiter yap",
+        "name": "Loiter Turns"
+      },
+      "NAV_LOITER_UNLIM": {
+        "description": "Konumda süresiz loiter yap",
+        "name": "Loiter Unlim"
+      },
+      "NAV_PAYLOAD_PLACE": {
+        "description": "Alçal ve yükü bırak",
+        "name": "Payload Place"
+      },
+      "NAV_RETURN_TO_LAUNCH": {
+        "description": "Kalkış/home konumuna dön",
+        "name": "RTL"
+      },
+      "NAV_SCRIPT_TIME": {
+        "description": "Lua betiğini belirtilen süre çalıştır",
+        "name": "Script Time"
+      },
+      "NAV_SPLINE_WAYPOINT": {
+        "description": "Yumuşak eğriler için spline waypoint",
+        "name": "Spline WP"
+      },
+      "NAV_TAKEOFF": {
+        "description": "Belirtilen irtifaya kalk",
+        "name": "Takeoff"
+      },
+      "NAV_TAKEOFF_LOCAL": {
+        "name": "Takeoff Local"
+      },
+      "NAV_VTOL_LAND": {
+        "description": "Konumda VTOL ile in",
+        "name": "VTOL Land"
+      },
+      "NAV_VTOL_TAKEOFF": {
+        "description": "İrtifaya VTOL kalkışı",
+        "name": "VTOL Takeoff"
+      },
+      "NAV_WAYPOINT": {
+        "description": "Waypoint'e git, isteğe bağlı loiter süresiyle",
+        "name": "Waypoint"
+      },
+      "SET_CAMERA_FOCUS": {
+        "description": "Kamera odağını ayarla",
+        "name": "Camera Focus"
+      },
+      "SET_CAMERA_MODE": {
+        "description": "Kamera çalışma modunu ayarla",
+        "name": "Camera Mode"
+      },
+      "SET_CAMERA_SOURCE": {
+        "description": "Kamera video kaynağını ayarla",
+        "name": "Camera Source"
+      },
+      "SET_CAMERA_ZOOM": {
+        "description": "Kamera zoom seviyesini ayarla",
+        "name": "Camera Zoom"
+      },
+      "SET_YAW_SPEED": {
+        "description": "Rover için yaw açısı ve hızını ayarla",
+        "name": "Set Yaw Speed"
+      },
+      "VIDEO_START_CAPTURE": {
+        "description": "Video kaydını başlat",
+        "name": "Start Video"
+      },
+      "VIDEO_STOP_CAPTURE": {
+        "description": "Video kaydını durdur",
+        "name": "Stop Video"
+      }
+    },
+    "unknownCommand": "Bilinmeyen CMD {{command}}"
+  },
+  "missionValidation": {
+    "altHigh": "{{count}} waypoint {{altitude}} üstünde - irtifa referansını kontrol et.",
+    "altNonPositive": "{{count}} waypoint {{altitude}} irtifada veya altında.",
+    "badJumps": "{{count}} DO_JUMP komutu olmayan bir waypoint'i hedefliyor.",
+    "ceiling": "{{count}} öğe, {{ceiling}} öğelik FC sınırını aşıyor. Daha küçük uçuşlara böl.",
+    "emptyGroup": "\"{{name}}\" grubunda waypoint yok.",
+    "midMissionReturn_one": "{{count}} survey görev bitmeden eve dönüyor. Düz devam etmesi için bağla.",
+    "midMissionReturn_other": "{{count}} survey görev bitmeden eve dönüyor. Düz devam etmeleri için bağla.",
+    "noTakeoff": "Kalkış komutu yok - araç mevcut durumundan ilk waypoint'e uçacak.",
+    "hazard": "{{from}} - {{to}} bacağı \"{{zone}}\" tehlike bölgesini kesiyor",
+    "hazardFromHome": "Home'dan {{to}} bacağı \"{{zone}}\" tehlike bölgesini kesiyor"
+  },
+  "parameterGroups": {
+    "all": {
+      "description": "Tüm parametreler",
+      "name": "Tümü"
+    },
+    "arming": {
+      "description": "Arm kontrolleri ve gereksinimleri",
+      "name": "Arm"
+    },
+    "battery": {
+      "description": "Batarya monitörü yapılandırması",
+      "name": "Batarya"
+    },
+    "compass": {
+      "description": "Pusula ve manyetometre ayarları",
+      "name": "Pusula"
+    },
+    "failsafe": {
+      "description": "Failsafe eylemleri ve eşikleri",
+      "name": "Failsafe"
+    },
+    "flight_modes": {
+      "description": "Uçuş modu yapılandırması",
+      "name": "Uçuş Modları"
+    },
+    "gps": {
+      "description": "GPS yapılandırması",
+      "name": "GPS"
+    },
+    "logging": {
+      "description": "Veri loglama ve zamanlayıcı",
+      "name": "Loglama"
+    },
+    "motors": {
+      "description": "Motor ve ESC yapılandırması",
+      "name": "Motorlar"
+    },
+    "navigation": {
+      "description": "Waypoint ve navigasyon ayarları",
+      "name": "Navigasyon"
+    },
+    "rc": {
+      "description": "Radyo kontrol giriş ayarları",
+      "name": "RC Girişi"
+    },
+    "tuning": {
+      "description": "PID ve attitude tuning",
+      "name": "Tuning"
+    }
+  },
+  "prearmChecks": {
+    "category": {
+      "battery": "Batarya",
+      "gps": "GPS",
+      "mission": "Görev",
+      "motors": "Motorlar",
+      "rc": "RC",
+      "sensors": "Sensörler",
+      "system": "Sistem"
+    },
+    "hint": {
+      "apAccel": "İvmeölçerlerin kalibrasyona ihtiyacı var.",
+      "apAhrsInconsistent": "IMU çekirdekleri birbiriyle uyuşmuyor, genellikle eski kalibrasyon yüzünden. İvmeölçerleri yeniden kalibre et. SITL'de \"Wipe EEPROM\" ile yeniden başlat.",
+      "apAhrsNotReady": "Attitude tahmini hazır değil. Aracı sabit tut ve bir dakika ver veya yukarıda görünen sensör hatalarını gider.",
+      "apAirspeed": "Hava hızı sensörü yanıt vermiyor. Kablolarını ve pitot tüpünü kontrol et.",
+      "apBaro": "Barometre yanıt vermiyor. Uçuş kontrolcüsü donanımını kontrol et ve yeniden başlat.",
+      "apBattery": "Batarya düşük veya doğru bildirilmiyor. Şarj et veya değiştir; okuma yanlış görünüyorsa batarya monitörünü kontrol et.",
+      "apBoardType": "Yapılandırılan kart türü bu uçuş kontrolcüsüyle uyuşmuyor.",
+      "apCompassInconsistent": "Pusula okumaları uyuşmuyor veya manyetik alan yanlış görünüyor. Metalden ve güç kablolarından uzaklaş, her pusulanın yönünü kontrol et, sonra yeniden kalibre et.",
+      "apCompassUncalibrated": "Pusula kalibre edilmemiş veya kalibrasyonu artık uymuyor.",
+      "apCompassUnhealthy": "Bir pusula yanıt vermiyor. Kablolarını ve algılanıp algılanmadığını kontrol et.",
+      "apEkfAttitude": "EKF yakınsayamıyor. Aracı sabit tut. SITL'de \"Wipe EEPROM\" ile yeniden başlat ve açılıştan sonra 60-90 sn bekle.",
+      "apFence": "Fence için bir konum gerekiyor veya araç fence'in dışında. GPS kilidini bekle veya aracı fence'in içine al.",
+      "apFrameClass": "Bu araç için gövde düzeni ayarlanmamış. Motorların dizilişine uygun frame class ve type ayarla.",
+      "apGeneric": "Bu kontrol için bilinen otomatik bir çözüm yok. Mesaj doğrudan uçuş kontrolcüsünden geliyor; pre-arm referansı her birini açıklar.",
+      "apGpsNotReady": "GPS'in henüz kullanılabilir bir fix'i yok veya algılanmıyor. Açık gökyüzü altında bekle; sürerse GPS kurulumunu kontrol et.",
+      "apGyro": "Gyro'lar uyuşmuyor veya kalibre değil. Aracı tamamen sabit tutup yeniden başlat veya gyro kalibrasyonu çalıştır.",
+      "apLogging": "Loglama kullanılamıyor: SD kart yok, dolu veya bozuk. Kartı tak veya değiştir.",
+      "apMission": "Görev olduğu gibi başlayamaz. Görev planlayıcıda kontrol et.",
+      "apNeed3dFix": "GPS 3D fix bekleniyor. Açık gökyüzüne geç ve bekle.",
+      "apNeedAlt": "EKF'nin bir irtifa tahminine ihtiyacı var. Bu diğer sensör hatalarından kaynaklanır, önce onları gider.",
+      "apNeedPosition": "EKF'nin geçerli bir konuma ihtiyacı var. GPS kilidini ve yakınsaması için açılıştan sonra 60-90 sn bekle.",
+      "apRadioFailsafe": "Uçuş kontrolcüsü radyo failsafe'inde. Vericiyi aç, eşleşmiş olduğunu ve throttle aralığının failsafe değerinin üstünde durduğunu kontrol et.",
+      "apRangefinder": "Mesafe ölçer yanıt vermiyor. Kablolarını kontrol et. Takılı değilse türü none olarak ayarlanmalı.",
+      "apRcUncalibrated": "Radyo kanalları kalibre edilmemiş.",
+      "apSafetySwitch": "Işığı sabit yanana kadar araçtaki güvenlik anahtarını basılı tut.",
+      "apThrottleHigh": "Throttle minimumda değil. Throttle çubuğunu tamamen aşağı çek ve vericideki trim'ini kontrol et.",
+      "apWaitOrReboot": "Uçuş kontrolcüsü sensörlerin oturmasını beklemeni veya yeniden başlatmanı istiyor.",
+      "px4Accel": "İvmeölçer kalibre değil veya tutarsız.",
+      "px4Attitude": "Attitude tahmini kararlı değil. Aracı düzle, titreşimi azalt ve tahmincinin oturmasını bekle.",
+      "px4Battery": "Batarya düşük veya sağlıksız. Şarj et veya değiştir; okuma yanlış görünüyorsa batarya kurulumunu kontrol et.",
+      "px4Esc": "Bir ESC veya motor sorunu algılandı. ESC kablolarını, telemetriyi ve motor çıkışlarını kontrol et.",
+      "px4Generic": "Bu kontrol için bilinen otomatik bir çözüm yok. Mesaj doğrudan uçuş kontrolcüsünden geliyor; preflight kontrol referansı her birini açıklar.",
+      "px4Geofence": "Bir geofence durumu arm olmayı engelliyor. Aracı fence'in içine al veya fence'i gözden geçir.",
+      "px4GpsFix": "GPS fix bekleniyor. Açık gökyüzüne geç ve bekle; sürerse GPS kurulumunu kontrol et.",
+      "px4Gyro": "Jiroskop kalibre değil. Kalibrasyon sırasında aracı tamamen sabit tut.",
+      "px4Home": "Home konumu henüz ayarlanmadı. Home alınabilsin diye geçerli bir konum bekle.",
+      "px4KillSwitch": "Kill switch devrede. Arm etmeden önce vericiden devreden çıkar.",
+      "px4Mag": "Manyetometre kalibre değil veya okumaları uyuşmuyor. Metalden ve güç kablolarından uzaklaş ve yeniden kalibre et.",
+      "px4PositionEstimate": "Konum tahmini hazır değil. Açık gökyüzü altında GPS kilidini ve tahmincinin oturmasını bekle.",
+      "px4Radio": "Radyo kalibre değil veya sinyali kayıp. Vericiyi aç, eşleşmiş olduğunu kontrol et ve kalibre et.",
+      "px4Vibration": "Yüksek titreşim veya ivmeölçer kırpması. Uçuş kontrolcüsü montajını ve izolasyonunu iyileştir, pervaneleri balansla."
+    },
+    "link": {
+      "ardupilotReference": "ArduPilot pre-arm referansı",
+      "batterySetup": "Batarya kurulumu",
+      "calibrateAccel": "İvmeölçeri kalibre et",
+      "calibrateCompass": "Pusulayı kalibre et",
+      "calibrateGyro": "Gyro'yu kalibre et",
+      "calibrateRadio": "Radyoyu kalibre et",
+      "checkRcInputs": "RC girişlerini kontrol et",
+      "compassSetup": "Pusula kurulumu",
+      "failsafeSettings": "Failsafe ayarları",
+      "gpsSetup": "GPS kurulumu",
+      "loggingSetup": "Loglama kurulumu",
+      "openFence": "Fence'i aç",
+      "openMission": "Görevi aç",
+      "openSitl": "SITL'i aç",
+      "px4Reference": "PX4 preflight kontrol referansı",
+      "sensorSetup": "Sensör kurulumu"
+    }
+  },
+  "rallyTypes": {
+    "landImmediately": "Hemen in",
+    "landIntoWind": "Rüzgara karşı in"
+  },
+  "safetyConfigChecks": {
+    "calibrationLost": {
+      "consequence": "Yazıldı ama yeniden başlatmadan sonra korunmadı. Hava aracı daha önce orada ne varsa onunla uçuyor.",
+      "sensor": "sensör",
+      "title": "Son {{type}} kalibrasyonu hava aracında yok"
+    },
+    "compassWeak": {
+      "consequence": "Position hold sağa sola kayabilir veya daire çizebilir. Metalden ve güç kablolarından uzakta yeniden kalibre etmek genellikle çözer.",
+      "title": "Pusula kalibrasyonu olması gerekenden zayıf"
+    },
+    "ekfFailsafeReportOnly": {
+      "consequence": "Navigasyon failsafe'i yalnızca bildirim yapacak şekilde ayarlı. Uçuşta konum veya yön bozulursa hava aracı içinde bulunduğun modda uçmaya çalışmaya devam eder.",
+      "consequenceWeakCompass": "Pusula kalibrasyonun zaten zayıf ve navigasyon failsafe'i yalnızca bildirim yapıyor. Şaşıran bir hava aracı inmek yerine uçmaya devam eder.",
+      "recommend": "Navigasyon bozulunca in",
+      "title": "Hava aracı nerede olduğunu kaybederse hiçbir şey olmaz"
+    },
+    "ekfThresholdDisabled": {
+      "consequence": "Kötü bir yön veya konum tahminiyle arm etmeni hiçbir şey engellemez ve uçuş içi failsafe de tetiklenemez.",
+      "recommend": "Varsayılan eşiği geri yükle",
+      "title": "Navigasyon kalite kontrolü kapalı"
+    },
+    "fenceRtlWithWeakCompass": {
+      "consequence": "Eve uçmak, pusula kalibrasyonunun zayıf olduğu aynı yönü gerektirir. Bulunduğu yere inmek gerektirmez.",
+      "recommend": "Eve uçmak yerine in",
+      "title": "Fence ihlalinde hava aracı eve uçmaya çalışacak"
+    },
+    "px4BatteryWarningOnly": {
+      "consequence": "Hava aracı boş pakette gökten düşene kadar uçmaya devam eder. Onu senin yerine indirecek hiçbir şey yok.",
+      "recommend": "Kritikte dön, boşalınca in",
+      "title": "Biten batarya yalnızca uyarı verir"
+    },
+    "px4FenceNoAction": {
+      "consequence": "Fence hiçbir eylem almayacak şekilde ayarlı; hava aracı izin verilen alandan çıkınca onu tutmaz, döndürmez veya indirmez.",
+      "recommend": "Fence'te konumu tut",
+      "title": "Geofence'i aşmak hiçbir şey yapmaz"
+    },
+    "px4FenceRtlWithWeakCompass": {
+      "consequence": "Eve uçmak, pusula kalibrasyonunun zayıf olduğu aynı yönü gerektirir. Olduğu yerde tutmak gerektirmez.",
+      "recommend": "Eve uçmak yerine konumu tut",
+      "title": "Fence ihlalinde hava aracı eve uçmaya çalışacak"
+    },
+    "px4GcsLossDisabled": {
+      "consequence": "Hava aracı RC menzili dışındayken telemetri koparsa, ona ulaşmanın bir yolu olmadan yoluna devam eder.",
+      "recommend": "Link kaybında eve dön",
+      "title": "Yer istasyonu linkini kaybetmek hiçbir şey yapmaz"
+    },
+    "px4MagCheckDisabled": {
+      "consequence": "Çeliğin yanında veya manyetometre saçma okurken arm etmeni hiçbir şey engellemez.",
+      "recommend": "Kötü pusulada arm etmeyi reddet",
+      "title": "Pusula gücü kontrolü kapalı"
+    },
+    "px4RcLossTerminates": {
+      "consequence": "Uçuş sonlandırma ve disarm, hava aracını olduğu yerde düşürür. Kısa bir RC kopması kazaya dönüşür.",
+      "recommend": "Radyo kaybında eve dön",
+      "title": "Radyoyu kaybetmek motorları kesecek"
+    }
+  },
+  "safetyMonitor": {
+    "controllerFighting": "Şişmiş I terimi P'yi eziyor - komut talebe ters.",
+    "enablePidStreaming": "PID akışını etkinleştir (GCS_PID_MASK)",
+    "latchCleared": "DANGER mandalı operatör tarafından temizlendi",
+    "signal": {
+      "bodyRates": "Yerdeki gövde hızları",
+      "controllerFighting": "Kontrolcü kendiyle savaşıyor",
+      "integratorLoad": "İntegratör yükü",
+      "motorSpread": "Yerdeki motor farkı",
+      "restingAttitude": "Duruş attitude ofseti",
+      "throttleClimbCoherence": "Throttle ve tırmanma"
+    },
+    "throttleNotLifting": "Throttle yukarıda ama kalkmıyor.",
+    "tipoverDetected": "Spool-up sırasında devrilme ön koşulu deseni algılandı"
+  },
+  "sitlCustomFrame": {
+    "missingField": "Eksik veya sayısal olmayan alan: {{key}}",
+    "notJsonObject": "JSON nesnesi değil",
+    "slungLoadHardpoint": "slungLoad: hardpoint üç sayıdan oluşan bir dizi olmalı",
+    "slungLoadMissingField": "slungLoad: eksik veya sayısal olmayan alan: {{key}}",
+    "slungLoadNotObject": "slungLoad bir nesne olmalı",
+    "slungLoadServoChannel": "slungLoad: {{key}} tamsayı bir servo kanalı olmalı",
+    "template": {
+      "heavy_industrial_14s": "Ağır Endüstriyel Octa 14S",
+      "heavy_octa": "Ağır yük Octa (Callisto sınıfı)",
+      "hexa": "Hexa (orta sinema)",
+      "small_quad": "Küçük Quad (varsayılan)"
+    }
+  },
+  "sitlUnsafeParams": {
+    "adsb": "donanım ADSB transponder türü",
+    "batteryMonitor": "donanım batarya monitörü türü",
+    "boardSpecific": "donanım kimliği / karta özgü",
+    "driverFamily": "donanım kimliği / sürücü ailesi",
+    "gpsDriver": "donanım GPS sürücü türü",
+    "rangefinder": "donanım mesafe ölçer türü",
+    "serialProtocol": "donanım yolu seri protokolü"
+  },
+  "telemetryTypes": {
+    "gpsFix": {
+      "noFix": "Fix Yok",
+      "noGps": "GPS Yok"
+    },
+    "planeLandDisabled": "Sabit kanat inişi, NAV_LAND waypoint'li bir görev gerektirir (veya AUTOLAND modu + DO_LAND_START)"
+  },
+  "trafficTypes": {
+    "adsbPreset": {
+      "adsb-fi": "adsb.fi (ücretsiz, anahtarsız)",
+      "adsbexchange": "ADSBExchange (RapidAPI anahtarı)",
+      "airplanes-live": "airplanes.live (ücretsiz, anahtarsız)",
+      "custom": "Özel uç nokta"
+    }
+  },
+  "vehicleProfile": {
+    "frame": {
+      "antennaTracker": "Anten takipçisi",
+      "fixedWing": "Sabit kanat",
+      "helicopter": "Helikopter",
+      "multirotor": "Multirotor",
+      "rover": "Rover",
+      "submarine": "Denizaltı",
+      "surfaceBoat": "Yüzey teknesi",
+      "unknown": "Bilinmiyor",
+      "vtol": "VTOL"
+    },
+    "frameUnknownId": "Gövde {{frame}}",
+    "unidentified": "Tanımlanamayan araç"
+  },
+  "userModelParsers": {
+    "badLatLng": "enlem veya boylam eksik ya da aralık dışı",
+    "badNumber": "{{field}} geçerli bir sayı değil",
+    "emptyTable": "Yerleştirme tablosunda satır yok.",
+    "invalidJson": "Yerleştirme tablosu geçerli bir JSON değil ({{detail}})",
+    "missingFile": "satırda model dosyası belirtilmemiş",
+    "noCrs": "Bu CityJSON dosyası bir koordinat referans sistemi (metadata.referenceSystem) belirtmiyor, bu yüzden yerleştirilemez.",
+    "noGeometry": "Bu CityJSON dosyasında çizilebilecek yüzey yok.",
+    "noValidRows": "Yerleştirme tablosundaki hiçbir model yerleştirilemedi. Satır {{row}}: {{problem}}.",
+    "notCityJson": "Bu dosya CityJSON değil.",
+    "notFeatureCollection": "GeoJSON tablosu, Point özelliklerinden oluşan bir FeatureCollection olmalı.",
+    "notModelList": "models.json bir model listesi ya da \"models\" listesi içeren bir nesne olmalı.",
+    "unknownCrs": "Bilinmeyen koordinat referans sistemi EPSG:{{epsg}}. Bu CityJSON dosyası yerleştirilemez."
+  },
+  "vtolTransition": {
+    "toHover": "HOVER'A",
+    "toWing": "KANADA"
+  }
+}

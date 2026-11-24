@@ -1,0 +1,19 @@
+{
+  "dashboard": {
+    "accCalStarted": "İvmeölçer kalibrasyonu başladı. Kartı sabit tut!",
+    "armedBadge": "ARM",
+    "calibrateAcc": "ACC Kalibre Et",
+    "connectedOn": "{{board}} üzerinde {{variant}} {{version}}",
+    "cpuLoad": "CPU Yükü",
+    "cycleTime": "Döngü Süresi",
+    "disarmedBadge": "DISARM",
+    "fix": "Fix",
+    "lastUpdate": "Son güncelleme: {{time}}",
+    "rebootConfirm": "Uçuş kontrolcüsü yeniden başlatılsın mı?",
+    "refreshPorts": "Portları yenile",
+    "startTelemetry": "Telemetriyi Başlat",
+    "stopTelemetry": "Telemetriyi Durdur",
+    "subtitle": "Betaflight, iNav veya Cleanflight kartlarına bağlan",
+    "used": "Kullanılan"
+  }
+}

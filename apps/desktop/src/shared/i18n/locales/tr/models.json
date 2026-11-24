@@ -1,0 +1,88 @@
+{
+  "layersEntry": {
+    "label": "3B Modeller",
+    "tip": "Kendi 3B modellerini (glTF, KMZ, 3D Tiles, CityJSON, LAS/LAZ nokta bulutları) tüm 3B görünümlere ekle"
+  },
+  "dialog": {
+    "title": "3B Modeller",
+    "subtitle": "Kendi modellerin, her 3B görünümde gösterilir",
+    "import": "İçe aktar",
+    "importing": "İçe aktarılıyor...",
+    "importTip": "glTF/GLB, KMZ, 3D Tiles tileset.json, CityJSON veya LAS, LAZ ve PLY nokta bulutu dosyalarını seç",
+    "failedTitle_one": "{{count}} dosya içe aktarılamadı",
+    "failedTitle_other": "{{count}} dosya içe aktarılamadı",
+    "dismiss": "Kapat",
+    "needsPlacementHint_one": "{{count}} modelin verisinde konum yok. Bıraktığın yere (ya da harita merkezine) yerleştirildi. Konumunu ayarlamak için genişlet.",
+    "needsPlacementHint_other": "{{count}} modelin verisinde konum yok. Bıraktığın yere (ya da harita merkezine) yerleştirildiler. Konumlarını ayarlamak için genişlet.",
+    "emptyTitle": "Henüz 3B model yok",
+    "emptyHint": "Dosyaları içe aktar, bir haritaya bırak ya da bir klasörü izle.",
+    "warningsTitle_one": "Kontrol edilecek {{count}} içe aktarma",
+    "warningsTitle_other": "Kontrol edilecek {{count}} içe aktarma"
+  },
+  "row": {
+    "collapse": "Daralt",
+    "editPlacement": "Konumu düzenle",
+    "placedByData": "Veriye göre yerleştirildi",
+    "placedByHand": "Elle yerleştirildi",
+    "fromFolder": "Klasörden",
+    "needsPosition": "Konum gerekli",
+    "hide": "3B görünümlerde gizle",
+    "show": "3B görünümlerde göster",
+    "remove": "Modeli kaldır",
+    "confirmRemove": "Kaldır",
+    "removeWatchedTip": "Bu model izlenen bir klasörden geliyor. Bunun yerine klasörü kaldır ya da tablosunu düzenle.",
+    "points_one": "{{formatted}} nokta",
+    "points_other": "{{formatted}} nokta",
+    "pointsThinned": "{{total}} noktanın {{shown}} tanesi",
+    "pointsThinnedTip": "Büyük bulutlar, her 3B görünümün akıcı kalması için eşit aralıklarla seyreltilir"
+  },
+  "editor": {
+    "lat": "Enlem",
+    "lng": "Boylam",
+    "alt": "İrtifa (m)",
+    "altMode": "İrtifa modu",
+    "altModes": {
+      "amsl": "Deniz seviyesinden yüksek",
+      "agl": "Zeminden yüksek",
+      "clamp": "Zeminde"
+    },
+    "yaw": "Yaw (derece)",
+    "pitch": "Pitch (derece)",
+    "roll": "Roll (derece)",
+    "scale": "Ölçek",
+    "readOnlyNote": "Bu model izlenen bir klasörden geliyor. Konumunu tablosu (models.json, CSV veya GeoJSON) belirler; taşımak için tabloyu düzenle.",
+    "placeAtCentre": "Harita merkezine yerleştir",
+    "placeAtCentreTip": "Modeli en son kullandığın haritanın merkezine taşı",
+    "adjustOnMap": "Haritada ayarla",
+    "adjustOnMapTip": "Model orijinini 2B haritada sürükle ve yön tutamacını çevir"
+  },
+  "watch": {
+    "title": "İzlenen klasörler",
+    "add": "Klasör ekle",
+    "remove": "İzlemeyi bırak",
+    "explain": "Modelleri, yanlarında models.json, CSV veya GeoJSON tablosu bulunan bir klasöre koy: tablo her modeli yerleştirir. Klasörde veya tabloda yapılan değişiklikler canlı olarak yeniden yüklenir.",
+    "none": "İzlenen klasör yok."
+  },
+  "toast": {
+    "imported_one": "{{count}} model içe aktarıldı",
+    "imported_other": "{{count}} model içe aktarıldı",
+    "failed_one": "{{count}} başarısız",
+    "failed_other": "{{count}} başarısız",
+    "needsPlacement_one": "{{count}} tanesinin konumu gerekli",
+    "needsPlacement_other": "{{count}} tanesinin konumu gerekli",
+    "details": "Ayrıntılar",
+    "warnings_one": "{{count}} uyarı",
+    "warnings_other": "{{count}} uyarı"
+  },
+  "adjust": {
+    "hint": "{{name}} ayarlanıyor: taşımak için noktayı, döndürmek için tutamacı sürükle",
+    "edit": "Değerleri düzenle",
+    "done": "Bitti"
+  },
+  "drop": {
+    "overlay": "3B model eklemek için bırak"
+  },
+  "format": {
+    "pointCloud": "Nokta bulutu"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "detachable": {
+    "dockBackHere": "Buraya geri yasla",
+    "openInNewWindow": "{{title}} panelini yeni pencerede aç",
+    "openInSeparateWindow": "Ayrı pencerede aç"
+  },
+  "errorBoundary": {
+    "labelHitError": "{{label}} bir hatayla karşılaştı",
+    "somethingWentWrong": "Bir şeyler ters gitti"
+  },
+  "experienceLevelDialog": {
+    "advancedDescription": "El tutma olmadan sade arayüz. Eğitici kartları ve satır içi ipuçlarını gizler.",
+    "beginnerDescription": "Öğrenmenize yardımcı olmak için arayüz boyunca ipuçları, açıklamalar ve kılavuzlar gösterir.",
+    "changeAnytime": "Bunu istediğiniz zaman Ayarlar'dan değiştirebilirsiniz",
+    "subtitle": "Arayüzü size göre ayarlamak için deneyim seviyenizi seçin",
+    "title": "ArduDeck'e hoş geldiniz"
+  },
+  "infoCard": {
+    "tip": "İpucu:"
+  },
+  "presetSelector": {
+    "hint": "Bir ayar tarzını uygulamak için tıklayın"
+  },
+  "profileManager": {
+    "namePlaceholder": "Ad...",
+    "resetToFactoryDefaults": "Fabrika ayarlarına sıfırla",
+    "saveAsProfile": "Geçerli ayarları profil olarak kaydet"
+  },
+  "rateCurve": {
+    "maxRate": "Maks: <v>{{maxRate}}°/s</v>"
+  },
+  "tagInput": {
+    "addTags": "Etiket ekle..."
+  }
+}

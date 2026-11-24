@@ -1,0 +1,363 @@
+{
+  "appStore": {
+    "installFailed": "Kurulum başarısız",
+    "uninstallFailed": "Kaldırma başarısız"
+  },
+  "ardupilotSitlStore": {
+    "browseFailed": "Göz atma başarısız",
+    "downloadBinaryFailed": "{{track}} ikili dosyası indirilemedi",
+    "downloadFailed": "İndirme başarısız",
+    "flightGearFailed": "FlightGear başlatılamadı",
+    "model": {
+      "balancebot": "Denge Robotu",
+      "coax": "Koaksiyel Kopter",
+      "hexa": "Hexakopter",
+      "plane": "Uçak (varsayılan)",
+      "quad": "Quad (varsayılan)",
+      "quadPlus": "Quad Plus (+)",
+      "rover": "Rover (varsayılan)",
+      "sailboat": "Yelkenli",
+      "single": "Tek Rotorlu Kopter",
+      "skid": "Skid Steering",
+      "spoilers": "Spoilerli Uçak",
+      "vectored": "Vektörlü (varsayılan)",
+      "vectored6dof": "Vektörlü 6DOF",
+      "vtail": "V-Kuyruk Uçak",
+      "glider": "Planör"
+    },
+    "startFailed": "SITL başlatılamadı"
+  },
+  "calibrationStore": {
+    "confirmPositionFailed": "Konum onaylanamadı",
+    "finalizing": "Kalibrasyon uçuş kontrolcüsünde tamamlanıyor...",
+    "instructions": {
+      "compass": "Aracını her yöne döndür",
+      "default": "Ekrandaki yönergeleri izle",
+      "gyro": "Aracını tamamen sabit tut",
+      "level": "Aracını düz bir yüzeye koy",
+      "opflow": "Aracı dokulu bir yüzeyin üzerinde sabit tut"
+    },
+    "loadFileFailed": "Dosya yüklenemedi",
+    "loadSensorConfigFailed": "Sensör yapılandırması yüklenemedi",
+    "noTrackedParams": "Uçuş kontrolcüsünden izlenen hiçbir parametre okunamadı",
+    "noTypeSelected": "Kalibrasyon türü seçilmedi",
+    "readParamsFailed": "Kalibrasyon parametreleri okunamadı",
+    "saveDataFailed": "Kalibrasyon verisi kaydedilemedi",
+    "savePersistentFailed": "Kalıcı depolamaya kaydedilemedi",
+    "saving": "Kalibrasyon kaydediliyor...",
+    "sensorMissing": "{{name}}, kullanılamayan {{sensor}} sensörünü gerektiriyor",
+    "silentFailure": "Uçuş kontrolcüsü başarı bildirdi ama kalibrasyon parametreleri değişmedi. Kalibrasyon sessizce başarısız oldu, lütfen tekrar dene.",
+    "startFailed": "Kalibrasyon başlatılamadı",
+    "unsupportedProtocol": "{{name}}, {{protocol}} protokolü için desteklenmiyor",
+    "verificationFailed": "Doğrulama başarısız",
+    "waitingForFc": "Uçuş kontrolcüsü bekleniyor..."
+  },
+  "cliStore": {
+    "rebooting": "Kart yeniden başlıyor...",
+    "reconnecting": "Karta yeniden bağlanılıyor...",
+    "saveFailed": "Yapılandırma kaydedilemedi",
+    "savedReconnected": "Yapılandırma kaydedildi! Kart yeniden bağlandı.",
+    "savedReconnecting": "Yapılandırma kaydedildi! Yeniden bağlanılıyor...",
+    "savingConfig": "Yapılandırma EEPROM'a kaydediliyor..."
+  },
+  "fenceStore": {
+    "clearFailed": "Fence temizlenemedi",
+    "cleared": "Fence uçuş kontrolcüsünden temizlendi",
+    "downloadFailed": "Fence indirilemedi",
+    "downloaded": "Uçuş kontrolcüsünden {{count}} fence öğesi indirildi",
+    "nothingToUpload": "Yüklenecek fence öğesi yok",
+    "uploadFailed": "Fence yüklenemedi",
+    "uploaded": "Uçuş kontrolcüsüne {{count}} fence öğesi yüklendi"
+  },
+  "firmwareStore": {
+    "alreadyAirplane": "Kart zaten uçak olarak yapılandırılmış",
+    "bootloaderFailed": "Bootloader'a girilemedi",
+    "cannotIdentify": "{{port}} üzerindeki kart tanımlanamadı. Kartını elle seç.",
+    "checkingPlatform": "Platform yapılandırması kontrol ediliyor...",
+    "configurationFailed": "Yapılandırma başarısız",
+    "configuredAirplane": "Kart uçak olarak yapılandırıldı! Hazır olunca yeniden bağlan.",
+    "configuringAirplane": "Kart uçak olarak yapılandırılıyor...",
+    "connectRetry": "Bağlantı başarısız, {{seconds}} sn içinde yeniden denenecek...",
+    "connectingAttempt": "Karta bağlanılıyor (deneme {{attempt}}/{{max}})...",
+    "detectionFailed": "Algılama başarısız",
+    "downloadFailed": "İndirme başarısız",
+    "downloadingFirmware": "Firmware indiriliyor...",
+    "fetchBoardsFailed": "Kartlar alınamadı",
+    "fetchBoardsNoMessage": "Kartlar alınamadı (hata mesajı yok)",
+    "fetchVersionsFailed": "Sürümler alınamadı",
+    "fetchVersionsNoMessage": "Sürümler alınamadı (hata mesajı yok)",
+    "noBoard": "Bağlı kart yok. Önce Bağlan'a tıkla.",
+    "noBootloader": "{{port}} üzerinde STM32 bootloader bulunamadı. Kartın bootloader modunda olduğundan emin ol.",
+    "noFile": "Firmware dosyası seçilmedi",
+    "noPortForReconnect": "Yeniden bağlanmak için port bulunamadı",
+    "noUsbDevice": "USB cihazı algılanmadı. Uçuş kontrolcünün bağlı olduğundan emin ol.",
+    "noVersion": "Firmware sürümü seçilmedi",
+    "probeFailed": "Yoklama başarısız",
+    "readMixerFailed": "iNav mixer yapılandırması okunamadı",
+    "reconnectAfterFlashFailed": "Yüklemeden sonra bağlanılamadı. USB-seri çipinin fiziksel olarak çıkarılıp yeniden takılması gerekebilir. Kartın bağlantısını kes, yeniden tak, sonra uçak olarak yapılandırmak için Servo Wizard'ı kullan.",
+    "savingEeprom": "EEPROM'a kaydediliyor...",
+    "setPlatformFailed": "Platform türü uçak olarak ayarlanamadı",
+    "startingFlash": "Yükleme başlatılıyor...",
+    "vehicleTypeMismatch": "Araç türü uyuşmazlığı: {{selected}} seçtin ama seçilen sürüm {{version}}. Aracı ve sürümü yeniden seçip tekrar dene.",
+    "waitingReboot": "Kartın yeniden başlaması bekleniyor (6 sn)..."
+  },
+  "fleetRepoStore": {
+    "boundarySaved": "Sınır {{site}} konumuna kaydedildi",
+    "boundaryUnchanged": "Sınır son anlık görüntüden beri değişmedi",
+    "cannotIdentify": "Araç tanımlanamadı. Kasadaki \"Working on\" altından birini seç.",
+    "deleteFailed": "Araç silinemedi",
+    "deleted": "Araç silindi. Anlık görüntüleri geçmişte kalır.",
+    "firmwareMismatch": "O anlık görüntü {{snapshotFirmware}} üzerinden alınmış ama bu araç {{liveFirmware}} çalıştırıyor. Parametre adları uçuş yazılımları arasında geçerli değildir.",
+    "linkFailed": "Bağlama başarısız",
+    "linked": "Araç bağlandı; anlık görüntüler o birimde devam eder",
+    "missionSaved": "Görev {{site}} konumuna kaydedildi",
+    "missionUnchanged": "Görev son anlık görüntüden beri değişmedi",
+    "newVehicleSaved": "Yeni araç \"{{name}}\" kaydedildi ({{count}} parametre)",
+    "noChanges": "Son anlık görüntüden beri değişiklik yok",
+    "noMission": "Anlık görüntüsü alınacak yüklü görev yok.",
+    "noParams": "Anlık görüntüsü alınacak yüklü parametre yok.",
+    "noSurveyPolygon": "Haritada anlık görüntüsü alınacak survey poligonu yok.",
+    "readSnapshotFailed": "Anlık görüntü kasadan okunamadı.",
+    "renameFailed": "Yeniden adlandırma başarısız",
+    "restoredPartial": "{{applied}} geri yüklendi, {{failed}} başarısız",
+    "restored_one": "{{count}} parametre geri yüklendi",
+    "restored_other": "{{count}} parametre geri yüklendi",
+    "snapshotFailed": "Anlık görüntü alınamadı",
+    "snapshotSaved": "Anlık görüntü kaydedildi ({{count}} parametre)",
+    "syncFailed": "Eşitleme başarısız",
+    "synced": "GitHub ile eşitlendi",
+    "vaultUnavailable": "Kasa kullanılamıyor",
+    "wrongOwner": "O anlık görüntü bağlı araca değil, {{owner}} aracına ait. Bu aracın geçmişinden bir anlık görüntü aç ya da bu uçak oysa \"Working on\" değerini {{owner}} yap."
+  },
+  "flightControlStore": {
+    "trainerActive": "Trainer oturumu etkin - çubukların sahibi Trainer"
+  },
+  "groupShapeStore": {
+    "description": {
+      "edgesOnly": "Yalnızca dizinin uçları kabarır, ortadaki göstergeler düz kalır",
+      "roundedAll": "Her yuvarlak gösterge kendi dairesini kabartır",
+      "square": "Düz kart, kabarma yok - özgün görünüm"
+    },
+    "label": {
+      "edgesOnly": "Yuvarlak (yalnızca uçlar)",
+      "roundedAll": "Yuvarlak (her gösterge)",
+      "square": "Kare"
+    }
+  },
+  "guideStore": {
+    "emptyFile": "Boş dosya",
+    "importUnavailable": "İçe aktarma kullanılamıyor",
+    "noShapes": "Dosyada poligon veya çizgi bulunamadı",
+    "noValidPoints": "Eklenecek geçerli nokta yok."
+  },
+  "legacyConfigStore": {
+    "loadFailed": "Yapılandırma yüklenemedi",
+    "rebooting": "Kart yeniden başlıyor...",
+    "reconnecting": "Karta yeniden bağlanılıyor...",
+    "saveFailed": "Yapılandırma kaydedilemedi",
+    "savedReconnect": "Yapılandırma kaydedildi! Kart yeniden başladı. Lütfen yeniden bağlan.",
+    "savingConfig": "Yapılandırma EEPROM'a kaydediliyor..."
+  },
+  "missionLibraryStore": {
+    "readFailed": "Bu görev yedekten okunamadı",
+    "writeFailed": "Yedeğe yazılamadı"
+  },
+  "missionStore": {
+    "clearFailed": "Görev temizlenemedi",
+    "clearWaypointsFailed": "Waypoint'ler temizlenemedi",
+    "cleared": "Görev uçuş kontrolcüsünden temizlendi",
+    "clearedFromFc": "Görev FC'den temizlendi",
+    "downloadFailed": "Görev indirilemedi",
+    "downloadedFromFcInto": "Uçuş kontrolcüsünden {{count}} waypoint \"{{group}}\" içine indirildi",
+    "downloadedInto": "FC'den {{count}} waypoint \"{{group}}\" içine indirildi",
+    "groupEmptySave": "Bu grupta kaydedilecek waypoint yok",
+    "groupEmptyUpload": "Bu grupta yüklenecek waypoint yok",
+    "mspNotSupported": "Waypoint'ler indirilemedi - MSP desteklenmiyor",
+    "noWaypointsOnFc": "FC'de waypoint yok",
+    "noWaypointsToUpload": "Yüklenecek waypoint yok (tüm gruplar seçimden mi çıkarıldı?)",
+    "recovered": "Son oturumundan {{count}} waypoint kurtarıldı",
+    "savedToFile": "{{count}} waypoint dosyaya kaydedildi",
+    "uploadFailed": "Görev yüklenemedi",
+    "uploadToVehicleFailed": "Görev araca yüklenemedi",
+    "uploadWaypointsFailed": "Waypoint'ler yüklenemedi",
+    "uploadedToFc": "FC'ye {{count}} waypoint yüklendi",
+    "uploadedToFlightController": "Uçuş kontrolcüsüne {{count}} waypoint yüklendi",
+    "uploadedToVehicle": "Araca {{count}} waypoint yüklendi",
+    "vehicleMissionLabel": "Araç görevi @ {{stamp}}",
+    "fromVehicleGroup": "Araçtan @ {{stamp}}",
+    "downloadedGroup": "İndirildi @ {{stamp}}",
+    "hazardBlocked": "Yükleme engellendi: rota bir tehlikeden geçiyor. Rotayı değiştir ya da yönetici PIN'iyle geçersiz kıl."
+  },
+  "modesWizardStore": {
+    "clearSlotFailed": "{{i}}. mod yuvası temizlenemedi",
+    "eepromSaveFailed": "Modlar gönderildi ama EEPROM kaydı başarısız",
+    "loadFailed": "Modlar yüklenemedi",
+    "loadFromFcFailed": "Modlar FC'den yüklenemedi",
+    "saveFailed": "Modlar kaydedilemedi",
+    "setModeFailed": "{{i}}. mod ayarlanamadı"
+  },
+  "moduleStore": {
+    "activationFailed": "Etkinleştirme başarısız",
+    "installFailed": "Kurulum başarısız",
+    "toggleFailed": "Açma/kapatma başarısız",
+    "updateFailed": "Güncelleme başarısız",
+    "updateFailedFor": "{{slug}} güncellenemedi"
+  },
+  "orchestratorEngineStore": {
+    "addSourceFailed": "Kaynak eklenemedi",
+    "startFailed": "Çoklu araç başlatılamadı"
+  },
+  "osdStore": {
+    "ardupilotFont": "ArduPilot fontu yükleme ile değil, OSD_FONT parametresiyle seçer",
+    "connectFcFirst": "Önce bir uçuş kontrolcüsüne bağlan",
+    "connectFirst": "Önce bir ArduPilot veya Betaflight/iNav FC'ye bağlan",
+    "connectForFont": "Analog font yüklemek için bir Betaflight/iNAV kartı bağla",
+    "downloadingParams": "Parametreler indiriliyor…",
+    "fontUploadFailed": "Font yüklenemedi: {{msg}}",
+    "fontUploaded": "Font yüklendi ({{count}} karakter), uygulamak için FC'yi yeniden başlat",
+    "loadFontFailed": "Font yüklenemedi",
+    "loadedFromFc": "FC'den {{count}} öğe yüklendi",
+    "loadedFromScreen": "{{screen}}. ekrandan {{resolved}} öğe yüklendi",
+    "noConfig": "FC bir OSD yapılandırması döndürmedi",
+    "noFont": "Yüklü font yok",
+    "noOsdParams": "Bu kartta OSD parametresi yok (OSD_TYPE ayarlı mı?)",
+    "readFailed": "Okuma başarısız: {{msg}}",
+    "reading": "Uçuş kontrolcüsünden okunuyor...",
+    "unknownError": "bilinmeyen hata",
+    "unknownFont": "Bilinmeyen dahili font: {{name}}",
+    "uploadFailed": "Yükleme başarısız: {{msg}}",
+    "uploadedPartial": "{{confirmed}}/{{total}} yüklendi; {{failed}} onaylanmadı",
+    "uploadedSaved": "{{count}} öğe yüklendi ve FC'ye kaydedildi",
+    "uploadedToScreen": "{{screen}}. ekrana {{count}} parametre yüklendi",
+    "uploadingFont": "Font FC NVM'ye yükleniyor…",
+    "uploadingLayout": "OSD düzeni yükleniyor...",
+    "uploadingParams": "{{count}} parametre yükleniyor..."
+  },
+  "parameterStore": {
+    "requestFailed": "Parametreler istenemedi",
+    "setFailed": "Parametre ayarlanamadı"
+  },
+  "pseudoTxStore": {
+    "enableFirst": "Önce USB vericiyi aç",
+    "linkLost": "Araç bağlantısı koptu - joystick kontrolü bırakıldı",
+    "needsMavlink": "Bağlı bir MAVLink aracı gerekli",
+    "noBridge": "Bu pencerede SITL RC köprüsü yok - kareler hiçbir yere gitmiyor",
+    "overrideRejected": "Override bağlantı tarafından reddedildi"
+  },
+  "px4SitlStore": {
+    "disconnecting": "Durdurulan SITL'den bağlantı kesiliyor.",
+    "downloadFailed": "İndirme başarısız",
+    "startFailed": "SITL başlatılamadı"
+  },
+  "quickSetupStore": {
+    "applyFailed": "Uygulama başarısız",
+    "applyPresetFailed": "Ön ayar uygulanamadı",
+    "changePlatformFailed": "Platform türü değiştirilemedi",
+    "connectionLost": "Kurulum sırasında bağlantı koptu. Lütfen yeniden bağlanıp tekrar dene.",
+    "noPreset": "Ön ayar seçilmedi",
+    "notConnected": "Uçuş kontrolcüsüne bağlı değil. Lütfen önce bağlan.",
+    "platformChangeUnknown": "Platform değişimi sırasında bilinmeyen hata",
+    "reconnectFailed": "Platform değişiminden sonra yeniden bağlanılamadı. Lütfen elle yeniden bağlanıp tekrar dene.",
+    "saveEepromFailed": "EEPROM'a kaydedilemedi",
+    "setPidsFailed": "PID'ler ayarlanamadı",
+    "setRatesFailed": "Rate'ler ayarlanamadı",
+    "task": {
+      "checkPlatform": "Platform kontrol ediliyor",
+      "clearModes": "Eski modlar temizleniyor",
+      "clearServoMixer": "Servo mixer temizleniyor",
+      "exitCli": "CLI modundan çıkılıyor",
+      "failsafe": "Failsafe ayarlanıyor",
+      "modes": "Uçuş modları ayarlanıyor",
+      "motorMixer": "Motor mixer yapılandırılıyor",
+      "pids": "PID'ler ayarlanıyor",
+      "rates": "Rate'ler ayarlanıyor",
+      "saveEeprom": "EEPROM'a kaydediliyor",
+      "saveReboot": "Kaydedilip yeniden başlatılıyor",
+      "sendCli": "CLI komutları gönderiliyor",
+      "servoMixer": "Servo mixer yapılandırılıyor"
+    }
+  },
+  "rallyStore": {
+    "clearFailed": "Rally noktaları temizlenemedi",
+    "cleared": "Rally noktaları uçuş kontrolcüsünden temizlendi",
+    "downloadFailed": "Rally noktaları indirilemedi",
+    "downloaded": "Uçuş kontrolcüsünden {{count}} rally noktası indirildi",
+    "nothingToUpload": "Yüklenecek rally noktası yok",
+    "uploadFailed": "Rally noktaları yüklenemedi",
+    "uploaded": "Uçuş kontrolcüsüne {{count}} rally noktası yüklendi"
+  },
+  "servoWizardStore": {
+    "changePlatformFailed": "Platform {{platform}} olarak değiştirilemedi. iNav 2.0.0 için mixer türünü değiştirmek üzere iNav Configurator'ı kullanıp sonra yeniden bağlanman gerekebilir.",
+    "checkSupportFailed": "Servo desteği kontrol edilemedi. Lütfen tekrar dene.",
+    "firmwareTooOld": "Servo yapılandırması bu firmware'de desteklenmiyor. iNav 2.0.0 çok eski olabilir - daha yeni bir sürüme güncellemeyi dene.",
+    "multirotorNoServos": "Bu kartta multirotor modunda servo çıkışları kullanılamıyor. Bu bir donanım sınırlamasıdır - her uçuş kontrolcü kartı quad/hex olarak yapılandırıldığında servo sinyali veremez.",
+    "noServos": "Servo çıkışı algılanmadı. Kartının servoları desteklediğinden emin ol.",
+    "noServosGimbal": "Bu kartta gimbal kontrolü için kullanılabilir servo çıkışı yok.",
+    "platformChangeError": "Platform değiştirilirken hata: {{error}}. Mixer türünü değiştirmek için iNav Configurator'ı kullanmayı dene.",
+    "saveEepromFailed": "EEPROM'a kaydedilemedi",
+    "setServoFailed": "{{index}}. servo yapılandırması ayarlanamadı",
+    "step": {
+      "aircraft": "Uçak",
+      "aircraftDesc": "Uçak türünü seç",
+      "assign": "Ata",
+      "assignDesc": "Servoları kontrol yüzeylerine eşle",
+      "endpoints": "Kalibre et",
+      "endpointsDesc": "Servo limitlerini ayarla",
+      "review": "Kaydet",
+      "reviewDesc": "İncele ve kaydet",
+      "test": "Test",
+      "testDesc": "Servo hareketini doğrula"
+    },
+    "timeout": "Zaman aşımı"
+  },
+  "signingStore": {
+    "enableFailed": "İmzalama etkinleştirilemedi",
+    "sendFailed": "FC'ye gönderilemedi",
+    "setKeyFailed": "Anahtar ayarlanamadı"
+  },
+  "sitlStore": {
+    "bridgeStopped": "Protokol köprüsü durduruldu.",
+    "cannotDeleteStandard": "Standart profiller silinemez",
+    "flightGearFailed": "FlightGear başlatılamadı",
+    "nameExists": "Bu profil adı zaten var",
+    "noProfile": "Profil seçilmedi",
+    "profileDescription": {
+      "Airplane": "Uçak mixer'ı ile sabit kanat testi için önceden yapılandırılmış.",
+      "Default": "Fabrika varsayılanlarıyla yeni iNav kurulumu. Genel test için kullan.",
+      "Quadcopter": "X mixer'ı ile quad testi için önceden yapılandırılmış."
+    },
+    "startFailed": "SITL başlatılamadı",
+    "startingBridge": "Protokol köprüsü başlatılıyor...",
+    "startingInav": "iNav SITL başlatılıyor...",
+    "stoppingBridge": "Protokol köprüsü durduruluyor...",
+    "waitingFlightGear": "FlightGear'ın başlaması bekleniyor (15-30 saniye)...",
+    "waitingXPlane": "X-Plane'in başlaması bekleniyor (10 saniye)...",
+    "xplaneFailed": "X-Plane başlatılamadı"
+  },
+  "surveyAreaStore": {
+    "readFailed": "Bu alan kasadan okunamadı",
+    "writeFailed": "Kasaya yazılamadı"
+  },
+  "surveyStore": {
+    "emptyFile": "Boş dosya",
+    "generateFailed": "İçe aktarılan alan(lar)dan survey oluşturulamadı",
+    "generating": "Waypoint'ler oluşturuluyor...",
+    "generatorFailed": "Oluşturucu başarısız: {{message}}",
+    "importUnavailable": "İçe aktarma kullanılamıyor",
+    "importing": "Survey içe aktarılıyor - waypoint'ler oluşturuluyor...",
+    "loading": "Survey yükleniyor...",
+    "noShapes": "Dosyada poligon sınırı veya çizgi bulunamadı",
+    "recomputing": "{{count}} waypoint yeniden hesaplanıyor...",
+    "reloadingArea": "Kayıtlı alan yeniden yükleniyor..."
+  },
+  "swarmSitlStore": {
+    "startFailed": "Sürü başlatılamadı"
+  },
+  "weatherStore": {
+    "unavailable": "Hava durumu verisi kullanılamıyor. İnternet bağlantını kontrol edip tekrar dene."
+  },
+  "windStore": {
+    "fetchFailed": "Rüzgâr verisi alınamadı",
+    "unavailable": "Rüzgâr verisi kullanılamıyor"
+  }
+}

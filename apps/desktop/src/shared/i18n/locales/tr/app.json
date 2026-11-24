@@ -1,0 +1,80 @@
+{
+  "altFrameReset": "Varsayılan irtifa referansı Home'a sıfırlandı (araç araziye göreli irtifayı reddetti).",
+  "cliExit": {
+    "body": "CLI sekmesinden ayrılmak bir çıkış komutu gönderir ve uçuş kontrolcüsünü yeniden başlatır (2-4 saniye).",
+    "leave": "Ayrıl ve Yeniden Başlat",
+    "reconnect": "Kart yeniden başladıktan sonra uygulama otomatik olarak yeniden bağlanır.",
+    "stay": "CLI'da Kal",
+    "title": "CLI Terminalinden Ayrılınsın mı?"
+  },
+  "legacyStream": {
+    "allow": "Akışları iste ve bu araca kaydet",
+    "body": "{{label}}, modern mesaj bazlı isteğe hiçbir şey yanıtlamadı. Eski istek genellikle çalışır, ancak bu uçakta ArduPilot<b> bu hızları SR*_ parametrelerine kaydeder</b>; bu hızlar bu uçuştan sonra da, diğer tüm yer istasyonlarında da kalır.",
+    "conservative": "İzin verirsen istenen hızlar seçtiğin telemetri hızı değil, ihtiyatlı olanlardır (attitude 10 Hz); böylece yavaş bir telsiz bağlantısı kullanılabilir kalır.",
+    "decline": "Aracıma dokunma",
+    "declineHint": "Reddedersen araç mevcut hızlarını korur. SR*_ parametrelerini Parametreler bölümünden kendin yükseltebilirsin.",
+    "fleetLink": "Bu bir filo bağlantısı, bu yüzden her bağlanışta olur.",
+    "notWithoutAsking": "ArduDeck, sormadan aracında değişiklik yapmaz.",
+    "title": "{{label}} aracından telemetri yok"
+  },
+  "mismatch": {
+    "body": "Araç profilin <profile>{{profile}}</profile> olarak ayarlı ama bağlı uçuş kontrolcüsü bir <fc>{{fc}}</fc>.",
+    "dontAskAgain": "Bir Daha Sorma",
+    "hint": "Performans tahminleri ve ayarlar gerçek aracın için doğru olmayabilir.",
+    "ignoreOnce": "Bir Kez Yoksay",
+    "title": "Araç Türü Uyuşmazlığı",
+    "updateProfile": "Profili {{type}} Olarak Güncelle"
+  },
+  "pseudoTx": {
+    "assignHint": "<b>Ata</b>'ya bas, sonra o kanalda istediğin çubuğu hareket ettir ya da anahtarı çevir. Atanmamış kanallar 1500'de kalır.",
+    "detailConnected": "{{device}} - {{frames}} RC karesi gönderildi",
+    "detailOff": "Kapalı - aşağıdaki kaydırıcılar RC'yi sürüyor",
+    "detailWaiting": "Verici bekleniyor - EdgeTX'i USB Joystick moduna al",
+    "framesToVehicle": "Araca {{fps}} kare/sn",
+    "gamepadWarning": " - verici değil, oyun kolu gibi görünüyor",
+    "monitorCounts": "{{axes}} eksen - {{buttons}} düğme",
+    "monitorMapping": " - eşleme \"{{mode}}\"",
+    "monitorRawHid": " - ham HID",
+    "moveIt": "hareket ettir",
+    "overrideTip": "Bağlı araca RC_CHANNELS_OVERRIDE gönderir. Joystick uçağı KOMUT EDER.",
+    "reversedRestore": "Kanal ters çevrilmiş - eski haline getirmek için tıkla",
+    "source": {
+      "axis": "eksen {{index}}",
+      "button": "düğme {{index}}",
+      "buttons": "düğmeler {{low}}/{{high}}",
+      "unassigned": "atanmamış"
+    },
+    "standardLayoutWarning": "Tarayıcı bu cihaza standart oyun kolu düzenini uyguladı; bu düzen yalnızca dört ekseni tutar, kalanını atar, bu yüzden anahtarlar hiç ulaşmaz. Vericiyi zaten USB Joystick modundayken yeniden tak ya da USB tanımlayıcısı oyun kumandası olarak tanınmayan bir model kullan.",
+    "title": "USB vericiyle uç",
+    "trainerActive": "Trainer oturumu etkin - çubukların sahibi Trainer",
+    "unavailable": "Kullanılamıyor",
+    "vehicleOff": "Kapalı - uçağa hiçbir şey göndermez"
+  },
+  "sidebar": {
+    "collapse": "Kenar çubuğunu daralt",
+    "expand": "Kenar çubuğunu genişlet"
+  },
+  "vehicleType": {
+    "boat": "Tekne",
+    "copter": "Multikopter",
+    "plane": "Sabit Kanat",
+    "rover": "Rover",
+    "sub": "Denizaltı",
+    "vtol": "VTOL"
+  },
+  "welcome": {
+    "drawMissionAreas": "Canlı haritada görev alanları çiz",
+    "firmwareFlashDesc": "Firmware'i USB veya DFU ile yükle",
+    "flightLogAnalysis": "Uçuş Kaydı Analizi",
+    "flightLogAnalysisDesc": "Yapay zekâ destekli uçuş kaydı incelemesi",
+    "flightReplay": "Uçuş Tekrarı",
+    "flightReplayDesc": "Kaydedilmiş bir uçuşu oynat (.tlog veya .bin)",
+    "intro": "Soldaki panelden uçuş kontrolcüne bağlan ya da aşağıdaki araçlardan birine doğrudan geç.",
+    "missionLibraryDesc": "Kayıtlı planlara göz at ve yönet",
+    "radioHudDesc": "EdgeTX telsizinde ArduDeck telemetri ekranı",
+    "simWorldDesc": "SITL'i kalıcı bir 3B dünyada uçur",
+    "sitlDesc": "Firmware'i donanım olmadan test et",
+    "title": "ArduDeck'e Hoş Geldin",
+    "waypointsSurveysGeofences": "Waypoint'ler, haritalama görevleri ve geofence'ler"
+  }
+}

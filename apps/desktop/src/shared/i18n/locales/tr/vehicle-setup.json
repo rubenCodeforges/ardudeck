@@ -1,0 +1,919 @@
+{
+  "steps": {
+    "size": {
+      "name": "Aracın",
+      "title": "Ne kadar büyük?",
+      "why": "İki sayı yeter, kurulumun çoğu bunlardan kendiliğinden dolar."
+    },
+    "frame": {
+      "name": "Motor düzeni",
+      "title": "Motorlar nasıl duruyor?",
+      "why": "Yeni bir multirotorun ilk kalkışta takla atmasının en yaygın nedeni burada yapılan hatadır."
+    },
+    "frameHeli": {
+      "name": "Helikopter",
+      "title": "Helikopterin",
+      "why": "Heli yazılımı helikopter olduğunu zaten bilir. Bu adım her araçta ortak olanı kurar; rotor kurulumu Heli setup içindedir."
+    },
+    "orient": {
+      "name": "Kart yönelimi",
+      "title": "Kart hangi yöne monte edilmiş?",
+      "why": "Kartın hangi yönün ileri olduğunu bilmesi için."
+    },
+    "radio": {
+      "name": "Alıcı",
+      "title": "Alıcını bağla",
+      "why": "Seri porttaki bir alıcı kendiliğinden bulunmaz. ArduDeck'e nereye takılı olduğunu söyle."
+    },
+    "compass": {
+      "name": "Pusula",
+      "title": "Hangi pusula kullanılsın?",
+      "why": "GPS direğindeki olan motor akımlarından uzaktır ve genellikle daha iyisidir."
+    },
+    "modes": {
+      "name": "Uçuş modları",
+      "title": "Mod anahtarı ne yapıyor?",
+      "why": "Üç konum, üç mod. Her konum için bir tane seç."
+    },
+    "motors": {
+      "name": "Motorlar",
+      "title": "Motorları kontrol et",
+      "why": "Her seferinde bir motor. Gördüğünü yanıtla."
+    },
+    "battery": {
+      "name": "Batarya ve failsafe'ler",
+      "title": "Batarya ve işler ters gittiğinde olacaklar",
+      "why": "Doğru voltajda uyarılar ve düşük batarya ile kaybolan sinyal için bir plan."
+    },
+    "ready": {
+      "name": "Arm'a hazır",
+      "title": "Arm'a hazır mı?",
+      "why": "Uçuş kontrolcüsünün kendisinin hâlâ engel olduğunu söylediği şeyler."
+    },
+    "psize": {
+      "name": "Uçağın",
+      "title": "Kanadı ölç",
+      "why": "Bir cetvel ve bir mutfak tartısı yeter. ArduDeck stall hızını hesaplar ve hava hızı sınırları bundan çıkar."
+    },
+    "power": {
+      "name": "Güç",
+      "title": "Onu ne çalıştırıyor?",
+      "why": "Gaz çıkışlarını ve motor kontrolünün olup olmayacağını belirler."
+    },
+    "extras": {
+      "name": "Ekstralar",
+      "title": "Uçakta başka bir şey var mı?",
+      "why": "Flap, airbrake, yönlendirilebilir tekerlek, retract: her biri bir çıkış ister."
+    },
+    "launch": {
+      "name": "Kalkış",
+      "title": "Nasıl kalkıyor?",
+      "why": "Motorun ne zaman çalışmasına izin verileceğini belirler."
+    },
+    "soar": {
+      "name": "Süzülme",
+      "title": "Termalleri kullansın mı?",
+      "why": "ArduPilot, havada daha uzun kalmak için yükselen havada daire çizebilir."
+    },
+    "airframe": {
+      "name": "Gövde",
+      "title": "Ne tür bir uçak?",
+      "why": "Hangi çıkışların hangi yüzeyleri sürdüğünü belirler."
+    },
+    "wingTail": {
+      "name": "Kanat ve kuyruk",
+      "title": "Kanat ve kuyruk nasıl görünüyor?",
+      "why": "VTOL'un uçak yarısı: hangi çıkışların hangi yüzeyleri sürdüğünü belirler."
+    },
+    "wingTailsitter": {
+      "title": "Uçak uçuşunda nasıl yönleniyor?",
+      "why": "Tailsitter kanadı üzerinde uçar; soru, havayı neyin hareket ettirdiği."
+    },
+    "outputs": {
+      "name": "Çıkışlar",
+      "title": "Her çıkışa ne takılı?",
+      "why": "Bu gövde için ArduPilot'un beklediği çıkışlardaki servolar ve ESC."
+    },
+    "surfaces": {
+      "name": "Kontrol yüzeyleri",
+      "title": "Yüzeyler doğru yönde hareket ediyor mu?",
+      "why": "Kartın stabilize ettiği FBWA'da kontrol edilir. Yanlış yöne savaşan bir yüzey kalkışta düşürür."
+    },
+    "thrcheck": {
+      "name": "Motor",
+      "title": "Motoru kontrol et",
+      "why": "Pervane sökülü. Gazı biraz aç: dönmeli ve sıfırda durmalı."
+    },
+    "airspeed": {
+      "name": "Hava hızı sensörü",
+      "title": "Hava hızı sensörü var mı?",
+      "why": "İsteğe bağlı. Olmadan ArduPilot hava hızını GPS ve gazdan tahmin eder."
+    },
+    "vtype": {
+      "name": "VTOL tipi",
+      "title": "Nasıl hover yapıyor?",
+      "why": "Yazılım uçak diyor; bu, kaldırma motorlarının nasıl çalıştığını söyler."
+    },
+    "vframe": {
+      "name": "Kaldırma motoru düzeni",
+      "title": "Kaldırma motorları nasıl duruyor?",
+      "why": "Copter ile aynı düzenler: 3, 4, 6 veya 8 motor. Yalnızca çıkışlar farklı."
+    },
+    "assist": {
+      "name": "VTOL desteği",
+      "title": "Kaldırma motorları uçak uçuşunda yardım etsin mi?",
+      "why": "Q_ASSIST_SPEED. Yanlış bir değer yaygın bir pre-arm hatasıdır."
+    },
+    "drive": {
+      "name": "Direksiyon",
+      "title": "Nasıl yönleniyor?",
+      "why": "1. ve 3. çıkışın ne yaptığını belirler."
+    },
+    "drivetest": {
+      "name": "Motor ve direksiyon testi",
+      "title": "Tekerlekleri kontrol et",
+      "why": "Tekerlekler yerden kesik. Gördüğünü yanıtla."
+    },
+    "drivetestBoat": {
+      "title": "Motoru ve dümeni kontrol et",
+      "why": "Bir sehpada veya sığ suda. Gördüğünü yanıtla."
+    },
+    "motordrv": {
+      "name": "Motor sürücüsü",
+      "title": "Motoru ne sürüyor?",
+      "why": "ESC veya fırçalı motor sürücüsü. Çıkış tipini ve ölü bölgeyi belirler."
+    },
+    "windvane": {
+      "name": "Rüzgar gülü",
+      "title": "Rüzgarı nasıl algılıyor?",
+      "why": "Bir yelkenlinin kendi başına yelken açması için rüzgar yönüne ihtiyacı vardır."
+    },
+    "water": {
+      "name": "Derinlik sensörü",
+      "title": "Tatlı su mu tuzlu su mu?",
+      "why": "Derinlik basınçtan hesaplanır, bu da suya bağlıdır."
+    },
+    "leak": {
+      "name": "Sızıntı sensörü",
+      "title": "Sızıntı sensörü nerede?",
+      "why": "Elektronik boğulmadan yüzeye çıkması için."
+    },
+    "subframe": {
+      "name": "Thruster düzeni",
+      "title": "Hangi gövde?",
+      "why": "Thruster'ların nasıl karıştırılacağını seçer."
+    },
+    "thrusters": {
+      "name": "Thruster yönleri",
+      "title": "Thruster'lar doğru yöne itiyor mu?",
+      "why": "Pervaneler ve kablolama belirler; ArduSub bunu suda algılayıp düzeltebilir."
+    },
+    "joystick": {
+      "name": "Kontrol",
+      "title": "Onu nasıl süreceksin?",
+      "why": "Sub'lar genellikle radyoyla değil, tether üzerinden bir gamepad ile sürülür."
+    }
+  },
+  "reason": {
+    "acroYaw": "Acro'da yaw hızı, {{prop}} inç pervaneler için yaw ivme sınırından",
+    "accel": "{{prop}} inç pervaneler için roll ve pitch ivme sınırı",
+    "accelYaw": "{{prop}} inç pervaneler için yaw ivme sınırı",
+    "rateFilter": "Hız denetleyici filtresi, jiroskop filtresinin yarısı ({{hz}} Hz)",
+    "rateFilterOff": "Filtre kapalı, Mission Planner'ın ayarladığı gibi",
+    "yawErrorFilter": "Yaw hata filtresi 2 Hz",
+    "thrMixMan": "Manuel modlarda gaz karışımı",
+    "accelFilter": "İvmeölçer filtresi 10 Hz",
+    "gyroFilter": "{{prop}} inç pervaneler için jiroskop filtresi {{hz}} Hz",
+    "thrustExpo": "{{prop}} inç pervaneler için itki eğrisi",
+    "hover": "Başlangıç hover gazı; uçuşta öğrenilir",
+    "motVoltMax": "Motor ölçekleme için dolu batarya voltajı, {{cells}} hücre",
+    "motVoltMin": "Motor ölçekleme için boş batarya voltajı, {{cells}} hücre",
+    "battLow": "{{volts}} V'ta düşük batarya uyarısı ({{cells}} hücre)",
+    "battCritical": "{{volts}} V'ta kritik batarya ({{cells}} hücre)",
+    "battArm": "{{volts}} V altında arm yok ({{cells}} hücre)",
+    "battCapacity": "Batarya kapasitesi {{capacity}} mAh",
+    "stall": "Stall hızı {{speed}} m/s",
+    "airspeedMin": "Asgari hava hızı {{speed}} m/s, stall'ın %25 üstü",
+    "airspeedCruise": "Seyir hava hızı {{speed}} m/s, stall'ın 1,5 katı",
+    "airspeedMax": "Azami hava hızı {{speed}} m/s, seyrin yaklaşık 2 katı"
+  },
+  "outputs": {
+    "role": {
+      "aileronsY": "Eleronlar (Y kablo)",
+      "aileronLeft": "Eleron, sol kanat",
+      "aileronRight": "Eleron, sağ kanat",
+      "elevator": "Elevatör",
+      "rudder": "Dümen",
+      "vtailLeft": "V kuyruk sol",
+      "vtailRight": "V kuyruk sağ",
+      "elevonLeft": "Elevon sol",
+      "elevonRight": "Elevon sağ",
+      "throttle": "Gaz",
+      "throttleEngine": "Gaz (motor)",
+      "motor": "Motor",
+      "motorLeft": "Motor sol",
+      "motorRight": "Motor sağ",
+      "ignition": "Ateşleme",
+      "starter": "Marş",
+      "flaperonLeft": "Flaperon sol",
+      "flaperonRight": "Flaperon sağ",
+      "flaps": "Flaplar",
+      "airbrake": "Airbrake",
+      "spoilerLeft": "Spoiler sol",
+      "spoilerRight": "Spoiler sağ",
+      "groundSteering": "Burun / kuyruk tekerleği",
+      "landingGear": "İniş takımı",
+      "liftMotor": "Kaldırma motoru {{n}}",
+      "triYawServo": "Arka motorun yaw eğim servosu",
+      "steering": "Direksiyon",
+      "throttleLeft": "Gaz sol",
+      "throttleRight": "Gaz sağ",
+      "omniMotor": "Motor {{n}}"
+    },
+    "test": {
+      "aileron": "Çubuk sağa: sağ eleron yukarı, sol aşağı gider",
+      "aileronLeft": "Çubuk sağa: sol eleron aşağı gider",
+      "aileronRight": "Çubuk sağa: sağ eleron yukarı gider",
+      "elevator": "Çubuk geriye: elevatör yukarı gider",
+      "rudder": "Yaw sağa: dümen sağa gider",
+      "vtailPitch": "Çubuk geriye: iki yüzey de yukarı gider",
+      "vtailYaw": "Yaw sağa: ikisi de sağa sallanır",
+      "elevonRoll": "Çubuk sağa: sol elevon aşağı gider",
+      "elevonPitch": "Çubuk geriye: ikisi de yukarı gider",
+      "flaperonLeft": "Çubuk sağa: sol aşağı gider; flap anahtarı: ikisi de aşağı gider",
+      "flaperonRight": "Çubuk sağa: sağ yukarı gider",
+      "flaps": "Flap anahtarı aşağı: flaplar aşağı gider",
+      "airbrake": "Airbrake anahtarı: frenler açılır",
+      "spoilerLeft": "Çubuk sağa: sol spoiler hareket eder",
+      "spoilerRight": "Çubuk sağa: sağ spoiler hareket eder",
+      "groundSteering": "Yaw sağa: tekerlek sağa döner",
+      "landingGear": "Gear anahtarı: iniş takımı hareket eder"
+    }
+  },
+  "vehicle": {
+    "copter": "Copter",
+    "heli": "Helikopter",
+    "plane": "Uçak",
+    "vtol": "VTOL",
+    "rover": "Rover",
+    "boat": "Tekne",
+    "sub": "Sub"
+  },
+  "choice": {
+    "airframe": {
+      "normal": {
+        "label": "Normal uçak",
+        "hint": "eleron, elevatör, dümen"
+      },
+      "three": {
+        "label": "3 kanallı",
+        "hint": "eleron yok: dümen yönlendirir"
+      },
+      "wing": {
+        "label": "Uçan kanat veya delta",
+        "hint": "iki elevon, kuyruk yok"
+      },
+      "vtail": {
+        "label": "V kuyruk",
+        "hint": "eleronlar ve V şeklinde kuyruk"
+      },
+      "invv": {
+        "label": "Ters V",
+        "hint": "A kuyruk, çoğunlukla çift boomlarda"
+      }
+    },
+    "airframeTail": {
+      "wing": {
+        "label": "Elevonlu uçan kanat",
+        "hint": "olağan tailsitter: elevonlar uçak uçuşunda pitch ve roll yapar"
+      },
+      "none": {
+        "label": "Kontrol yüzeyi yok",
+        "hint": "yalnızca motorlarla yönlendirilir"
+      }
+    },
+    "power": {
+      "electric": {
+        "label": "Tek elektrik motoru",
+        "hint": "olağan olan"
+      },
+      "twin": {
+        "label": "İki motor",
+        "hint": "kanat başına bir tane, itkiyle de yönlendirir"
+      },
+      "ic": {
+        "label": "Benzin motoru",
+        "hint": "ateşleme, marş, kill anahtarı"
+      },
+      "glider": {
+        "label": "Motor yok",
+        "hint": "saf planör"
+      }
+    },
+    "extras": {
+      "flaps": {
+        "label": "Flaplar",
+        "hint": "ayrı flap servoları"
+      },
+      "flaperon": {
+        "label": "Flaperonlar",
+        "hint": "aynı zamanda flap görevi gören eleronlar"
+      },
+      "airbrake": {
+        "label": "Airbrake",
+        "hint": "tek bir airbrake çıkışı"
+      },
+      "spoiler": {
+        "label": "Spoilerlar / crow",
+        "hint": "planör tarzı ayrık spoilerlar"
+      },
+      "steer": {
+        "label": "Yönlendirilebilir tekerlek",
+        "hint": "burun veya kuyruk tekerleği"
+      },
+      "gear": {
+        "label": "Retractlar",
+        "hint": "iniş takımı"
+      }
+    },
+    "launch": {
+      "hand": {
+        "label": "Elle fırlatma",
+        "hint": "motor atıştan sonra çalışır"
+      },
+      "bungee": {
+        "label": "Bungee",
+        "hint": "pervane ipten kurtulsun diye uzun gecikme"
+      },
+      "cat": {
+        "label": "Mancınık"
+      },
+      "runway": {
+        "label": "Pist, burun tekerleği",
+        "hint": "yerden kalkar"
+      },
+      "tdrag": {
+        "label": "Pist, kuyruk tekerlekli",
+        "hint": "başta kuyruğu aşağıda tutar"
+      },
+      "belly": {
+        "label": "Elle fırlatma, karın inişi",
+        "hint": "hiç tekerlek yok"
+      }
+    },
+    "soar": {
+      "yes": {
+        "label": "Evet, termal süzülme",
+        "hint": "SOAR_ENABLE = 1, sonra yeniden başlat"
+      },
+      "no": {
+        "label": "Şimdi değil",
+        "hint": "sadece süzül"
+      }
+    },
+    "airspeed": {
+      "none": {
+        "label": "Sensör yok",
+        "hint": "hava hızı GPS ve gazdan tahmin edilir"
+      },
+      "i2c": {
+        "label": "Dijital, I2C üzerinde",
+        "hint": "örn. MS4525"
+      },
+      "can": {
+        "label": "DroneCAN",
+        "hint": "CAN portunda"
+      }
+    },
+    "vtype": {
+      "quad": {
+        "label": "Quadplane",
+        "hint": "ayrı kaldırma motorları, en yaygını"
+      },
+      "tilt": {
+        "label": "Tilt-rotor",
+        "hint": "motorlar uçak uçuşu için öne eğilir"
+      },
+      "tail": {
+        "label": "Tailsitter",
+        "hint": "kuyruğunun üzerinde dikilerek kalkar"
+      }
+    },
+    "assist": {
+      "off": {
+        "label": "Henüz değil",
+        "hint": "Q_ASSIST_SPEED = -1, ilk uçuşlar için"
+      },
+      "on": {
+        "label": "Evet, bir hızın altında",
+        "hint": "stall'ın %25 üstü"
+      }
+    },
+    "driveRover": {
+      "steer": {
+        "label": "Direksiyon servosu + motor",
+        "hint": "RC araba gibi: ön tekerlekler döner"
+      },
+      "skid": {
+        "label": "Skid direksiyon",
+        "hint": "sol ve sağ taraf ayrı sürülür, tank gibi"
+      },
+      "omni": {
+        "label": "Omni veya mecanum",
+        "hint": "yana da giden 3 veya 4 tekerlek"
+      },
+      "balance": {
+        "label": "Dengeli robot",
+        "hint": "iki tekerlek, kendini dengeler"
+      }
+    },
+    "driveBoat": {
+      "rudder": {
+        "label": "Dümen + motor",
+        "hint": "bir dümen servosu yönlendirir"
+      },
+      "diff": {
+        "label": "İki motor",
+        "hint": "hız farkıyla yönlendirir"
+      },
+      "vector": {
+        "label": "Dıştan takma / vektörlü",
+        "hint": "motorun kendisi döner"
+      },
+      "sail": {
+        "label": "Yelkenli",
+        "hint": "yelken vinci, kanat yelken veya dönen direk"
+      }
+    },
+    "motordrv": {
+      "esc": {
+        "label": "İleri ve geri destekli ESC",
+        "hint": "ESC'yi ileri ve geri olarak ayarla, boşta 1500"
+      },
+      "relay": {
+        "label": "Fırçalı, yön pinli",
+        "hint": "L298N ve benzerleri: PWM artı bir röle pini"
+      },
+      "bipolar": {
+        "label": "Fırçalı, bipolar sürücü",
+        "hint": "%50 = dur, altı = geri, üstü = ileri"
+      }
+    },
+    "windvane": {
+      "nmea": {
+        "label": "NMEA rüzgar aleti",
+        "hint": "hız ve yön tek cihazda"
+      },
+      "analog": {
+        "label": "Analog rüzgar gülü",
+        "hint": "bir analog pinde"
+      },
+      "none": {
+        "label": "Henüz rüzgar gülü yok",
+        "hint": "olmadan kendi başına yelken açamaz"
+      }
+    },
+    "subframe": {
+      "1": {
+        "label": "BlueROV2",
+        "hint": "vektörlü, 6 thruster"
+      },
+      "2": {
+        "label": "BlueROV2 Heavy",
+        "hint": "vektörlü 6DOF, 8 thruster"
+      },
+      "3": {
+        "label": "Vektörlü 6DOF 90°",
+        "hint": "8 thruster"
+      },
+      "0": {
+        "label": "BlueROV1",
+        "hint": "6 thruster"
+      },
+      "4": {
+        "label": "SimpleROV-3",
+        "hint": "3 thruster"
+      },
+      "5": {
+        "label": "SimpleROV-4",
+        "hint": "4 thruster"
+      },
+      "6": {
+        "label": "SimpleROV-5",
+        "hint": "5 thruster"
+      },
+      "7": {
+        "label": "Özel",
+        "hint": "kendi thruster düzenin"
+      }
+    },
+    "thrusters": {
+      "auto": {
+        "label": "Benim için algıla",
+        "hint": "ArduSub motor algılama, suda yaklaşık bir dakika"
+      },
+      "manual": {
+        "label": "Tek tek",
+        "hint": "her thruster'ı döndür ve yanlış yöne itenleri ters çevir"
+      }
+    },
+    "water": {
+      "fresh": {
+        "label": "Tatlı su",
+        "hint": "göller, nehirler, havuzlar"
+      },
+      "salt": {
+        "label": "Tuzlu su",
+        "hint": "deniz"
+      }
+    },
+    "leak": {
+      "nav": {
+        "label": "Navigator dahili",
+        "hint": "LEAK1_PIN = 27"
+      },
+      "aux": {
+        "label": "Bir AUX pininde",
+        "hint": "AUX1..6 = pin 50..55"
+      },
+      "none": {
+        "label": "Sızıntı sensörü yok",
+        "hint": "önerilmez"
+      }
+    },
+    "joystick": {
+      "pad": {
+        "label": "Tether üzerinden gamepad",
+        "hint": "olağan yol: modlar, arm, ışıklar için düğmeler"
+      },
+      "rc": {
+        "label": "RC radyo",
+        "hint": "anten için tether'lı bir şamandıra gerekir"
+      }
+    },
+    "omniType": {
+      "1": "Omni3",
+      "2": "OmniX",
+      "3": "OmniPlus",
+      "4": "Omni3 Mecanum"
+    }
+  },
+  "note": {
+    "airframe": {
+      "three": "RUDDER_ONLY = 1 yazar: roll çubuğu dümenle yönlendirir. Bunlarda otomatik yer direksiyonu kapalıdır.",
+      "invv": "V kuyrukla aynı çıkışlar; yönler genellikle tersidir, bunu yüzey kontrolü yakalar."
+    },
+    "airframeTail": {
+      "none": "Q_TAILSIT_ENABLE = 2: hover'da ve uçak uçuşunda tüm yönlendirmeyi motorlar yapar."
+    },
+    "power": {
+      "twin": "İki motor, diferansiyel itkiyle (RUDD_DT_GAIN) yaw'a da yardım eder.",
+      "icWarn": "Motoru çalıştırmadan önce radyoda bir kill anahtarı gereklidir. ArduDeck ICE_ENABLE = 1 yazar; motor ayarları yeniden başlatmadan sonra görünür.",
+      "gliderWarn": "Motor yok: motor kontrolü atlanır ve termal süzülme önerilir. ArduPilot'ta ayrı bir saf planör sayfası yok, bu yüzden bu yolu doğrulanmamış say."
+    },
+    "extras": {
+      "all": "Bu uçakta ne varsa hepsini seç ya da hiçbirini. Her biri kendi çıkışını alır ve yüzey kontrolünde görünür."
+    },
+    "launch": {
+      "hand": "Burun 40° üzerindeyken veya kanatlar 30°'yi aşmışken elle fırlatmada motor çalışmaz. Gecikmesiz bir itici pervane elinde çalışabilir: gecikme bunu önler.",
+      "bungee": "Burun 40° üzerindeyken veya kanatlar 30°'yi aşmışken elle fırlatmada motor çalışmaz. Gecikmesiz bir itici pervane elinde çalışabilir: gecikme bunu önler.",
+      "belly": "Burun 40° üzerindeyken veya kanatlar 30°'yi aşmışken elle fırlatmada motor çalışmaz. Gecikmesiz bir itici pervane elinde çalışabilir: gecikme bunu önler."
+    },
+    "soar": {
+      "yes": "Süzülme için bir hava hızı sensörü gerekir. TECS_SPDWEIGHT = 2 onunla birlikte yazılır; irtifa sınırları (SOAR_ALT_MIN, SOAR_ALT_CUTOFF, SOAR_ALT_MAX) yeniden başlatmadan sonra görünür."
+    },
+    "airspeed": {
+      "i2c": "MS4525 için yazılır. DLVR veya başka bir sensör kendi ARSPD_TYPE değerini ister. Sıfır ofsetini yerde, tüp kapalıyken kalibre et.",
+      "can": "Sıfır ofsetini yerde, tüp kapalıyken kalibre et."
+    },
+    "vtype": {
+      "quad": "Q_ENABLE = 1 yeniden başlatma gerektirir: Q_ parametreleri ancak ondan sonra var olur.",
+      "tilt": "Q_ENABLE = 1 yeniden başlatma gerektirir: Q_ parametreleri ancak ondan sonra var olur. Q_TILT_ENABLE yeniden başlatmadan sonra yazılır.",
+      "tail": "Q_ENABLE = 1 yeniden başlatma gerektirir: Q_ parametreleri ancak ondan sonra var olur. Tailsitter ayarları yeniden başlatmadan sonra yazılır."
+    },
+    "assist": {
+      "offWarn": "Plane 4.2'den beri 0 artık kapatmaz: yalnızca geçişlerde destek anlamına gelir ve pre-arm kontrollerinde başarısız olur. Kapalı değeri -1'dir.",
+      "onWarn": "Plane 4.2'den beri 0 artık kapatmaz: yalnızca geçişlerde destek anlamına gelir ve pre-arm kontrollerinde başarısız olur. Kapalı değeri -1'dir."
+    },
+    "driveRover": {
+      "balance": "Dengeli robotlar için ayrıca tekerlek enkoderleri gerekir. İlk sürüşte seyir hızını ve gazı öğren."
+    },
+    "driveBoat": {
+      "vector": "MOT_VEC_ANGLEMAX değerini, tam direksiyonda motorun sapmasına Parameters'tan ayarla.",
+      "sail": "SAIL_ENABLE = 1 yeniden başlatma gerektirir. Sonra yelkeni boş bir çıkışa bağla: fonksiyon 89 ana yelken, 128 kanat yelken veya 137 direk dönüşü. Rüzgar gülü bir sonraki adımdır."
+    },
+    "motordrv": {
+      "esc": "Servolar, fırçalı motor çıkışlarıyla aynı çıkış grubunu paylaşmamalı. Motor tipini değiştirdikten sonra yeniden başlat. İlk sürüşte gazı yavaşça yükselt ve tekerleklerin hareketlendiği noktayı MOT_THR_MIN olarak kaydet.",
+      "relay": "Servolar, fırçalı motor çıkışlarıyla aynı çıkış grubunu paylaşmamalı. Motor tipini değiştirdikten sonra yeniden başlat. İlk sürüşte gazı yavaşça yükselt ve tekerleklerin hareketlendiği noktayı MOT_THR_MIN olarak kaydet.",
+      "bipolar": "Servolar, fırçalı motor çıkışlarıyla aynı çıkış grubunu paylaşmamalı. Motor tipini değiştirdikten sonra yeniden başlat. İlk sürüşte gazı yavaşça yükselt ve tekerleklerin hareketlendiği noktayı MOT_THR_MIN olarak kaydet."
+    },
+    "windvane": {
+      "nmea": "Yüksekte, yelkenden uzakta monte et. Okumaya başlayınca yönünü kalibre et.",
+      "analog": "Yüksekte, yelkenden uzakta monte et. Okumaya başlayınca yönünü kalibre et.",
+      "noneWarn": "Rüzgar gülü olmadan bir yelkenli kendi başına yelken açamaz."
+    },
+    "subframe": {
+      "4": "Bir ekseni eksik olan gövdeler, o eksende dengede kalmak için ağırlığa ve kaldırma kuvvetine güvenir.",
+      "5": "Bir ekseni eksik olan gövdeler, o eksende dengede kalmak için ağırlığa ve kaldırma kuvvetine güvenir.",
+      "6": "Bir ekseni eksik olan gövdeler, o eksende dengede kalmak için ağırlığa ve kaldırma kuvvetine güvenir.",
+      "7Warn": "Özel düzen, düzenini bilen bir yazılım gerektirir: thruster karışımı parametrelerle ayarlanmaz, derlemeye gömülüdür. Böyle bir derleme yüklendikten sonra thruster kontrolünden devam et."
+    },
+    "leak": {
+      "nav": "Probu ıslak bir parmakla dokun: sızıntı alarmı çalmalı.",
+      "aux": "Probu ıslak bir parmakla dokun: sızıntı alarmı çalmalı.",
+      "noneWarn": "Sızıntı sensörü olmadan su girdiğinde sub kendi başına yüzeye çıkamaz."
+    },
+    "joystick": {
+      "pad": "Gamepad düğmeleri ArduSub varsayılanlarını kullanır: 1 Manual, 2 Depth Hold, 3 Stabilize, 4 disarm, 6 arm. Bunları Cockpit'te veya joystick kurulumunda değiştirebilirsin.",
+      "rcWarn": "RC suyun içine ulaşmaz: alıcı için tether'lı bir şamandıra gerekir."
+    },
+    "check": {
+      "surfaces": "FBWA'ya al, pervaneler sökülü. Vericide asla fişleri değiştirme veya ters çevirme: bunun yerine buradaki Reversed'ı çevir.",
+      "surfacesMixed": "Karışık yüzeyler: yalnızca bir eksen yanlışsa sol ve sağ fonksiyonlar yer değiştirmiştir (Outputs'ta değiştir). İki eksen de yanlışsa Reversed'ı çevir.",
+      "thrcheck": "Pervane sökülü. Düz bir PWM ESC'nin önce tek seferlik gaz aralığı kalibrasyonuna ihtiyacı olabilir.",
+      "thrcheckIc": "Otomatik yeniden başlatma denemeleri arasında asla pervaneye yaklaşma.",
+      "drivetest": "Tekerlekler yerden kesik, gaz %20. Yanlış yöndeyse: fişleri değiştirme, Outputs'ta o çıkışın Reversed'ını çevir. Motor testi komutun reddedildiğini söylüyorsa alıcı adımı henüz tamamlanmamıştır.",
+      "drivetestBoat": "Bir sehpada veya sığ suda, pervane ellerden uzak. Yanlış yöndeyse: o çıkışın Reversed'ını çevir.",
+      "thrusters": "Otomatik algılama yalnızca sub'ı roll, pitch veya yaw yaptıran thruster'ları düzeltir. Thruster'ları havada asla 30 sn'den uzun çalıştırma. MOT_n_DIRECTION ayarlar.",
+      "water": "Her dalıştan önce derinliği yüzeyde sıfırla: Calibration, Barometer."
+    }
+  },
+  "wizard": {
+    "title": "Yeni araç kur",
+    "stepOf": "Adım {{n}} / {{total}}",
+    "back": "Geri",
+    "next": "İleri",
+    "finish": "Bitir",
+    "reviewNote": "Değişiklikler yazılmadan önce gözden geçirmen için gösterilir",
+    "reviewing": "Gözden geçirmen bekleniyor...",
+    "restarting": "Uçuş kontrolcüsü yeniden başlatılıyor...",
+    "reason": "Yeni araç kurulumu: {{step}}",
+    "cancelled": "Hiçbir şey yazılmadı: gözden geçirme iptal edildi.",
+    "writeFailed": "Bazı parametreler yazılamadı.",
+    "restartNeeded": "Bu yalnızca uçuş kontrolcüsü yeniden başladıktan sonra etkili olur.",
+    "restartFor": "Bu ayarlar yeniden başlatmadan sonra görünür: {{params}}",
+    "restartNow": "Şimdi yeniden başlat",
+    "later": "Sonra",
+    "restartFailed": "Uçuş kontrolcüsü yeniden başlatmayı kabul etmedi.",
+    "notBack": "Uçuş kontrolcüsü yeniden başlatmadan sonra geri gelmedi.",
+    "stillMissing": "Yeniden başlatmadan sonra hâlâ eksik: {{params}}. Bu yazılımda bunlar olmayabilir.",
+    "noVehicle": "Başlamak için bir ArduPilot aracı bağla ve parametrelerini yükle.",
+    "blocker": "Uçuş kontrolcüsü bildiriyor: {{text}}",
+    "state": {
+      "found": "bulundu",
+      "needsPilot": "kontrol et"
+    },
+    "writes": "Yazar",
+    "afterRestart": "yeniden başlatmadan sonra",
+    "source": "Değerler şuradan: {{source}}",
+    "size": {
+      "preset": "{{prop}} inç, {{mm}} mm",
+      "frame": "Motordan motora, çapraz",
+      "frameNote": "çoğu gövdenin üzerinde yazan boyut",
+      "prop": "Pervane",
+      "propNote": "pervanedeki ilk sayı, 10x4.5 için 10",
+      "cells": "Batarya",
+      "cellsNote": "batarya voltajından okunur, yanlışsa değiştir",
+      "overlap": "{{prop}} inç pervaneler {{mm}} mm'lik bir gövde için çok büyük: birbirine çarparlar.",
+      "toScale": "Ölçekli: motordan motora {{mm}} mm, {{prop}} inç pervaneler.",
+      "fills": "Bu senin için doldurulur",
+      "skip": "Atla, varsayılanları koru"
+    },
+    "heli": {
+      "firmware": {
+        "title": "Heli yazılımı",
+        "text": "Helikopterler ayrı heli yazılımını çalıştırır; FRAME_CLASS hazır gelir."
+      },
+      "wizard": {
+        "title": "Bu sihirbaz",
+        "text": "Kart yönelimi, alıcı, pusula, modlar ve batarya: her aracın paylaştığı adımlar."
+      },
+      "heliSetup": {
+        "title": "Rotor kurulumu",
+        "text": "Swashplate, collective, rotor hızı (RSC) ve kuyruk tipi Heli setup içinde kalır."
+      },
+      "interlock": {
+        "title": "Motor interlock",
+        "text": "Arm etmek için bir motor interlock anahtarı gereklidir (varsayılan RC8_OPTION 32)."
+      }
+    },
+    "tailsitter": {
+      "dual": {
+        "label": "İki motor",
+        "hint": "kanadın her tarafında bir tane, hız farkıyla yönlendirilir"
+      },
+      "single": {
+        "label": "Tek motor",
+        "hint": "burunda, elevonlar yönlendirir"
+      },
+      "copter": {
+        "label": "Copter tarzı",
+        "hint": "3 veya daha fazla motor, kuyruğunda duran bir quad gibi"
+      }
+    },
+    "frameClass": {
+      "quad": "Quad",
+      "hexa": "Hexa",
+      "octa": "Octa",
+      "x8": "X8 (koaksiyel quad)",
+      "y6": "Y6 (koaksiyel tri)",
+      "dodeca": "Koaksiyel hexa",
+      "tri": "Tri",
+      "deca": "Deca",
+      "single": "Tek rotorlu copter",
+      "coax": "Koaksiyel copter",
+      "bi": "Bicopter"
+    },
+    "noPicture": "Bu gövde için motor resmi yok.",
+    "frameNote": {
+      "single": "1'den 4'e kadar çıkışlar flapları (ön, sağ, arka, sol), 5. çıkış motoru sürer. Motor sırası testi yok: flapları Stabilize'da arm edilmiş, pervaneler sökülü kontrol et.",
+      "coax": "1'den 4'e kadar çıkışlar flapları, 5 ve 6 üst (CCW) ve alt (CW) motoru sürer. Motor sırası testi yok: flapları Stabilize'da arm edilmiş, pervaneler sökülü kontrol et.",
+      "bi": "Motorlar 73 / 74 fonksiyonlarında, tilt servoları 75 / 76'da. ArduPilot varsayılan çıkışları belgelemiyor: bunları Outputs'ta kontrol et.",
+      "tri": "Arka motor 7. çıkıştaki bir yaw servosunun üzerinde durur. SERVO7_TRIM değerini kuyruğun dönmediği yere ayarla; MOT_YAW_SV_ANGLE eğimi sınırlar.",
+      "stacked": "Koaksiyel çiftler üst üste durur. Motor testi önce üst motoru, sonra alt motoru döndürür: hangisinin döndüğüne bak."
+    },
+    "tiltMask": "Hangi motorlar eğiliyor?",
+    "tiltMaskOpt": {
+      "3": "Öndeki iki",
+      "15": "Dördü de"
+    },
+    "tiltMaskOther": "Q_TILT_MASK değerini eğilen motorlara Parameters'tan ayarla.",
+    "vframeNote": "Bundan sonraki motor testi, copter'daki gibi bu resmi kullanır. Uçak yüzeyleri 1'den 4'e kadar çıkışları korur.",
+    "vframeNoteTail": "Bir veya iki motor için motor resmi yok: sol ve sağ motorlar burada kontrol edilir.",
+    "output": "Çıkış {{n}}",
+    "autoByFirmware": "Q_ENABLE ile ayarlanır",
+    "noSuchOutput": "bu kartta yok",
+    "already": "zaten ayarlı",
+    "willChange": "şimdi {{from}}",
+    "aileron": {
+      "y": {
+        "label": "Tek çıkış, Y kablo",
+        "hint": "en yaygın yol"
+      },
+      "two": {
+        "label": "İki çıkış",
+        "hint": "servo başına bir tane: her biri tek başına trimlenebilir ve ters çevrilebilir"
+      }
+    },
+    "outputsNote": "Önce ArduPilot varsayılanları, ekstralar sıradaki boş çıkışlarda. Birini yalnızca kablolaman farklıysa değiştir; yüzey kontrolü hataları yakalar.",
+    "outputsNoteVtol": "Kaldırma motorları 4 + motor numarasını kullanır ve Q_ENABLE ile ayarlanır. Ekstralar bu çıkışları atlar.",
+    "check": {
+      "button": "Kontrol",
+      "stab": {
+        "title": "Stabilize kontrolü",
+        "text": "Uçağı sağa yatır: eleronlar buna karşı koyar"
+      },
+      "motorL": {
+        "title": "Sol motor",
+        "text": "Gazı biraz aç: sol motor döner"
+      },
+      "motorR": {
+        "title": "Sağ motor",
+        "text": "Sağ motor döner"
+      },
+      "kill": {
+        "title": "Kill anahtarı",
+        "text": "Çevir: ateşleme kesilir"
+      },
+      "start": {
+        "title": "Çalıştır",
+        "text": "Marş çalışır, sonra motor rölantiye girer"
+      },
+      "spin": {
+        "title": "Dön",
+        "text": "Gazı biraz aç: motor döner"
+      },
+      "stop": {
+        "title": "Dur",
+        "text": "Gaz sıfırda: durur"
+      },
+      "balance": {
+        "title": "Denge",
+        "text": "Tekerlekler havada, Manual'da elle öne eğ: tekerlekler ileri sürer"
+      },
+      "motorA": {
+        "title": "Motor testi A",
+        "text": "İleri gider"
+      },
+      "motorB": {
+        "title": "Motor testi B",
+        "text": "Sağa döner"
+      },
+      "motorC": {
+        "title": "Motor testi C",
+        "text": "Sol taraf ileri sürer"
+      },
+      "motorD": {
+        "title": "Motor testi D",
+        "text": "Sağ taraf ileri sürer"
+      },
+      "omni": {
+        "title": "Her motor",
+        "text": "Düzende gösterilen tekerleği ileri döndürür"
+      },
+      "sail": {
+        "title": "Yelken",
+        "text": "Gaz çubuğu aşağı yelkeni toplar"
+      },
+      "rudder": {
+        "title": "Dümen",
+        "text": "Çubuk sağa: tekne sağa dönerdi"
+      },
+      "inWater": {
+        "title": "Suda",
+        "text": "Nötr veya hafif pozitif kaldırma kuvveti, sakin su"
+      },
+      "room": {
+        "title": "Hareket alanı",
+        "text": "Tether gevşek, çevresinde hiçbir şey yok"
+      },
+      "zeroDepth": {
+        "title": "Sıfır derinlik",
+        "text": "Yüzeyde, dalıştan önce"
+      }
+    },
+    "reversed": "Ters",
+    "normal": "Normal",
+    "yes": "Evet",
+    "psize": {
+      "span": "Kanat açıklığı",
+      "spanNote": "uçtan uca",
+      "root": "Ortadaki kord",
+      "rootNote": "ön kenardan arka kenara",
+      "tip": "Uçtaki kord",
+      "tipNote": "sivri bir delta için 0",
+      "mass": "Ağırlık, uçuşa hazır",
+      "massNote": "bataryayla, mutfak tartısında",
+      "stall": "Stall hızı",
+      "own": "Kendi değerin. Tahmin {{estimate}} m/s olurdu.",
+      "from": "{{mass}} g taşıyan {{area}} dm² kanattan.",
+      "useEstimate": "Tahmini kullan",
+      "knowIt": "Uçuştan biliyor musun?",
+      "fills": "Bu senin için doldurulur",
+      "note": "Plane 4.5 bunları yeniden adlandırdı: eski yazılımlar bunun yerine ARSPD_FBW_MIN, TRIM_ARSPD_CM ve ARSPD_FBW_MAX alır. ArduDeck, kartta hangi adlar varsa onları yazar."
+    },
+    "battery": {
+      "chemistry": "Kimya",
+      "chem": {
+        "lipo": "LiPo",
+        "lipohv": "LiPo HV",
+        "liion": "Li-ion"
+      },
+      "cells": "Hücreler",
+      "capacity": "Kapasite",
+      "monitor": {
+        "4": {
+          "label": "Güç modülü",
+          "hint": "voltaj ve akım"
+        },
+        "3": {
+          "label": "Yalnızca voltaj",
+          "hint": "akım sensörü yok"
+        },
+        "8": {
+          "label": "Akıllı batarya",
+          "hint": "DroneCAN"
+        },
+        "9": {
+          "label": "ESC'lerden",
+          "hint": "ESC telemetrisi"
+        }
+      },
+      "mark": {
+        "critical": "kritik",
+        "low": "düşük",
+        "arm": "arm",
+        "full": "dolu"
+      },
+      "note": "Voltajlar Mission Planner ilk parametrelerinden. Voltaj ve akım okumalarını Battery sekmesinde bir multimetreyle kalibre et."
+    },
+    "failsafe": {
+      "low": "Batarya düşük",
+      "crit": "Batarya kritik",
+      "radio": "Radyo sinyali kayboldu",
+      "tether": "Tether / GCS kayboldu",
+      "leak": "Sızıntı algılandı"
+    },
+    "ready": {
+      "none": "Engel yok. Arm edecek.",
+      "noneSub": "Pervaneleri tak, geri çekil ve arm et.",
+      "count_one": "{{count}} şey hâlâ engel",
+      "count_other": "{{count}} şey hâlâ engel",
+      "sub": "Hangi sırayla istersen düzelt. Bu liste uçuş kontrolcüsü onaylar onaylamaz güncellenir.",
+      "fix": "{{step}} içinde düzelt"
+    },
+    "rx": {
+      "live": "Alıcı bağlı: {{count}} kanal",
+      "waiting": "Henüz alıcı sinyali yok. Radyoyu aç."
+    },
+    "omniType": "Tekerlek düzeni",
+    "leakPin": "Sızıntı pini",
+    "subModes": "Sub'lar modları bir anahtarla değil gamepad düğmeleriyle değiştirir. ArduSub varsayılanları: 1 Manual, 2 Depth Hold, 3 Stabilize. Bunları Cockpit'te veya joystick kurulumunda değiştir.",
+    "alreadySet": "Kartta zaten ayarlı",
+    "tag": {
+      "recommended": "önerilen",
+      "unverified": "doğrulanmamış",
+      "caution": "dikkat"
+    }
+  }
+}

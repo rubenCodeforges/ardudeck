@@ -1,0 +1,22 @@
+{
+  "debugConsole": {
+    "console": "Konsol",
+    "dockBottom": "Alta yasla",
+    "dockLeft": "Sola yasla",
+    "dockRight": "Sağa yasla",
+    "entries_one": "{{count}} kayıt",
+    "entries_other": "{{count}} kayıt",
+    "filter": {
+      "all": "Tümü",
+      "error": "Hata",
+      "info": "Bilgi",
+      "packet": "Paket"
+    },
+    "fix": "Düzelt ›",
+    "jumpToLatest": "↓ En sona git (duraklatıldı)",
+    "msgs_one": "{{count}} mesaj",
+    "msgs_other": "{{count}} mesaj",
+    "noLogEntries": "Günlük kaydı yok",
+    "noMessages": "Otopilottan mesaj yok"
+  }
+}

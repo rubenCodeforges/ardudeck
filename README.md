@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <strong>A modern, cross-platform ground control station for ArduPilot, Betaflight, and iNav.</strong>
+  <strong>A free, open-source ground control station for ArduPilot, PX4, Betaflight, and iNav. Windows, macOS and Linux.</strong>
 </p>
 
 <p align="center">
@@ -34,9 +34,21 @@
   <a href="https://www.uav-dev.com" target="_blank" rel="noopener noreferrer"><img src="docs/sponsors/uav-dev.svg" alt="UAV-DEV - autonomous systems hardware" height="40" /></a>
 </p>
 
-ArduDeck is an open-source ground control station built with Electron, React, and TypeScript. One app covers the whole workflow: connect, configure, calibrate, plan, fly, and analyze, for vehicles running ArduPilot (MAVLink) or Betaflight/iNav (MSP), from a single quad on USB to a fleet of vehicles on radio, IP, or cellular links.
+ArduDeck is an open-source ground control station built with Electron, React, and TypeScript. One app covers the whole workflow: connect, configure, calibrate, plan, fly, and analyze, for vehicles running ArduPilot or PX4 (MAVLink) or Betaflight/iNav (MSP), from a single quad on USB to a fleet of vehicles on radio, IP, or cellular links.
 
-> **Beta (0.1.2)** - ArduDeck is in beta. It is used in real flight operations, but expect rough edges and keep a backup configuration tool available. Ask questions and share setups on the [community forum](https://forum.ardudeck.com) or [Discord](https://discord.gg/JX2JdVXPPC), read the [documentation](https://ardudeck.com/docs/), or use the built-in [bug reporting](#bug-reporting) to help improve the project.
+> **Beta** - ArduDeck is in beta. It is used in real flight operations, but expect rough edges and keep a backup configuration tool available. Ask questions and share setups on the [community forum](https://forum.ardudeck.com) or [Discord](https://discord.gg/JX2JdVXPPC), read the [documentation](https://ardudeck.com/docs/), or use the built-in [bug reporting](#bug-reporting) to help improve the project.
+
+---
+
+## Start here
+
+- [How to download and set up ArduPilot](https://ardudeck.com/blog/ardupilot-download-setup-guide/) - firmware, ground station, flashing and connecting
+- [First-time setup checklist](https://ardudeck.com/blog/ardupilot-first-setup-checklist/) - calibration, radio, flight modes and failsafes in order
+- [Failsafe setup](https://ardudeck.com/blog/ardupilot-failsafe-setup/) and [AutoTune](https://ardudeck.com/blog/ardupilot-autotune-guide/)
+- [Moving from Betaflight or INAV to ArduPilot](https://ardudeck.com/blog/betaflight-inav-to-ardupilot/)
+- [Connect an AI agent to ArduDeck with MCP](https://ardudeck.com/blog/ardudeck-mcp-ai-agents/)
+
+The guides are available in English, German, Spanish, French, Turkish, Ukrainian and Simplified Chinese.
 
 ---
 
@@ -59,30 +71,54 @@ ArduDeck is an open-source ground control station built with Electron, React, an
 ## Screenshots
 
 <p align="center">
-  <a href="docs/screenshots/_new/mission_planning_overview.png?raw=true">
-    <img src="docs/screenshots/_new/mission_planning_overview.png" alt="Mission and survey planning" width="800"/>
+  <a href="docs/screenshots/readme/map-cockpit.jpg?raw=true">
+    <img src="docs/screenshots/readme/map-cockpit.jpg" alt="The map as the cockpit: instruments docked on the map beside a synthetic vision panel" width="800"/>
   </a>
   <br/>
-  <em>Mission planning with grouped waypoints, a terrain-aware altitude profile, and live flight-info estimates</em>
+  <em>The map is the cockpit: instruments docked on it, with a live or synthetic vision panel beside it</em>
 </p>
 
 <p align="center">
-  <a href="docs/screenshots/_new/osd_simulator_demo.png?raw=true">
-    <img src="docs/screenshots/_new/osd_simulator_demo.png" alt="OSD Tool" width="800"/>
+  <a href="docs/screenshots/readme/px4-support.jpg?raw=true">
+    <img src="docs/screenshots/readme/px4-support.jpg" alt="PX4 configuration with the outputs tab, frame diagram and motor test" width="800"/>
   </a>
   <br/>
-  <em>OSD Tool: composable ground-rendered HUD, flight controller Text OSD editor, and RubyFPV layout authoring</em>
+  <em>PX4 configuration: outputs, frame diagram, motor test and vibration readout</em>
 </p>
 
 <p align="center">
-  <a href="docs/screenshots/_new/lua_loaded_template.png?raw=true">
-    <img src="docs/screenshots/_new/lua_loaded_template.png" alt="Lua Graph Editor" width="800"/>
+  <a href="docs/screenshots/readme/area-editor-overview.png?raw=true">
+    <img src="docs/screenshots/readme/area-editor-overview.png" alt="The Area Editor with two areas and a corridor drawn over satellite imagery" width="800"/>
   </a>
   <br/>
-  <em>Lua Graph Editor: build ArduPilot Lua scripts visually, with live code preview and export</em>
+  <em>Area Editor: survey areas and corridors over satellite imagery, with a live flight briefing</em>
 </p>
 
-More screenshots, guides, and full documentation live on the website: [ardudeck.com/docs](https://ardudeck.com/docs/). Have a question or want to share a build? Join the [community forum](https://forum.ardudeck.com).
+<p align="center">
+  <a href="docs/screenshots/readme/survey-coverage-plan.jpg?raw=true">
+    <img src="docs/screenshots/readme/survey-coverage-plan.jpg" alt="A survey coverage plan with crosshatch tracks and a smoothed flight path" width="800"/>
+  </a>
+  <br/>
+  <em>Survey planning: coverage tracks, turn room and a smoothed flight path</em>
+</p>
+
+<p align="center">
+  <a href="docs/screenshots/readme/log-explorer-fft.jpg?raw=true">
+    <img src="docs/screenshots/readme/log-explorer-fft.jpg" alt="The Log Explorer with the FFT spectrum panel above a chart with a flight mode timeline" width="800"/>
+  </a>
+  <br/>
+  <em>Log Explorer: charts, per-series stats, flight modes and an FFT spectrum</em>
+</p>
+
+<p align="center">
+  <a href="docs/screenshots/readme/hangar-cargo.jpg?raw=true">
+    <img src="docs/screenshots/readme/hangar-cargo.jpg" alt="The Hangar with cargo cards, and installed cargo inside the app" width="800"/>
+  </a>
+  <br/>
+  <em>The Hangar: add hardware support, instruments and screens as cargo</em>
+</p>
+
+More screenshots and full documentation live on the website: [ardudeck.com/docs](https://ardudeck.com/docs/). Have a question or want to share a build? Join the [community forum](https://forum.ardudeck.com).
 
 ---
 
@@ -133,7 +169,7 @@ More screenshots, guides, and full documentation live on the website: [ardudeck.
 - **Survey projects** - save a survey as a project, reopen and adjust it later
 
 ### Flight Log Analysis
-- **Log Explorer** - multi-chart plotting of ArduPilot DataFlash logs with independent y-axes, zoom/pan, windowed min/avg/max stats, and synchronized cursors across charts, map, and 3D flight path
+- **Log Explorer** - multi-chart plotting of ArduPilot DataFlash logs and PX4 ULog files with independent y-axes, zoom/pan, windowed min/avg/max stats, and synchronized cursors across charts, map, and 3D flight path
 - **FFT spectrum** - frequency analysis for vibration and filter work
 - **Events and parameters** - flight events timeline and the parameter set recorded in the log
 - **Health reports** - automated pass/warn/fail checks for vibration, GPS, EKF, power, failsafes, and more
@@ -156,7 +192,7 @@ More screenshots, guides, and full documentation live on the website: [ardudeck.
 - **CLI terminal** - xterm-based terminal with autocomplete and history, including full GUI configuration for legacy F3-era boards driven over CLI
 
 ### Firmware & Connectivity
-- **Firmware flashing** - ArduPilot, Betaflight, and iNav, with board auto-detection (MAVLink, MSP, STM32 bootloader), USB VID/PID recognition, and a boot-pad wizard
+- **Firmware flashing** - ArduPilot, PX4, Betaflight, and iNav, with board auto-detection (MAVLink, MSP, STM32 bootloader), USB VID/PID recognition, and a boot-pad wizard
 - **Connections** - serial (USB), TCP, and UDP, with port scanning and MAVLink v1/v2 auto-detection
 - **Link Doctor** - connection diagnostics that identify what is actually on the link and why it is not talking
 - **MAVLink inspector** - live message browser with field graphs
@@ -165,7 +201,7 @@ More screenshots, guides, and full documentation live on the website: [ardudeck.
 - **MAVFTP** - browse and transfer files on the flight controller
 
 ### Simulation
-- **SITL built in** - download and run real ArduPilot firmware (Copter, Plane, Rover, Sub) on your computer, pick a frame and release track, and ArduDeck connects automatically
+- **SITL built in** - download and run real ArduPilot firmware (Copter, Plane, Rover, Sub), or PX4 SITL, on your computer, pick a frame and release track, and ArduDeck connects automatically
 - **Virtual RC and FlightGear bridge** - fly the simulated vehicle from the app, optionally visualized in FlightGear
 - **Swarm SITL** - spawn multiple SITL vehicles to exercise multi-vehicle features without hardware
 - **3D Sim World** - watch the vehicle in a 3D world (chase, FPV, orbit or top view), add obstacles and inject failures such as a dead barometer or a slung load
@@ -174,12 +210,16 @@ More screenshots, guides, and full documentation live on the website: [ardudeck.
 - **Lua Graph Editor** - build ArduPilot Lua scripts by connecting nodes (sensors, logic, math, actions), with live code preview, templates, and one-click export ([docs](apps/desktop/src/renderer/components/lua-graph/docs/))
 - **Companion boards** - ESP32 flashing with pre-configured templates (DroneBridge, MAVLink bridge), DroneBridge auto-discovery, and an agent dashboard for Raspberry Pi-class companions (metrics, terminal, services)
 
+### AI Agents (MCP)
+- **MCP server** - connect any MCP-capable AI agent (Claude Code, Codex, Cursor and others) to ArduDeck: it can read the vehicle, parameters and logs, and plan missions, surveys and fences
+- **You stay in control** - every change an agent proposes opens a dialog in ArduDeck that you approve or reject ([guide](https://ardudeck.com/blog/ardudeck-mcp-ai-agents/))
+
 ### Cargo (Extensions)
 - **The Hangar** - install extensions, called cargo, that add hardware support, instruments, map layers and whole new screens
 - **Module SDK** - build your own cargo; it loads from a folder and reloads itself while you develop
 
 ### Quality of Life
-- **Languages** - English and German, with more welcome (see [Translating](#languages--translating))
+- **Languages** - English, German, Turkish, Ukrainian, Simplified and Traditional Chinese, with more welcome (see [Translating](#languages--translating))
 - **Unit preferences** - metric or imperial per quantity (distance, altitude, speed, wind, weight, area, capacity)
 - **Feature tours** - short guided walkthroughs of new and existing screens
 - **Vehicle profiles** - per-vehicle configurations with type-specific properties and live weather at the launch site
@@ -217,6 +257,11 @@ Install, plug in your flight controller via USB (or point ArduDeck at your telem
 - **VTOL** - tiltrotors, tailsitters, QuadPlanes
 - **Rover** - ground vehicles, boats
 - **Submarine** - underwater ROVs (ArduSub)
+
+### PX4 (MAVLink)
+- **PX4's own flight modes** and parameter metadata, not translated ArduPilot ones
+- **Configuration tabs** for airframe selection, outputs and motor test, tuning and calibration
+- **Missions and ULog analysis**, plus an in-app PX4 SITL to try it all without hardware
 
 ### Betaflight & iNav (MSP)
 - **Multirotors and fixed wings** on F4/F7/H7 boards via modern MSP
@@ -268,7 +313,7 @@ ArduDeck includes a built-in bug reporting tool (bug icon in the sidebar). It co
 
 ## Languages & Translating
 
-ArduDeck is available in **English** and **German** (Settings > Language). Want it in your language? Translations are plain JSON files, no programming needed: see the [translation guide](TRANSLATING.md).
+ArduDeck is available in **English**, **German**, **Turkish**, **Ukrainian**, **Simplified Chinese** and **Traditional Chinese** (Settings > Language). Want it in your language? Translations are plain JSON files, no programming needed: see the [translation guide](TRANSLATING.md).
 
 ---
 

@@ -1,0 +1,68 @@
+{
+  "guideHost": {
+    "dontShowAgain": "Rehberleri bir daha otomatik gösterme",
+    "gotIt": "Anladım",
+    "stepOf": "{{step}} / {{total}}"
+  },
+  "guidesAndTours": {
+    "allMarkedUnseen": "Hepsi görülmedi olarak işaretlendi",
+    "guides": "Rehberler",
+    "offerWalkthroughs": "Bir görünümü ilk kez açarken tanıtım turlarını öner",
+    "resetAll": "Tümünü sıfırla",
+    "title": "Rehberler ve turlar",
+    "tours": "Turlar"
+  },
+  "layoutsDemo": {
+    "workspace": "Çalışma alanı · {{name}}"
+  },
+  "registry": {
+    "grouping": {
+      "blurb": "Bir harita enstrümanını başka birinin üzerine sürükleyerek ortak bir karta yerleştir. Serbest bırakmak için bir üyeyi geri sürükle ya da tüm grubu bir seferde ölçekle.",
+      "title": "Enstrüman gruplama"
+    },
+    "mapSplit": {
+      "blurb": "Haritadaki Split düğmesi paneli Vision ile paylaşır. Boyutu ayarlamak için ayırıcıyı sürükle; Pilot düzeni sentetik görüşle bu şekilde başlar.",
+      "title": "Harita ve görüş yan yana"
+    },
+    "workspaceLayouts": {
+      "blurb": "Workspace düğmesi Pilot, FPV ve Mission arasında geçiş yapar; her birinin kendi panelleri, kokpit enstrümanları ve bölmesi vardır. Kendi düzenlerini kaydet ve dosya olarak paylaş.",
+      "title": "Çalışma alanı düzenleri"
+    },
+    "sitl": {
+      "title": "Uçmadan önce simüle et",
+      "blurb": "Kenar çubuğundan SITL'i aç, bir araç seç ve tek bir simülatör başlat; ya da bir filo başlatmak için Swarm'a geç. ArduDeck yazılımı ilk seferde indirir ve kendiliğinden bağlanır."
+    },
+    "crsf": {
+      "title": "ExpressLRS backpack üzerinden telemetri",
+      "blurb": "ELRS Telemetry Mode ayarını WiFi yap, backpack ağına katıl ve 14550 portunda CRSF ile bağlan. Hava aracında hiçbir şey değiştirmeden her CRSF alıcısının arkasında çalışır. İki yönlü bağlantı için bunun yerine MAVLink modunu kullan."
+    },
+    "cargo": {
+      "title": "Cargo ile özellik ekle",
+      "blurb": "Cargo Bay, ekleyebileceğin Cargo'ları listeler: her birini yükle, güncelle veya kaldır. Yüklenen Cargo kendi görünümlerini ve kartlarını uygulamaya getirir."
+    },
+    "adjust": {
+      "title": "Uçarken ayarla",
+      "blurb": "Telemetri ekranından uçuş görünümünden ayrılmadan hedef hızı, irtifayı ve loiter yarıçapını değiştir. Loiter yarıçapı değişikliği yazılmadan önce gözden geçirmen için gösterilir."
+    },
+    "language": {
+      "title": "ArduDeck senin dilini konuşuyor",
+      "blurb": "Ayarlar, Yapılandırma, Dil: English, Deutsch, 简体中文, 繁體中文 ve Українська (beta). Sistem, bilgisayarının dilini izler."
+    }
+  },
+  "splitDemo": {
+    "split": "Split",
+    "synthetic": "Synthetic"
+  },
+  "releaseDemos": {
+    "launch": "Başlat",
+    "connected": "Bağlandı",
+    "install": "Yükle",
+    "installed": "Yüklendi",
+    "speed": "Hız",
+    "altitude": "İrtifa",
+    "radius": "Loiter yarıçapı",
+    "review": "Gözden geçir",
+    "language": "Dil",
+    "system": "Sistem"
+  }
+}

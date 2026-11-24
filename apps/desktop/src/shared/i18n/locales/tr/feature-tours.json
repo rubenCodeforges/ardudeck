@@ -1,0 +1,275 @@
+{
+  "registry": {
+    "altitudePlanning": {
+      "blurb": "Profil artık göreli, arazi ve ASL waypoint'leri gerçek araziye göre doğru çiziyor: AGL etiketleri, güvenebileceğin çarpışma uyarıları ve yakınlaştırma ile.",
+      "panel": {
+        "body": "Waypoint'ler araziye karşı kendi irtifa referansında çizilir; bu yüzden dağlık bir sahada 80 m göreli bir tarama yanlış çarpışma yerine <b>80m (80m AGL)</b> olarak okunur. Eksen ASL ile birlikte <b>home üzerindeki yüksekliği</b> gösterir, araziyi takip eden bölümler zemine yapışır ve kesikli çizgi güvenlik açıklığındır. <b>Yakınlaştırmak için kaydır, kaydırmak için sürükle</b>, irtifasını değiştirmek için waypoint noktasını sürükle ve gerçek arazi çakışmalarını <b>Auto Adjust</b> ile düzelt.",
+        "title": "İrtifa, planladığın referansta"
+      },
+      "title": "Referansları anlayan irtifa profili"
+    },
+    "calibration": {
+      "blurb": "Akselerometre, pusula, seviye ve diğerleri; her biri canlı geri bildirimli rehberli bir adım.",
+      "title": "Sensör kalibrasyonu",
+      "types": {
+        "body": "Her kart rehberli bir kalibrasyondur. Aracın sensörü olmayan kartlar gri kalır. Pusula kalibrasyonu, hava aracını çevirirken hangi yönlerin zaten kapsandığını gösterir. Kalibrasyon gerektiren bir pre-arm düzeltmesi doğru kartı doğrudan açar.",
+        "title": "Neyi kalibre edeceğini seç"
+      }
+    },
+    "flightInfo": {
+      "blurb": "Her görev veya tarama için canlı bir uçuş öncesi brifing: dayanıklılık ve bataryalar, mesafe ve irtifa, saha rüzgarı ve hava durumu, gün ışığı penceren.",
+      "panel": {
+        "body": "Yeni <b>Flight Info</b> sekmesi görevini pilotun karar verdiği sayılara çevirir: <b>uçuş süresi</b> ve gereken <b>batarya</b> sayısı, toplam <b>mesafe</b> ve tavana karşı <b>irtifa</b> ve canlı <b>saha hava durumu</b>.",
+        "body2": "Rüzgar bir <b>pusula</b> olarak görünür, <b>gün ışığı</b> çubuğu ise uçuşun gün batımına göre ne zaman biteceğini işaretler; böylece karanlıktan önce inip inmediğini tek bakışta görürsün.",
+        "title": "Uçmadan önce uçuşu brife et"
+      },
+      "title": "Yeni: Flight Info brifingi"
+    },
+    "libraryProjects": {
+      "blurb": "Bir saha, tüm tarama alanları ve görevleri, yerel olanlar ve vault'tan gelenler, tek yerde.",
+      "tabs": {
+        "body": "Bir görevi veya tarama alanını kaydederken ona bir <b>proje</b> adı ver; o saha için vault'taki dahil her şeyle birlikte <b>Projeler</b> altında toplanır. Oradan bir alanı veya görevi aç, planlayıcıya gelir.",
+        "title": "Görevler, alanlar ve projeler"
+      },
+      "title": "Projeler"
+    },
+    "logExplorer": {
+      "blurb": "Bağımsız y eksenli birden çok grafik, pencereye duyarlı istatistikler, olay ve FFT panelleri ve imlecini takip eden uçuş yolu haritası.",
+      "chartActions": {
+        "body": "Ortak y ekseni ile <b>alan başına bir eksen</b> arasında geçiş yap; böylece RPM ve attitude aynı grafiği paylaşabilir. Göstergedeki <b>min / ort / maks</b>, yakınlaştırıp kaydırdıkça görünür pencere üzerinden yeniden hesaplanır ve dışa aktarma düğmesi tam olarak o pencereyi CSV olarak kaydeder. Olaylar, Parametreler ve <b>FFT</b> panel menüsünde.",
+        "title": "Bağımsız eksenler, canlı istatistik, CSV"
+      },
+      "fieldPicker": {
+        "body": "Kayıtta bulunan her mesajı ara ve alanları <b>etkin grafiğe</b> ekle; daha fazla grafik ekle, seçici odakladığın grafiği hedefler. Çok örnekli mesajlar (iki GPS ünitesi, dört ESC) örnek başına genişler ve birimler doğrudan kayıttan gelir.",
+        "title": "Kaydedilmiş herhangi bir alanı seç"
+      },
+      "title": "Log Explorer, baştan yazıldı"
+    },
+    "mapInstruments": {
+      "blurb": "Göstergeler, attitude, mesajlar ve RTK harita üzerinde yüzer. Sürükle, grupla ve düzeni bir layout ile kaydet.",
+      "pick": {
+        "body": "<b>Instruments</b> hızı, irtifayı, attitude'u, yönü, bataryayı, <b>Messages</b> ve <b>RTK</b>'yı açıp kapatır ya da komple bir kokpit ön ayarı yükler. Birini diğerinin üzerine sürükleyerek tek bir tepside <b>grupla</b>; ayırmak için dışarı sürükle.",
+        "body2": "Kayıtlı bir <b>Workspace</b> layout'u panellerle birlikte enstrümanları da hatırlar. Settings, Guides animasyonlu turu yeniden oynatır.",
+        "title": "Haritada nelerin yüzeceğini seç"
+      },
+      "stream": {
+        "body": "<b>Stream</b>, Vision görünümünü HUD'lu veya HUD'suz RTSP, WebRTC ve SRT olarak yayınlar. VLC, ffmpeg, OpenCV veya bir tarayıcıda aç.",
+        "title": "Sentetik görünümü yayınla"
+      },
+      "title": "Haritada enstrümanlar"
+    },
+    "missionPlanning": {
+      "areaSurvey": {
+        "body": "İrtifayı tahmin etmek yerine <b>GSD</b> (cm/px) ile planla, canlı <b>batarya ve veri</b> tahminlerini gör ve büyük bir işi tek tıkla <b>batarya boyutunda sortilere</b> böl. Crosshatch daha iyi 3D için iki geçişini <b>iki farklı yükseklikte</b> bile uçabilir.",
+        "title": "Daha akıllı alan taramaları"
+      },
+      "blurb": "Gruplanmış görevler, koridor ve alan taramaları, uyan dönüşler, GIS içe aktarma, projeler, waypoint yönleri ve tam geri alma.",
+      "corridor": {
+        "title": "Koridor taramaları",
+        "body": "<b>Survey</b> altında yollar, demiryolları, enerji hatları ve boru hatları için <b>Corridor</b> seç. Merkez hattı çiz ve koridor genişliğini ayarla. ArduDeck kamera ayak izin ve bindirmene göre aralıklı şeritler döşer; şerit sayısı asla tahmin edilmez. Bir <b>margin</b> kenarın ötesini de kapsar, <b>overshoot</b> dönüşleri haritalanan hattın dışında tutar. <b>Plane</b> keskin virajlarda yarış pisti dönüşleri alır, <b>Copter</b> yerinde döner. Rover'lar ve çim biçiciler aralığı doğrudan ayarlamak için <b>Manual</b> kamerayı seçer."
+      },
+      "export": {
+        "title": "Projeyi kaydet veya dışa aktar",
+        "body": "<b>Save project</b> waypoint gruplarını, her tarama alanını ve ayarlarını birlikte saklar, hepsi sonradan düzenlenebilir; projeler Library'de iş veya saha adı altında toplanır. Dışa aktarma <b>.waypoints</b> (ArduPilot, Mission Planner) veya <b>.plan</b> (QGroundControl) yazar."
+      },
+      "gisImport": {
+        "body": "Tarama sınırını doğrudan <b>KML</b>, <b>KMZ</b> veya <b>GeoJSON</b> dosyasından getir: poligon başına bir tarama grubu, iç halkalar uçuşa yasak delikler olarak korunur. Sınırı elle yeniden çizmek yok.",
+        "title": "GIS'ten alan içe aktar"
+      },
+      "groups": {
+        "body": "Her waypoint artık adlandırılmış, renkli bir <b>grupta</b> yaşar. Rengi değiştirmek için renk kutusuna, haritada göstermek/gizlemek için onay kutusuna, yalnızca o grubu yüklemek veya kaydetmek için grup düğmesine tıkla. Her başlık grubun <b>mesafesini, uçuş süresini ve GSD'sini</b> bir bakışta gösterir.",
+        "title": "Görevler gruplar halinde düzenlenir"
+      },
+      "history": {
+        "body": "Düzenlemeler boyunca tam <b>geri al / yinele</b> (Cmd/Ctrl+Z) ve <b>otomatik kayıt</b>: uygulama plan sırasında kapanırsa görevin bir sonraki açılışta kurtarılır.",
+        "title": "Geri al, yinele ve çökme kurtarma"
+      },
+      "title": "Görev planlama, bir üst seviyede",
+      "turns": {
+        "title": "Uyan dönüşler",
+        "body": "Her 180° dönüşe yer kalması için hatları <b>atla</b> (1, 3, 5, sonra 2, 4) ve <b>Camera off on turns</b> fotoğrafları tarama hatlarıyla sınırlar. Bir <b>lead-in</b> ilk fotoğraftan önce hava aracını hizalar."
+      },
+      "heading": {
+        "title": "Waypoint başına yön",
+        "body": "Bir waypoint'e <b>Heading</b> ayarla: araç o waypoint'e giderken ve orada o yöne bakar (0 kuzey). Normal yön için boş bırak."
+      }
+    },
+    "multiVehicle": {
+      "blurb": "Çoklu araç geldi: tek bir anahtar motoru başlatır, araçlar çevrimiçi oldukça görünür ve ArduDeck onları tek tek veya birlikte yönetir.",
+      "tab": {
+        "body": "Bağlantı kenar çubuğunu <b>Multi-vehicle</b> yap ve aç: ArduDeck motorunu arka planda başlatır ve araçlar heartbeat'leri geldikçe görünür; port yok, URL yok. <b>Add a vehicle</b> telsiz, internet, hücresel ve ikinci yer istasyonu bağlantılarını kapsar. Filo listesinde bir araca tıkla; telemetri, harita ve komutlar ona geçer.",
+        "title": "Çoklu araç modu"
+      },
+      "title": "Yeni: tüm bir filoyu uçur"
+    },
+    "osdTool": {
+      "blurb": "Tamamen özel bir yer HUD'u oluştur, FC Text OSD'yi düzenle veya bir RubyFPV layout'u hazırla; hedef çubuğu her birinin nereye gittiğini hep gösterir.",
+      "destinationBar": {
+        "body": "Bu çubuk gerçeğin kendisidir: <b>özel HUD</b> ArduDeck tarafından ekranın ve video akışının üzerine çizilir ve uçuş kontrolcüsüne <b>asla yüklenmez</b>; <b>Text OSD</b> editörü FC'nin gerçek OSDn_* layout'unu okur ve yazar; <b>RubyFPV</b> tasarımcısı RubyFPV yer istasyonları için bir layout dışa aktarır. Üçü de canlı video akışının üzerinde önizlenir.",
+        "title": "Üç OSD, üç hedef"
+      },
+      "title": "OSD Aracı: kaplamanın nerede yaşadığını bil"
+    },
+    "quickLaunch": {
+      "areaEditor": {
+        "body": "Yeni <b>Area Editor</b> buradan açılır: tarama <b>alanları ve koridorları</b> çizmek için tam pencere bir harita; çoklu poligon, delikler, KML içe aktarma, canlı bir <b>uçuş brifingi</b> (hektar/akre geçişi) ve herhangi bir sahaya uçmak için bir <b>git</b> araması. <b>Send to mission</b> onu doğrudan planlayıcıya bırakır.",
+        "title": "Area Editor ile tanış"
+      },
+      "blurb": "Araçları başlıktan kendi pencerelerine ayır ve tarama alanları ile koridorları çizmek için doğrudan yeni Area Editor'a geç.",
+      "title": "Quick Launch ve Area Editor",
+      "welcomeCards": {
+        "body": "Bağlı araç yok mu? Bu kartlar çevrimdışı çalışan araçları açar: <b>Mission Planning</b>, <b>Area Editor</b>, <b>SITL</b>, <b>3D Sim World</b>, <b>Radio HUD</b>, <b>Flight Log Analysis</b>, <b>Firmware Flash</b> ve <b>Mission Library</b>.",
+        "title": "Doğrudan bir araca geç"
+      },
+      "windows": {
+        "body": "<b>MAVLink Inspector</b>, <b>Telemetry Dashboard</b> veya <b>3D Sim World</b>'ü ayrı bir pencerede aç; ana pencerede planlama veya tuning yapmaya devam ederken <b>ikinci monitör</b> için ideal. Her biri uygulamanın geri kalanıyla birlikte canlı kalır.",
+        "title": "Quick Launch: araçlar kendi penceresinde"
+      }
+    },
+    "radioHud": {
+      "apply": {
+        "body": "Telsizi USB ile tak (ekranında <b>USB Storage</b> seç) ve <b>Apply</b>'a bas; widget, yapılandırma, ses paketi ve haritalar birlikte SD karta iner. Sonra telsizde: App layout, tam ekran widget, ArduDeck.",
+        "title": "Telsize tek tık"
+      },
+      "blurb": "EdgeTX telsizin için bir ArduDeck telemetri ekranı tasarla (canlı önizleme, sürükle-bırak layout, çevrimdışı saha haritaları, sesli uyarılar) ve tek tıkla SD karta gönder.",
+      "config": {
+        "body": "Buradaki her şey bir <b>geçersiz kılmadır</b>. Otomatikte bırakılırsa widget kendini aracın kendi telemetrisinden ELRS üzerinden yapılandırır: hücre sayısı, kapasite, batarya %; sahada ArduDeck bağlantısı gerekmez.",
+        "title": "Varsayılan olarak sıfır yapılandırma"
+      },
+      "edit": {
+        "body": "Renkli telsizlerde: <b>17 enstrüman karosunu</b> en fazla 8 kaydırılabilir sayfada sürükle, yeniden boyutlandır ve değiştir (veya bir ön ayarla başla). Monokromda: her veri yuvası, büyük gösterge ve orta panel (ufuk veya veri duvarı) yerinde atanabilir.",
+        "title": "Ekranı kendine göre yap"
+      },
+      "maps": {
+        "body": "Uçuş sahana tıkla, ArduDeck Map karosu için <b>üç yakınlaştırma seviyesinde uydu görüntüleri</b> birleştirir; araç, home, iz ve planlı görevin üzerine çizilir, tamamen çevrimdışı. Yakınlaştırmayı değiştirmek için telsizde karoya dokun.",
+        "title": "Telsizde çevrimdışı haritalar"
+      },
+      "model": {
+        "body": "Renkli telsizler (TX15, TX16S, NV14...) tam widget'ı alır; önizleme o ekranın sadık bir yansımasıdır. Monokrom telsizler (Boxer, Zorro, TX12, X9D) aynı sesli uyarılarla yoğun bir 1 bit telemetri betiği alır. Geçiş yaptığında layout'lar yeniden ölçeklenir.",
+        "title": "Telsizini seç"
+      },
+      "title": "Telsizin mini bir GCS'ye dönüşür"
+    },
+    "rtkNtrip": {
+      "blurb": "Herhangi bir NTRIP caster'dan santimetre sınıfı RTK düzeltmelerini doğrudan aracına akıt ve fix'i haritada izle.",
+      "map": {
+        "body": "<b>Instruments</b> altında ayrıca fix tipini ve düzeltme yaşını zaten baktığın haritada gösteren bir <b>RTK</b> enstrümanı var.",
+        "title": "Haritada RTK"
+      },
+      "panel": {
+        "body": "<b>RTK / NTRIP</b> panelini ekle, bir NTRIP caster'a yönelt ve bir mountpoint seç. ArduDeck <b>RTCM düzeltmelerini</b> MAVLink üzerinden iletir; RTK destekli bir GPS ile fix <b>RTK Fixed</b> (1-2 cm) seviyesine çıkar. Birden çok araç bağlıysa hepsi düzeltmeleri alır.",
+        "title": "RTK / NTRIP paneli"
+      },
+      "title": "NTRIP üzerinden RTK düzeltmeleri",
+      "workspace": {
+        "body": "<b>Workspace</b> düğmesi layout'ları ve ekleyebileceğin her paneli tutar. RTK paneli bunlardan biridir.",
+        "title": "Paneller Workspace'te yaşar"
+      }
+    },
+    "unitPreferences": {
+      "blurb": "Fit, mph, knot, akre: nicelik başına görüntüleme birimlerini seç, tüm uygulama uyar.",
+      "title": "Kendi birimlerinde planla",
+      "units": {
+        "body": "Mesafe, irtifa, hız, alan, ağırlık ve daha fazlasını bağımsız ayarla; görev planlama, telemetri panelleri, log explorer ve tarama tahminleri senin seçtiğin birimde gösterilir. Araca gönderilen değerler arka planda metrik kalır, bu yüzden uçuşla ilgili hiçbir şey değişmez.",
+        "title": "Görüntüleme Birimleri"
+      }
+    },
+    "vehicleSetup": {
+      "battery": {
+        "body": "Monitör tipi, voltaj ve akım ölçümü ile low, critical ve arming voltajları; hücre sayısı ve kimyadan önerilir.",
+        "title": "Batarya"
+      },
+      "blurb": "Buradaki her sekme, bir işin ihtiyaç duyduğu parametreler üzerinde sade bir sayfadır. Ham tablo son çaredir.",
+      "links": {
+        "body": "<b>Serial Ports</b> her portta neyin çalıştığını ayarlar. <b>Telemetry Rates</b> bir portun hangi MAVLink kanalı olduğunu bulur ve her rate'in bağlantıya maliyetini gösterir.",
+        "title": "Bağlantılar"
+      },
+      "outputs": {
+        "body": "<b>Motor Test</b> canlı titreşim ve ESC verisiyle tek seferde bir motoru döndürür (pervaneler çıkarılmış, önce sorar). <b>Servo Output</b> her kanalın fonksiyonunu, ters çevirmeyi ve aralığı canlı çubukla ayarlar.",
+        "title": "Çıkışlar"
+      },
+      "rc": {
+        "body": "<b>Receiver</b> protokolü ve her kanalı canlı gösterir. <b>Modes</b> anahtar konumlarını modlara eşler ve anahtarın şu an hangi yuvada olduğunu gösterir.",
+        "title": "RC"
+      },
+      "roverTuning": {
+        "body": "Direksiyon ve hız kontrolcüsü kazançları, <b>Speed & Steering</b> sınırları ve waypoint takibi ile loiter için <b>Navigation</b>.",
+        "title": "Tuning"
+      },
+      "safety": {
+        "body": "<b>Arming</b> pre-arm kontrollerini ve şu an neyin başarısız olduğunu listeler. <b>Failsafes & fence</b> bağlantı kaybında, düşük bataryada ve çit ihlalinde ne olacağını ayarlar. Pre-arm hızlı düzeltmeleri bu sayfaları açar.",
+        "title": "Güvenlik"
+      },
+      "sensors": {
+        "body": "Her sensör için canlı <b>Health</b>, kart yönelimi, pusulalar ve GPS bağlantısı için <b>Configuration</b>, LED, buzzer ve güvenlik düğmesi için <b>LEDs & Sound</b>.",
+        "title": "Sensörler"
+      },
+      "servoOutput": {
+        "body": "Her çıkışın fonksiyonu, reverse, min, trim ve max değeri; her satırda canlı konumla.",
+        "title": "Servo Output"
+      },
+      "storage": {
+        "body": "<b>Logging</b> kartın neyi kaydedeceğini seçer. <b>Files</b> uçuş kontrolcüsüne MAVLink-FTP ile göz atar. <b>Parameters</b> henüz hiçbir sayfanın kapsamadığı şeyler için tam tablodur.",
+        "title": "Depolama"
+      },
+      "tabs": {
+        "body": "Her sekme tek bir işi kurar ve bu firmware için doğru parametreleri yazar; etkiyi görmen için ayarların yanında canlı veri bulunur. Çoğu sekme bir grupta yer alır: sonraki adımlar her birini açar.",
+        "title": "Parametre adları değil, sayfalar"
+      },
+      "title": "Parametre tablosu olmadan araç kurulumu",
+      "tuning": {
+        "body": "Eksen başına <b>PID</b> kazançları, <b>Rates</b> ve expo, <b>Tuning</b> ön ayarları ve <b>AutoTune</b>; parametrelerini aramadan kurulur. AutoTune arm iken düzenlemeyi reddeder.",
+        "title": "Tuning"
+      }
+    },
+    "vtolDualTuning": {
+      "blurb": "QuadPlane'ler iki kontrolcü seti taşır. PID sekmesi artık hangisini tune edeceğini seçmene izin veriyor.",
+      "title": "VTOL ve sabit kanadı ayrı ayrı tune et",
+      "toggle": {
+        "body": "Bir QuadPlane hover ve ileri uçuş için ayrı kontrolcüler çalıştırır. Bu anahtar PID sekmesini <b>VTOL</b> rate kontrolcüsü (<code>Q_A_RAT_</code>) ile <b>sabit kanat</b> kontrolcüsü (<code>RLL_RATE_</code> / <code>RLL2SRV_</code>) arasında çevirir.",
+        "body2": "Kaydırıcılar, ön ayarlar ve profiller seçimini izler; böylece sayfadan çıkmadan her seti tune edebilirsin.",
+        "title": "İki kontrolcü, tek otopilot"
+      }
+    },
+    "quickSetup": {
+      "title": "Quick Setup",
+      "blurb": "Bir Betaflight veya INAV kartını dört adımda kur: ön ayar, verici, gözden geçirme, uygulama.",
+      "launch": {
+        "title": "Dört adımda Quick Setup",
+        "body": "Frame'in için bir <b>ön ayar</b> seç, <b>vericini</b> kontrol et, her değişikliği <b>gözden geçir</b>, sonra <b>uygula</b>. Son adıma kadar hiçbir şey yazılmaz."
+      },
+      "presets": {
+        "title": "Bir ön ayarla başla",
+        "body": "Ön ayarlar yaygın frame'lere ve uçuş stillerine uyar. En yakın olanı seç; her değer sonradan sekmelerde ince ayarlanabilir."
+      },
+      "transmitter": {
+        "title": "Vericiyi kontrol et",
+        "body": "Her çubuğu ve anahtarı hareket ettir: çubuklar izlemeli. Ters veya yer değiştirmiş bir kanal, hiçbir şey ona bağlanmadan önce burada düzeltilir."
+      },
+      "review": {
+        "title": "Yazmadan önce gözden geçir",
+        "body": "Her değişiklik eski ve yeni değeriyle listelenir. Ön ayarı değiştirmek için geri dön ya da uygulamak için devam et."
+      },
+      "apply": {
+        "title": "Uygula, sonra test et",
+        "body": "ArduDeck ön ayarı yazar ve karta kaydeder. Bittiğinde çıkışları ve motorları pervaneler çıkarılmışken test et."
+      }
+    },
+    "fleetFocus": {
+      "title": "Filo araç odağı",
+      "blurb": "Birden çok araç bağlıyken araçlar odakladığın araca etki eder.",
+      "pick": {
+        "title": "Üzerinde çalıştığın aracı seç",
+        "body": "Odaklamak için filo şeridinde bir araca tıkla. Telemetri, harita ve kontroller odaklanan aracı izler."
+      },
+      "tools": {
+        "title": "Araçlar odağı izler",
+        "body": "Kalibrasyon, motor testi, dosya aktarımı, loglar ve yeniden başlatma yalnızca odaklanan araca etki eder ve yalnızca onun yanıtları sayılır. Kalibre etmeden önce odağı kontrol et."
+      },
+      "switch": {
+        "title": "Bağlantıyı kesmeden geç",
+        "body": "İstediğin zaman başka bir araca odaklan. Diğerleri bağlı kalır ve arka planda akışa devam eder."
+      }
+    }
+  }
+}

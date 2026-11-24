@@ -1,0 +1,24 @@
+{
+  "preArmParamFix": {
+    "openInParameters": "Parametrelerde aç",
+    "openParamTitle": "{{paramId}} parametresini Parametreler'de aç"
+  },
+  "preflightCheckCard": {
+    "issues_one": "{{count}} sorun",
+    "issues_other": "{{count}} sorun",
+    "readyToArm": "Arm için hazır",
+    "recheck": "Yeniden kontrol et",
+    "title": "Uçuş Öncesi Kontroller"
+  },
+  "safetyConfigCard": {
+    "applied": "Uygulandı",
+    "items_one": "{{count}} öğe",
+    "items_other": "{{count}} öğe",
+    "setsParamTip": "{{param}} değerini {{value}} yapar",
+    "severityAdvisory": "Bilmekte fayda var",
+    "severityCritical": "Uçma",
+    "severityWarning": "Bunu kontrol et",
+    "title": "Güvenlik yapılandırması",
+    "writeFailed": "Yazılamadı, bunun yerine parametreyi aç"
+  }
+}

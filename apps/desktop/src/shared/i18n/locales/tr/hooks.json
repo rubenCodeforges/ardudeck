@@ -1,0 +1,10 @@
+{
+  "useFleet": {
+    "fleetCount": "Filo ({{count}})"
+  },
+  "useModeRequest": {
+    "noResponse": "Yanıt yok",
+    "notSent": "Gönderilmedi",
+    "rejected": "Reddedildi"
+  }
+}

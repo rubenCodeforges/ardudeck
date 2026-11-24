@@ -1,0 +1,21 @@
+{
+  "rallyListPanel": {
+    "alt": "Yük.: {{value}}",
+    "breakAlt": "Çıkış Yüksekliği",
+    "breakAltHint": "Loiter'dan çıkıp inişe başlama yüksekliği",
+    "detailsTitle": "Rally Noktası R{{n}}",
+    "downloading": "İndiriliyor...",
+    "empty": "Rally noktası yok",
+    "emptyHint": "Oluşturmak için haritada \"Add Rally\" düğmesine tıkla",
+    "flags": "Bayraklar",
+    "landHeading": "İniş Yönü (°)",
+    "landHeadingHint": "0 = herhangi bir yön",
+    "landImmediately": "Hemen in (loiter yok)",
+    "landIntoWind": "Rüzgara karşı in",
+    "pointCount_one": "{{count}} nokta",
+    "pointCount_other": "{{count}} nokta",
+    "subtitle": "Acil iniş konumları",
+    "title": "Rally Noktaları",
+    "uploading": "Yükleniyor..."
+  }
+}

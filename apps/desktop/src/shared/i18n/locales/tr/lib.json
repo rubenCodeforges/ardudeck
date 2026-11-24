@@ -1,0 +1,246 @@
+{
+  "vehicleTemplates": {
+    "apply": {
+      "armed": "Araç arm edilmiş, uygulamadan önce disarm et",
+      "expectedFc": "Gerçek bir FC bekleniyordu ama bağlantı SITL",
+      "expectedSitl": "SITL bekleniyordu ama bağlantı gerçek bir FC",
+      "noParams": "Parametreler henüz yüklenmedi, önce getir",
+      "noTemplate": "Profil için şablon bulunamadı",
+      "notConnected": "Bağlı araç yok",
+      "nothingToApply": "Araç zaten profille eşleşiyor, değiştirilecek bir şey yok",
+      "restoreNote": "{{date}} tarihli anlık görüntüden geri yükle",
+      "snapshotReason": "{{name}} uygula"
+    },
+    "helpers": {
+      "airspeedCruise": "Stall × 1.5 = {{speed}} m/s (verimli seyir)",
+      "airspeedMax": "Seyrin iki katı = {{speed}} m/s (TECS yükseklik kontrolü için minimumun en az %50 üzerinde)",
+      "airspeedMin": "Stall × 1.25 = {{speed}} m/s (ArduPilot'un istediği gibi stall'un en az %20 üzerinde)",
+      "armingCheck": "Tüm arm öncesi kontrolleri etkinleştir",
+      "battMonitor": "Analog voltaj + akım izleme",
+      "capacity": "Profilden kapasite ({{capacity}} mAh)",
+      "critVolt": "{{cells}}S × {{volts}}V ({{chem}} kritik eşik)",
+      "elevonGain": "Standart elevon karışım kazancı",
+      "elevonLeft": "Elevon Sol çıkışı (delta kanat)",
+      "elevonRight": "Elevon Sağ çıkışı (delta kanat)",
+      "lowVolt": "{{cells}}S × {{volts}}V ({{chem}} düşük eşik)",
+      "simCapacity": "Simüle edilen kapasite ({{capacity}} mAh)",
+      "simDrag": "Profilden sürükleme katsayısı",
+      "simEngine": "T/W {{ratio}} değerinden ölçeklendi (motor gücü çarpanı)",
+      "simServo": "{{speed}}°/s değerinden servo tepki süresi",
+      "simVoltage": "Simüle edilen tam şarj voltajı ({{cells}}S × 4.20V)",
+      "trimAirspeed": "Seyir {{speed}} m/s, cm/s olarak; 4.5 öncesi firmware'in kullandığı ad",
+      "vtailGain": "Standart V-kuyruk karışım kazancı",
+      "vtailLeft": "V-kuyruk Sol (pitch+yaw karışımı)",
+      "vtailRight": "V-kuyruk Sağ (pitch+yaw karışımı)",
+      "airspeedStall": "Stall × 1.05 = {{speed}} m/s (stall'u önlemek ve iniş için gerçek stall'un biraz üzerinde)"
+    },
+    "reason": {
+      "aileron": "Aileron",
+      "all4MotorsTiltWithWing": "4 motorun tamamı kanatla birlikte yatar",
+      "belowThisVTOLMotorsAssistFixed": "Bunun altında VTOL motorları sabit kanada destek verir",
+      "bicopter2MotorTiltrotor": "Bicopter (2 motorlu tiltrotor)",
+      "boat": "Tekne",
+      "boatRoverFrameClass": "Tekne (rover frame sınıfı)",
+      "bodyFrameControlInput": "Gövde eksenli kontrol girişi",
+      "bodyFrameStickInput": "Gövde eksenli stick girişi",
+      "continuousTilt": "Sürekli yatış",
+      "cruiseSpeed60OfMax": "Seyir hızı = maksimumun %60'ı",
+      "differential": "Diferansiyel",
+      "elevator": "Elevator",
+      "elevonLeft": "Elevon Sol",
+      "elevonLeftDeltaWing": "Elevon Sol (delta kanat)",
+      "elevonMixGain": "Elevon karışım kazancı",
+      "elevonRight": "Elevon Sağ",
+      "elevonRightDeltaWing": "Elevon Sağ (delta kanat)",
+      "enableTailsitterMode": "Tailsitter modunu etkinleştir",
+      "enableTiltServos": "Yatış servolarını etkinleştir",
+      "enableVTOL": "VTOL'u etkinleştir",
+      "enableVTOLQuadplane": "VTOL'u etkinleştir (quadplane)",
+      "enableVTOLQuadplaneHex": "VTOL'u etkinleştir (quadplane hex)",
+      "fixedWingAssistThreshold": "Sabit kanat destek eşiği",
+      "forwardThrottle": "İleri gaz",
+      "groundSteering": "Yer yönlendirmesi",
+      "hArrangement": "H düzeni",
+      "hexacopter": "Hexacopter",
+      "hexacopterLiftFrame": "Hexacopter kaldırma frame'i",
+      "motor1": "Motor 1",
+      "motor1ForwardRightVec": "Motor 1 (İleri-Sağ Vec)",
+      "motor1HoverForward": "Motor 1 (hover + ileri)",
+      "motor1Left": "Motor 1 sol",
+      "motor1Lift": "Motor 1 (kaldırma)",
+      "motor1Tilt": "Motor 1 yatışı",
+      "motor2": "Motor 2",
+      "motor2ForwardLeftVec": "Motor 2 (İleri-Sol Vec)",
+      "motor2HoverForward": "Motor 2 (hover + ileri)",
+      "motor2Lift": "Motor 2 (kaldırma)",
+      "motor2Right": "Motor 2 sağ",
+      "motor2Tilt": "Motor 2 yatışı",
+      "motor3": "Motor 3",
+      "motor3Lift": "Motor 3 (kaldırma)",
+      "motor3RearRightVec": "Motor 3 (Arka-Sağ Vec)",
+      "motor4": "Motor 4",
+      "motor4Lift": "Motor 4 (kaldırma)",
+      "motor4RearLeftVec": "Motor 4 (Arka-Sol Vec)",
+      "motor5Lift": "Motor 5 (kaldırma)",
+      "motor5VerticalRight": "Motor 5 (Dikey Sağ)",
+      "motor6Lift": "Motor 6 (kaldırma)",
+      "motor6VerticalLeft": "Motor 6 (Dikey Sol)",
+      "motors12ActiveInHover": "Motor 1+2 hover'da etkin",
+      "motors12Tilt": "Motor 1+2 yatışı",
+      "notATailsitter": "Tailsitter değil",
+      "notATiltrotor": "Tiltrotor değil",
+      "octaquadCoaxialX8": "OctaQuad (koaksiyel X8)",
+      "octaquadY6": "OctaQuad / Y6",
+      "octocopter": "Octocopter",
+      "omniRoverFrame": "Omni rover frame",
+      "plusArrangement": "+ düzeni",
+      "quadcopter": "Quadcopter",
+      "quadcopterLiftFrame": "Quadcopter kaldırma frame'i",
+      "r4WheelOmniX": "4 tekerlekli omni (X)",
+      "roverFrame": "Rover frame",
+      "rudder": "Rudder",
+      "rudderGroundSteering": "Rudder (yer yönlendirmesi)",
+      "singleCoaxCopterLiftFrame": "Tekli/koaksiyel copter kaldırma frame'i",
+      "singleCoaxFor2MotorTailsitter": "2 motorlu tailsitter için tekli/koaksiyel",
+      "tailsitterMode": "Tailsitter modu",
+      "throttle": "Gaz",
+      "throttleFrontLeft": "Gaz Ön-Sol",
+      "throttleFrontRight": "Gaz Ön-Sağ",
+      "throttleL": "Gaz L",
+      "throttleLeft": "Gaz Sol",
+      "throttleLeftHull": "Gaz Sol gövde",
+      "throttleRTwinMotor": "Gaz R (çift motor)",
+      "throttleRearLeft": "Gaz Arka-Sol",
+      "throttleRearRight": "Gaz Arka-Sağ",
+      "throttleRight": "Gaz Sağ",
+      "throttleRightHull": "Gaz Sağ gövde",
+      "tiltServoSharedWingTilt": "Yatış servosu (ortak kanat yatışı)",
+      "tiltwingWholeWingTilts": "Tiltwing (tüm kanat yatar)",
+      "transitionDuration5S": "Geçiş süresi (5 sn)",
+      "tricopter": "Tricopter",
+      "undefinedAckermannUsesSteering": "Tanımsız (Ackermann direksiyonu kullanır)",
+      "useVTOLForRTLLanding": "RTL inişi için VTOL kullan",
+      "vectored6Frame": "Vectored-6 frame",
+      "vectoredThrustHoverGain": "Vektörlü itki hover kazancı",
+      "vectoredThrustYawGain": "Vektörlü itki yaw kazancı",
+      "vectoredYawNoRudder": "Vektörlü yaw (rudder yok)",
+      "vectoredYawTailsitter": "Vektörlü yaw tailsitter",
+      "vtolAssistBelowThisSpeed": "Bu hızın altında VTOL desteği",
+      "waypointSpeed": "Waypoint hızı",
+      "waypointSpeedFromMaxSpeed": "maxSpeed değerinden waypoint hızı",
+      "xArrangement": "X düzeni",
+      "y6bCoaxial": "Y6B (koaksiyel)",
+      "yArrangement": "Y düzeni"
+    },
+    "template": {
+      "boat-catamaran": {
+        "description": "Çift gövde, çift pervane, kararlı platform",
+        "name": "Katamaran"
+      },
+      "boat-single-prop": {
+        "description": "Rudder + tek motor",
+        "name": "Tek Pervaneli Tekne"
+      },
+      "boat-twin-prop": {
+        "description": "İki motor, diferansiyel itkiyle yönlendirme (rudder yok)",
+        "name": "Çift Pervaneli Tekne"
+      },
+      "copter-coaxial": {
+        "description": "4 koaksiyel çiftte sekiz motor, endüstriyel iş atı",
+        "name": "Koaksiyel Quad (X8)"
+      },
+      "copter-hex-plus": {
+        "description": "+ düzeninde altı motor, klasik ağır yük düzeni",
+        "name": "Hexacopter (+)"
+      },
+      "copter-hex-x": {
+        "description": "Altı motor: yedeklilik, ağır yük",
+        "name": "Hexacopter (X)"
+      },
+      "copter-octo-plus": {
+        "description": "+ düzeninde sekiz motor, simetrik ağır yük",
+        "name": "Octocopter (+)"
+      },
+      "copter-octo-x": {
+        "description": "Sekiz motor: azami yedeklilik, ağır sinema yükü",
+        "name": "Octocopter (X)"
+      },
+      "copter-quad-h": {
+        "description": "H düzeninde dört motor, kamera platformları için sert yapı",
+        "name": "Quadcopter (H)"
+      },
+      "copter-quad-plus": {
+        "description": "+ düzeninde dört motor, motor 1 önde",
+        "name": "Quadcopter (+)"
+      },
+      "copter-quad-x": {
+        "description": "X düzeninde dört motor, klasik multirotor",
+        "name": "Quadcopter (X)"
+      },
+      "copter-tri": {
+        "description": "Üç motor + yaw servosu, verimli ve tuhaf",
+        "name": "Tricopter"
+      },
+      "copter-y6": {
+        "description": "Üç kol, her birinde iki motor (koaksiyel), kompakt yedeklilik",
+        "name": "Y6 (koaksiyel tri)"
+      },
+      "plane-flying-wing": {
+        "description": "Kuyruksuz, firar kenarında elevon'lar",
+        "name": "Uçan Kanat / Delta"
+      },
+      "plane-standard": {
+        "description": "Ayrı elevator, rudder ve aileron'lu geleneksel gövde",
+        "name": "Standart Uçak"
+      },
+      "plane-twin-boom": {
+        "description": "İki kuyruk kirişi, pusher'lar ve kameralar için harika",
+        "name": "Çift Kirişli Uçak"
+      },
+      "plane-v-tail": {
+        "description": "Birleşik iki pitch/yaw yüzeyi, daha temiz sürükleme profili",
+        "name": "V-Kuyruk Uçak"
+      },
+      "rover-ackermann": {
+        "description": "Araba tarzı: tek gaz, direksiyon servosu",
+        "name": "Ackermann Rover"
+      },
+      "rover-omni": {
+        "description": "Omni yönlü tekerlekler, yana kayabilir",
+        "name": "Omni Rover"
+      },
+      "rover-skid": {
+        "description": "Diferansiyel sürüş: tank tarzı, direksiyon servosu yok",
+        "name": "Skid-Steer Rover"
+      },
+      "sub-vectored-6": {
+        "description": "BlueROV2 tarzı: 4 vektörlü + 2 dikey itici",
+        "name": "Vektörlü 6 İticili"
+      },
+      "vtol-quadplane-hex": {
+        "description": "6 dikey kaldırma motorlu sabit kanat uçak, ağır yük VTOL",
+        "name": "Hexplane (6 kaldırma)"
+      },
+      "vtol-quadplane-quad": {
+        "description": "4 dikey kaldırma motorlu sabit kanat uçak",
+        "name": "Klasik Quadplane (4 kaldırma)"
+      },
+      "vtol-tailsitter-conventional": {
+        "description": "Kuyruğunun üzerinde durur, ileri uçmak için yatar, hover kontrolü için elevon'lar",
+        "name": "Tailsitter (geleneksel)"
+      },
+      "vtol-tailsitter-delta-duo": {
+        "description": "2 motorlu delta kanat tailsitter, kompakt ve verimli",
+        "name": "Tailsitter Delta Duo"
+      },
+      "vtol-tiltrotor-dual": {
+        "description": "İki motor hover'dan seyire yatar, Osprey tarzı",
+        "name": "Tiltrotor (çift)"
+      },
+      "vtol-tiltwing": {
+        "description": "Tüm kanat hover'dan seyire döner",
+        "name": "Tiltwing"
+      }
+    }
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "draggableFleetActions": {
+    "title": "Filo İşlemleri"
+  },
+  "fleetContextMenu": {
+    "addToFleet": "Filoya ekle",
+    "alt": "irtifa",
+    "chipTip": "{{label}} (m)",
+    "commandVehicle": "Bu aracı yönet",
+    "createLeader": "Lider oluştur",
+    "currentShape": "{{label}} (mevcut)",
+    "disband": "Filoyu dağıt",
+    "disbandTip": "Bu filoyu dağıtır, kanat araçları manuel kontrole döner",
+    "formUp_one": "{{count}} serbest drone'u diz",
+    "formUp_other": "{{count}} serbest drone'u diz",
+    "formationShape": "Formasyon şekli",
+    "gap": "aralık",
+    "join": "{{label}} filosuna katıl",
+    "leadsFleet": "Bir filoya liderlik ediyor",
+    "leave": "Filodan ayrıl",
+    "leaveTip": "{{label}} aracını filodan çıkar, diğerleri formasyonu korur",
+    "reformShape": "Yeniden diz: {{label}}",
+    "startMission": "Görevi başlat",
+    "takeOffFleet": "Filoyu havalandır"
+  },
+  "fleetCoordination": {
+    "alt": "irtifa",
+    "altitudeTip": "Kalkış irtifası (m)",
+    "collapseFleet": "Filoyu daralt",
+    "engineError": "motor hatası",
+    "engineReportTip": "Koordinasyon motorundan son rapor (toplu kalkış / görev başlatma)",
+    "expandFleet": "Filoyu genişlet",
+    "fleet": "Filo",
+    "leaderModeTip": "{{label}} modu",
+    "reformTip": "{{label}} filosunu yeniden diz: {{shape}}",
+    "startMission": "Görevi başlat",
+    "startMissionTip": "{{label}} yüklenen görevini AUTO modunda uçar, kanat araçları formasyonu korur ve takip eder",
+    "startMissions": "Görevleri başlat ({{count}})",
+    "startMissionsTip": "Her aracın atanmış WP grubunu yükle ve {{count}} görevin tamamını AUTO modunda başlat",
+    "takeOff": "Kalkış",
+    "takeOffAll": "Hepsini havalandır",
+    "takeOffAllTip": "Bağlı tüm araçlar birlikte arm olur ve {{alt}} m irtifaya çıkar",
+    "takeOffFleetTip": "Yalnızca {{label}} filosunu arm et ve {{alt}} m irtifaya çıkar"
+  },
+  "fleetDisclosure": {
+    "collapseAll": "Tümünü daralt",
+    "collapseEveryTip": "Tüm filoları daralt",
+    "expandAll": "Tümünü genişlet",
+    "expandEveryTip": "Tüm filoları genişlet",
+    "fleets": "Filolar"
+  },
+  "fleetGroupActions": {
+    "arm": "Arm",
+    "confirmArm_one": "{{count}} araç arm edilsin mi?",
+    "confirmArm_other": "{{count}} araç arm edilsin mi?",
+    "confirmDisarm_one": "{{count}} araç disarm edilsin mi?",
+    "confirmDisarm_other": "{{count}} araç disarm edilsin mi?",
+    "confirmRtl_one": "{{count}} araç eve gönderilsin mi (RTL)?",
+    "confirmRtl_other": "{{count}} araç eve gönderilsin mi (RTL)?",
+    "confirmStart_one": "{{count}} araçta görev başlatılsın mı?",
+    "confirmStart_other": "{{count}} araçta görev başlatılsın mı?",
+    "selected": "{{count}} seçili",
+    "start": "Başlat"
+  },
+  "fleetStrip": {
+    "collapseFleet": "Filoyu daralt",
+    "deselectTip": "{{label}} - seçimi kaldırmak için tıkla",
+    "dragHere": "Bir aracı buraya sürükle",
+    "dropToRemove": "Filodan çıkarmak için bırak",
+    "expandFleet": "Filoyu genişlet",
+    "fleet": "Filo",
+    "identityTip": "{{airframe}} - {{state}} (kimlik rengini ayarlamak için tıkla)",
+    "lead": "Lider",
+    "orders": "Emirler",
+    "selectTip": "Grup komutları için seç",
+    "setColour": "{{color}} rengini ayarla",
+    "unassigned": "Atanmamış",
+    "vehicleTip": "{{label}} - {{mode}}",
+    "vehicleTipArmed": "{{label}} - {{mode}} - ARMED"
+  },
+  "formationGlyphs": {
+    "box": "Kutu (ızgara)",
+    "column": "Kolon (iz)",
+    "diamond": "Elmas",
+    "echelonLeft": "Sol eşelon",
+    "echelonRight": "Sağ eşelon",
+    "line": "Yan yana hat (duvar)",
+    "survey": "Tarama süpürmesi (geniş)",
+    "vee": "V (delta)"
+  },
+  "heartbeatDot": {
+    "none": "Henüz heartbeat yok",
+    "receiving": "Heartbeat alınıyor",
+    "stale": "{{seconds}} sn'dir heartbeat yok"
+  },
+  "missionPathsToggle": {
+    "all": "Tüm araç yolları",
+    "allTip": "Her aracın uçuş yolunu çiz (seçili olan düz, diğerleri soluk)",
+    "selected": "Yalnızca seçili",
+    "selectedTip": "Yalnızca seçili aracın uçuş yolunu çiz",
+    "title": "Görev yolları"
+  }
+}

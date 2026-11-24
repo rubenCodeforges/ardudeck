@@ -1,0 +1,270 @@
+{
+  "auxChannelPicker": {
+    "current": "Mevcut"
+  },
+  "auxChannels": {
+    "aux1": "Genellikle 2 konumlu bir anahtar",
+    "aux10": "Ek kanal",
+    "aux11": "Ek kanal",
+    "aux12": "Ek kanal",
+    "aux2": "Çoğunlukla 3 konumlu bir anahtar",
+    "aux3": "Ek anahtar",
+    "aux4": "Ek anahtar",
+    "aux5": "Ek kanal (düğme/slider)",
+    "aux6": "Ek kanal (düğme/slider)",
+    "aux7": "Ek kanal",
+    "aux8": "Ek kanal",
+    "aux9": "Ek kanal"
+  },
+  "modeCard": {
+    "channel": "Kanal:",
+    "configure": "Yapılandır",
+    "configureTitle": "{{name}} ayarlarını yapılandır",
+    "editMode": "Modu düzenle",
+    "essential": "TEMEL",
+    "range": "Aralık:",
+    "removeMode": "Modu kaldır",
+    "unknownMode": "Bilinmeyen mod"
+  },
+  "modeConfigStep": {
+    "correctPosition": "Anahtarın doğru konumda. Bu mod uçuşta etkin olurdu.",
+    "essentialMode": "TEMEL MOD",
+    "isActive": "{{name}} ETKİN!",
+    "moveSwitch": "{{name}} modunun etkinleştiğini görmek için {{channel}} anahtarını {{position}} konumuna getir.",
+    "nextMode": "Sonraki mod",
+    "noMode": "Yapılandırılacak mod yok",
+    "reviewConfiguration": "Yapılandırmayı gözden geçir",
+    "switch": "anahtar",
+    "testIt": "Dene! Etkinleşip etkinleşmediğini görmek için anahtarını çevir:",
+    "tryNow": "Şimdi dene!",
+    "whenActivate": "Ne zaman etkinleşmeli? (PWM aralığı)",
+    "whichSwitch": "Bu modu hangi anahtar etkinleştirsin?"
+  },
+  "modeFallback": "Mod {{id}}",
+  "modePresets": {
+    "airmode": {
+      "beginner": "İLERİ SEVİYE - Sıfır gazda bile tam kumanda yetkisini korur. Freestyle figürleri ve flip'ler için şart. Genellikle sürekli açık tutulur.",
+      "description": "Sıfır gazda tam kontrol"
+    },
+    "angle": {
+      "beginner": "BAŞLANGIÇ MODU - Çubukları bıraktığında hava aracın kendiliğinden dengelenir. Maksimum yatış açısı sınırlıdır. Uçmayı öğrenmek için ideal!",
+      "description": "Kendiliğinden dengeleme"
+    },
+    "arm": {
+      "beginner": "GÜVENLİK ANAHTARI - Hava aracını arm/disarm eder. Bunu MUTLAKA ayrı bir anahtara ver! Arm edildiğinde pervaneler her an dönebilir.",
+      "description": "Motorları etkinleştir"
+    },
+    "beeper": {
+      "beginner": "BULUCU - Düştükten sonra bulmana yardımcı olmak için hava aracının yüksek sesle bip sesi çıkarmasını sağlar. Uzun otlara indiğinde çok işe yarar!",
+      "description": "Hava aracını bul"
+    },
+    "blackbox": {
+      "beginner": "KAYIT - Analiz için uçuş verilerini SD karta kaydeder. PID ayarı ve kazaları incelemek için faydalıdır.",
+      "description": "Uçuş kaydı"
+    },
+    "failsafe": {
+      "beginner": "ACİL DURUM - Failsafe davranışını tetikler (genellikle iniş veya disarm). Normalde sinyal kaybolduğunda otomatik devreye girer.",
+      "description": "Acil iniş"
+    },
+    "flaperon": {
+      "beginner": "Daha yavaş iniş yaklaşması için flaperonları etkinleştirir. Eleronlar flap gibi davranmak üzere aşağı sarkar.",
+      "description": "Flap modu"
+    },
+    "gcsNav": {
+      "beginner": "Yer kontrol istasyonunun navigasyon komutları göndermesine izin verir (buraya uç vb.).",
+      "description": "Yer kontrol"
+    },
+    "gimbalLevelTilt": {
+      "beginner": "Hava aracının durumundan bağımsız olarak gimbal eğim eksenini yatay tutar. Kamera stabilizasyonu için faydalıdır.",
+      "description": "Gimbal eğim dengeleme"
+    },
+    "headingHold": {
+      "beginner": "Mevcut manyetik yönü korur. Düz çizgide uçmak için faydalıdır.",
+      "description": "Yönü tut"
+    },
+    "homeReset": {
+      "beginner": "Mevcut konumu yeni home noktası olarak ayarlar. Bir oturum sırasında yer değiştirdiğinde kullan.",
+      "description": "Home konumunu sıfırla"
+    },
+    "horizon": {
+      "beginner": "ORTA SEVİYE MOD - ANGLE gibi çubuk ortadayken kendini dengeler, ama çubuk sonuna kadar itildiğinde flip ve roll'a izin verir. ANGLE ile ACRO arasında bir köprü.",
+      "description": "Kendiliğinden dengeleme + acro"
+    },
+    "manual": {
+      "beginner": "Stabilizasyon olmadan doğrudan servo/motor kontrolü. Yalnızca deneyimli pilotlar için!",
+      "description": "Doğrudan kontrol"
+    },
+    "navAlthold": {
+      "beginner": "Barometre/GPS kullanarak mevcut irtifayı tutar. Gaz, tırmanma/alçalma hızını kontrol eder.",
+      "description": "İrtifayı tut"
+    },
+    "navCourseHold": {
+      "beginner": "İrtifa kontrolüne izin verirken mevcut yönü korur. Düz çizgide uçmak için iyi.",
+      "description": "Rotayı tut"
+    },
+    "navCruise": {
+      "beginner": "Sabit kanat seyir modu - Yönü ve irtifayı korur. Uzun menzilli uçuşlar için ideal.",
+      "description": "Seyir kontrolü"
+    },
+    "navLaunch": {
+      "beginner": "Sabit kanat için otomatik fırlatma sekansı. Uçağı fırlat, güvenli irtifaya kendisi tırmanır.",
+      "description": "Otomatik fırlatma"
+    },
+    "navPoshold": {
+      "beginner": "GPS konum tutma - Hava aracı olduğu yerde kalır. Havadan fotoğrafçılık veya durman gerektiğinde harika.",
+      "description": "Konumu tut"
+    },
+    "navRth": {
+      "beginner": "Eve Dön (Return To Home) - Hava aracı güvenli irtifaya tırmanır ve kalkış noktasına geri uçar. Temel bir güvenlik özelliği!",
+      "description": "Eve dön"
+    },
+    "navWp": {
+      "beginner": "Yüklenmiş waypoint görevini yürüt. Hava aracı her waypoint'e otomatik uçar.",
+      "description": "Waypoint görevi"
+    },
+    "prearm": {
+      "beginner": "Güvenlik anahtarı - arm etmeden önce etkin olmalı. Kazara arm edilmesini önler.",
+      "description": "Pre-arm kontrolü"
+    },
+    "turnAssist": {
+      "beginner": "Akıcı dönüşler için dümeni eleronlarla otomatik koordine eder. Sabit kanat yeni başlayanlar için harika.",
+      "description": "Koordineli dönüşler"
+    },
+    "turtle": {
+      "beginner": "Düşmüş hava aracını motor dönüşüyle ters çevirip düzeltir. Yalnızca multirotorlar için.",
+      "description": "Ters çevir"
+    },
+    "wpPlanner": {
+      "beginner": "Çubuk komutlarıyla uçuş sırasında waypoint planlamayı etkinleştirir.",
+      "description": "Görev planlayıcı"
+    }
+  },
+  "modesAdvancedEditor": {
+    "addFirstMode": "İlk modunu ekle",
+    "addMode": "Mod ekle",
+    "auxChannel": "AUX kanalı",
+    "essential": "TEMEL",
+    "loadingModes": "Modlar yükleniyor...",
+    "noModesConfigured": "Yapılandırılmış mod yok",
+    "noModesFound": "Mod bulunamadı",
+    "noModesHint": "Hava aracının anahtar konumlarına nasıl yanıt vereceğini belirlemek için mod ekle.",
+    "noMoreModes": "Başka mod kalmadı",
+    "pwmRange": "PWM aralığı",
+    "searchModes": "Modlarda ara...",
+    "useMainSave": "Değişiklikleri kaydetmek için ana Kaydet düğmesini kullan"
+  },
+  "modesWizard": {
+    "pressAgain": "Kurulumdan vazgeçmek için tekrar bas",
+    "stepCheck": "Kontrol",
+    "stepConfigure": "Yapılandır",
+    "stepSave": "Kaydet",
+    "stepStyle": "Stil",
+    "subtitle": "Uçuş modlarını yapılandır",
+    "title": "Modlar Kurulum Sihirbazı"
+  },
+  "presets": {
+    "beginner": {
+      "description": "Güvenli ve basit - öğrenmek için harika",
+      "name": "Başlangıç",
+      "tip": "Hava aracın her zaman yatay kalır. Havada asılı kalmayı ve temel hareketleri öğrenmek için ideal!"
+    },
+    "cinematic": {
+      "description": "Çekim için ultra pürüzsüz",
+      "name": "Sinematik",
+      "tip": "Sinyal kaybolursa NAV RTH hava aracını eve getirir (GPS gerekir!). Uzun menzilli çekimler için ideal."
+    },
+    "fixedWing": {
+      "description": "Navigasyonlu uçaklar için",
+      "name": "Sabit kanat",
+      "tip": "Fırlatma desteği, RTH ve waypoint navigasyonuyla sabit kanat için eksiksiz kurulum."
+    },
+    "freestyle": {
+      "description": "Figürler ve akış için dengeli",
+      "name": "Freestyle",
+      "tip": "AUX2 üzerindeki üç konumlu anahtar sana ANGLE/HORIZON/ACRO verir. Uçuş stilini değiştirmek için anahtarı çevir!"
+    },
+    "racing": {
+      "description": "Hız için hızlı ve tepkisel",
+      "name": "Yarış",
+      "tip": "Maksimum kontrol için saf ACRO modu. AUX3 üzerindeki beeper, düştükten sonra hava aracını bulmana yardımcı olur!"
+    }
+  },
+  "rangeSlider": {
+    "activeRange": "Etkin aralık",
+    "always": "HER ZAMAN",
+    "clickToSet": "Aralığı ayarlamak için tıkla",
+    "dragHandles": "Tutamaçları sürükle",
+    "end": "Bitiş:",
+    "high": "YÜKSEK",
+    "hintAlways": "Her zaman AÇIK",
+    "hintHigh": "Anahtar YUKARI",
+    "hintLow": "Anahtar AŞAĞI",
+    "hintMid": "Anahtar ORTA",
+    "low": "DÜŞÜK",
+    "mid": "ORTA",
+    "start": "Başlangıç:",
+    "switchPosition": "Anahtar konumu",
+    "yourTransmitter": "Vericin"
+  },
+  "rcChannelBar": {
+    "active": "ETKİN",
+    "inactive": "ETKİN DEĞİL",
+    "rc": "RC:"
+  },
+  "reviewStep": {
+    "armMissing": "ARM modu yapılandırılmamış!",
+    "armMissingHint": "ARM modu olmadan hava aracını arm edemezsin. Geri dön ve ARM'ı bir anahtara ekle.",
+    "beforeFly": "Uçmadan önce:",
+    "configuredModes": "Yapılandırılmış modlar:",
+    "configured_one": "{{count}} mod yapılandırdın.",
+    "configured_other": "{{count}} mod yapılandırdın.",
+    "presetTitle": "{{name}} ön ayarı",
+    "ready": "Hazır",
+    "saveToFc": "Uçuş kontrolcüsüne kaydet",
+    "saved": "Yapılandırma kaydedildi!",
+    "savedHint": "Mod yapılandırman uçuş kontrolcüsüne yazıldı.",
+    "tipArm": "ARM'ı her zaman pervaneler sökülüyken güvenli bir alanda test et",
+    "tipAux": "AUX anahtar konumlarını iki kez kontrol et",
+    "tipFailsafe": "Failsafe'in doğru ayarlandığını doğrula",
+    "title": "Yapılandırmanı gözden geçir",
+    "usingPreset_one": "{{name}} ön ayarı {{count}} modla kullanılıyor.",
+    "usingPreset_other": "{{name}} ön ayarı {{count}} modla kullanılıyor."
+  },
+  "transmitterCheckStep": {
+    "armSwitch": "ARM anahtarını çevir (genellikle AUX1)",
+    "channelsDetected": "{{count}} kanal algılandı!",
+    "confirm": "Yukarıdaki görselleştiricide çubuklarımın ve anahtarlarımın tepki verdiğini görüyorum",
+    "connectedHint": "Vericin bağlı. AUX kanallarını algılamak için anahtarları hareket ettir.",
+    "continue": "Mod yapılandırmasına devam et",
+    "leftStick": "Sol çubuğu yukarı/aşağı ve sola/sağa hareket ettir",
+    "noChannels": "Kanal algılanmadı mı?",
+    "otherSwitches": "Kullanmayı planladığın diğer anahtarları da hareket ettir",
+    "quickCheck": "Hızlı kontrol:",
+    "rightStick": "Sağ çubuğu yukarı/aşağı ve sola/sağa hareket ettir",
+    "subtitle": "Alındıklarını doğrulamak için çubuklarını hareket ettir ve anahtarlarını çevir. Her kanal hareket algıladığında yeşil yanmalı.",
+    "tipBound": "Vericinin açık ve alıcına bağlı (bind) olduğundan emin ol",
+    "tipProtocol": "Yapılandırıcıda doğru alıcı protokolünün ayarlandığını doğrula",
+    "tipReceiver": "Alıcının uçuş kontrolcüne bağlı olduğunu kontrol et",
+    "tipReconnect": "Uçuş kontrolcünü çıkarıp yeniden takmayı dene",
+    "title": "Vericini kontrol et",
+    "waiting": "Kanal hareketi bekleniyor...",
+    "waitingHint": "Bağlantıyı doğrulamak için tüm çubukları uç noktalarına kadar hareket ettir."
+  },
+  "transmitterVisualizer": {
+    "additionalSwitch": "Ek anahtar",
+    "aux1": "Anahtar (genellikle ARM)",
+    "aux2": "Anahtar veya 3 konumlu",
+    "leftHorizontal": "Sol çubuk yatay",
+    "leftVertical": "Sol çubuk dikey",
+    "rightHorizontal": "Sağ çubuk yatay",
+    "rightVertical": "Sağ çubuk dikey"
+  },
+  "welcomeStep": {
+    "manualSetup": "Manuel kurulum",
+    "manualSetupHint": "Modları tek tek yapılandır (ileri seviye)",
+    "newToFpv": "FPV'ye yeni misin?",
+    "newToFpvHint": "<b>Başlangıç</b> ön ayarıyla başla. Hava aracını otomatik olarak yatay tutan ANGLE modunu etkinleştirir - öğrenmek için ideal!",
+    "subtitle": "Tarzına uygun temel uçuş modlarını hızla yapılandırmak için bir ön ayar seç ya da tam kontrol için modları elle kur.",
+    "title": "Uçuş stilini seç"
+  }
+}

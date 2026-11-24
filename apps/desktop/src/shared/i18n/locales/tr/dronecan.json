@@ -1,0 +1,133 @@
+{
+  "applyHint": "Bir değeri yazmak, onu düğüme hemen uygular. Yeniden başlatmadan sonra da kalması için \"Düğüme kaydet\" seçeneğini kullan.",
+  "applyHintRestart": "Bazı değişiklikler yalnızca düğüm yeniden başladıktan sonra etkili olur. Yaz, ardından \"Düğüme kaydet\" de, sonra düğümü yeniden başlat.",
+  "busHealth": {
+    "bitrate": "Bit hızı",
+    "busOff": "Bus-off olayları",
+    "diagnosis": {
+      "bus-off": {
+        "hint": "CAN denetleyicisi bus-off durumuna geçti: veriyolunda elektriksel bir arıza var. CAN_H/CAN_L hatlarında kısa devre veya gevşek bağlantı, eksik toprak ya da eksik sonlandırma olup olmadığını kontrol et.",
+        "title": "Veriyolu hataları"
+      },
+      "healthy": {
+        "hint": "",
+        "title": "Veriyolu sağlıklı"
+      },
+      "idle": {
+        "hint": "Bu veriyolunda hiçbir şey gönderilmiyor veya alınmıyor. Bir CAN portunun DroneCAN kullandığını ve CAN ayarları değiştirildikten sonra uçuş kontrolcüsünün yeniden başlatıldığını kontrol et.",
+        "title": "Trafik yok"
+      },
+      "no-ack": {
+        "hint": "Uçuş kontrolcüsü çerçeve gönderiyor ama hiçbir cihaz bunları onaylamıyor. Kabloyu (CAN_H ve CAN_L ters olmamalı), cihazın beslendiğini, iki ucun da 120 Ω ile sonlandırıldığını (çoğu otopilotta dahili bir tane vardır) ve bit hızının cihazla eşleştiğini (DroneCAN varsayılanı 1 Mbit/s) kontrol et.",
+        "title": "Veriyolunda yanıt veren yok"
+      },
+      "rx-errors": {
+        "hint": "Çerçeveler bozuk geliyor veya düşürülüyor. Sonlandırmayı, kablo uzunluğunu ve her cihazdaki bit hızını kontrol et.",
+        "title": "Alım hataları"
+      }
+    },
+    "measuring": "Ölçülüyor…",
+    "received": "Alınan",
+    "sent": "Başarıyla gönderilen",
+    "subtitle": "Uçuş kontrolcüsünün gördüğü haliyle CAN{{port}}, her 5 sn'de bir ölçülür",
+    "timeouts": "Onaylanmadı",
+    "title": "Veriyolu sağlığı",
+    "unavailable": "Bu yazılım CAN istatistiklerini bildirmiyor (MAVLink FTP ve @SYS/can0_stats.txt gerekir)."
+  },
+  "col": {
+    "default": "Varsayılan",
+    "name": "Ad",
+    "range": "Aralık",
+    "value": "Değer"
+  },
+  "confirmRestart": "Yeniden başlatmayı onayla",
+  "danger": "Dikkat",
+  "dangerTip": "Yanlış bir değer bu düğümü CAN veriyolundan düşürebilir veya önyükleyicisinin üzerine yazabilir. Kurtarmak için düğüme USB veya SLCAN bağlantısı gerekir.",
+  "discard": "Vazgeç",
+  "docsSource": "Açıklamalar ArduPilot AP_Periph belgelerinden alınmıştır",
+  "error": {
+    "failed": "Uçuş kontrolcüsü bu port için CAN yönlendirmesini reddetti.",
+    "noResponse": "Uçuş kontrolcüsünden yanıt yok. Portun sürücüsünün etkin olduğunu ve CAN ayarları değiştirildikten sonra FC'nin yeniden başlatıldığını kontrol et.",
+    "request": "İstek başarısız: {{error}}",
+    "start": "CAN yönlendirmesi başlatılamadı: {{error}}",
+    "unsupported": "Bu yazılım sürümünde MAVLink üzerinden CAN yönlendirmesi yok, bu yüzden ArduDeck DroneCAN veriyolunu göremiyor."
+  },
+  "fcHint": "Bu, uçuş kontrolcüsünün kendisi. Ayarları normal parametre tablosunda.",
+  "filterPlaceholder": "Parametreleri filtrele",
+  "framesTip": "Bu sekme açıkken veriyolundan alınan CAN çerçeveleri",
+  "frames_one": "{{count}} çerçeve",
+  "frames_other": "{{count}} çerçeve",
+  "hardware": "Donanım",
+  "health": {
+    "critical": "Kritik",
+    "error": "Hata",
+    "ok": "Sağlıklı",
+    "warning": "Uyarı"
+  },
+  "loadingParams": "Parametreler okunuyor… {{count}}",
+  "mode": {
+    "initialization": "Başlatılıyor",
+    "maintenance": "Bakım",
+    "offline": "Çevrimdışı",
+    "operational": "Çalışıyor",
+    "softwareUpdate": "Yazılım güncelleniyor"
+  },
+  "noBitsSet": "Hiçbir şey seçilmedi",
+  "noBus": {
+    "body": "Hiçbir CAN portu DroneCAN protokolünü kullanmıyor. CAN_P1_DRIVER değerini 1, CAN_D1_PROTOCOL değerini DroneCAN yap, sonra uçuş kontrolcüsünü yeniden başlat.",
+    "title": "Yapılandırılmış DroneCAN veriyolu yok"
+  },
+  "noParams": "Bu düğüm hiç parametre bildirmiyor.",
+  "nodeFallbackName": "Düğüm {{id}}",
+  "offline": "Çevrimdışı",
+  "paramsSubtitle_one": "Düğüm {{id}} · {{count}} parametre",
+  "paramsSubtitle_other": "Düğüm {{id}} · {{count}} parametre",
+  "port": "CAN{{port}}",
+  "reboot": "Yeniden başlat",
+  "rebootTip": "Düğüm yeniden başladıktan sonra etkili olur.",
+  "reload": "Yeniden yükle",
+  "requestError": {
+    "not-active": "izleme durdurulmuş",
+    "notConnected": "bağlı değil",
+    "rejected": "düğüm reddetti",
+    "timeout": "düğüm yanıt vermedi"
+  },
+  "restart": "Düğümü yeniden başlat",
+  "restarted": "Yeniden başlatma gönderildi. Düğüm birkaç saniye içinde yeniden görünür.",
+  "review": {
+    "asksToWrite": "{{from}} düğüm parametrelerini değiştirmek istiyor",
+    "saveOnNode": "Ayrıca düğüme kaydet, böylece değerler yeniden başlatmadan sonra da kalır",
+    "title": "DroneCAN değişikliklerini gözden geçir",
+    "write_one": "{{count}} değişikliği yaz",
+    "write_other": "{{count}} değişikliği yaz"
+  },
+  "saveToNode": "Düğüme kaydet",
+  "saveToNodeTip": "Mevcut değerleri düğümün flash belleğine kaydeder, böylece yeniden başlatmadan sonra da kalır",
+  "saved": "Düğüme kaydedildi.",
+  "software": "Yazılım",
+  "start": "Başlat",
+  "status": {
+    "active": "İzleniyor",
+    "failed": "Reddedildi",
+    "idle": "Durduruldu",
+    "noResponse": "Yanıt yok",
+    "starting": "Bağlanıyor",
+    "unsupported": "Desteklenmiyor"
+  },
+  "stop": "Durdur",
+  "stoppedHint": "İzleme durduruldu. Veriyolunu okumak için Başlat'a bas.",
+  "subtitle": "CAN veriyolundaki cihazlar, uçuş kontrolcüsü üzerinden okunur",
+  "thisFc": "Bu FC",
+  "title": "DroneCAN",
+  "uniqueId": "Benzersiz kimlik",
+  "uptime": "Çalışma süresi",
+  "valueNotListed": "{{value}} (listede yok)",
+  "waitingForNodes": "Veriyolu dinleniyor. Düğümler durum mesajlarını gönderdikten sonra bir saniye içinde görünür.",
+  "writeChanges_one": "{{count}} değişikliği yaz",
+  "writeChanges_other": "{{count}} değişikliği yaz",
+  "writeFailed": "Yazılmadı: {{names}}",
+  "writtenAndSaved_one": "{{count}} değer yazıldı ve düğüme kaydedildi.",
+  "writtenAndSaved_other": "{{count}} değer yazıldı ve düğüme kaydedildi.",
+  "written_one": "{{count}} değer yazıldı.",
+  "written_other": "{{count}} değer yazıldı."
+}

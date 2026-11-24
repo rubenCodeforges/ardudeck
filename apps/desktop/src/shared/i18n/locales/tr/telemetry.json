@@ -1,0 +1,116 @@
+{
+  "layoutDetails": {
+    "description": "Açıklama",
+    "editTitle": "Düzeni düzenle",
+    "name": "Ad",
+    "nameTaken": "Bu ad zaten kullanılıyor.",
+    "optional": "(isteğe bağlı)",
+    "replace": "Değiştir",
+    "replaceContents": "İçeriği geçerli ekranla değiştir",
+    "replaceContentsHint": "Paneller, kokpit enstrümanları, harita bölmesi ve görüş modu şu anki haliyle.",
+    "replacesExisting": "\"{{name}}\" adlı bir düzen zaten var. Kaydetmek onu değiştirir.",
+    "saveTitle": "Düzeni kaydet"
+  },
+  "layouts": {
+    "fpvDescription": "Harita ve Görüş yan yana.",
+    "fpvLabel": "FPV",
+    "importInvalidJson": "Bu dosya geçerli bir JSON değil.",
+    "importNoPanels": "Bu dosyadaki düzende panel yerleşimi yok.",
+    "importNotLayout": "Bu dosya bir ArduDeck çalışma alanı düzeni değil.",
+    "importedName": "İçe aktarılan düzen",
+    "missionDescription": "Harita, bekleme noktaları, irtifa profili.",
+    "missionLabel": "Görev",
+    "pilotDescription": "Sentetik görüş bölmeli harita.",
+    "pilotLabel": "Pilot"
+  },
+  "panelHeader": {
+    "hideInstrument": "Harita enstrümanını gizle",
+    "popOut": "Ayır",
+    "popOutTitle": "{{title}} panelini yeni pencerede aç",
+    "showInstrument": "Haritada enstrüman olarak göster"
+  },
+  "quickStats": {
+    "alt": "ALT",
+    "armed": "Arm",
+    "bat": "BAT",
+    "disarmed": "Disarm",
+    "hdg": "HDG",
+    "noLink": "Bağlantı yok",
+    "notConnected": "Bağlı değil",
+    "sat": "SAT",
+    "spd": "SPD",
+    "thr": "THR"
+  },
+  "savedLayout": {
+    "confirmDelete": "Silinsin mi?",
+    "copyToClipboard": "Panoya kopyala",
+    "deleteTip": "Sil",
+    "renameTip": "Yeniden adlandır veya açıkla",
+    "saveAsFile": "Dosya olarak kaydet…",
+    "share": "Paylaş…",
+    "shareTip": "Paylaş"
+  },
+  "sensorHealth": {
+    "unhealthyTitle": "Sağlıksız: {{sensors}} - ayrıntılar için Mesajlar paneline bakın"
+  },
+  "share": {
+    "copied": "Kopyalandı",
+    "failed": "Paylaşılamadı",
+    "saved": "Kaydedildi"
+  },
+  "speed": {
+    "eco": "Eko",
+    "ecoTip": "Yavaş güncellemeler: zayıf veya uzun menzilli telemetri bağlantılarında hafiftir",
+    "fc": "FC",
+    "fcTip": "Karışma yok: ArduDeck farklı veri hızları istemez. Araç, uçuş kontrolcüsünde kayıtlı hızlarla veri göndermeye devam eder. Bu hızları kendiniz ayarladıysanız bunu seçin.",
+    "max": "Maks",
+    "maxTip": "En hızlı güncellemeler, USB veya WiFi gibi hızlı bağlantılar için",
+    "normal": "Normal",
+    "normalTip": "Dengeli güncelleme hızı, çoğu bağlantı için uygundur"
+  },
+  "workspace": {
+    "buttonTip": "Çalışma alanı: panel düzeni, görünüm ve paneller",
+    "title": "Çalışma alanı"
+  },
+  "workspaceDialog": {
+    "addPanel": "Panel ekle",
+    "builtIn": "Yerleşik",
+    "clipboardReadFailed": "Pano okunamadı.",
+    "fromFile": "Dosyadan…",
+    "import": "İçe aktar",
+    "importTip": "Başkasının paylaştığı bir düzeni içe aktarın",
+    "map2d": "2D harita",
+    "map3d": "3D arazi",
+    "mapView": "Harita görünümü",
+    "offlineHint": "Bağlantısız uçuş için karolarını önbelleğe almak üzere haritada bir kutu çizin.",
+    "offlineMaps": "Çevrimdışı haritalar",
+    "panelLayout": "Panel düzeni",
+    "pasteFromClipboard": "Panodan yapıştır",
+    "resetToPreset": "Ön ayara sıfırla",
+    "saveCurrentAs": "Geçerliyi şu adla kaydet…",
+    "saveOfflineArea": "Çevrimdışı kullanım için bir alan kaydet",
+    "saved": "Kaydedilenler",
+    "selectingArea": "Seçiliyor… haritada bir kutu çizin",
+    "telemetryRate": "Telemetri hızı",
+    "telemetryRateHint": "Aracın telemetriyi ne sıklıkla yayınladığı. FC, uçuş kontrolcüsünün kendi hızlarına dokunmaz.",
+    "cargoPanelMissing": "Bu panel şu anda yüklü olmayan bir Cargo'dan geliyor."
+  },
+  "replay": {
+    "badge": "TEKRAR",
+    "badgeTip": "Kaydedilmiş bir uçuş oynatılıyor. Hiçbir araca veri gönderilmez.",
+    "pause": "Duraklat",
+    "play": "Oynat",
+    "restart": "Baştan oynat",
+    "seek": "Uçuştaki konum",
+    "speedTip": "Oynatma hızı",
+    "speed": "{{speed}}x",
+    "stop": "Tekrarı durdur",
+    "chooseTitle": "Bir uçuşu tekrar oynat",
+    "chooseIntro": "Hangi kaydı oynatmak istiyorsunuz?",
+    "chooseBusy": "Önce aracın bağlantısını kesin.",
+    "chooseTlog": "Telemetri günlüğü (.tlog)",
+    "chooseTlogDesc": "ArduDeck'in telsiz bağlantısı üzerinden aldıkları. Otomatik kaydedilir; telemetri hızı kadar akıcıdır.",
+    "chooseBin": "Araç içi günlük (.bin)",
+    "chooseBinDesc": "Uçuş kontrolcüsünün SD kartındaki kendi kaydı. Genellikle çok daha akıcıdır; önce araçtan indirin."
+  }
+}

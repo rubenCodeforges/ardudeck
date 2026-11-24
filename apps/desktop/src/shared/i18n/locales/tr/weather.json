@@ -1,0 +1,100 @@
+{
+  "briefing": {
+    "clouds": "Bulutlar",
+    "context": "Bağlam",
+    "fetching": "Tahmin alınıyor...",
+    "flightConditions": "Uçuş koşulları",
+    "forecastValid": "Tahmin geçerliliği {{clock}} (sahada yerel saat) · Open-Meteo",
+    "launchGates": "Kalkış eşikleri",
+    "limits": "Sınırlar: hamle {{gustC}} / {{gustN}} m/s, rüzgar {{windC}} / {{windN}} m/s, yağış ihtimali {{probC}} / {{probN}}%, yağış {{mmC}} / {{mmN}} mm, görüş mesafesi {{visC}} / {{visN}} km altı.",
+    "locationAt": "{{location}} · yerel saat {{clock}}",
+    "noPosition": "Brifing için konum yok",
+    "noPositionHint": "Brifingin hava durumunu nereden sorgulayacağını bilmesi için bir araç bağla, home konumu belirle veya görev haritasını aç.",
+    "precip": "Yağış",
+    "precipChance": "Yağış ihtimali",
+    "precipChanceTip": "Dikkat %{{caution}}, uçuş yok %{{nogo}}",
+    "precipTip": "Dikkat {{caution}} mm, uçuş yok {{nogo}} mm",
+    "pressure": "Basınç",
+    "refreshTip": "Tahmini yenile",
+    "temp": "Sıcaklık",
+    "title": "Uçuş Öncesi Hava Durumu Brifingi",
+    "unavailable": "Tahmin kullanılamıyor",
+    "updated": "güncellendi {{time}}",
+    "visibility": "Görüş mesafesi",
+    "visibilityTip": "{{caution}} km altı dikkat, {{nogo}} km altı uçuş yok",
+    "windLimitTip": "Dikkat {{caution}}, uçuş yok {{nogo}} {{unit}}"
+  },
+  "condition": {
+    "clear": "Açık",
+    "fog": "Sis",
+    "overcast": "Kapalı",
+    "partlyCloudy": "Parçalı bulutlu",
+    "rain": "Yağmur"
+  },
+  "geomag": {
+    "activity": "Jeomanyetik aktivite",
+    "calm": "Sakin",
+    "declination": "Sapma (declination)",
+    "fieldStrength": "Alan şiddeti",
+    "forecastKp": "Kp tahmini (72 sa)",
+    "forecastPeak": "72 sa tahmin zirvesi",
+    "inHours": "{{hours}} sa sonra",
+    "inclination": "Eğim (inclination)",
+    "kpBarTip": "Kp {{kp}} ({{gScale}}), yerel saat {{clock}}",
+    "kpThresholdTip": "Dikkat Kp {{caution}}, uçuş yok Kp {{nogo}} (G1 fırtınası)",
+    "noStorm": "72 saat içinde fırtına öngörülmüyor",
+    "peakKp": "Zirve Kp {{kp}}",
+    "peakTip": "Önümüzdeki 72 saatte öngörülen en yüksek Kp",
+    "sources": "Kp: NOAA SWPC · alan: WMM2025 (çevrimdışı)",
+    "title": "Jeomanyetik",
+    "unavailable": "Uzay havası kullanılamıyor",
+    "unavailableHint": "NOAA Kp servisine ulaşılamadı. Hava durumu kararı etkilenmez.",
+    "within72h": "72 sa içinde",
+    "wmmInvalid": "WMM2025 geçerlilik aralığının dışında; sapma ve alan değerleri yaklaşıktır."
+  },
+  "locationDialog": {
+    "clickToSet": "Brifing noktasını belirlemek için haritaya tıkla",
+    "enterCoords": "Koordinat gir",
+    "noMatches": "Eşleşme yok.",
+    "noPoint": "Nokta seçilmedi",
+    "resetAuto": "Otomatiğe sıfırla",
+    "resetTip": "Araç / home / harita konumunu otomatik takip et",
+    "searchPlaceholder": "Yer ara (şehir, havaalanı, simge yapı)...",
+    "subtitle": "Nokta bırakmak için haritaya tıkla, hassaslaştırmak için iğneyi sürükle veya bir yer ara.",
+    "title": "Brifing konumu",
+    "typeCoordsTip": "Tam koordinatları yaz",
+    "useLocation": "Bu konumu kullan"
+  },
+  "locationPicker": {
+    "change": "Konumu değiştir",
+    "noPosition": "Konum yok",
+    "pickTip": "Brifing konumunu haritadan seç",
+    "planned": "Planlanan"
+  },
+  "reason": {
+    "gustsCaution": "{{value}} hızındaki hamleler sınıra ({{limit}}) yaklaşıyor. Yakından izle.",
+    "gustsNogo": "{{value}} hızındaki hamleler güvenli sınırı ({{limit}}) aşıyor. Kontrol kaybı riski.",
+    "precipCaution": "{{value}} mm hafif yağış algılandı. Hava aracını koru.",
+    "precipNogo": "{{value}} mm yağış. Elektronik risk altında, kalkış yapma.",
+    "precipProbCaution": "Yağış ihtimali artıyor (%{{value}}). Gökyüzünü izle.",
+    "precipProbNogo": "Yağış ihtimali yüksek (%{{value}}). Bir saat içinde yağmur bekle.",
+    "visibilityCaution": "Görüş mesafesi {{value}} km'ye düştü. Görüş hattını koru.",
+    "visibilityNogo": "Görüş mesafesi {{value}} km, {{limit}} km asgari değerin altında.",
+    "windCaution": "{{value}} sürekli rüzgar sınıra ({{limit}}) yaklaşıyor.",
+    "windNogo": "{{value}} sürekli rüzgar güvenli sınırı ({{limit}}) aşıyor."
+  },
+  "source": {
+    "home": "Home konumu",
+    "map": "Harita merkezi",
+    "override": "Seçilen konum",
+    "vehicle": "Araç konumu"
+  },
+  "status": {
+    "caution": "DİKKAT",
+    "cautionSummary": "Koşullar sınırda. Kalkıştan önce işaretlenen parametreleri gözden geçir.",
+    "go": "UYGUN",
+    "goSummary": "Koşullar kalkış için sınırlar içinde.",
+    "nogoPill": "UÇUŞ YOK",
+    "nogoSummary": "Bir veya daha fazla parametre güvenli sınırları aşıyor. Kalkış yapma."
+  }
+}
