@@ -235,7 +235,7 @@
     "missionUploadInProgress": "Уже триває інше вивантаження місії",
     "motorTestNeedsMavlink": "Тест моторів потребує MAVLink-підключення",
     "noBoardIdentity": "Немає ідентифікатора плати",
-    "noClaudeKey": "Ключ API для claude не налаштовано. Додайте його в налаштуваннях.",
+    "noClaudeKey": "Ще немає ключа Claude API. Додайте його один раз на панелі Claude Advisor (значок шестерні); його використовують і Advisor, і аналіз журналів польоту.",
     "noCompatibleFirmware": "Сумісної прошивки не виявлено",
     "noDjiWaypoints": "У місії DJI не знайдено точок маршруту",
     "noExportableWaypoints": "Немає точок для експорту (DJI KMZ потребує звичайних точок маршруту з координатами)",

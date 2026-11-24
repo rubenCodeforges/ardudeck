@@ -22,7 +22,7 @@ const UI_PROPS = new Set(['label', 'title', 'description', 'message', 'hint', 't
   'cancelLabel', 'buttonLabel', 'actionLabel', 'tip', 'text', 'desc', 'short', 'long', 'reason', 'explanation',
   'emptyText', 'unitLabel', 'question', 'answer', 'cta', 'blurb', 'note', 'step', 'instructions', 'content']);
 const UI_CALLS = /^(toast(\.\w+)?|showToast|notify|addToast|pushToast|alert|confirm|window\.confirm|window\.alert|setError|setStatus|setMessage|setWarning|setStatusText|setErrorMessage|showError|showMessage|announce|speak|dialog\.show\w+|new Notification)$/;
-const SKIP_DIRS = /(\/__tests__\/|\.test\.|\.spec\.|\/testing\/|\/perf\/|\.d\.ts$|\/graphify-out\/|\/shared\/i18n\/)/;
+const SKIP_DIRS = /(\/__tests__\/|\.test\.|\.spec\.|\/testing\/|\/perf\/|\.d\.ts$|\/graphify-out\/|\/shared\/i18n\/|\/shared\/ai-tools\/)/;
 // Firmware-sourced or technical: never translated (scope decision 2026-10-01).
 const FIRMWARE_FILE = /(param(eter)?-metadata|px4-.*metadata|inav-\d|ap-motor-layouts|mavlink-ts|msp-ts|\/generated\/|mode-names|flight-modes?\.(ts|tsx)$|\/protocol\/|\/decoders?\/)/i;
 

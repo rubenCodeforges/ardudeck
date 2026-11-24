@@ -279,7 +279,7 @@ import {
 } from './simulators/index.js';
 import { ardupilotFlightGear } from './simulators/ardupilot-flightgear.js';
 import { detectFlightGear } from './simulators/simulator-detector.js';
-import type { SitlConfig, SitlStatus, ArduPilotSitlConfig, ArduPilotSitlStatus, ArduPilotVehicleType, ArduPilotReleaseTrack, ArduPilotSitlBinaryInfo, SwarmSitlConfig, SwarmSitlStatus, ArduPilotFlightGearConfig, Px4SitlConfig, Px4SitlStatus, Px4SitlBinaryInfo, Px4ReleaseTrack } from '../shared/ipc-channels.js';
+import type { SitlConfig, SitlStatus, ArduPilotSitlConfig, ArduPilotSitlStatus, ArduPilotVehicleType, ArduPilotSitlBuild, ArduPilotReleaseTrack, ArduPilotSitlBinaryInfo, SwarmSitlConfig, SwarmSitlStatus, ArduPilotFlightGearConfig, Px4SitlConfig, Px4SitlStatus, Px4SitlBinaryInfo, Px4ReleaseTrack } from '../shared/ipc-channels.js';
 import { openAreaEditorWindow, setMainMapViewport } from './area-editor-window.js';
 import { t } from '../shared/i18n/index.js';
 import { isMissionPackage, MISSION_PACKAGE_EXT, type MissionPackage } from '../shared/mission-share-types.js';
@@ -1939,7 +1939,7 @@ function decodeFleetTelemetry(packet: MAVLinkPacket): Record<string, unknown> | 
       // not vehicle type (same branch the active-vehicle decode takes).
       if (payload[5] === 12) modeName = getPx4ModeName(customMode);
       else if (vehicleType === 1 || (vehicleType >= 19 && vehicleType <= 25)) modeName = PLANE_MODES[customMode] || modeName;
-      else if (vehicleType === 2 || (vehicleType >= 13 && vehicleType <= 15) || vehicleType === 29 || vehicleType === 35) modeName = COPTER_MODES[customMode] || modeName;
+      else if ((vehicleType >= 2 && vehicleType <= 4) || (vehicleType >= 13 && vehicleType <= 15) || vehicleType === 29 || vehicleType === 35) modeName = COPTER_MODES[customMode] || modeName;
       else if (vehicleType === 10 || vehicleType === 11) modeName = ROVER_MODES[customMode] || modeName;
       else if (vehicleType === 12) modeName = SUB_MODES[customMode] || modeName;
       const flight: FlightState = { mode: modeName, modeNum: customMode, armed, isFlying: armed && (baseMode & 0x04) !== 0 };
@@ -3388,8 +3388,8 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
       // Fixed wing and VTOL types use plane modes
       if (vehicleType === 1 || (vehicleType >= 19 && vehicleType <= 25)) {
         modeName = PLANE_MODES[customMode] || modeName;
-      } else if (vehicleType === 2 || (vehicleType >= 13 && vehicleType <= 15) || vehicleType === 29 || vehicleType === 35) {
-        // Rotorcraft types: quad, hex, octo, tri, dodeca, deca
+      } else if ((vehicleType >= 2 && vehicleType <= 4) || (vehicleType >= 13 && vehicleType <= 15) || vehicleType === 29 || vehicleType === 35) {
+        // Rotorcraft types: quad, coax, heli, hex, octo, tri, dodeca, deca
         modeName = COPTER_MODES[customMode] || modeName;
       } else if (vehicleType === 10 || vehicleType === 11) {
         // Ground rover and surface boat (boat uses rover modes in ArduPilot)
@@ -9471,7 +9471,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         const cfg = ardupilotSitlProcess.currentConfig;
         if (!cfg) return { verdict: 'no_response' as const, detail: t('main:ipc.sitlConfigLost') };
         try {
-          const binaryPath = ardupilotSitlProcess.getBinaryPath(cfg.vehicleType, cfg.releaseTrack);
+          const binaryPath = ardupilotSitlProcess.getBinaryPath(cfg.vehicleType, cfg.releaseTrack, cfg.model);
           const fs = await import('fs/promises');
           const path = await import('path');
           // SITL loads scripts from <cwd>/scripts/, not /APM/scripts/.
@@ -9651,7 +9651,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
         if (!cfg) throw new Error(t('main:ipc.sitlLauncherUnavailable'));
         const fs = await import('fs/promises');
         const nodePath = await import('path');
-        const binaryPath = ardupilotSitlProcess.getBinaryPath(cfg.vehicleType, cfg.releaseTrack);
+        const binaryPath = ardupilotSitlProcess.getBinaryPath(cfg.vehicleType, cfg.releaseTrack, cfg.model);
         // SITL reads scripts from <cwd>/scripts/ — the /APM/ prefix used in
         // FC-style paths is the SD-card mount point on real hardware and does
         // NOT exist in HAL_SITL's filesystem. We strip the /APM/ prefix and
@@ -13326,7 +13326,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Download ArduPilot SITL binary
   ipcMain.handle(IPC_CHANNELS.ARDUPILOT_SITL_DOWNLOAD, async (
     _event,
-    vehicleType: ArduPilotVehicleType,
+    vehicleType: ArduPilotSitlBuild,
     releaseTrack: ArduPilotReleaseTrack
   ): Promise<{ success: boolean; path?: string; error?: string }> => {
     // Download Cygwin DLLs first on Windows
@@ -13343,7 +13343,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   // Check if ArduPilot SITL binary exists
   ipcMain.handle(IPC_CHANNELS.ARDUPILOT_SITL_CHECK_BINARY, async (
     _event,
-    vehicleType: ArduPilotVehicleType,
+    vehicleType: ArduPilotSitlBuild,
     releaseTrack: ArduPilotReleaseTrack
   ): Promise<ArduPilotSitlBinaryInfo> => {
     return ardupilotSitlDownloader.checkBinary(vehicleType, releaseTrack);
@@ -14346,9 +14346,9 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
   }): Promise<{ success: boolean; response?: string; error?: string }> => {
     const { provider, messages, systemContext } = args;
 
-    const apiKey = getApiKey(`ai-${provider}`);
+    const apiKey = provider === 'claude' ? await claudeApiKey() : getApiKey(`ai-${provider}`);
     if (!apiKey) {
-      return { success: false, error: `No API key configured for ${provider}. Add it in Settings.` };
+      return { success: false, error: provider === 'claude' ? t('main:ipc.noClaudeKey') : `No API key configured for ${provider}. Add it in Settings.` };
     }
 
     try {
@@ -14368,7 +14368,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
     messages: unknown[];
     tools: unknown[];
   }): Promise<{ success: boolean; content?: unknown[]; stop_reason?: string; error?: string }> => {
-    const apiKey = getApiKey('ai-claude');
+    const apiKey = await claudeApiKey();
     if (!apiKey) {
       return { success: false, error: t('main:ipc.noClaudeKey') };
     }
@@ -14381,7 +14381,7 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
+          model: 'claude-sonnet-5-5',
           max_tokens: 4096,
           system: args.system,
           tools: args.tools,
@@ -14647,6 +14647,19 @@ function findFrameBlueprintBinary(): string | null {
   return null;
 }
 
+/** The Claude Advisor cargo's key powers the post-flight analysis too, so the pilot enters it once. */
+async function claudeApiKey(): Promise<string | null> {
+  const own = getApiKey('ai-claude');
+  if (own) return own;
+  try {
+    const { createMainHostApi } = await import('./modules/module-host-main.js');
+    const key = await createMainHostApi({ slug: 'ardudeck.advisor', name: 'Claude Advisor' } as Parameters<typeof createMainHostApi>[0]).secureRead('apiKey');
+    return key || null;
+  } catch {
+    return null;
+  }
+}
+
 async function callAiProvider(
   provider: 'claude' | 'openai' | 'gemini',
   apiKey: string,
@@ -14662,7 +14675,7 @@ async function callAiProvider(
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
+        model: 'claude-sonnet-5-5',
         max_tokens: 2048,
         system,
         messages,

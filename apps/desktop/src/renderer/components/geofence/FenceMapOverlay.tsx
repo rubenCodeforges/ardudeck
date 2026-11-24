@@ -561,6 +561,44 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
             />
           ))}
 
+      {/* Radius handle on the east edge of the selected circle: drag it, or scroll over it */}
+      {!readOnly &&
+        circles
+          .filter((c) => c.id === selectedFenceId)
+          .map((circle) => (
+            <Marker
+              key={`${circle.id}-radius-${circle.radius}`}
+              position={circleEdge(circle.center.lat, circle.center.lon, circle.radius)}
+              icon={createVertexIcon(false)}
+              draggable
+              eventHandlers={{
+                dragend: (e) => {
+                  const { lat, lng } = (e.target as L.Marker).getLatLng();
+                  const r = calculateDistance(circle.center.lat, circle.center.lon, lat, lng);
+                  updateCircle(circle.id, undefined, Math.max(MIN_CIRCLE_RADIUS, Math.round(r)));
+                },
+                add: (e) => {
+                  const el = (e.target as L.Marker).getElement();
+                  if (!el) return;
+                  L.DomEvent.disableScrollPropagation(el);
+                  el.addEventListener('wheel', (ev) => {
+                    ev.preventDefault();
+                    const cur = useFenceStore.getState().circles.find((c) => c.id === circle.id);
+                    if (!cur) return;
+                    const factor = ev.deltaY < 0 ? 1.05 : 1 / 1.05;
+                    updateCircle(circle.id, undefined, Math.max(MIN_CIRCLE_RADIUS, Math.round(cur.radius * factor)));
+                  }, { passive: false });
+                },
+              }}
+            >
+              <Tooltip direction="right" offset={[8, 0]} opacity={0.9}>
+                <span style={{ fontSize: '10px', whiteSpace: 'pre' }}>
+                  {t('geofence:fenceMapOverlay.radiusHandle', { radius: Math.round(circle.radius) })}
+                </span>
+              </Tooltip>
+            </Marker>
+          ))}
+
       {/* Return point */}
       {returnPoint && (
         <Marker
@@ -633,6 +671,12 @@ export function FenceMapOverlay({ readOnly = false }: FenceMapOverlayProps) {
 }
 
 // Helper: Calculate distance between two points in meters (Haversine)
+const MIN_CIRCLE_RADIUS = 1;
+
+function circleEdge(lat: number, lon: number, radius: number): [number, number] {
+  return [lat, lon + radius / (111320 * Math.cos((lat * Math.PI) / 180))];
+}
+
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000; // Earth's radius in meters
   const dLat = toRad(lat2 - lat1);

@@ -608,9 +608,11 @@ export interface ModulePanelRegistration {
   /**
    * How much room the panel needs. 'compact' (default) opens in the dock
    * dropdown - right for small settings forms. 'large' opens in a resizable,
-   * draggable floating window - right for interactive UIs (a chat, a terminal).
+   * draggable floating window - right for interactive UIs (a terminal). 'drawer'
+   * opens as a resizable column on the right that pushes the app aside - right
+   * for a companion the pilot keeps open while working (a chat).
    */
-  size?: 'compact' | 'large';
+  size?: 'compact' | 'large' | 'drawer';
   /** The panel BODY only - the host provides the chip, frame, header, close. */
   component: ComponentType;
 }
@@ -1301,6 +1303,27 @@ export interface RendererHostApi {
     /** Run a log query tool by name against the loaded log; throws if none is open. */
     callTool(name: string, input: Record<string, unknown>): unknown;
   };
+  /**
+   * ArduDeck's AI tool registry: the same tools the MCP server offers to Claude Code, with the same review
+   * dialogs. Optional: hosts before it lack it.
+   */
+  /** ArduDeck's own UI helpers, so cargo text looks like the rest of the app. Optional: hosts before it lack it. */
+  ui?: {
+    /** Markdown (headings, lists, tables, code, bold, links) as React nodes in ArduDeck's styling. Safe: no raw HTML. */
+    markdown(text: string): unknown;
+  };
+  aiTools?: {
+    /** Every tool with its plain-language description and JSON Schema input, ready to pass to the Anthropic API. */
+    list(): AiToolInfo[];
+    /** Run a tool. Proposal tools resolve once the pilot answers the review dialog. */
+    call(name: string, input: Record<string, unknown>): Promise<unknown>;
+    /** The local MCP server that the AI Agent Bridge cargo switches on. */
+    mcpStatus(): Promise<AiMcpServerStatus>;
+    /** Issue a new access token; agents set up with the old one must be set up again. */
+    rotateMcpToken(): Promise<AiMcpServerStatus>;
+    /** Add ArduDeck to Claude Desktop's MCP config (keeps a backup). Missing on hosts before 0.1.3. */
+    installClaudeDesktop?(): Promise<{ ok: boolean; path: string; error?: string }>;
+  };
   pty: {
     create(opts: PtyCreateOptions): Promise<string>;
     write(id: string, data: string): Promise<void>;
@@ -1961,4 +1984,21 @@ export interface LoadedModuleInfo {
   slug: string;
   manifest: ModuleManifest;
   installPath: string;
+}
+
+export interface AiToolInfo {
+  name: string;
+  description: string;
+  /** read: looks only; propose: the pilot reviews it first; planner: changes the plan, never the vehicle; view: moves the app. */
+  effect: 'read' | 'propose' | 'planner' | 'view';
+  inputSchema: Record<string, unknown>;
+}
+
+export interface AiMcpServerStatus {
+  running: boolean;
+  url: string | null;
+  token: string | null;
+  error: string | null;
+  /** Claude Desktop's config already holds the ardudeck entry. */
+  claudeDesktop?: boolean;
 }

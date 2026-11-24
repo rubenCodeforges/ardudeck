@@ -6,15 +6,6 @@ import { join } from 'path';
 import { homedir } from 'os';
 import { TESTING_CHANNELS } from '../../shared/testing-channels';
 
-/**
- * Lazy: importing ipc-handlers at module load pulls in electron-store, which
- * needs a live Electron app and breaks anything that imports this file outside
- * one (the MCP server's own tests, for instance).
- */
-function paramsApi() {
-  return import('../ipc-handlers.js');
-}
-
 const SCREENSHOT_DIR = join(homedir(), '.ardudeck', 'screenshots');
 mkdirSync(SCREENSHOT_DIR, { recursive: true });
 
@@ -155,187 +146,20 @@ export async function waitForStoreTool(params: { storeName: string; path: string
   return callRenderer(TESTING_CHANNELS.WAIT_FOR_STORE, params);
 }
 
-// --- Assistant-facing semantic helpers ------------------------------------
-// Thin wrappers over store reads that give the assistant a compact, stable
-// shape so it doesn't burn tokens navigating raw Zustand state.
-
-async function readStore(name: string, path?: string): Promise<any> {
-  return callRenderer(TESTING_CHANNELS.GET_STORE_STATE, { storeName: name, path });
-}
-
-export async function getVehicleSnapshotTool(): Promise<any> {
-  const [connection, telemetry, nav] = await Promise.all([
-    readStore('connection').catch(() => null),
-    readStore('telemetry').catch(() => null),
-    readStore('navigation').catch(() => null),
-  ]);
-  const cs = connection?.connectionState ?? {};
-  const attitude = telemetry?.attitude ?? null;
-  const position = telemetry?.position ?? null;
-  const battery = telemetry?.battery ?? null;
-  const flight = telemetry?.flight ?? null;
-  return {
-    connection: {
-      connected: !!cs.isConnected,
-      vehicleType: cs.vehicleType ?? null,
-      systemId: cs.systemId ?? null,
-      packetsReceived: cs.packetsReceived ?? 0,
-    },
-    telemetry: {
-      attitude: attitude && {
-        roll: attitude.roll, pitch: attitude.pitch, yaw: attitude.yaw,
-      },
-      position: position && {
-        lat: position.lat, lon: position.lon, alt: position.alt, relativeAlt: position.relativeAlt,
-      },
-      battery: battery && {
-        voltage: battery.voltage, current: battery.current, remaining: battery.remaining,
-      },
-      flight: flight && {
-        mode: flight.mode, armed: flight.armed, isFlying: flight.isFlying,
-      },
-    },
-    currentView: nav?.currentView ?? null,
-  };
-}
-
-/**
- * Parameters straight from the main process, which holds the authoritative copy
- * regardless of which view is mounted. Reading them used to go through the
- * renderer's Zustand store, so it depended on the Parameters screen having been
- * opened; a fresh download is started here if main has nothing yet.
- */
-async function ensureParametersLoaded(timeoutMs = 60000): Promise<{ count: number }> {
-  const api = await paramsApi();
-  const snapshot = api.getVehicleParameters();
-  if (snapshot.complete) return { count: snapshot.params.length };
-
-  if (!api.isParameterDownloadActive()) {
-    const res = await api.requestVehicleParameters();
-    if (!res.success) throw new Error(res.error ?? 'Could not start a parameter download');
-  }
-
-  const start = Date.now();
-  for (;;) {
-    const s = api.getVehicleParameters();
-    if (s.complete) return { count: s.params.length };
-    if (Date.now() - start > timeoutMs) {
-      throw new Error(
-        `Timeout after ${timeoutMs}ms: have ${s.params.length} of ${s.expected || 'unknown'} parameters`,
-      );
-    }
-    await new Promise((r) => setTimeout(r, 200));
-  }
-}
-
-export async function getParameterTool(params: { name: string }): Promise<any> {
-  await ensureParametersLoaded();
-  const entry = (await paramsApi()).getVehicleParameters().params.find((p) => p.id === params.name);
-  if (!entry) return { found: false };
-  return { found: true, parameter: entry };
-}
-
-export async function listParametersTool(params: {
-  prefix?: string;
-  search?: string;
-  limit?: number;
-}): Promise<any> {
-  await ensureParametersLoaded();
-  const all: any[] = (await paramsApi()).getVehicleParameters().params;
-  const pref = params.prefix?.toUpperCase();
-  const needle = params.search?.toLowerCase();
-  const filtered = all.filter((entry: any) => {
-    const name = String(entry?.id ?? entry?.name ?? entry?.paramId ?? '').toUpperCase();
-    if (pref && !name.startsWith(pref)) return false;
-    if (needle && !name.toLowerCase().includes(needle)) return false;
-    return true;
-  });
-  const limit = params.limit ?? 50;
-  return {
-    total: filtered.length,
-    items: filtered.slice(0, limit),
-    truncated: filtered.length > limit,
-  };
-}
-
-export async function getRecentMessagesTool(params: { limit?: number }): Promise<any> {
-  const state = await readStore('messages').catch(() => ({ messages: [] }));
-  const msgs: any[] = state?.messages ?? [];
-  const limit = params.limit ?? 20;
-  return {
-    total: msgs.length,
-    items: msgs.slice(-limit),
-  };
-}
-
-export async function proposeParametersTool(params: {
-  proposals: Array<{ name: string; value: number; reason?: string }>;
-  timeout?: number;
-}): Promise<any> {
-  // Outlive the renderer's own review deadline: this call blocks on a human.
-  const reviewMs = params.timeout ?? 5 * 60 * 1000;
-  return callRenderer(TESTING_CHANNELS.PROPOSE_PARAMETERS, params, reviewMs + 10_000);
-}
-
-// --- Mission planning ---------------------------------------------------------
-
-/** The proposal tools block on a person reviewing the plan in ArduDeck. */
-const PLAN_REVIEW_MS = 10 * 60 * 1000;
-
-export async function getMissionTool(): Promise<any> {
-  return callRenderer(TESTING_CHANNELS.GET_MISSION, {});
-}
-
-export async function proposeMissionTool(params: unknown): Promise<any> {
-  return callRenderer(TESTING_CHANNELS.PROPOSE_MISSION, params, PLAN_REVIEW_MS);
-}
-
-export async function proposeSurveyTool(params: unknown): Promise<any> {
-  return callRenderer(TESTING_CHANNELS.PROPOSE_SURVEY, params, PLAN_REVIEW_MS);
-}
-
-export async function listSurveyOptionsTool(): Promise<any> {
-  return callRenderer(TESTING_CHANNELS.LIST_SURVEY_OPTIONS, {});
-}
-
-export async function fitMissionTool(params: unknown): Promise<any> {
-  return callRenderer(TESTING_CHANNELS.FIT_MISSION, params, PLAN_REVIEW_MS);
-}
-
-export async function drawAreaTool(params: unknown): Promise<any> {
-  return callRenderer(TESTING_CHANNELS.DRAW_AREA, params);
-}
-
-export async function listAreasTool(): Promise<any> {
-  return callRenderer(TESTING_CHANNELS.LIST_AREAS, {});
-}
-
-export async function deleteAreaTool(params: unknown): Promise<any> {
-  return callRenderer(TESTING_CHANNELS.DELETE_AREA, params);
-}
-
-export async function surveyAreaTool(params: unknown): Promise<any> {
-  return callRenderer(TESTING_CHANNELS.SURVEY_AREA, params, PLAN_REVIEW_MS);
-}
-
-export async function setHomeTool(params: unknown): Promise<any> {
-  return callRenderer(TESTING_CHANNELS.SET_HOME, params);
-}
-
-export async function setVehicleProfileTool(params: unknown): Promise<any> {
-  return callRenderer(TESTING_CHANNELS.SET_VEHICLE_PROFILE, params);
-}
-
-export async function getFlightEstimateTool(params: unknown): Promise<any> {
-  return callRenderer(TESTING_CHANNELS.GET_FLIGHT_ESTIMATE, params);
-}
-
-export async function proposeFenceTool(params: unknown): Promise<any> {
-  return callRenderer(TESTING_CHANNELS.PROPOSE_FENCE, params, PLAN_REVIEW_MS);
-}
-
 // --- Control flow -----------------------------------------------------------
 
 export async function waitForIdleTool(params?: { timeout?: number }): Promise<any> {
   return callRenderer(TESTING_CHANNELS.WAIT_FOR_IDLE, params || {});
+}
+
+export async function sitlStatusTool(): Promise<any> {
+  return callRenderer(TESTING_CHANNELS.SITL_STATUS);
+}
+
+export async function sitlStartTool(params: unknown): Promise<any> {
+  return callRenderer(TESTING_CHANNELS.SITL_START, params, 60000);
+}
+
+export async function sitlStopTool(): Promise<any> {
+  return callRenderer(TESTING_CHANNELS.SITL_STOP, {}, 30000);
 }

@@ -30,6 +30,10 @@ interface PrearmPanelProps {
   onGoTo?: (tab: string) => void;
 }
 
+// Heli build refusals (interlock, rotor speed control, swash) belong to no ARMING_CHECK bit and cannot be skipped
+const HELI_REFUSAL = /interlock|rsc|runup|rotor speed|swash|collective|heli/i;
+const HELI_ADVICE: { fixKey: string; tab?: string; view?: string; tabLabelKey?: string } = { fixKey: 'mavlink-config:prearmPanel.fixHeli', tab: 'heli-setup', tabLabelKey: 'mavlink-config:prearmPanel.openHeliSetup' };
+
 /** What actually clears each refusal, in the pilot's terms. */
 const ADVICE: Record<number, { fixKey: string; tab?: string; view?: string; tabLabelKey?: string }> = {
   1: { fixKey: 'mavlink-config:prearmPanel.fix1' },
@@ -102,8 +106,9 @@ export function PrearmPanel({ model, value, onWrite, onGoTo }: PrearmPanelProps)
         <div className="mt-4 space-y-2">
           {failures.map((f) => {
             const name = nameFor(f.bit);
-            const advice = f.bit !== null ? ADVICE[f.bit] : undefined;
-            const canSkip = model !== null && f.bit !== null && isCheckEnabled(model, value, f.bit);
+            const heli = HELI_REFUSAL.test(f.text);
+            const advice = heli ? HELI_ADVICE : f.bit !== null ? ADVICE[f.bit] : undefined;
+            const canSkip = !heli && model !== null && f.bit !== null && isCheckEnabled(model, value, f.bit);
             return (
               <div key={f.text} className="rounded-lg border border-subtle bg-surface p-3">
                 <div className="flex items-start gap-3">

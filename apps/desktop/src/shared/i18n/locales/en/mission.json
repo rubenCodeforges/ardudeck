@@ -627,7 +627,7 @@
       "copyAllTip": "Copy lat, lng of all waypoints (one per line)",
       "copyCoords": "Copy coords",
       "makePolygon": "Make polygon",
-      "makePolygonTip": "Turn the selected waypoints into a polygon, in mission order, and plan a survey on it. Handy for a boundary walked or flown and downloaded. Needs 3 or more located waypoints.",
+      "makePolygonTip": "Turn the waypoints into a polygon, in mission order, and plan a survey on it. Uses the selected waypoints, or all of them when none is selected. Handy for a boundary walked or flown and downloaded. Needs 3 or more located waypoints.",
       "polygonName": "Polygon from WP {{from}}-{{to}}",
       "copySelectedTip": "Copy lat, lng of selected waypoints (one per line)",
       "copyThisTip": "Copy lat, lng of this waypoint",
@@ -690,7 +690,9 @@
       "pasteAdded_one": "Added {{count}} waypoint",
       "pasteAdded_other": "Added {{count}} waypoints",
       "position": "Position ({{format}})",
-      "positionInvalid": "Not a position in any coordinate format"
+      "positionInvalid": "Not a position in any coordinate format",
+      "makePolygonAll": "Polygon from all waypoints",
+      "makePolygonSelected": "Polygon from {{count}} selected"
     },
     "noCommandsMatch": "No commands match \"{{search}}\"",
     "param": {

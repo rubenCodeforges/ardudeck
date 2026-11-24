@@ -21,6 +21,7 @@ import planeUrl from '../../assets/airframes/plane.png';
 import vtolUrl from '../../assets/airframes/vtol.png';
 import roverUrl from '../../assets/airframes/rover.png';
 import boatUrl from '../../assets/airframes/boat.png';
+import heliUrl from '../../assets/airframes/heli.svg';
 
 export type AirframeKind =
   | 'multirotor'
@@ -76,7 +77,7 @@ function airframeImage(mavType: number | undefined): string {
     case 'rover': return roverUrl;
     case 'boat': return boatUrl;
     case 'sub': return boatUrl;   // nearest until a dedicated sub silhouette exists
-    case 'heli': return quadUrl;  // placeholder rotorcraft until heli art exists
+    case 'heli': return heliUrl;
     default: return quadUrl;
   }
 }

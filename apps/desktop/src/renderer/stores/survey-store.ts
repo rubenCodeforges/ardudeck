@@ -1452,3 +1452,18 @@ if (useSettingsStore.getState()._isInitialized) {
   const saved = useSettingsStore.getState().surveySavedConfig;
   if (saved) applySavedConfig(saved);
 }
+
+/** Plan a survey without touching the mission: the flight path, its mission item count and stats. Throws on generator errors. */
+export async function previewSurveyPlan(
+  rawPolygon: LatLng[],
+  override: Partial<SurveyConfig>,
+): Promise<{ path: LatLng[]; items: number; stats: SurveyResult['stats'] } | null> {
+  const config: SurveyConfig = { ...useSurveyStore.getState().config, ...override, polygon: [] };
+  const tolerance = useSettingsStore.getState().surveyPerformance.importSimplifyToleranceM;
+  const fullConfig: SurveyConfig = { ...config, polygon: simplifyPolygon(rawPolygon, tolerance), holes: [] };
+  const result = await runGenerator(fullConfig);
+  if (!result || result.waypoints.length === 0) return null;
+  const firmware = useConnectionStore.getState().connectionState.firmware;
+  const items = surveyToMissionItems(result, asOwnFlight(fullConfig), firmware).length;
+  return { path: result.waypoints, items, stats: result.stats };
+}

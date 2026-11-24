@@ -155,6 +155,7 @@
     "asksToSurvey": "{{from}} möchte eine Vermessung hinzufügen",
     "surveySummary": "{{pattern}} in {{alt}} m, {{area}}, {{extent}}",
     "surveyCorridor": "Korridor entlang {{count}} Punkten in {{alt}} m, {{extent}}",
+    "surveyPlan": "{{count}} Wegpunkte, {{lines}} Bahnen, etwa {{minutes}} min Vermessungsflug",
     "surveyNote": "ArduDeck plant die Fluglinien. Du kannst sie im Vermessungs-Panel anpassen. Erst beim Hochladen geht etwas an das Fluggerät.",
     "areaHa": "{{value}} ha",
     "areaM2": "{{value}} m²"
@@ -180,5 +181,9 @@
     "remember": "Dieses Golden ohne erneute Nachfrage auf jedes Board schreiben, bis die App neu startet",
     "write": "Golden schreiben",
     "arm": "Modell freigeben"
+  },
+  "moduleDrawer": {
+    "open": "{{title}} öffnen",
+    "resize": "Ziehen zum Ändern der Breite"
   }
 }

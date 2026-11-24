@@ -20,18 +20,19 @@ function extent(points: { lat: number; lng: number }[]): string {
 }
 
 /** The outline, so the pilot sees the shape rather than a point count. */
-function Outline({ points, closed = true }: { points: { lat: number; lng: number }[]; closed?: boolean }): JSX.Element | null {
+function Outline({ points, closed = true, path }: { points: { lat: number; lng: number }[]; closed?: boolean; path?: { lat: number; lng: number }[] }): JSX.Element | null {
   const { t } = useTranslation();
   if (points.length < (closed ? 3 : 2)) return null;
-  const lats = points.map((p) => p.lat);
-  const lngs = points.map((p) => p.lng);
+  const all = path ? [...points, ...path] : points;
+  const lats = all.map((p) => p.lat);
+  const lngs = all.map((p) => p.lng);
   const minLat = Math.min(...lats);
   const maxLat = Math.max(...lats);
   const minLng = Math.min(...lngs);
   const maxLng = Math.max(...lngs);
   const spanLat = maxLat - minLat || 1e-6;
   const spanLng = maxLng - minLng || 1e-6;
-  const d = points
+  const toPath = (pts: { lat: number; lng: number }[]) => pts
     .map((p, i) => {
       const x = 4 + ((p.lng - minLng) / spanLng) * 192;
       // SVG y grows downward; north should be up.
@@ -39,10 +40,12 @@ function Outline({ points, closed = true }: { points: { lat: number; lng: number
       return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`;
     })
     .join(' ');
+  const d = toPath(points);
   return (
     <svg viewBox="0 0 200 100" className="w-full h-[100px]" role="img" aria-label={t('modules:moduleProposalDialog.outlineLabel')}>
       <rect x="0" y="0" width="200" height="100" fill="rgba(255,255,255,0.03)" />
       <path d={closed ? `${d} Z` : d} fill={closed ? 'rgba(34,197,94,0.12)' : 'none'} stroke="#22c55e" strokeWidth="1.5" />
+      {path && path.length > 1 && <path d={toPath(path)} fill="none" stroke="#3b82f6" strokeWidth="1" strokeLinejoin="round" />}
     </svg>
   );
 }
@@ -105,12 +108,17 @@ export function ModuleProposalDialog(): JSX.Element | null {
             : t('modules:moduleProposalDialog.areaM2', { value: Math.round(sp.areaM2) });
           return (
             <div className="px-4 pt-3">
-              <Outline points={sp.polygon} closed={!corridor} />
+              <Outline points={sp.polygon} closed={!corridor} path={sp.path} />
               <div className="mt-2 text-xs text-content-secondary tabular-nums">
                 {corridor
                   ? t('modules:moduleProposalDialog.surveyCorridor', { count: sp.polygon.length, alt: Math.round(sp.altitudeM), extent: extent(sp.polygon) })
                   : t('modules:moduleProposalDialog.surveySummary', { pattern: sp.pattern, alt: Math.round(sp.altitudeM), area, extent: extent(sp.polygon) })}
               </div>
+              {sp.waypoints !== undefined && (
+                <div className="mt-1 text-xs font-medium text-content tabular-nums">
+                  {t('modules:moduleProposalDialog.surveyPlan', { count: sp.waypoints, lines: sp.lines ?? 0, minutes: sp.flightTimeMin ?? 0 })}
+                </div>
+              )}
               <div className="mt-2 rounded border border-subtle px-2 py-1.5 text-xs text-content-tertiary">{t('modules:moduleProposalDialog.surveyNote')}</div>
             </div>
           );

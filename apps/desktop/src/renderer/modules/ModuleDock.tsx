@@ -20,6 +20,7 @@ import {
   type RegisteredPanel,
 } from './module-panel-registry';
 import { ModulePanelWindow } from './ModulePanelWindow';
+import { openDrawer } from './module-drawer';
 
 const keyOf = (p: RegisteredPanel) => `${p.slug}:${p.id}`;
 const POS_KEY = 'ardudeck.moduleDock.pos';
@@ -103,6 +104,9 @@ export function ModuleDock() {
   const pick = (p: RegisteredPanel) => {
     if (p.size === 'large') {
       setWindowKey(keyOf(p));
+      setMenuOpen(false);
+    } else if (p.size === 'drawer') {
+      openDrawer(keyOf(p));
       setMenuOpen(false);
     } else {
       setOpenKey(keyOf(p));

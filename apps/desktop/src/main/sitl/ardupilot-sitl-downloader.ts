@@ -18,7 +18,7 @@ import { createWriteStream } from 'node:fs';
 import { mkdir, access, rm, rename, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import type {
-  ArduPilotVehicleType,
+  ArduPilotSitlBuild,
   ArduPilotReleaseTrack,
   ArduPilotSitlDownloadProgress,
   ArduPilotSitlBinaryInfo,
@@ -37,15 +37,16 @@ const CYGWIN_BASE_URL = 'https://firmware.ardupilot.org/Tools/MissionPlanner/sit
  * Must match the release tag produced by build-sitl.yml.
  * Update this when a new SITL build is published.
  */
-const SITL_RELEASE_TAG = 'sitl-vmaster-20260429';
+const SITL_RELEASE_TAG = 'sitl-vmaster-20261123';
 
 // ── Vehicle mapping ──────────────────────────────────────────────────────────
 
-const VEHICLE_MAP: Record<ArduPilotVehicleType, { dir: string; binary: string; cygwinBinary: string }> = {
+const VEHICLE_MAP: Record<ArduPilotSitlBuild, { dir: string; binary: string; cygwinBinary: string }> = {
   copter: { dir: 'Copter', binary: 'arducopter', cygwinBinary: 'ArduCopter' },
   plane: { dir: 'Plane', binary: 'arduplane', cygwinBinary: 'ArduPlane' },
   rover: { dir: 'Rover', binary: 'ardurover', cygwinBinary: 'ArduRover' },
   sub: { dir: 'Sub', binary: 'ardusub', cygwinBinary: 'ArduSub' },
+  heli: { dir: 'Copter', binary: 'arducopter-heli', cygwinBinary: 'ArduHeli' },
 };
 
 const TRACK_MAP: Record<ArduPilotReleaseTrack, string> = {
@@ -56,24 +57,27 @@ const TRACK_MAP: Record<ArduPilotReleaseTrack, string> = {
 
 // ── URL builders ─────────────────────────────────────────────────────────────
 
-function getMacDownloadUrl(vehicleType: ArduPilotVehicleType): string {
+function getMacDownloadUrl(vehicleType: ArduPilotSitlBuild): string {
   const vehicle = VEHICLE_MAP[vehicleType];
   const arch = process.arch === 'x64' ? 'macos-x64' : 'macos-arm64';
   return `${GITHUB_RELEASES_URL}/${SITL_RELEASE_TAG}/${vehicle.binary}-${arch}`;
 }
 
-function getLinuxDownloadUrl(vehicleType: ArduPilotVehicleType, releaseTrack: ArduPilotReleaseTrack): string {
+function getLinuxDownloadUrl(vehicleType: ArduPilotSitlBuild, releaseTrack: ArduPilotReleaseTrack): string {
   const vehicle = VEHICLE_MAP[vehicleType];
+  // firmware.ardupilot.org publishes no Linux heli SITL; ours does
+  if (vehicleType === 'heli') return `${GITHUB_RELEASES_URL}/${SITL_RELEASE_TAG}/${vehicle.binary}-linux-x64`;
   const track = TRACK_MAP[releaseTrack];
   return `${FIRMWARE_BASE_URL}/${vehicle.dir}/${track}/SITL_x86_64_linux_gnu/${vehicle.binary}`;
 }
 
-function getWindowsDownloadUrl(vehicleType: ArduPilotVehicleType, releaseTrack: ArduPilotReleaseTrack): string {
+function getWindowsDownloadUrl(vehicleType: ArduPilotSitlBuild, releaseTrack: ArduPilotReleaseTrack): string {
   const vehicle = VEHICLE_MAP[vehicleType];
 
   let urlPath: string;
   if (releaseTrack === 'stable') {
-    const capitalizedType = vehicleType.charAt(0).toUpperCase() + vehicleType.slice(1);
+    const stableDir = vehicle.dir === 'Copter' ? 'copter' : vehicleType;
+    const capitalizedType = stableDir.charAt(0).toUpperCase() + stableDir.slice(1);
     urlPath = `${capitalizedType}Stable/${vehicle.cygwinBinary}.elf`;
   } else if (releaseTrack === 'beta') {
     urlPath = `Beta/${vehicle.cygwinBinary}.elf`;
@@ -84,7 +88,7 @@ function getWindowsDownloadUrl(vehicleType: ArduPilotVehicleType, releaseTrack: 
   return `${CYGWIN_BASE_URL}/${urlPath}`;
 }
 
-function getDownloadUrl(vehicleType: ArduPilotVehicleType, releaseTrack: ArduPilotReleaseTrack): string {
+function getDownloadUrl(vehicleType: ArduPilotSitlBuild, releaseTrack: ArduPilotReleaseTrack): string {
   if (process.platform === 'darwin') {
     // macOS: native binary from our GitHub releases (no Docker needed)
     return getMacDownloadUrl(vehicleType);
@@ -147,7 +151,7 @@ class ArduPilotSitlDownloader {
     } catch { /* macos dir doesn't exist yet — fresh install, nothing to clean */ }
   }
 
-  getBinaryPath(vehicleType: ArduPilotVehicleType, releaseTrack: ArduPilotReleaseTrack): string {
+  getBinaryPath(vehicleType: ArduPilotSitlBuild, releaseTrack: ArduPilotReleaseTrack): string {
     const vehicle = VEHICLE_MAP[vehicleType];
     const basePath = this.getBasePath();
 
@@ -168,7 +172,7 @@ class ArduPilotSitlDownloader {
     return path.join(basePath, releaseTrack, vehicleType, vehicle.binary);
   }
 
-  async checkBinary(vehicleType: ArduPilotVehicleType, releaseTrack: ArduPilotReleaseTrack): Promise<ArduPilotSitlBinaryInfo> {
+  async checkBinary(vehicleType: ArduPilotSitlBuild, releaseTrack: ArduPilotReleaseTrack): Promise<ArduPilotSitlBinaryInfo> {
     const binaryPath = this.getBinaryPath(vehicleType, releaseTrack);
 
     try {
@@ -180,7 +184,7 @@ class ArduPilotSitlDownloader {
   }
 
   async download(
-    vehicleType: ArduPilotVehicleType,
+    vehicleType: ArduPilotSitlBuild,
     releaseTrack: ArduPilotReleaseTrack
   ): Promise<{ success: boolean; path?: string; error?: string }> {
     const binaryPath = this.getBinaryPath(vehicleType, releaseTrack);

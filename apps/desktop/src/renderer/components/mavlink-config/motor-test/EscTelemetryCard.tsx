@@ -10,7 +10,9 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Thermometer } from 'lucide-react';
 import { useTelemetryStore } from '../../../stores/telemetry-store';
-import { testOrderToLabel } from './motor-layout-utils';
+import { testOrderToLabel, motorOutputIndex } from './motor-layout-utils';
+import { useParameterStore } from '../../../stores/parameter-store';
+import { useConnectionStore } from '../../../stores/connection-store';
 import type { FrameLayout } from '../../../../shared/motor-test-types';
 
 interface EscTelemetryCardProps {
@@ -42,6 +44,8 @@ export const EscTelemetryCard: React.FC<EscTelemetryCardProps> = ({ layout }) =>
   const lastEscTelemetry = useTelemetryStore((s) => s.lastEscTelemetry);
   const servoOutput = useTelemetryStore((s) => s.servoOutput);
   const lastServoOutput = useTelemetryStore((s) => s.lastServoOutput);
+  const parameters = useParameterStore((s) => s.parameters);
+  const isPx4 = useConnectionStore((s) => s.connectionState.firmware === 'px4');
 
   const escStale = lastEscTelemetry === 0 || Date.now() - lastEscTelemetry > 3000;
   const hasAnyEsc = escTelemetry?.motors.some((m) => m !== undefined) ?? false;
@@ -72,8 +76,9 @@ export const EscTelemetryCard: React.FC<EscTelemetryCardProps> = ({ layout }) =>
           .slice()
           .sort((a, b) => a.Number - b.Number)
           .map((m) => {
-            const data = escTelemetry?.motors[m.Number - 1];
-            const pwm = servoOutput?.outputs[m.Number - 1];
+            const ch = isPx4 ? m.Number - 1 : motorOutputIndex(m.Number, (key) => parameters.get(key)?.value);
+            const data = escTelemetry?.motors[ch];
+            const pwm = servoOutput?.outputs[ch];
             const hasPwm = pwm !== undefined && pwm > 0;
 
             return (

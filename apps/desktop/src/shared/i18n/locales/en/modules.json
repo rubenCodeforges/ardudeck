@@ -155,6 +155,7 @@
     "asksToSurvey": "{{from}} asks to add a survey",
     "surveySummary": "{{pattern}} at {{alt}} m, {{area}}, {{extent}}",
     "surveyCorridor": "Corridor along {{count}} points at {{alt}} m, {{extent}}",
+    "surveyPlan": "{{count}} waypoints, {{lines}} lines, about {{minutes}} min of survey flight",
     "surveyNote": "ArduDeck plans the flight lines. You can tune them in the survey panel. Nothing goes to the aircraft until you upload.",
     "areaHa": "{{value}} ha",
     "areaM2": "{{value}} m²"
@@ -180,5 +181,9 @@
     "remember": "Write this golden to every board without asking again until the app restarts",
     "write": "Write golden",
     "arm": "Arm this model"
+  },
+  "moduleDrawer": {
+    "open": "Open {{title}}",
+    "resize": "Drag to resize"
   }
 }

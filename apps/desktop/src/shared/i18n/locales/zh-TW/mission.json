@@ -627,7 +627,7 @@
       "copyAllTip": "複製所有航點的緯度、經度(每行一個)",
       "copyCoords": "複製座標",
       "makePolygon": "產生多邊形",
-      "makePolygonTip": "依任務順序把所選航點連成多邊形，並在其上規劃測繪。適合步行或飛行採集後下載的邊界。需要至少 3 個有座標的航點。",
+      "makePolygonTip": "依任務順序將航點轉為多邊形,並在其上規劃測繪。使用選取的航點,未選取時使用全部航點。適合步行或飛行後下載的邊界。需要 3 個或更多帶位置的航點。",
       "polygonName": "航點 {{from}}-{{to}} 多邊形",
       "copySelectedTip": "複製所選航點的緯度、經度(每行一個)",
       "copyThisTip": "複製此航點的緯度、經度",
@@ -690,7 +690,9 @@
       "pasteAdded_one": "Added {{count}} waypoint",
       "pasteAdded_other": "已新增 {{count}} 個航點",
       "position": "位置({{format}})",
-      "positionInvalid": "不是任何座標格式的位置"
+      "positionInvalid": "不是任何座標格式的位置",
+      "makePolygonAll": "由所有航點產生多邊形",
+      "makePolygonSelected": "由 {{count}} 個選取航點產生多邊形"
     },
     "noCommandsMatch": "沒有符合「{{search}}」的指令",
     "param": {

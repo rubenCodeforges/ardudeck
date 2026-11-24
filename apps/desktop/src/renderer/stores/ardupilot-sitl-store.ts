@@ -21,6 +21,7 @@ import type {
   ArduPilotFrameCatalog,
   ArduPilotFrameInfo,
 } from '../../shared/ipc-channels.js';
+import { sitlBuildFor } from '../../shared/ipc-channels.js';
 
 export interface ExternalStartRequest {
   vehicleType: ArduPilotVehicleType;
@@ -587,13 +588,14 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
 
       // Download binary
       download: async () => {
-        const { vehicleType, releaseTrack, appendOutput } = get();
+        const { vehicleType, model, releaseTrack, appendOutput } = get();
+        const build = sitlBuildFor(vehicleType, model);
 
         set({ isDownloading: true, lastError: null });
-        appendOutput(`\n--- Downloading ArduPilot SITL binary (${vehicleType} ${releaseTrack}) ---\n`);
+        appendOutput(`\n--- Downloading ArduPilot SITL binary (${build} ${releaseTrack}) ---\n`);
 
         try {
-          const result = await window.electronAPI.ardupilotSitlDownload(vehicleType, releaseTrack);
+          const result = await window.electronAPI.ardupilotSitlDownload(build, releaseTrack);
 
           if (result.success) {
             set({ isDownloading: false });
@@ -616,10 +618,10 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
 
       // Check if binary exists
       checkBinary: async () => {
-        const { vehicleType, releaseTrack } = get();
+        const { vehicleType, model, releaseTrack } = get();
 
         try {
-          const info = await window.electronAPI.ardupilotSitlCheckBinary(vehicleType, releaseTrack);
+          const info = await window.electronAPI.ardupilotSitlCheckBinary(sitlBuildFor(vehicleType, model), releaseTrack);
           set({ binaryInfo: info });
         } catch {
           set({ binaryInfo: null });
@@ -690,13 +692,13 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
           get().appendOutput(
             `\n--- Auto-switching to ${recovery.suggestedTrack} track for "${recovery.model}" (last run on ${recovery.failedTrack} crashed in ${recovery.uptimeMs}ms${recovery.signal ? `, ${recovery.signal}` : ''}) ---\n`,
           );
-          const info = await window.electronAPI.ardupilotSitlCheckBinary(recovery.vehicleType, recovery.suggestedTrack);
+          const info = await window.electronAPI.ardupilotSitlCheckBinary(sitlBuildFor(recovery.vehicleType, recovery.model), recovery.suggestedTrack);
           set({ binaryInfo: info });
           if (!info.exists) {
             get().appendOutput(`Downloading ${recovery.suggestedTrack} ${recovery.vehicleType}…\n`);
             set({ isDownloading: true });
-            await window.electronAPI.ardupilotSitlDownload(recovery.vehicleType, recovery.suggestedTrack);
-            const after = await window.electronAPI.ardupilotSitlCheckBinary(recovery.vehicleType, recovery.suggestedTrack);
+            await window.electronAPI.ardupilotSitlDownload(sitlBuildFor(recovery.vehicleType, recovery.model), recovery.suggestedTrack);
+            const after = await window.electronAPI.ardupilotSitlCheckBinary(sitlBuildFor(recovery.vehicleType, recovery.model), recovery.suggestedTrack);
             set({ binaryInfo: after, isDownloading: false });
             if (!after.exists) {
               set({ lastError: i18nT('stores:ardupilotSitlStore.downloadBinaryFailed', { track: recovery.suggestedTrack }) });
@@ -755,7 +757,10 @@ export const useArduPilotSitlStore = create<ArduPilotSitlStore>()(
         set({ vehicleType: type, model: defaultModel, binaryInfo: null });
         get().checkBinary();
       },
-      setModel: (model) => set({ model }),
+      setModel: (model) => {
+        set({ model });
+        void get().checkBinary();
+      },
       setReleaseTrack: (track) => {
         // Explicit user choice overrides any prior auto-upgrade. Without
         // this, clicking "Stable" while a frame had been auto-bumped to

@@ -192,91 +192,9 @@ async function init(): Promise<void> {
     });
   });
 
-  register(TESTING_CHANNELS.ENSURE_PARAMETERS_LOADED, async (params) => {
-    // Reads the parameter store (lazy-imported to avoid circular deps).
-    // If the param map is empty, triggers fetchParameters() and waits for
-    // isLoading to flip back to false (or timeout).
-    const timeout = params?.timeout ?? 30000;
-    const mod = await import('../stores/parameter-store');
-    const store = mod.useParameterStore;
-    const snap = () => {
-      const s = store.getState() as any;
-      return {
-        size: s.parameters?.size ?? 0,
-        isLoading: !!s.isLoading,
-        // A full download landed, as opposed to a few parameters that happen to
-        // be sitting in the store. Connect-time batch reads (safety monitor,
-        // Q_ENABLE, calibration) put a handful there before anything is
-        // downloaded, so `size > 0` reported "already loaded" with six
-        // unrelated entries and every lookup came back empty until the user
-        // opened the Parameters screen and triggered a real fetch.
-        complete: typeof s.hasFullParameterSet === 'function' ? s.hasFullParameterSet() : s.size > 0,
-      };
-    };
-
-    const initial = snap();
-    if (initial.complete && initial.size > 0) {
-      return { ok: true, count: initial.size, alreadyLoaded: true };
-    }
-
-    // Kick off a download if no fetch is already in flight.
-    if (!initial.isLoading) {
-      const fetchParameters = (store.getState() as any).fetchParameters as
-        | (() => Promise<void>)
-        | undefined;
-      if (typeof fetchParameters !== 'function') {
-        throw new Error('parameter store has no fetchParameters action');
-      }
-      void fetchParameters();
-    }
-
-    // Wait for a COMPLETED download, not merely for loading to stop.
-    return new Promise<{ ok: true; count: number; alreadyLoaded: false }>((resolve, reject) => {
-      const start = Date.now();
-      let stableStart: number | null = null;
-      const unsub = store.subscribe(() => {});
-      const tick = () => {
-        const s = snap();
-        if (s.complete && s.size > 0 && !s.isLoading) {
-          // Settle for 250ms to avoid returning mid-download when batches arrive.
-          if (stableStart === null) stableStart = Date.now();
-          if (Date.now() - stableStart >= 250) {
-            unsub();
-            resolve({ ok: true, count: s.size, alreadyLoaded: false });
-            return;
-          }
-        } else {
-          stableStart = null;
-        }
-        if (Date.now() - start > timeout) {
-          unsub();
-          reject(new Error(`Timeout (${timeout}ms) waiting for parameters to load`));
-          return;
-        }
-        setTimeout(tick, 100);
-      };
-      tick();
-    });
-  });
-
-  register(TESTING_CHANNELS.PROPOSE_PARAMETERS, async (params) => {
-    const { proposeParameterChanges } = await import('../lib/param-proposal');
-    return proposeParameterChanges(params?.proposals ?? [], params?.timeout);
-  });
-
-  register(TESTING_CHANNELS.GET_MISSION, async () => (await import('./agent-planning')).getMission());
-  register(TESTING_CHANNELS.PROPOSE_MISSION, async (params) => (await import('./agent-planning')).agentProposeMission(params));
-  register(TESTING_CHANNELS.PROPOSE_SURVEY, async (params) => (await import('./agent-planning')).agentProposeSurvey(params));
-  register(TESTING_CHANNELS.LIST_SURVEY_OPTIONS, async () => (await import('./agent-planning')).listSurveyOptions());
-  register(TESTING_CHANNELS.DRAW_AREA, async (params) => (await import('./agent-planning')).agentDrawArea(params));
-  register(TESTING_CHANNELS.LIST_AREAS, async () => (await import('./agent-planning')).agentListAreas());
-  register(TESTING_CHANNELS.DELETE_AREA, async (params) => (await import('./agent-planning')).agentDeleteArea(params));
-  register(TESTING_CHANNELS.SURVEY_AREA, async (params) => (await import('./agent-planning')).agentSurveyArea(params));
-  register(TESTING_CHANNELS.FIT_MISSION, async (params) => (await import('./agent-planning')).agentFitMission(params));
-  register(TESTING_CHANNELS.SET_HOME, async (params) => (await import('./agent-planning')).agentSetHome(params));
-  register(TESTING_CHANNELS.SET_VEHICLE_PROFILE, async (params) => (await import('./agent-planning')).agentSetVehicleProfile(params));
-  register(TESTING_CHANNELS.GET_FLIGHT_ESTIMATE, async (params) => (await import('./agent-planning')).agentFlightEstimate(params));
-  register(TESTING_CHANNELS.PROPOSE_FENCE, async (params) => (await import('./agent-planning')).agentProposeFence(params));
+  register(TESTING_CHANNELS.SITL_STATUS, async () => (await import('./agent-sitl')).agentSitlStatus());
+  register(TESTING_CHANNELS.SITL_START, async (params) => (await import('./agent-sitl')).agentSitlStart(params));
+  register(TESTING_CHANNELS.SITL_STOP, async () => (await import('./agent-sitl')).agentSitlStop());
 
   // Signal that the test driver is ready
   window.__testing.signalReady();

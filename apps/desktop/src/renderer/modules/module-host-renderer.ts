@@ -76,6 +76,9 @@ import { viewOwnerSlug, CARGO_VIEWS } from './capabilities';
 import { cargoThemeKey, themeRegistry } from './module-theme-registry';
 import { cargoNamespace } from './slug-registry';
 import { createSetupApi } from './module-setup-api';
+import { describeAiTools } from '../../shared/ai-tools/definitions';
+import { runAiTool } from '../ai-tools/run';
+import { renderMarkdown } from '../components/lua-graph/docs/markdown-renderer';
 import { vaultWorkspaceState, subscribeVaultWorkspace } from './vault-workspace';
 import * as productionHost from './production-host';
 import { sampleCanBusHealth } from '../lib/can-bus-health';
@@ -475,6 +478,18 @@ export function createRendererHostApi(
         if (!log) return { error: 'No flight log is open in the Log Explorer.' }; // i18n-exempt
         return executeLogTool(name, input, log);
       },
+    },
+
+    ui: {
+      markdown: (text) => renderMarkdown(text),
+    },
+
+    aiTools: {
+      list: () => describeAiTools(),
+      call: (name, input) => runAiTool(name, input),
+      mcpStatus: () => window.electronAPI.aiToolsMcpStatus(),
+      rotateMcpToken: () => window.electronAPI.aiToolsMcpRotateToken(),
+      installClaudeDesktop: () => window.electronAPI.aiToolsMcpInstallClaudeDesktop(),
     },
 
     pty: {

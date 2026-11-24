@@ -7,6 +7,7 @@
  * - Exclusion Zones (polygons and circles)
  */
 
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFenceStore } from '../../stores/fence-store';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -36,6 +37,7 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
     setSelectedFenceId,
     removePolygon,
     removeCircle,
+    updateCircle,
     clearReturnPoint,
   } = useFenceStore();
   const { t } = useTranslation();
@@ -165,6 +167,8 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
                   isSelected={selectedFenceId === circle.id}
                   color="green"
                   readOnly={readOnly}
+                  radius={circle.radius}
+                  onRadius={(r) => updateCircle(circle.id, undefined, r)}
                   onSelect={() => setSelectedFenceId(circle.id)}
                   onRemove={() => removeCircle(circle.id)}
                 />
@@ -204,6 +208,8 @@ export function FenceListPanel({ readOnly = false }: FenceListPanelProps) {
                   isSelected={selectedFenceId === circle.id}
                   color="red"
                   readOnly={readOnly}
+                  radius={circle.radius}
+                  onRadius={(r) => updateCircle(circle.id, undefined, r)}
                   onSelect={() => setSelectedFenceId(circle.id)}
                   onRemove={() => removeCircle(circle.id)}
                 />
@@ -245,9 +251,11 @@ interface FenceListItemProps {
   readOnly: boolean;
   onSelect: () => void;
   onRemove: () => void;
+  radius?: number;
+  onRadius?: (radius: number) => void;
 }
 
-function FenceListItem({ id, type, label, isSelected, color, readOnly, onSelect, onRemove }: FenceListItemProps) {
+function FenceListItem({ id, type, label, isSelected, color, readOnly, onSelect, onRemove, radius, onRadius }: FenceListItemProps) {
   const { t } = useTranslation();
   const bgColor = isSelected
     ? color === 'green'
@@ -274,7 +282,11 @@ function FenceListItem({ id, type, label, isSelected, color, readOnly, onSelect,
             </svg>
           )}
         </span>
-        <span className="text-xs">{label}</span>
+        {isSelected && !readOnly && radius !== undefined && onRadius ? (
+          <RadiusField radius={radius} onCommit={onRadius} />
+        ) : (
+          <span className="text-xs">{label}</span>
+        )}
       </div>
       {!readOnly && (
         <button
@@ -288,5 +300,31 @@ function FenceListItem({ id, type, label, isSelected, color, readOnly, onSelect,
         </button>
       )}
     </div>
+  );
+}
+
+function RadiusField({ radius, onCommit }: { radius: number; onCommit: (r: number) => void }) {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState(String(Math.round(radius)));
+  useEffect(() => setDraft(String(Math.round(radius))), [radius]);
+  const commit = () => {
+    const n = Number(draft);
+    if (Number.isFinite(n) && n >= 1) onCommit(Math.round(n));
+    else setDraft(String(Math.round(radius)));
+  };
+  return (
+    <label className="flex items-center gap-1 text-xs" onClick={(e) => e.stopPropagation()}>
+      <span className="text-content-secondary">{t('geofence:fenceListPanel.radiusLabel')}</span>
+      <input
+        type="number"
+        min={1}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+        className="w-20 rounded border border-subtle bg-surface-raised px-1.5 py-0.5 font-mono text-xs text-content focus:border-blue-500 focus:outline-none"
+      />
+      <span className="text-content-secondary">m</span>
+    </label>
   );
 }

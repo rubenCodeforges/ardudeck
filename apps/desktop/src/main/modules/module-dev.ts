@@ -38,6 +38,17 @@ export function getDevModulePath(slug: string): string | null {
   return getDevModules().find((m) => m.slug === slug)?.path ?? null;
 }
 
+/** Version from the dev module's module.json on disk, so a rebuild counts without reloading it. */
+export function getDevModuleVersion(slug: string): string | null {
+  const dir = getDevModulePath(slug);
+  if (!dir) return null;
+  try {
+    return (JSON.parse(readFileSync(join(dir, 'module.json'), 'utf-8')) as { version?: string }).version ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function loadDevModule(
   dir: string,
   installedSlugs: readonly string[],

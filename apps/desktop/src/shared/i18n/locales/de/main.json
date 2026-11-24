@@ -235,7 +235,7 @@
     "missionUploadInProgress": "Es wird bereits eine andere Mission hochgeladen",
     "motorTestNeedsMavlink": "Motortest erfordert eine MAVLink-Verbindung",
     "noBoardIdentity": "Keine Board-Identität",
-    "noClaudeKey": "Kein API-Schlüssel für Claude konfiguriert. Fügen Sie ihn in den Einstellungen hinzu.",
+    "noClaudeKey": "Noch kein Claude-API-Schlüssel. Trage ihn einmal im Claude-Advisor-Panel ein (Zahnrad); Advisor und Flug-Log-Analyse nutzen ihn beide.",
     "noCompatibleFirmware": "Keine kompatible Firmware erkannt",
     "noDjiWaypoints": "Keine Wegpunkte in der DJI-Mission gefunden",
     "noExportableWaypoints": "Keine exportierbaren Wegpunkte (DJI KMZ benötigt einfache Wegpunkte mit Koordinaten)",

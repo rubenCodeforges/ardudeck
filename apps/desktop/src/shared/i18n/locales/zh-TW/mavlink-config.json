@@ -711,7 +711,9 @@
       "tuningDesc": "效能預設與基本調校",
       "tuningGroupDesc": "PID 增益、速率曲線與效能預設",
       "quickSetup": "Quick setup",
-      "quickSetupDesc": "The settings changed most often, as simple controls"
+      "quickSetupDesc": "The settings changed most often, as simple controls",
+      "heliSetup": "直升機設定",
+      "heliSetupDesc": "傳統直升機的斜盤、總距、尾槳和旋翼轉速控制"
     },
     "title": "{{firmware}} 設定",
     "unsaved": "未儲存",
@@ -1195,7 +1197,9 @@
     "readyToArm": "可以解鎖",
     "skipCheck": "略過此檢查",
     "skipTip": "解鎖前停止檢查 {{name}}。只有在硬體確實不存在時才這樣做。",
-    "willNotArm": "不會解鎖"
+    "willNotArm": "不會解鎖",
+    "fixHeli": "直升機拒絕解鎖:請在直升機設定中修正(馬達互鎖開關、旋翼轉速控制、斜盤)。",
+    "openHeliSetup": "開啟直升機設定"
   },
   "px4ArmingConfig": {
     "allActive": "此載具提供的每一項檢查都在啟用中",
@@ -2526,5 +2530,140 @@
     "flashNote": "寫入快閃記憶體之前不會傳送任何內容。",
     "confirm_other": "重設 {{count}} 個值",
     "staged_other": "已將 {{count}} 個值恢復預設。請檢查後寫入快閃記憶體。"
+  },
+  "heli": {
+    "noParams": "此主機板上沒有直升機參數。直升機設定需要 ArduCopter 直升機韌體。",
+    "svManActive": "手動伺服模式已開啟 (H_SV_MAN)。斜盤將跟隨它而不是飛控。飛行前請將其設回關閉。",
+    "roles": {
+      "swashServo": "斜盤伺服 {{n}}",
+      "swash2Servo": "斜盤 2 伺服 {{n}}",
+      "tailServo": "尾伺服",
+      "tailEsc": "尾槳電調",
+      "extGyro": "外接陀螺儀增益",
+      "rsc": "主旋翼電調 / 油門",
+      "tailRsc": "尾槳電調"
+    },
+    "swash": {
+      "title": "斜盤",
+      "subtitle": "斜盤幾何結構及伺服推動方式",
+      "type": "斜盤類型",
+      "type2": "斜盤 2 類型",
+      "servoPos": "伺服 {{n}} 位置",
+      "phaseAngle": "相位角補償",
+      "colDir": "總距方向",
+      "colDir2": "斜盤 2 總距方向",
+      "colDirHint": "在下方設定中點總距後,搖桿上增加總距必須使斜盤升高。若下降,請在此處反向,不要在伺服上反向。",
+      "linearize": "伺服線性化",
+      "flybar": "平衡桿",
+      "dualMode": "雙直升機配置",
+      "dcpScaler": "差動總距比例"
+    },
+    "outputs": {
+      "title": "直升機輸出",
+      "servo": "SERVO{{ch}}",
+      "none": "尚未為斜盤伺服、尾部或旋翼電調分配任何輸出。請在伺服輸出中分配。",
+      "missingSwash": "已分配的斜盤伺服少於 3 個。斜盤伺服是伺服輸出中的 Motor1、Motor2 和 Motor3。"
+    },
+    "collective": {
+      "title": "總距和週期變距",
+      "subtitle": "槳葉螺距範圍,以伺服 PWM 表示",
+      "max": "最大總距",
+      "mid": "零拉力總距",
+      "midHint": "主槳葉螺距為零時的 PWM。在中點總距模式下用螺距尺測量。",
+      "min": "最小總距",
+      "cycMax": "最大週期變距",
+      "cycMaxHint": "槳葉最大週期螺距。用螺距尺測量。",
+      "hover": "學習到的懸停總距: {{v}}%",
+      "svMan": "手動伺服模式",
+      "svManHint": "直接寫入主機板。用中點配合伺服輸出中的伺服微調調平斜盤,再用最大和最小測量槳葉螺距。飛行時設為關閉。",
+      "svManMode": {
+        "0": "關閉",
+        "1": "直通",
+        "2": "最大",
+        "3": "中點",
+        "4": "最小"
+      },
+      "anglesTitle": "槳葉螺距角",
+      "angMax": "最大槳葉螺距",
+      "angZero": "零推力槳葉螺距",
+      "angZeroHint": "旋翼不產生升力時的槳葉螺距。對稱槳葉為 0°。",
+      "angMin": "最小槳葉螺距",
+      "landMin": "著陸最小值",
+      "landMinHint": "地面上和著陸過程中允許的最低總距。",
+      "anglesHint": "在手動伺服模式 Max 和 Min 下用螺距尺測量,並輸入槳葉的讀數。",
+      "subtitleAngles": "槳葉螺距範圍(度),以螺距尺測量",
+      "gaugeHint": "拖動標記來修改數值。在手動伺服模式 Max 和 Min 下用螺距尺測量實際槳葉角度。",
+      "endpoints": "伺服端點(PWM)"
+    },
+    "tail": {
+      "title": "尾槳",
+      "subtitle": "偏航的驅動方式",
+      "type": "尾部類型",
+      "gyrGain": "外接陀螺儀增益",
+      "gyrGainAcro": "Acro 下的外接陀螺儀增益",
+      "speed": "尾電調速度",
+      "colYaw": "總距到偏航混控",
+      "colYawHint": "將總距混入尾部,使總距變化時機頭保持不動。"
+    },
+    "rsc": {
+      "title": "旋翼轉速控制",
+      "subtitle": "主旋翼電調或引擎油門的驅動方式",
+      "mode": "旋翼轉速控制模式",
+      "noOutput": "沒有輸出設為 HeliRSC (功能 31)。主旋翼不會轉動。請在伺服輸出中分配。",
+      "setpoint": "電調調速器設定值",
+      "curve": "油門曲線",
+      "curvePoint": "總距 {{pct}}% 時的油門",
+      "govRpm": "調速器旋翼轉速",
+      "govRange": "調速器工作範圍",
+      "govDroop": "調速器下垂響應",
+      "govTcGain": "油門曲線增益",
+      "govDisengage": "調速器脫離油門",
+      "govNeedsRpm": "調速器需要旋翼轉速感測器。請先設定 RPM1。",
+      "idle": "怠速油門",
+      "ramp": "油門爬升時間",
+      "rampHint": "油門從怠速升到飛行所需的秒數。",
+      "runup": "旋翼加速時間",
+      "runupHint": "旋翼達到全速所需的秒數。在此之前起飛會被保持。",
+      "runupTooShort": "加速時間 ({{runup}} s) 必須比爬升時間 ({{ramp}} s) 至少長 1 s。否則 ArduPilot 會拒絕解鎖。",
+      "critical": "臨界旋翼轉速",
+      "criticalHint": "低於此轉速將無法飛行。設定時讓估算值在約 3 s 內降到其以下:加速 10 s 時為 70%。",
+      "idleHint": "電動直升機為零。引擎則為離合器分離的地面怠速。",
+      "curveX": "總距 %",
+      "curveY": "油門 %"
+    },
+    "interlock": {
+      "title": "馬達連鎖開關",
+      "none": "未分配",
+      "channel": "遙控通道 {{ch}}",
+      "hint": "連鎖撥低(旋翼關閉)時解鎖,然後撥高以加速旋翼。連鎖在高位時 ArduPilot 不會解鎖。",
+      "missing": "直升機需要馬達連鎖開關。沒有它 ArduPilot 不會解鎖。",
+      "state": {
+        "on": "旋翼開啟",
+        "off": "旋翼關閉",
+        "unknown": "無遙控訊號",
+        "missing": "未分配"
+      }
+    },
+    "status": {
+      "swash": "斜盤",
+      "swashValue": "{{type}} · 3 個伺服中已分配 {{n}} 個",
+      "interlock": "馬達互鎖",
+      "rsc": "旋翼轉速控制",
+      "noRscOutput": "沒有旋翼電變輸出",
+      "servoMode": "手動伺服模式"
+    },
+    "diagram": {
+      "roll": "橫滾",
+      "pitch": "俯仰",
+      "collective": "總距",
+      "tail": "尾部"
+    },
+    "trims": {
+      "title": "伺服微調",
+      "servo": "伺服",
+      "live": "即時 µs",
+      "trim": "微調",
+      "hint": "將手動伺服模式設為 Mid,然後逐一微調伺服,直到斜盤水平且槳葉為零螺距。輸入時即傳送變更。"
+    }
   }
 }

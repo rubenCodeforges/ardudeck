@@ -43,6 +43,10 @@ void initRendererI18n().then(() => {
   );
 });
 
+if (!isDetached && !isSurface) {
+  void import('./ai-tools/bridge').then((m) => m.initAiToolBridge());
+}
+
 // Dev-only: initialize test driver IPC handlers (main window only — pop-outs
 // don't need test driver hooks). Uses import.meta.env.DEV for Vite tree-shaking.
 if (import.meta.env.DEV && !isDetached) {

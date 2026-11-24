@@ -28,9 +28,11 @@ interface VaultSyncBadgeProps {
    * (parameters header next to Refresh/Reboot).
    */
   variant?: 'icon' | 'button';
+  /** 'button' without its label, for narrow headers; the label moves into the tooltip. */
+  iconOnly?: boolean;
 }
 
-export function VaultSyncBadge({ variant = 'icon' }: VaultSyncBadgeProps) {
+export function VaultSyncBadge({ variant = 'icon', iconOnly = false }: VaultSyncBadgeProps) {
   const { t } = useTranslation();
   const status = useFleetRepoStore((s) => s.status);
   const refresh = useFleetRepoStore((s) => s.refresh);
@@ -81,11 +83,12 @@ export function VaultSyncBadge({ variant = 'icon' }: VaultSyncBadgeProps) {
         <button {...ui('chip', { status: connected ? 'pass' : 'info' })}
           ref={btnRef}
           onClick={toggle}
-          data-tip={tip}
-          className="px-4 py-2 text-sm rounded-lg flex items-center gap-2 bg-surface-raised hover:bg-surface text-content border border-subtle"
+          data-tip={iconOnly ? `${connected ? t('vault:vaultSyncBadge.backupOn') : t('vault:vaultSyncBadge.setUp')}. ${tip}` : tip}
+          aria-label={connected ? t('vault:vaultSyncBadge.backupOn') : t('vault:vaultSyncBadge.setUp')}
+          className={`${iconOnly ? 'p-2' : 'px-4 py-2'} shrink-0 whitespace-nowrap text-sm rounded-lg flex items-center gap-2 bg-surface-raised hover:bg-surface text-content border border-subtle`}
         >
           <Icon className={`w-4 h-4 ${connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-content-secondary'}`} />
-          {connected ? t('vault:vaultSyncBadge.backupOn') : t('vault:vaultSyncBadge.setUp')}
+          {!iconOnly && (connected ? t('vault:vaultSyncBadge.backupOn') : t('vault:vaultSyncBadge.setUp'))}
         </button>
       ) : (
         <button {...ui('chip', { status: connected ? 'pass' : 'info' })}

@@ -200,7 +200,13 @@ export const useTelemetryStore = create<TelemetryStore>((set, get) => ({
       updates.lastVibration = now;
     }
     if (batch.escTelemetry) {
-      updates.escTelemetry = batch.escTelemetry;
+      // ESC_TELEMETRY_1_TO_4 / 5_TO_8 / 9_TO_12 arrive in separate batches: keep the groups this batch did not carry
+      const prev = get().escTelemetry?.motors ?? [];
+      const motors = prev.slice();
+      batch.escTelemetry.motors.forEach((m, i) => {
+        if (m) motors[i] = m;
+      });
+      updates.escTelemetry = { ...batch.escTelemetry, motors };
       updates.lastEscTelemetry = now;
     }
     if (batch.servoOutput) {

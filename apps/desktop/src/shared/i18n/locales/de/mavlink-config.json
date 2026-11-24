@@ -711,7 +711,9 @@
       "tuningDesc": "Einfache Tuning-Regler ohne PID-Details",
       "tuningGroupDesc": "PID-Werte, Ratenkurven und AutoTune",
       "quickSetup": "Schnellstart",
-      "quickSetupDesc": "Die am häufigsten geänderten Einstellungen, einfach bedienbar"
+      "quickSetupDesc": "Die am häufigsten geänderten Einstellungen, einfach bedienbar",
+      "heliSetup": "Heli-Setup",
+      "heliSetupDesc": "Taumelscheibe, Kollektiv, Heck und Rotordrehzahlregelung für einen klassischen Helikopter"
     },
     "title": "{{firmware}}-Konfiguration",
     "unsaved": "Ungespeichert",
@@ -1195,7 +1197,9 @@
     "readyToArm": "Bereit zum Arming",
     "skipCheck": "Diesen Check überspringen",
     "skipTip": "{{name}} vor dem Arming nicht mehr prüfen. Tun Sie dies nur, wenn die Hardware tatsächlich fehlt.",
-    "willNotArm": "Armt nicht"
+    "willNotArm": "Armt nicht",
+    "fixHeli": "Heli-Sperre: in Heli-Setup beheben (Motor-Interlock-Schalter, Rotordrehzahlregelung, Taumelscheibe).",
+    "openHeliSetup": "Heli-Setup öffnen"
   },
   "px4ArmingConfig": {
     "allActive": "Jeder Check, den dieses Fahrzeug bereitstellt, ist aktiv",
@@ -2529,5 +2533,140 @@
     "confirm_other": "{{count}} Werte zurücksetzen",
     "staged_one": "{{count}} Wert auf Standard gesetzt. Prüfen und dann In Flash schreiben.",
     "staged_other": "{{count}} Werte auf Standard gesetzt. Prüfen und dann In Flash schreiben."
+  },
+  "heli": {
+    "noParams": "Keine Heli-Parameter auf diesem Board. Das Heli-Setup benötigt die ArduCopter-Heli-Firmware.",
+    "svManActive": "Der manuelle Servomodus ist aktiv (H_SV_MAN). Die Taumelscheibe folgt ihm statt dem Flugcontroller. Vor dem Flug wieder auf Aus stellen.",
+    "roles": {
+      "swashServo": "Taumelscheibenservo {{n}}",
+      "swash2Servo": "Taumelscheibe-2-Servo {{n}}",
+      "tailServo": "Heckservo",
+      "tailEsc": "Heckrotor-ESC",
+      "extGyro": "Verstärkung des externen Gyros",
+      "rsc": "Hauptrotor-ESC / Gas",
+      "tailRsc": "Heckrotor-ESC"
+    },
+    "swash": {
+      "title": "Taumelscheibe",
+      "subtitle": "Geometrie der Taumelscheibe und wie die Servos sie bewegen",
+      "type": "Taumelscheibentyp",
+      "type2": "Typ der Taumelscheibe 2",
+      "servoPos": "Position von Servo {{n}}",
+      "phaseAngle": "Phasenwinkelkompensation",
+      "colDir": "Kollektivrichtung",
+      "colDir2": "Kollektivrichtung der Taumelscheibe 2",
+      "colDirHint": "Mit dem unten eingestellten Mittel-Kollektiv muss mehr Kollektiv am Knüppel die Taumelscheibe anheben. Sinkt sie, hier umkehren, nicht an den Servos.",
+      "linearize": "Servos linearisieren",
+      "flybar": "Paddelstange",
+      "dualMode": "Dual-Heli-Layout",
+      "dcpScaler": "Skalierung des Differenzial-Kollektivs"
+    },
+    "outputs": {
+      "title": "Heli-Ausgänge",
+      "servo": "SERVO{{ch}}",
+      "none": "Noch kein Ausgang ist einem Taumelscheibenservo, dem Heck oder dem Rotor-ESC zugewiesen. Weise sie unter Servoausgang zu.",
+      "missingSwash": "Weniger als 3 Taumelscheibenservos sind zugewiesen. Taumelscheibenservos sind Motor1, Motor2 und Motor3 unter Servoausgang."
+    },
+    "collective": {
+      "title": "Kollektiv und Zyklik",
+      "subtitle": "Blattwinkelbereich in Servo-PWM",
+      "max": "Maximales Kollektiv",
+      "mid": "Kollektiv bei Nullschub",
+      "midHint": "Der PWM-Wert, bei dem die Hauptrotorblätter null Anstellwinkel haben. Mit einer Pitchlehre im Modus Mittel-Kollektiv messen.",
+      "min": "Minimales Kollektiv",
+      "cycMax": "Maximale Zyklik",
+      "cycMaxHint": "Maximaler zyklischer Blattwinkel. Mit einer Pitchlehre messen.",
+      "hover": "Gelerntes Schwebe-Kollektiv: {{v}}%",
+      "svMan": "Manueller Servomodus",
+      "svManHint": "Schreibt direkt auf das Board. Mit Mitte die Taumelscheibe über die Servo-Trimmung unter Servoausgang ausrichten, dann mit Max und Min den Blattwinkel messen. Für den Flug auf Aus.",
+      "svManMode": {
+        "0": "Aus",
+        "1": "Durchleitung",
+        "2": "Max",
+        "3": "Mitte",
+        "4": "Min"
+      },
+      "anglesTitle": "Blattanstellwinkel",
+      "angMax": "Maximaler Blattwinkel",
+      "angZero": "Blattwinkel ohne Auftrieb",
+      "angZeroHint": "Blattwinkel, bei dem der Rotor keinen Auftrieb erzeugt. 0° bei symmetrischen Blättern.",
+      "angMin": "Minimaler Blattwinkel",
+      "landMin": "Minimum am Boden",
+      "landMinHint": "Niedrigster Pitch am Boden und während der Landung.",
+      "anglesHint": "Mit einer Pitchlehre in den manuellen Servomodi Max und Min messen und die Werte der Blätter eintragen.",
+      "subtitleAngles": "Blattwinkelbereich in Grad, mit einer Pitchlehre gemessen",
+      "gaugeHint": "Marker ziehen, um den Wert zu ändern. Die echten Blattwinkel mit einer Pitchlehre in den manuellen Servomodi Max und Min messen.",
+      "endpoints": "Servo-Endpunkte (PWM)"
+    },
+    "tail": {
+      "title": "Heckrotor",
+      "subtitle": "Wie das Gieren angetrieben wird",
+      "type": "Heckrotortyp",
+      "gyrGain": "Verstärkung des externen Gyros",
+      "gyrGainAcro": "Verstärkung des externen Gyros in Acro",
+      "speed": "Heck-ESC-Drehzahl",
+      "colYaw": "Kollektiv-zu-Gier-Mischer",
+      "colYawHint": "Gibt Kollektiv auf das Heck, damit die Nase bei Kollektivänderungen stehen bleibt."
+    },
+    "rsc": {
+      "title": "Rotordrehzahlregelung",
+      "subtitle": "Wie der Hauptrotor-ESC oder das Motorgas angesteuert wird",
+      "mode": "Modus der Rotordrehzahlregelung",
+      "noOutput": "Kein Ausgang ist auf HeliRSC (Funktion 31) gesetzt. Der Hauptrotor dreht nicht. Weise ihn unter Servoausgang zu.",
+      "setpoint": "Sollwert des ESC-Governors",
+      "curve": "Gaskurve",
+      "curvePoint": "Gas bei {{pct}}% Kollektiv",
+      "govRpm": "Governor-Rotordrehzahl",
+      "govRange": "Arbeitsbereich des Governors",
+      "govDroop": "Droop-Reaktion des Governors",
+      "govTcGain": "Verstärkung der Gaskurve",
+      "govDisengage": "Gas zum Abschalten des Governors",
+      "govNeedsRpm": "Der Governor benötigt einen Rotordrehzahlsensor. Zuerst RPM1 einrichten.",
+      "idle": "Gas im Leerlauf",
+      "ramp": "Gas-Rampenzeit",
+      "rampHint": "Sekunden, bis das Gas von Leerlauf auf Flug steigt.",
+      "runup": "Rotor-Hochlaufzeit",
+      "runupHint": "Sekunden, bis der Rotor die volle Drehzahl erreicht. Der Start wird bis dahin gehalten.",
+      "runupTooShort": "Die Hochlaufzeit ({{runup}} s) muss mindestens 1 s länger als die Rampenzeit ({{ramp}} s) sein. Sonst verweigert ArduPilot das Armieren.",
+      "critical": "Kritische Rotordrehzahl",
+      "criticalHint": "Rotordrehzahl, unter der kein Flug mehr möglich ist. So einstellen, dass die Schätzung in etwa 3 s darunter fällt: 70% bei 10 s Hochlauf.",
+      "idleHint": "Null bei Elektro-Helis. Bei einem Verbrenner Bodenleerlauf mit ausgekuppelter Kupplung.",
+      "curveX": "Kollektiv %",
+      "curveY": "Gas %"
+    },
+    "interlock": {
+      "title": "Motor-Interlock-Schalter",
+      "none": "Nicht zugewiesen",
+      "channel": "RC-Kanal {{ch}}",
+      "hint": "Mit Interlock unten (Rotor aus) armieren, dann nach oben schalten zum Hochlaufen. ArduPilot armiert nicht, wenn er oben steht.",
+      "missing": "Ein Heli braucht einen Motor-Interlock-Schalter. Ohne ihn armiert ArduPilot nicht.",
+      "state": {
+        "on": "Rotor an",
+        "off": "Rotor aus",
+        "unknown": "Kein RC",
+        "missing": "Nicht zugewiesen"
+      }
+    },
+    "status": {
+      "swash": "Taumelscheibe",
+      "swashValue": "{{type}} · {{n}} von 3 Servos",
+      "interlock": "Motor-Interlock",
+      "rsc": "Rotordrehzahlregelung",
+      "noRscOutput": "Kein Rotor-ESC-Ausgang",
+      "servoMode": "Manueller Servomodus"
+    },
+    "diagram": {
+      "roll": "Rollen",
+      "pitch": "Nicken",
+      "collective": "Koll",
+      "tail": "Heck"
+    },
+    "trims": {
+      "title": "Servo-Trimmung",
+      "servo": "Servo",
+      "live": "Live µs",
+      "trim": "Trimmung",
+      "hint": "Manuellen Servomodus auf Mid stellen und jedes Servo trimmen, bis die Taumelscheibe waagerecht ist und die Blätter auf null Pitch stehen. Änderungen werden beim Tippen gesendet."
+    }
   }
 }

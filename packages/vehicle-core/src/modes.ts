@@ -192,7 +192,7 @@ export function getFlightModeName(autopilot: number, mavType: number, customMode
   const fallback = `Mode ${customMode}`;
   if (autopilot === AUTOPILOT_PX4) return getPx4ModeName(customMode);
   if (mavType === 1 || (mavType >= 19 && mavType <= 25)) return PLANE_MODES[customMode] || fallback;
-  if (mavType === 2 || (mavType >= 13 && mavType <= 15) || mavType === 29 || mavType === 35) return COPTER_MODES[customMode] || fallback;
+  if ((mavType >= 2 && mavType <= 4) || (mavType >= 13 && mavType <= 15) || mavType === 29 || mavType === 35) return COPTER_MODES[customMode] || fallback;
   if (mavType === 10 || mavType === 11) return ROVER_MODES[customMode] || fallback;
   if (mavType === 12) return SUB_MODES[customMode] || fallback;
   return fallback;

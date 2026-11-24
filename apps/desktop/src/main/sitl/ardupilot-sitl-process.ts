@@ -18,7 +18,7 @@ import type {
   ArduPilotVehicleType,
   ArduPilotReleaseTrack,
 } from '../../shared/ipc-channels.js';
-import { IPC_CHANNELS } from '../../shared/ipc-channels.js';
+import { IPC_CHANNELS, sitlBuildFor } from '../../shared/ipc-channels.js';
 import { isVtolFrame } from './frame-config.js';
 import type { AuthoredObstacle, SimObstacleStoreSchema } from '../../shared/sim-obstacle-types.js';
 import { generateDefaultParams, resolveCopterFrame, sitlFrameForMotorCount, killProcessTree, reapSitlOnPort, withPathPrepended } from '@ardudeck/sitl';
@@ -326,8 +326,8 @@ class ArduPilotSitlProcessManager {
     };
   }
 
-  getBinaryPath(vehicleType: ArduPilotVehicleType, releaseTrack: ArduPilotReleaseTrack): string {
-    return ardupilotSitlDownloader.getBinaryPath(vehicleType, releaseTrack);
+  getBinaryPath(vehicleType: ArduPilotVehicleType, releaseTrack: ArduPilotReleaseTrack, model?: string): string {
+    return ardupilotSitlDownloader.getBinaryPath(sitlBuildFor(vehicleType, model), releaseTrack);
   }
 
   private getCygwinDllPath(): string {
@@ -412,7 +412,7 @@ class ArduPilotSitlProcessManager {
     }
 
     try {
-      const binaryPath = this.getBinaryPath(config.vehicleType, config.releaseTrack);
+      const binaryPath = this.getBinaryPath(config.vehicleType, config.releaseTrack, config.model);
 
       const { access } = await import('node:fs/promises');
       try {

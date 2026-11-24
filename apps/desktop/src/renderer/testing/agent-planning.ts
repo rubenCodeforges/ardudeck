@@ -1,6 +1,6 @@
 import type { FenceProposal, MissionProposal } from '@ardudeck/module-sdk';
 import { useMissionStore } from '../stores/mission-store';
-import { useSurveyStore } from '../stores/survey-store';
+import { useSurveyStore, previewSurveyPlan } from '../stores/survey-store';
 import { useFenceStore } from '../stores/fence-store';
 import { useTelemetryStore } from '../stores/telemetry-store';
 import { useNavigationStore } from '../stores/navigation-store';
@@ -121,10 +121,84 @@ export async function agentProposeMission(params: {
   return { ok: true, itemsAdded: result.pointsAccepted, uploaded: false };
 }
 
+/** Highest altitude the waypoint fit climbs to on its own; above this is the pilot's call. */
+const FIT_MAX_ALTITUDE_M = 120;
+
+type LatLngPoint = { lat: number; lng: number };
+type SurveyPlan = NonNullable<Awaited<ReturnType<typeof previewSurveyPlan>>>;
+
+/** A square boundary centred on a point, sides north-south and east-west. */
+function squareAround(center: LatLngPoint, radiusM: number): LatLngPoint[] {
+  const dLat = radiusM / 111_320;
+  const dLng = radiusM / (111_320 * Math.cos((center.lat * Math.PI) / 180));
+  return [
+    { lat: center.lat + dLat, lng: center.lng - dLng },
+    { lat: center.lat + dLat, lng: center.lng + dLng },
+    { lat: center.lat - dLat, lng: center.lng + dLng },
+    { lat: center.lat - dLat, lng: center.lng - dLng },
+  ];
+}
+
+/** The vehicle's position, or the planning home when there is no GPS fix. */
+function vehicleOrHome(): LatLngPoint | null {
+  const tel = useTelemetryStore.getState();
+  if (tel.gps.fixType >= 2 && (tel.gps.lat !== 0 || tel.gps.lon !== 0)) return { lat: tel.gps.lat, lng: tel.gps.lon };
+  if (tel.position.lat !== 0 || tel.position.lon !== 0) return { lat: tel.position.lat, lng: tel.position.lon };
+  const home = useMissionStore.getState().homePosition;
+  return home ? { lat: home.lat, lng: home.lon } : null;
+}
+
+/** Fewest mission items: turn the lines first, then climb (wider line spacing) when the pilot did not pin the altitude. */
+async function fitSurveyToMax(
+  polygon: LatLngPoint[],
+  override: Partial<SurveyConfig>,
+  start: SurveyPlan,
+  max: number,
+  free: { angle: boolean; altitude: boolean },
+  startAltitude: number,
+): Promise<{ override: Partial<SurveyConfig>; plan: SurveyPlan }> {
+  let best = { override, plan: start };
+  const consider = async (o: Partial<SurveyConfig>) => {
+    const plan = await previewSurveyPlan(polygon, o);
+    if (plan && plan.items < best.plan.items) best = { override: o, plan };
+  };
+  if (free.angle) {
+    for (let angle = 0; angle < 180; angle += 10) await consider({ ...override, gridAngle: angle });
+  }
+  if (best.plan.items > max && free.altitude) {
+    for (let alt = Math.floor(startAltitude / 5) * 5 + 5; alt <= FIT_MAX_ALTITUDE_M && best.plan.items > max; alt += 5) {
+      await consider({ ...best.override, altitude: alt, planBy: 'altitude' });
+    }
+  }
+  return best;
+}
+
+function surveyEstimate(stats: SurveyPlan['stats'] | null | undefined, config: Pick<SurveyConfig, 'enduranceMinutes' | 'speed' | 'terrainFollow'>) {
+  if (!stats) return null;
+  const endurance = config.enduranceMinutes ?? 0;
+  return {
+    areaHa: +(stats.areaCovered / 10_000).toFixed(2),
+    lines: stats.lineCount,
+    lineSpacingM: +stats.lineSpacing.toFixed(1),
+    flightDistanceKm: +(stats.flightDistance / 1000).toFixed(2),
+    flightTimeMin: +(stats.flightTime / 60).toFixed(1),
+    speedMs: config.speed,
+    photos: stats.photoCount,
+    gsdCm: stats.gsd ? +stats.gsd.toFixed(2) : null,
+    enduranceMinutes: endurance || null,
+    batteryPacks: endurance ? estimateBatteryCount(stats.flightTime, endurance) : null,
+    terrainFollow: !!config.terrainFollow,
+    note: 'Flight time is path length divided by speed, the same figure as the survey stats panel. It does not add transit to and from home, takeoff, landing or turn slow-downs.',
+  };
+}
+
 export async function agentProposeSurvey(params: {
   name: string;
   reason: string;
-  polygon: { lat: number; lng: number }[];
+  polygon?: LatLngPoint[];
+  around?: { lat?: number; lng?: number; radiusM: number };
+  maxWaypoints?: number;
+  previewOnly?: boolean;
   pattern?: SurveyPattern;
   altitudeM?: number;
   gsdCm?: number;
@@ -187,9 +261,62 @@ export async function agentProposeSurvey(params: {
   if (override.altitudeReference === 'terrain' && params.terrainFollow === undefined) override.terrainFollow = false;
   if (params.enduranceMinutes !== undefined) override.enduranceMinutes = Math.max(1, Math.round(params.enduranceMinutes));
 
-  const polygon = (params.polygon ?? []).map((p) => ({ lat: p.lat, lng: p.lng }));
+  let polygon = (params.polygon ?? []).map((p) => ({ lat: p.lat, lng: p.lng }));
+  if (polygon.length === 0 && params.around) {
+    const center = Number.isFinite(params.around.lat) && Number.isFinite(params.around.lng)
+      ? { lat: params.around.lat!, lng: params.around.lng! }
+      : vehicleOrHome();
+    if (!center) return { ok: false, reason: 'no vehicle position and no planning home; give around.lat and around.lng' };
+    if (!(params.around.radiusM > 0)) return { ok: false, reason: 'around.radiusM must be above 0' };
+    polygon = squareAround(center, params.around.radiusM);
+  }
+  if (polygon.length < (pattern === 'corridor' || pattern === 'panorama' ? 2 : 3)) {
+    return { ok: false, reason: 'give polygon (3 or more corners, 2 or more for a corridor) or around {radiusM}' };
+  }
   const closed = pattern !== 'corridor';
-  const altitudeM = override.altitude ?? base.altitude;
+
+  // Plan before asking, so the pilot reviews real flight lines and the agent sees the item count
+  let plan: SurveyPlan | null;
+  try {
+    plan = await previewSurveyPlan(polygon, override);
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : String(err) };
+  }
+  if (!plan) return { ok: false, reason: useSurveyStore.getState().generatorError ?? 'the survey produced no waypoints' };
+
+  let finalOverride = override;
+  const adjusted: { gridAngle?: number; altitudeM?: number } = {};
+  if (params.maxWaypoints !== undefined && plan.items > params.maxWaypoints) {
+    const startAltitude = override.altitude ?? base.altitude;
+    const fit = await fitSurveyToMax(polygon, override, plan, params.maxWaypoints, {
+      angle: params.gridAngle === undefined && (pattern === 'grid' || pattern === 'crosshatch'),
+      altitude: params.altitudeM === undefined && params.gsdCm === undefined && params.lineSpacingM === undefined && params.manualCorridorWidthM === undefined,
+    }, startAltitude);
+    if (fit.plan.items > params.maxWaypoints) {
+      return {
+        ok: false,
+        reason: `the closest plan has ${fit.plan.items} mission items, more than ${params.maxWaypoints}. Use a smaller area, a higher altitude or less side overlap, or plan it at the waypoint count you can get.`,
+        closest: { items: fit.plan.items, gridAngle: fit.override.gridAngle ?? null, altitudeM: fit.override.altitude ?? startAltitude },
+      };
+    }
+    finalOverride = fit.override;
+    plan = fit.plan;
+    if (fit.override.gridAngle !== override.gridAngle) adjusted.gridAngle = fit.override.gridAngle;
+    if (fit.override.altitude !== override.altitude) adjusted.altitudeM = fit.override.altitude;
+  }
+
+  const finalConfig = { ...base, ...finalOverride };
+  const altitudeM = finalOverride.altitude ?? base.altitude;
+  const estimate = surveyEstimate(plan.stats, finalConfig);
+  const summary = {
+    waypoints: plan.items,
+    altitudeM,
+    polygon,
+    ...(Object.keys(adjusted).length ? { adjusted } : {}),
+    estimate,
+  };
+  if (params.previewOnly) return { ok: true, preview: true, ...summary };
+
   const answer = await proposeSurvey(AGENT_SLUG, agentName(), {
     name: params.name,
     reason: params.reason,
@@ -197,38 +324,27 @@ export async function agentProposeSurvey(params: {
     pattern,
     altitudeM,
     areaM2: closed && polygon.length >= 3 ? polygonArea(polygon) : 0,
+    path: plan.path,
+    waypoints: plan.items,
+    lines: plan.stats?.lineCount,
+    flightTimeMin: plan.stats ? +(plan.stats.flightTime / 60).toFixed(1) : undefined,
   });
   if (!answer.accepted) return { ok: false, reason: answer.error ?? 'user cancelled' };
 
-  const ids = await useSurveyStore.getState().addSurveyAreasFromPolygons([{ polygon, name: params.name, configOverride: override }]);
+  const ids = await useSurveyStore.getState().addSurveyAreasFromPolygons([{ polygon, name: params.name, configOverride: finalOverride }]);
   if (ids.length === 0) {
     return { ok: false, reason: useSurveyStore.getState().generatorError ?? 'the survey produced no waypoints' };
   }
   useNavigationStore.getState().setView('mission');
   const ms = useMissionStore.getState();
   const stats = await waitForSurveyStats(ids[0]!);
-  const config = useSurveyStore.getState().config;
-  const endurance = config.enduranceMinutes ?? 0;
   return {
     ok: true,
     groupId: ids[0],
+    ...summary,
     waypoints: ms.missionItems.filter((i) => i.groupId === ids[0]).length,
-    altitudeM,
     uploaded: false,
-    estimate: stats && {
-      areaHa: +(stats.areaCovered / 10_000).toFixed(2),
-      lines: stats.lineCount,
-      lineSpacingM: +stats.lineSpacing.toFixed(1),
-      flightDistanceKm: +(stats.flightDistance / 1000).toFixed(2),
-      flightTimeMin: +(stats.flightTime / 60).toFixed(1),
-      speedMs: config.speed,
-      photos: stats.photoCount,
-      gsdCm: stats.gsd ? +stats.gsd.toFixed(2) : null,
-      enduranceMinutes: endurance || null,
-      batteryPacks: endurance ? estimateBatteryCount(stats.flightTime, endurance) : null,
-      terrainFollow: !!config.terrainFollow,
-      note: 'Flight time is path length divided by speed, the same figure as the survey stats panel. It does not add transit to and from home, takeoff, landing or turn slow-downs.',
-    },
+    estimate: surveyEstimate(stats ?? plan.stats, useSurveyStore.getState().config),
   };
 }
 

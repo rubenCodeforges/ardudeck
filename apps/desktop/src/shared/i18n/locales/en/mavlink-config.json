@@ -711,7 +711,9 @@
       "tuningDesc": "Simple tuning sliders without the PID details",
       "tuningGroupDesc": "PID gains, rate curves and AutoTune",
       "quickSetup": "Quick setup",
-      "quickSetupDesc": "The settings changed most often, as simple controls"
+      "quickSetupDesc": "The settings changed most often, as simple controls",
+      "heliSetup": "Heli Setup",
+      "heliSetupDesc": "Swashplate, collective, tail and rotor speed control for a traditional helicopter"
     },
     "title": "{{firmware}} Configuration",
     "unsaved": "Unsaved",
@@ -1195,7 +1197,9 @@
     "readyToArm": "Ready to arm",
     "skipCheck": "Skip this check",
     "skipTip": "Stop checking {{name}} before arming. Only do this when the hardware is genuinely absent.",
-    "willNotArm": "Will not arm"
+    "willNotArm": "Will not arm",
+    "fixHeli": "Heli refusal: set it right in Heli Setup (interlock switch, rotor speed control, swash).",
+    "openHeliSetup": "Open Heli Setup"
   },
   "px4ArmingConfig": {
     "allActive": "Every check this vehicle exposes is active",
@@ -2529,5 +2533,140 @@
     "confirm_other": "Reset {{count}} values",
     "staged_one": "{{count}} value set back to default. Review it, then Write to Flash.",
     "staged_other": "{{count}} values set back to default. Review them, then Write to Flash."
+  },
+  "heli": {
+    "noParams": "No heli parameters on this board. Heli Setup needs the ArduCopter heli firmware.",
+    "svManActive": "Manual servo mode is on (H_SV_MAN). The swash follows it instead of the flight controller. Set it back to Off before flight.",
+    "roles": {
+      "swashServo": "Swash servo {{n}}",
+      "swash2Servo": "Swash 2 servo {{n}}",
+      "tailServo": "Tail servo",
+      "tailEsc": "Tail rotor ESC",
+      "extGyro": "External gyro gain",
+      "rsc": "Main rotor ESC / throttle",
+      "tailRsc": "Tail rotor ESC"
+    },
+    "swash": {
+      "title": "Swashplate",
+      "subtitle": "Swash geometry and how the servos push it",
+      "type": "Swashplate type",
+      "type2": "Swash 2 type",
+      "servoPos": "Servo {{n}} position",
+      "phaseAngle": "Phase angle compensation",
+      "colDir": "Collective direction",
+      "colDir2": "Swash 2 collective direction",
+      "colDirHint": "With Mid collective set below, more collective on the stick must raise the swash. If it drops, reverse it here, not on the servos.",
+      "linearize": "Linearize servos",
+      "flybar": "Flybar",
+      "dualMode": "Dual heli layout",
+      "dcpScaler": "Differential collective scaler"
+    },
+    "outputs": {
+      "title": "Heli outputs",
+      "servo": "SERVO{{ch}}",
+      "none": "No output is assigned to a swash servo, the tail or the rotor ESC yet. Assign them in Servo Output.",
+      "missingSwash": "Fewer than 3 swash servos are assigned. Swash servos are Motor1, Motor2 and Motor3 in Servo Output."
+    },
+    "collective": {
+      "title": "Collective and cyclic",
+      "subtitle": "Blade pitch range, in servo PWM",
+      "max": "Maximum collective",
+      "mid": "Zero thrust collective",
+      "midHint": "The PWM where the main blades have zero pitch. Measure it with a pitch gauge in Mid collective mode.",
+      "min": "Minimum collective",
+      "cycMax": "Maximum cyclic",
+      "cycMaxHint": "Maximum cyclic blade pitch. Measure it with a pitch gauge.",
+      "hover": "Learned hover collective: {{v}}%",
+      "svMan": "Manual servo mode",
+      "svManHint": "Writes straight to the board. Use Mid to level the swash with the servo trims in Servo Output, then Max and Min to measure blade pitch. Off for flight.",
+      "svManMode": {
+        "0": "Off",
+        "1": "Passthrough",
+        "2": "Max",
+        "3": "Mid",
+        "4": "Min"
+      },
+      "anglesTitle": "Blade pitch angles",
+      "angMax": "Maximum blade pitch",
+      "angZero": "Zero thrust blade pitch",
+      "angZeroHint": "Blade pitch where the rotor makes no lift. 0° for symmetrical blades.",
+      "angMin": "Minimum blade pitch",
+      "landMin": "Landed minimum",
+      "landMinHint": "Lowest collective allowed on the ground and while landing.",
+      "anglesHint": "Measure with a pitch gauge using the Max and Min manual servo modes, and enter what the blades show.",
+      "subtitleAngles": "Blade pitch range in degrees, measured with a pitch gauge",
+      "gaugeHint": "Drag a marker to change it. Measure the real blade angles with a pitch gauge using the Max and Min manual servo modes.",
+      "endpoints": "Servo endpoints (PWM)"
+    },
+    "tail": {
+      "title": "Tail rotor",
+      "subtitle": "How yaw is driven",
+      "type": "Tail type",
+      "gyrGain": "External gyro gain",
+      "gyrGainAcro": "External gyro gain in Acro",
+      "speed": "Tail ESC speed",
+      "colYaw": "Collective to yaw mix",
+      "colYawHint": "Feeds collective into the tail so the nose holds when collective changes."
+    },
+    "rsc": {
+      "title": "Rotor speed control",
+      "subtitle": "How the main rotor ESC or engine throttle is driven",
+      "mode": "Rotor speed control mode",
+      "noOutput": "No output is set to HeliRSC (function 31). The main rotor will not spin. Assign it in Servo Output.",
+      "setpoint": "ESC governor setpoint",
+      "curve": "Throttle curve",
+      "curvePoint": "Throttle at {{pct}}% collective",
+      "govRpm": "Governor rotor speed",
+      "govRange": "Governor operating range",
+      "govDroop": "Governor droop response",
+      "govTcGain": "Throttle curve gain",
+      "govDisengage": "Governor disengage throttle",
+      "govNeedsRpm": "The governor needs a rotor speed sensor. Set up RPM1 first.",
+      "idle": "Throttle at idle",
+      "ramp": "Throttle ramp time",
+      "rampHint": "Seconds for the throttle to go from idle to flight.",
+      "runup": "Rotor runup time",
+      "runupHint": "Seconds for the rotor to reach full speed. Takeoff is held until it does.",
+      "runupTooShort": "Runup time ({{runup}} s) must be at least 1 s longer than the ramp time ({{ramp}} s). ArduPilot refuses to arm otherwise.",
+      "critical": "Critical rotor speed",
+      "criticalHint": "Rotor speed below which flight is no longer possible. Set it so the estimate drops below it in about 3 s: 70% for a 10 s runup.",
+      "idleHint": "Zero for electric helis. For an engine, ground idle with the clutch disengaged.",
+      "curveX": "Collective %",
+      "curveY": "Throttle %"
+    },
+    "interlock": {
+      "title": "Motor interlock switch",
+      "none": "Not assigned",
+      "channel": "RC channel {{ch}}",
+      "hint": "Arm with the interlock low (rotor off), then switch it high to spin up. ArduPilot will not arm with it high.",
+      "missing": "A heli needs a motor interlock switch. ArduPilot will not arm without one.",
+      "state": {
+        "on": "Rotor on",
+        "off": "Rotor off",
+        "unknown": "No RC",
+        "missing": "Not assigned"
+      }
+    },
+    "status": {
+      "swash": "Swashplate",
+      "swashValue": "{{type}} · {{n}} of 3 servos",
+      "interlock": "Motor interlock",
+      "rsc": "Rotor speed control",
+      "noRscOutput": "No rotor ESC output",
+      "servoMode": "Manual servo mode"
+    },
+    "diagram": {
+      "roll": "Roll",
+      "pitch": "Pitch",
+      "collective": "Coll",
+      "tail": "Tail"
+    },
+    "trims": {
+      "title": "Servo trims",
+      "servo": "Servo",
+      "live": "Live µs",
+      "trim": "Trim",
+      "hint": "Set manual servo mode to Mid, then trim each servo until the swash is level and the blades sit at zero pitch. Changes are sent as you type."
+    }
   }
 }

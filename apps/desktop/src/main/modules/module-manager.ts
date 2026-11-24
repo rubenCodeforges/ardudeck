@@ -391,6 +391,10 @@ export function getInstalledModules(): InstalledModule[] {
   return store.get('modules').map((m) => ({ ...m, entitled: slugs.has(m.slug) }));
 }
 
+export function onInstalledModulesChange(cb: () => void): () => void {
+  return store.onDidChange('modules', () => cb());
+}
+
 export function getInstalledModulesRaw(): InstalledModule[] {
   return store.get('modules');
 }

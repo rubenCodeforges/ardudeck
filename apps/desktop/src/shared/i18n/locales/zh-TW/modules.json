@@ -155,6 +155,7 @@
     "asksToSurvey": "{{from}} 請求新增測繪任務",
     "surveySummary": "{{pattern}}，高度 {{alt}} 公尺，{{area}}，{{extent}}",
     "surveyCorridor": "沿 {{count}} 個點的走廊，高度 {{alt}} 公尺，{{extent}}",
+    "surveyPlan": "{{count}} 個航點,{{lines}} 條航線,測繪飛行約 {{minutes}} 分鐘",
     "surveyNote": "ArduDeck 會規劃航線，你可以在測繪面板中調整。上傳之前不會向飛行器傳送任何內容。",
     "areaHa": "{{value}} 公頃",
     "areaM2": "{{value}} 平方公尺"
@@ -180,5 +181,9 @@
     "remember": "在應用程式重新啟動前,不再詢問,直接將此黃金設定寫入每一塊機板",
     "write": "寫入黃金設定",
     "arm": "將此型號解鎖"
+  },
+  "moduleDrawer": {
+    "open": "開啟 {{title}}",
+    "resize": "拖曳以調整寬度"
   }
 }

@@ -171,7 +171,10 @@ export function click(selector: string, by?: string, options?: ClickOptions): vo
     el.dispatchEvent(new MouseEvent('click', eventInit));
     el.dispatchEvent(new MouseEvent('dblclick', eventInit));
   } else {
+    // pointer events first: dockview tabs and other pointer-driven widgets ignore bare mouse events
+    el.dispatchEvent(new PointerEvent('pointerdown', { ...eventInit, pointerId: 1, pointerType: 'mouse', isPrimary: true }));
     el.dispatchEvent(new MouseEvent('mousedown', eventInit));
+    el.dispatchEvent(new PointerEvent('pointerup', { ...eventInit, pointerId: 1, pointerType: 'mouse', isPrimary: true }));
     el.dispatchEvent(new MouseEvent('mouseup', eventInit));
     el.dispatchEvent(new MouseEvent('click', eventInit));
   }

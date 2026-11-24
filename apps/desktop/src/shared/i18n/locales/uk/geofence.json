@@ -26,13 +26,15 @@
     "polygonCount_many": "{{count}} полігонів",
     "polygonCount_other": "{{count}} полігона",
     "polygonPts": "Полігон ({{count}} т.)",
-    "returnPoint": "Точка повернення"
+    "returnPoint": "Точка повернення",
+    "radiusLabel": "Радіус"
   },
   "fenceMapOverlay": {
     "clickToEdit": "Натисніть, щоб редагувати або видалити цю зону",
     "delete": "Видалити",
     "deleteZone": "Видалити цю зону (Del)",
     "dragToMove": "Перетягніть, щоб перемістити всю зону",
-    "rightClickDelete": "Правий клік, щоб видалити"
+    "rightClickDelete": "Правий клік, щоб видалити",
+    "radiusHandle": "Радіус {{radius}} м\nПотягніть або прокрутіть над цією точкою, щоб змінити розмір"
   }
 }

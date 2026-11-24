@@ -470,6 +470,9 @@ app.whenReady().then(() => {
     void new DesktopSurfaces((workspace, scene) => createSurfaceWindow(workspace, scene)).start();
   }
 
+  if (!isDesktopSurface) {
+    import('./ai-tools/index.js').then((m) => m.initAiTools(mainWindow)).catch(console.error);
+  }
   // Dev-only: start test driver MCP server
   if (isDev && !isDesktopSurface) {
     import('./testing/index.js').then((m) => m.initTestingMcp(mainWindow)).catch(console.error);

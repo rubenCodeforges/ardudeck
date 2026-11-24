@@ -34,6 +34,7 @@ import {
   frameState,
   testOrderToLabel,
   frameTypeDisplayName,
+  motorOutputIndex,
 } from './motor-layout-utils';
 
 const HIGH_THROTTLE_WARNING = 25;
@@ -97,16 +98,21 @@ export const MotorTestTab: React.FC<{ isPlane?: boolean }> = ({ isPlane = false 
     [layout]
   );
 
-  // Build an RPM-by-motor map for the frame diagram
+  // ESC telemetry is per output channel; map each motor to the channel its SERVOn_FUNCTION names
   const rpmByMotor = useMemo(() => {
     const map = new Map<number, number>();
-    if (escTelemetry) {
+    if (escTelemetry && !isPx4) {
+      for (const m of layout.motors) {
+        const data = escTelemetry.motors[motorOutputIndex(m.Number, (key) => parameters.get(key)?.value)];
+        if (data && data.rpm > 0) map.set(m.Number, data.rpm);
+      }
+    } else if (escTelemetry) {
       escTelemetry.motors.forEach((m, idx) => {
         if (m && m.rpm > 0) map.set(idx + 1, m.rpm);
       });
     }
     return map;
-  }, [escTelemetry]);
+  }, [escTelemetry, layout, parameters, isPx4]);
 
   // Armed state detection
   const isArmed = connectionState.isConnected && useTelemetryStore.getState().flight.armed;

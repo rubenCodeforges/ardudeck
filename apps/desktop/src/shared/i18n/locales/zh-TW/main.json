@@ -235,7 +235,7 @@
     "missionUploadInProgress": "另一個任務上傳正在進行中",
     "motorTestNeedsMavlink": "馬達測試需要 MAVLink 連線",
     "noBoardIdentity": "沒有機板識別資訊",
-    "noClaudeKey": "尚未設定 claude 的 API 金鑰。請在設定中新增。",
+    "noClaudeKey": "還沒有 Claude API 金鑰。請在 Claude Advisor 面板(齒輪圖示)中新增一次;Advisor 和飛行日誌分析都會使用它。",
     "noCompatibleFirmware": "未偵測到相容的韌體",
     "noDjiWaypoints": "DJI 任務中找不到航點",
     "noExportableWaypoints": "沒有可匯出的航點(DJI KMZ 需要帶座標的一般航點)",

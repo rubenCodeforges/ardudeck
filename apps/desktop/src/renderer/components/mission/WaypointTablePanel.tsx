@@ -3927,16 +3927,31 @@ function WaypointListContent({ readOnly = false }: { readOnly?: boolean }) {
 
       {/* Add waypoint button - hidden in readOnly mode */}
       {!readOnly && (
-        <div className="p-2 border-t border-subtle">
+        <div className="p-2 border-t border-subtle flex gap-2">
           <button {...ui('button', { variant: 'secondary' })}
             onClick={handleAddWaypoint}
-            className="w-full py-2 text-sm text-content hover:text-content bg-surface-raised hover:bg-surface-raised rounded transition-colors flex items-center justify-center gap-2"
+            className="flex-1 py-2 text-sm text-content hover:text-content bg-surface-raised hover:bg-surface-raised rounded transition-colors flex items-center justify-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
             {t('mission:waypointTable.list.addWaypoint')}
           </button>
+          {locatedOf(missionItems).length >= 3 && (
+            <button {...ui('button', { variant: 'secondary' })}
+              onClick={handleMakePolygon}
+              disabled={multiSelected.size > 0 && locatedOf(missionItems.filter(w => multiSelected.has(w.seq))).length < 3}
+              className="flex-1 min-w-0 px-2 py-2 text-sm leading-tight text-content hover:text-content bg-surface-raised hover:bg-surface-raised rounded transition-colors flex items-center justify-center gap-2 disabled:opacity-40"
+              data-tip={t('mission:waypointTable.list.makePolygonTip')}
+            >
+              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3l8 6-3 11H7L4 9l8-6z" />
+              </svg>
+              {multiSelected.size > 0
+                ? t('mission:waypointTable.list.makePolygonSelected', { count: multiSelected.size })
+                : t('mission:waypointTable.list.makePolygonAll')}
+            </button>
+          )}
         </div>
       )}
     </div>

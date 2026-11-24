@@ -8,7 +8,7 @@ import type { CameraStartPhase } from '../shared/camera-types.js';
 import type { GpsDiagEvent } from '../shared/gps-diagnostics-types.js';
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { UserModel, UserModelsApi } from '../shared/scene-models/user-models.js';
-import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlStartedData, type ArduPilotFlightGearConfig, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotFrameCatalog, type ArduPilotVehicleType, type ArduPilotReleaseTrack, type Px4SitlConfig, type Px4SitlStatus, type Px4SitlExitData, type Px4SitlStartedData, type Px4SitlDownloadProgress, type Px4SitlBinaryInfo, type Px4ReleaseTrack, type SwarmSitlConfig, type SwarmSitlStatus, type SwarmInstanceStatus, type SwarmSitlLogLine, type AppUpdateInfo, type SigningStatus, type TelemetrySpeed, type LegacyStreamConsentRequest, type StatusMessage, type TileCacheStats, type TileCacheDownloadProgress, type TileCacheSettings, type TileCacheDownloadRegion, type CompanionConnectOptions, type CompanionConnectionIpcState, type CompanionDiscoveryResult, type TransportInfoIpc, type VehicleInfoIpc, type SetActiveSelectionPayload, type VehicleCommand, type MissionVehicleProgress, type OrchestrationIntentIpc, type OrchestrationStatusIpc, type OrchestratorSource, type OrchestratorStatus, type CameraSourceConfig, type CameraStartResult, type CameraMediaActionResult, type CameraMediaItem, type MediaEngineStatus, type GimbalCommand, type CameraCommand, type VideoStreamInfoIpc, type GimbalAttitudeIpc, type GimbalInfoIpc, type FrameBlueprintResult, type FrameBlueprintRequest } from '../shared/ipc-channels.js';
+import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlStartedData, type ArduPilotFlightGearConfig, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotFrameCatalog, type ArduPilotVehicleType, type ArduPilotSitlBuild, type ArduPilotReleaseTrack, type Px4SitlConfig, type Px4SitlStatus, type Px4SitlExitData, type Px4SitlStartedData, type Px4SitlDownloadProgress, type Px4SitlBinaryInfo, type Px4ReleaseTrack, type SwarmSitlConfig, type SwarmSitlStatus, type SwarmInstanceStatus, type SwarmSitlLogLine, type AppUpdateInfo, type SigningStatus, type TelemetrySpeed, type LegacyStreamConsentRequest, type StatusMessage, type TileCacheStats, type TileCacheDownloadProgress, type TileCacheSettings, type TileCacheDownloadRegion, type CompanionConnectOptions, type CompanionConnectionIpcState, type CompanionDiscoveryResult, type TransportInfoIpc, type VehicleInfoIpc, type SetActiveSelectionPayload, type VehicleCommand, type MissionVehicleProgress, type OrchestrationIntentIpc, type OrchestrationStatusIpc, type OrchestratorSource, type OrchestratorStatus, type CameraSourceConfig, type CameraStartResult, type CameraMediaActionResult, type CameraMediaItem, type MediaEngineStatus, type GimbalCommand, type CameraCommand, type VideoStreamInfoIpc, type GimbalAttitudeIpc, type GimbalInfoIpc, type FrameBlueprintResult, type FrameBlueprintRequest } from '../shared/ipc-channels.js';
 import type { SigningAuditSnapshot } from '../shared/signing-audit-types.js';
 import type { LanguageState } from './i18n-main.js';
 import type { DroneCanParam, DroneCanParamValue, DroneCanResult, DroneCanState } from '../shared/dronecan-types.js';
@@ -44,6 +44,7 @@ import type { CalibrationData, CalibrationProgressEvent, CalibrationCompleteEven
 import type { MissionSummary, StoredMission, SaveMissionPayload, FlightLog, MissionListFilter, MissionSortOptions } from '../shared/mission-library-types.js';
 import type { SurveyDocument, SurveyDocumentSummary, SaveSurveyAreaPayload } from '../shared/survey-document-types.js';
 import type { VaultMission, VaultSurveyArea } from '../shared/ipc-channels.js';
+import { AI_TOOL_CHANNELS, type AiToolCallResult, type AiMcpStatus, type AiClaudeDesktopResult } from '../shared/ai-tools/channels.js';
 import type { ReplayControl, ReplayStatusIpc } from '../shared/ipc-channels.js';
 import type { VehicleProfile } from '../shared/vehicle-profile.js';
 import type { DroneBridgeInfo, DroneBridgeStats, DroneBridgeSettings, DroneBridgeClients, DroneBridgeDetected } from '../shared/dronebridge-types.js';
@@ -2043,10 +2044,10 @@ const api = {
   ardupilotSitlGetStatus: (): Promise<ArduPilotSitlStatus> =>
     ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_STATUS),
 
-  ardupilotSitlDownload: (vehicleType: ArduPilotVehicleType, releaseTrack: ArduPilotReleaseTrack): Promise<{ success: boolean; path?: string; error?: string }> =>
+  ardupilotSitlDownload: (vehicleType: ArduPilotSitlBuild, releaseTrack: ArduPilotReleaseTrack): Promise<{ success: boolean; path?: string; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_DOWNLOAD, vehicleType, releaseTrack),
 
-  ardupilotSitlCheckBinary: (vehicleType: ArduPilotVehicleType, releaseTrack: ArduPilotReleaseTrack): Promise<ArduPilotSitlBinaryInfo> =>
+  ardupilotSitlCheckBinary: (vehicleType: ArduPilotSitlBuild, releaseTrack: ArduPilotReleaseTrack): Promise<ArduPilotSitlBinaryInfo> =>
     ipcRenderer.invoke(IPC_CHANNELS.ARDUPILOT_SITL_CHECK_BINARY, vehicleType, releaseTrack),
 
   ardupilotSitlCheckPlatform: (): Promise<{ supported: boolean; useDocker: boolean; error?: string }> =>
@@ -2802,6 +2803,16 @@ const api = {
 
   moduleHostInvoke: (slug: string, channel: string, data: unknown): Promise<unknown> =>
     ipcRenderer.invoke(`module:${slug}:${channel}`, data),
+
+  aiToolsOnCall: (cb: (id: string, name: string, input: unknown) => void): (() => void) => {
+    const listener = (_e: unknown, id: string, name: string, input: unknown) => cb(id, name, input);
+    ipcRenderer.on(AI_TOOL_CHANNELS.CALL, listener);
+    return () => ipcRenderer.removeListener(AI_TOOL_CHANNELS.CALL, listener);
+  },
+  aiToolsRespond: (result: AiToolCallResult): void => ipcRenderer.send(AI_TOOL_CHANNELS.RESULT, result),
+  aiToolsMcpStatus: (): Promise<AiMcpStatus> => ipcRenderer.invoke(AI_TOOL_CHANNELS.MCP_STATUS),
+  aiToolsMcpRotateToken: (): Promise<AiMcpStatus> => ipcRenderer.invoke(AI_TOOL_CHANNELS.MCP_ROTATE_TOKEN),
+  aiToolsMcpInstallClaudeDesktop: (): Promise<AiClaudeDesktopResult> => ipcRenderer.invoke(AI_TOOL_CHANNELS.MCP_CLAUDE_DESKTOP_INSTALL),
 
   moduleHostOnEvent: (slug: string, channel: string, cb: (data: unknown) => void): (() => void) => {
     const ch = `module:${slug}:event:${channel}`;

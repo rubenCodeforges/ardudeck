@@ -8,6 +8,7 @@ import { GimbalRangeDialog, type GimbalRangeTarget } from './GimbalRangeDialog';
 import { classifyOutput, isTravelEditable, travelFromEndpoints, type OutputShape } from './output-shape';
 import { mountOf, outputUse } from '../switches/aux-control';
 import { rcinPassthroughFunction } from '../switches/switch-detect';
+import { heliOutputRole, heliRoleIsServo, heliRoleLabel, isHeliBuild } from '../heli/heli-utils';
 
 const FIRST_AUX_CH = 5;
 const LAST_CH = 16;
@@ -61,6 +62,8 @@ export const OutputCards: React.FC<OutputCardsProps> = ({
   const groups = useMemo(() => {
     const byFunction = new Map<number, OutputGroup>();
     const labels = metadata?.['SERVO1_FUNCTION']?.values;
+    const get = (key: string) => parameters.get(key)?.value;
+    const heli = isHeliBuild(get);
 
     for (let ch = 1; ch <= channelCount; ch++) {
       const fn = parameters.get(`SERVO${ch}_FUNCTION`)?.value as number | undefined;
@@ -77,8 +80,14 @@ export const OutputCards: React.FC<OutputCardsProps> = ({
       const max = parameters.get(`SERVO${ch}_MAX`)?.value;
       if (min === undefined || trim === undefined || max === undefined) continue;
 
-      const functionName = labels?.[fn] ?? t('mavlink-config:outputCards.functionFallback', { fn });
-      const { shape, confident } = classifyOutput({ functionName, min, trim, max });
+      const baseName = labels?.[fn] ?? t('mavlink-config:outputCards.functionFallback', { fn });
+      const role = heli ? heliOutputRole(fn, get) : null;
+      const roleLabel = role ? heliRoleLabel(role) : null;
+      const functionName = roleLabel ? `${baseName} (${t(roleLabel.key, roleLabel.params)})` : baseName;
+      // swash and tail servos are trimmed and limited by the builder, unlike an ESC on the same MotorN function
+      const { shape, confident } = heliRoleIsServo(role)
+        ? { shape: 'angular' as const, confident: true }
+        : classifyOutput({ functionName: baseName, min, trim, max });
       byFunction.set(fn, {
         key: fn,
         channels: [ch],

@@ -22,6 +22,7 @@ import { t } from '../../../shared/i18n/index.js';
 // ---------------------------------------------------------------------------
 
 export type PidSchemeId =
+  | 'heli'
   | 'rover'
   | 'modern-copter'
   | 'legacy-copter'
@@ -110,6 +111,19 @@ const MODERN_COPTER_SCHEME: PidScheme = {
   },
   accel: { roll: 'ATC_ACCEL_R_MAX', pitch: 'ATC_ACCEL_P_MAX', yaw: 'ATC_ACCEL_Y_MAX' },
   accelDefaults: { roll: 110000, pitch: 110000, yaw: 27000 },
+};
+
+// Same parameter names as a multirotor, but feedforward does most of the work: defaults from AC_AttitudeControl_Heli.h
+const HELI_SCHEME: PidScheme = {
+  ...MODERN_COPTER_SCHEME,
+  id: 'heli',
+  label: 'ArduCopter Heli', // i18n-exempt
+  description: 'Traditional helicopter rate controller, feedforward led', // i18n-exempt
+  defaults: {
+    roll: { p: 0.024, i: 0.15, d: 0.001, ff: 0.15 },
+    pitch: { p: 0.024, i: 0.15, d: 0.001, ff: 0.15 },
+    yaw: { p: 0.18, i: 0.12, d: 0.003, ff: 0.024 },
+  },
 };
 
 const LEGACY_COPTER_SCHEME: PidScheme = {
@@ -322,6 +336,7 @@ export function detectPidScheme(parameters: Map<string, { value: number }>): Pid
   // ArduPilot schemes first (ArduPilot and PX4 param names never coexist).
   if (parameters.has('Q_A_RAT_RLL_P')) return QUADPLANE_SCHEME;
   if (parameters.has('ATC_STR_RAT_P')) return buildRoverScheme(parameters);
+  if (parameters.has('ATC_RAT_RLL_P') && parameters.has('H_RSC_MODE')) return HELI_SCHEME;
   if (parameters.has('ATC_RAT_RLL_P')) return MODERN_COPTER_SCHEME;
   if (parameters.has('RATE_RLL_P')) return LEGACY_COPTER_SCHEME;
   if (parameters.has('RLL_RATE_P') || parameters.has('RLL2SRV_P')) return buildPlaneScheme(parameters);

@@ -1880,6 +1880,13 @@ export interface VirtualRCState {
  */
 export type ArduPilotVehicleType = 'copter' | 'plane' | 'rover' | 'sub';
 
+/** The SITL program a vehicle runs: the heli model needs ArduCopter's separate heli build. */
+export type ArduPilotSitlBuild = ArduPilotVehicleType | 'heli';
+
+export function sitlBuildFor(vehicleType: ArduPilotVehicleType, model?: string): ArduPilotSitlBuild {
+  return vehicleType === 'copter' && model === 'heli' ? 'heli' : vehicleType;
+}
+
 /**
  * ArduPilot release tracks
  */
@@ -2139,7 +2146,7 @@ export interface SwarmSitlLogLine {
  * ArduPilot SITL download progress
  */
 export interface ArduPilotSitlDownloadProgress {
-  vehicleType: ArduPilotVehicleType;
+  vehicleType: ArduPilotSitlBuild;
   releaseTrack: ArduPilotReleaseTrack;
   progress: number;  // 0-100
   bytesDownloaded: number;
@@ -2152,7 +2159,7 @@ export interface ArduPilotSitlDownloadProgress {
  * ArduPilot SITL binary info
  */
 export interface ArduPilotSitlBinaryInfo {
-  vehicleType: ArduPilotVehicleType;
+  vehicleType: ArduPilotSitlBuild;
   releaseTrack: ArduPilotReleaseTrack;
   exists: boolean;
   path?: string;

@@ -60,6 +60,12 @@ export interface SurveyProposal {
   altitudeM: number;
   /** Ground area of a closed boundary in square metres, 0 for a corridor. */
   areaM2: number;
+  /** The planned flight path, when the host planned it before asking. */
+  path?: { lat: number; lng: number }[];
+  /** Mission items the survey adds. */
+  waypoints?: number;
+  lines?: number;
+  flightTimeMin?: number;
 }
 
 export interface PendingSurvey extends PendingBase {

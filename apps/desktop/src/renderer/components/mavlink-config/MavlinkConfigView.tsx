@@ -16,7 +16,7 @@
  */
 
 import { ui } from '../ui/ui-hooks';
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import {
   Gauge,
   Activity,
@@ -39,6 +39,7 @@ import {
   Radio,
   Cable,
   RotateCw,
+  RefreshCw,
   History,
   AlertTriangle,
   Fan,
@@ -97,6 +98,7 @@ import { useFleetRepoStore } from '../../stores/fleet-repo-store';
 import { emitParamsFlashed } from '../../modules/module-host-renderer';
 import { isCargoEnabled, VAULT_CARGO_SLUG } from '../../modules/capabilities';
 import PlaneTuningTab from './PlaneTuningTab';
+import HeliSetupTab from './heli/HeliSetupTab';
 
 // Toast notification state
 type ToastType = 'success' | 'error' | 'info';
@@ -105,7 +107,7 @@ interface Toast {
   type: ToastType;
 }
 
-type TabId = 'quick-setup' | 'pid' | 'rates' | 'modes' | 'receiver' | 'serial-ports' | 'telemetry-rates' | 'safety' | 'sensors' | 'sensor-config' | 'notify' | 'tuning' | 'autotune' | 'battery' | 'parameters' | 'files' | 'logging' | 'arming' | 'rover-tuning' | 'rover-nav' | 'motor-test' | 'servo-output' | 'dronecan' | 'hardware' | `module:${string}`;
+type TabId = 'quick-setup' | 'pid' | 'rates' | 'modes' | 'receiver' | 'serial-ports' | 'telemetry-rates' | 'safety' | 'sensors' | 'sensor-config' | 'notify' | 'tuning' | 'autotune' | 'battery' | 'parameters' | 'files' | 'logging' | 'arming' | 'rover-tuning' | 'rover-nav' | 'motor-test' | 'heli-setup' | 'servo-output' | 'dronecan' | 'hardware' | `module:${string}`;
 
 interface Tab {
   id: TabId;
@@ -212,6 +214,15 @@ const OUTPUTS_GROUP: TabGroup = {
   ],
 };
 
+// Traditional heli: no motor test (the heli build has none), the swashplate and rotor speed setup instead
+const HELI_OUTPUTS_GROUP: TabGroup = {
+  ...OUTPUTS_GROUP,
+  children: [
+    { id: 'heli-setup', nameKey: 'mavlink-config:mavlinkConfigView.tabs.heliSetup', Icon: Fan, color: 'text-yellow-400', descriptionKey: 'mavlink-config:mavlinkConfigView.tabs.heliSetupDesc' },
+    { id: 'servo-output', nameKey: 'mavlink-config:mavlinkConfigView.tabs.servoOutput', Icon: Move, color: 'text-pink-400', descriptionKey: 'mavlink-config:mavlinkConfigView.tabs.servoOutputDesc' },
+  ],
+};
+
 // "Storage" group: All Parameters (EEPROM) + Files (SD card via MAVLink-FTP).
 // Both are FC-side persistent state and both are escape-hatch / power-user
 // surfaces, so grouping them keeps the top-level tab strip from sprawling.
@@ -296,6 +307,8 @@ const COPTER_TABS: TabNode[] = [
   STORAGE_GROUP,
   { kind: 'item', id: 'quick-setup', nameKey: 'mavlink-config:mavlinkConfigView.tabs.quickSetup', Icon: Wand2, color: 'text-sky-400', descriptionKey: 'mavlink-config:mavlinkConfigView.tabs.quickSetupDesc' },
 ];
+
+const HELI_TABS: TabNode[] = COPTER_TABS.map((n) => (n === OUTPUTS_GROUP ? HELI_OUTPUTS_GROUP : n));
 
 // Fixed-wing / VTOL tabs: outputs second, since control surfaces are fundamental to plane setup.
 // Motor test covers QuadPlane lift motors; on a plain fixed wing it explains why it cannot.
@@ -385,6 +398,11 @@ function findGroupForTab(nodes: TabNode[], tabId: TabId): TabGroup | undefined {
   return undefined;
 }
 
+/** Below this header width the action buttons drop their labels. */
+const COMPACT_HEADER_WIDTH = 1180;
+/** One row of tab buttons; taller means they wrapped. */
+const TAB_ROW_HEIGHT = 48;
+
 export const MavlinkConfigView: React.FC = () => {
   const { t } = useTranslation();
   const paramCount = useParameterStore((s) => s.paramCount);
@@ -401,6 +419,7 @@ export const MavlinkConfigView: React.FC = () => {
   const setView = useNavigationStore((s) => s.setView);
   const params = useParameterStore((s) => s.parameters);
   const heliFrameMismatch = useMemo(() => heliBuildWithMultirotorFrame((k) => params.get(k)), [params]);
+  const isHeli = params.has('H_RSC_MODE');
   const reflashCopter = useCallback(() => {
     const fw = useFirmwareStore.getState();
     fw.setSelectedSource('ardupilot');
@@ -417,7 +436,7 @@ export const MavlinkConfigView: React.FC = () => {
   const isInavLink = useFlightStack() === 'inav';
   const moduleTabs = configTabRegistry.useEntries();
   const tabs = useMemo(() => {
-    const own = filterTabsForFirmware(isRover ? ROVER_TABS : isPlane ? PLANE_TABS : COPTER_TABS, isPx4Fw, isInavLink);
+    const own = filterTabsForFirmware(isRover ? ROVER_TABS : isPlane ? PLANE_TABS : isHeli ? HELI_TABS : COPTER_TABS, isPx4Fw, isInavLink);
     if (isPx4Fw || isInavLink) return own;
     const nodes = own.map((n) => (n.kind === 'group' ? { ...n, children: [...n.children] } : n));
     const extra: TabNode[] = [];
@@ -434,7 +453,7 @@ export const MavlinkConfigView: React.FC = () => {
     // before the storage group; only Quick setup comes after it
     const at = nodes.findIndex((n) => n.id === 'storage-group');
     return at < 0 ? [...nodes, ...extra] : [...nodes.slice(0, at), ...extra, ...nodes.slice(at)];
-  }, [isRover, isPlane, isPx4Fw, isInavLink, moduleTabs, vehicleCategory]);
+  }, [isRover, isPlane, isHeli, isPx4Fw, isInavLink, moduleTabs, vehicleCategory]);
   const defaultTab: TabId = isInavLink ? 'receiver' : isRover ? 'rover-tuning' : 'pid';
   const [activeTab, setActiveTab] = useState<TabId>(defaultTab);
   // which Quick setup card another tab jumped to
@@ -502,6 +521,37 @@ export const MavlinkConfigView: React.FC = () => {
   const [showWriteConfirm, setShowWriteConfirm] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [rebooting, setRebooting] = useState(false);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [compactHeader, setCompactHeader] = useState(false);
+  // Tabs drop inactive labels once they would wrap to a second row, and get them back with room to spare
+  const tabsRowRef = useRef<HTMLDivElement | null>(null);
+  const [iconTabs, setIconTabs] = useState(false);
+  const iconTabsAt = useRef(0);
+  const fitTabs = useCallback(() => {
+    const header = headerRef.current;
+    const row = tabsRowRef.current;
+    if (!header || !row) return;
+    const width = header.clientWidth;
+    const wraps = row.scrollHeight > TAB_ROW_HEIGHT;
+    setIconTabs((icon) => {
+      if (!icon && wraps) {
+        iconTabsAt.current = width;
+        return true;
+      }
+      return icon && width <= iconTabsAt.current + 24;
+    });
+  }, []);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      setCompactHeader((entry?.contentRect.width ?? 0) < COMPACT_HEADER_WIDTH);
+      fitTabs();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fitTabs]);
+  useLayoutEffect(fitTabs, [fitTabs, iconTabs, activeTab, tabs]);
   const [showRebootConfirm, setShowRebootConfirm] = useState(false);
   const [showResetParams, setShowResetParams] = useState(false);
   const armed = useTelemetryStore((s) => s.flight.armed);
@@ -688,6 +738,8 @@ export const MavlinkConfigView: React.FC = () => {
         return <NotifyTab />;
       case 'motor-test':
         return <MotorTestTab isPlane={isPlane} />;
+      case 'heli-setup':
+        return <HeliSetupTab />;
       case 'servo-output':
         return <ServoOutputTab />;
       case 'battery':
@@ -711,23 +763,25 @@ export const MavlinkConfigView: React.FC = () => {
     }
   };
 
+  const headerBtn = `${compactHeader ? 'p-2' : 'px-4 py-2'} shrink-0 whitespace-nowrap text-sm rounded-lg flex items-center gap-2 bg-surface-raised hover:bg-surface border border-subtle`;
+
   return (
     <div className="h-full flex flex-col bg-surface-base">
       {/* Header */}
-      <div className="shrink-0 px-6 py-4 border-b border-subtle bg-gradient-to-r from-surface to-surface">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-              <Cpu className="w-7 h-7 text-white" />
+      <div ref={headerRef} className="shrink-0 px-6 py-4 border-b border-subtle bg-gradient-to-r from-surface to-surface">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className={`${compactHeader ? 'w-10 h-10' : 'w-12 h-12'} shrink-0 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center`}>
+              <Cpu className={`${compactHeader ? 'w-6 h-6' : 'w-7 h-7'} text-white`} />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-content">
+            <div className="min-w-0">
+              <h2 className={`${compactHeader ? 'text-lg' : 'text-xl'} truncate font-bold text-content`}>
                 {t('mavlink-config:mavlinkConfigView.title', { firmware: isInavLink ? 'INAV' : firmwareLabel(connectionState) })}
               </h2>
-              <div className="flex items-center gap-2 text-sm text-content-secondary">
+              <div className="flex min-w-0 items-center gap-2 whitespace-nowrap text-sm text-content-secondary">
                 {connectionState.vehicleType && (
                   <>
-                    <span className="text-emerald-400">{connectionState.vehicleType}</span>
+                    <span className="truncate text-emerald-400">{connectionState.vehicleType}</span>
                     <span>•</span>
                   </>
                 )}
@@ -742,17 +796,17 @@ export const MavlinkConfigView: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <VaultSyncBadge variant="button" />
+          <div className="flex shrink-0 items-center gap-2">
+            <VaultSyncBadge variant="button" iconOnly={compactHeader} />
             {isLoading && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border-blue-500/30 rounded-lg">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border-blue-500/30 rounded-lg" data-tip={compactHeader ? t('common:loading') : undefined}>
                 <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-                <span className="text-sm text-blue-400">{t('common:loading')}</span>
+                {!compactHeader && <span className="text-sm text-blue-400">{t('common:loading')}</span>}
               </div>
             )}
 
-            {modified > 0 && (
-              <span className="px-3 py-1 text-sm rounded-lg bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+            {modified > 0 && !compactHeader && (
+              <span className="whitespace-nowrap px-3 py-1 text-sm rounded-lg bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
                 {t('mavlink-config:mavlinkConfigView.unsaved')}
               </span>
             )}
@@ -761,20 +815,24 @@ export const MavlinkConfigView: React.FC = () => {
               {...ui('button', { variant: 'secondary' })}
               onClick={() => fetchParameters({ force: true })}
               disabled={isLoading}
-              className="px-4 py-2 text-sm rounded-lg bg-surface-raised hover:bg-surface text-content border border-subtle"
+              className={`${headerBtn} text-content`}
+              data-tip={compactHeader ? t('common:refresh') : undefined}
+              aria-label={t('common:refresh')}
             >
-              {t('common:refresh')}
+              <RefreshCw className="w-4 h-4" />
+              {!compactHeader && t('common:refresh')}
             </button>
 
             <button
               {...ui('button', { variant: 'secondary' })}
               onClick={() => setShowRebootConfirm(true)}
               disabled={rebooting}
-              className="px-4 py-2 text-sm rounded-lg flex items-center gap-2 bg-surface-raised hover:bg-surface text-content border border-subtle"
-              title={t('common:rebootFlightController')}
+              className={`${headerBtn} text-content`}
+              data-tip={t('common:rebootFlightController')}
+              aria-label={t('common:reboot')}
             >
               <RotateCw className={`w-4 h-4 ${rebooting ? 'animate-spin' : ''}`} />
-              {rebooting ? t('common:rebooting') : t('common:reboot')}
+              {!compactHeader && (rebooting ? t('common:rebooting') : t('common:reboot'))}
             </button>
 
             {(connectionState.firmware === 'ardupilot' || connectionState.firmware === 'px4') && !isInavLink && (
@@ -782,43 +840,46 @@ export const MavlinkConfigView: React.FC = () => {
                 {...ui('button', { variant: 'danger' })}
                 onClick={() => setShowResetParams(true)}
                 disabled={rebooting || armed}
-                className="px-4 py-2 text-sm rounded-lg flex items-center gap-2 bg-surface-raised hover:bg-surface text-red-400 border border-subtle disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`${headerBtn} text-red-400 disabled:opacity-50 disabled:cursor-not-allowed`}
                 data-tip={armed ? t('mavlink-config:resetParams.disarmFirst') : t('mavlink-config:resetParams.buttonTip')}
+                aria-label={t('mavlink-config:resetParams.button')}
               >
                 <RotateCcw className="w-4 h-4" />
-                {t('mavlink-config:resetParams.button')}
+                {!compactHeader && t('mavlink-config:resetParams.button')}
               </button>
             )}
 
             <button
               {...ui('button', { variant: 'secondary' })}
               onClick={() => setShowHistory(true)}
-              className="px-4 py-2 text-sm rounded-lg flex items-center gap-2 bg-surface-raised hover:bg-surface text-content border border-subtle"
-              title={t('mavlink-config:mavlinkConfigView.historyTip')}
+              className={`${headerBtn} text-content`}
+              data-tip={t('mavlink-config:mavlinkConfigView.historyTip')}
+              aria-label={t('mavlink-config:mavlinkConfigView.history')}
             >
               <History className="w-4 h-4" />
-              {t('mavlink-config:mavlinkConfigView.history')}
+              {!compactHeader && t('mavlink-config:mavlinkConfigView.history')}
             </button>
 
             <button
               {...ui('button', { variant: 'primary' })}
               onClick={handleWriteToFlashClick}
               disabled={isWritingFlash || modified === 0}
-              className={`px-5 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2 ${
+              className={`${compactHeader && modified === 0 && !isWritingFlash ? 'p-2' : 'px-4 py-2'} shrink-0 whitespace-nowrap text-sm font-medium rounded-lg transition-all flex items-center gap-2 ${
                 modified > 0
                   ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white'
                   : 'bg-surface-raised text-content-tertiary cursor-not-allowed'
               }`}
-              title={t('mavlink-config:mavlinkConfigView.saveAllTip')}
+              data-tip={t('mavlink-config:mavlinkConfigView.saveAllTip')}
+              aria-label={t('mavlink-config:mavlinkConfigView.saveAll')}
             >
               <Save className={`w-4 h-4 ${isWritingFlash ? 'animate-pulse' : ''}`} />
-              {isWritingFlash ? t('common:saving') : t('mavlink-config:mavlinkConfigView.saveAll')}
+              {(!compactHeader || modified > 0 || isWritingFlash) && (isWritingFlash ? t('common:saving') : t('mavlink-config:mavlinkConfigView.saveAll'))}
             </button>
           </div>
         </div>
 
         {/* Tabs */}
-        <div ref={groupMenuRef} className="flex gap-1.5 mt-4 flex-wrap items-center" data-tour="mavlink-tabs">
+        <div ref={(el) => { groupMenuRef.current = el; tabsRowRef.current = el; }} className="flex gap-1.5 mt-4 flex-wrap items-center" data-tour="mavlink-tabs">
           {tabs.map((node) => {
             if (node.kind === 'group') {
               const isActive = activeGroup?.id === node.id;
@@ -830,16 +891,18 @@ export const MavlinkConfigView: React.FC = () => {
                 <div key={node.id} className="relative" data-tour={`mavlink-tab-group-${node.id}`}>
                   <button
                     onClick={() => setOpenGroupId(isOpen ? null : node.id)}
-                    title={t(node.descriptionKey)}
-                    className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
+                    data-tip={iconTabs && !isActive ? t(node.nameKey) : t(node.descriptionKey)}
+                    aria-label={t(node.nameKey)}
+                    className={`${iconTabs && !isActive ? 'px-2' : 'px-3'} py-2 rounded-lg flex items-center gap-2 whitespace-nowrap transition-all ${
                       isActive
                         ? 'bg-surface-raised text-content'
                         : 'text-content-secondary hover:text-content hover:bg-surface-raised'
                     }`}
                   >
                     <DisplayIcon className={`w-4 h-4 ${isActive ? displayColor : `${displayColor} opacity-50`}`} />
-                    <span className="text-sm font-medium">{t(node.nameKey)}</span>
-                    <ChevronDown className={`w-3.5 h-3.5 text-content-tertiary transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    {(!iconTabs || isActive) && <span className="text-sm font-medium">{t(node.nameKey)}</span>}
+                    {iconTabs && !isActive && <ChevronDown className="-ml-1.5 w-3 h-3 text-content-tertiary" />}
+                    {(!iconTabs || isActive) && <ChevronDown className={`w-3.5 h-3.5 text-content-tertiary transition-transform ${isOpen ? 'rotate-180' : ''}`} />}
                   </button>
                   {isOpen && (
                     <div className="absolute left-0 top-full mt-1 min-w-[200px] rounded-lg border border-subtle bg-surface-solid shadow-xl z-40 py-1" data-tour={`mavlink-tab-menu-${node.id}`}>
@@ -873,17 +936,18 @@ export const MavlinkConfigView: React.FC = () => {
               <button
                 key={node.id}
                 data-tour={`mavlink-tab-${node.id}`}
-                title={node.describe?.()}
+                data-tip={iconTabs && !isActive ? (node.label ? node.label() : t(node.nameKey)) : node.describe?.()}
+                aria-label={node.label ? node.label() : t(node.nameKey)}
                 onClick={() => setActiveTab(node.id)}
-                className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
+                className={`${iconTabs && !isActive ? 'px-2.5' : 'px-3'} py-2 rounded-lg flex items-center gap-2 whitespace-nowrap transition-all ${
                   isActive
                     ? 'bg-surface-raised text-content'
                     : 'text-content-secondary hover:text-content hover:bg-surface-raised'
                 }`}
               >
                 <node.Icon className={`w-4 h-4 ${isActive ? node.color : `${node.color} opacity-50`}`} />
-                <span className="text-sm font-medium">{node.label ? node.label() : t(node.nameKey)}</span>
-                {node.badge && (
+                {(!iconTabs || isActive) && <span className="text-sm font-medium">{node.label ? node.label() : t(node.nameKey)}</span>}
+                {node.badge && (!iconTabs || isActive) && (
                   <span className="ml-0.5 px-1.5 py-0.5 text-[10px] bg-surface-raised rounded text-content-secondary">
                     {node.badge}
                   </span>

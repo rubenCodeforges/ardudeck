@@ -20,13 +20,15 @@
     "polygonCount_one": "{{count}} 个多边形",
     "polygonCount_other": "{{count}} 个多边形",
     "polygonPts": "多边形（{{count}} 点）",
-    "returnPoint": "返航点"
+    "returnPoint": "返航点",
+    "radiusLabel": "半径"
   },
   "fenceMapOverlay": {
     "clickToEdit": "点击以编辑或删除此区域",
     "delete": "删除",
     "deleteZone": "删除此区域 （Del）",
     "dragToMove": "拖拽以移动整个区域",
-    "rightClickDelete": "按右键删除"
+    "rightClickDelete": "按右键删除",
+    "radiusHandle": "半径 {{radius}} m\n拖动或在此点上滚动以调整大小"
   }
 }

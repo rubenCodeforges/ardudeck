@@ -31,6 +31,7 @@ import { ModuleManagerView } from './components/modules/ModuleManagerView';
 import { ModuleRuntime } from './modules/ModuleRuntime';
 import { MountPoint } from './modules/MountPoint';
 import { ModuleDock } from './modules/ModuleDock';
+import { ModuleDrawer } from './modules/ModuleDrawer';
 import { ModuleProposalDialog } from './modules/ModuleProposalDialog';
 import { MissionFitDialog } from './components/mission/MissionFitDialog';
 import { useMissionFitStore } from './components/mission/mission-fit-actions';
@@ -1374,6 +1375,7 @@ function App() {
             {renderMainContent()}
           </ErrorBoundary>
         </main>
+        <ModuleDrawer />
         {FrameBottom && <ErrorBoundary label={cargoTheme!.slug} fallback={() => null}><FrameBottom /></ErrorBoundary>}
       </div>
 

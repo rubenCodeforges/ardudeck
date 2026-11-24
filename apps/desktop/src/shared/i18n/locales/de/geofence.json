@@ -20,13 +20,15 @@
     "polygonCount_one": "{{count}} Polygon",
     "polygonCount_other": "{{count}} Polygone",
     "polygonPts": "Polygon ({{count}} Pkt.)",
-    "returnPoint": "Rückkehrpunkt"
+    "returnPoint": "Rückkehrpunkt",
+    "radiusLabel": "Radius"
   },
   "fenceMapOverlay": {
     "clickToEdit": "Klicken, um diese Zone zu bearbeiten oder zu löschen",
     "delete": "Löschen",
     "deleteZone": "Diese Zone löschen (Entf)",
     "dragToMove": "Ziehen, um die gesamte Zone zu verschieben",
-    "rightClickDelete": "Rechtsklick zum Löschen"
+    "rightClickDelete": "Rechtsklick zum Löschen",
+    "radiusHandle": "Radius {{radius}} m\nZiehen oder über diesem Punkt scrollen, um die Größe zu ändern"
   }
 }

@@ -103,7 +103,8 @@ export function HealthReportPanel() {
   const healthResults = useLogStore((s) => s.healthResults);
   const currentLog = useLogStore((s) => s.currentLog);
   const currentLogPath = useLogStore((s) => s.currentLogPath);
-  const aiProvider = useSettingsStore((s) => s.aiProvider);
+  // Installing Claude Advisor is the switch: its key powers this, no separate provider setup
+  const aiProvider = useSettingsStore((s) => s.aiProvider) ?? 'claude';
   const advisorEnabled = useCargoEnabled(ADVISOR_CARGO_SLUG);
   const aiEnabled = advisorEnabled && !!aiProvider;
   const aiWarningDismissed = useSettingsStore((s) => s.aiWarningDismissed);

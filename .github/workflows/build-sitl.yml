@@ -1,11 +1,11 @@
 name: Build ArduPilot SITL Binaries
 
-# Builds Linux x64 SITL binaries and uploads to GitHub release.
-# macOS ARM64 binaries are built locally and uploaded manually.
-# Windows/Linux users can also grab binaries from firmware.ardupilot.org.
+# Builds SITL binaries for every ArduPilot vehicle (macOS arm64 and Linux x64)
+# and uploads them to a sitl-v{version} pre-release.
+# Windows users get binaries from firmware.ardupilot.org.
 #
 # ArduDeck downloads from:
-#   https://github.com/rubenCodeforges/ardudeck/releases/download/sitl-v{version}/{binary}
+#   https://github.com/rubenCodeforges/ardudeck/releases/download/sitl-v{version}/{binary}-{platform}
 
 on:
   workflow_dispatch:
@@ -13,22 +13,58 @@ on:
       ardupilot_ref:
         description: 'ArduPilot git ref (tag, branch, or SHA). E.g. Copter-4.5.7, master'
         required: true
-        default: 'Copter-4.5.7'
+        default: 'master'
       vehicles:
-        description: 'Vehicles to build (comma-separated: copter,plane,rover,sub)'
+        description: 'waf vehicle targets (comma-separated)'
         required: true
-        default: 'copter,plane,rover,sub'
+        default: 'copter,heli,plane,rover,sub,antennatracker,blimp'
 
 permissions:
   contents: write
 
 env:
-  DEFAULT_ARDUPILOT_REF: 'Copter-4.5.7'
+  DEFAULT_ARDUPILOT_REF: 'master'
+  DEFAULT_VEHICLES: 'copter,heli,plane,rover,sub,antennatracker,blimp'
+  GH_REPO: ${{ github.repository }}
 
 jobs:
-  # ─── Linux x64 ───────────────────────────────────────────────────────
-  build-linux-x64:
+  release:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - id: tag
+        name: Determine version tag
+        run: |
+          REF="${{ inputs.ardupilot_ref || env.DEFAULT_ARDUPILOT_REF }}"
+          if [[ "$REF" =~ ^[A-Za-z]+-([0-9]+\.[0-9]+.*) ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+          else
+            VERSION="${REF}-$(date +%Y%m%d)"
+          fi
+          echo "tag=sitl-v${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Create release if missing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --prerelease \
+            --title "ArduPilot SITL ${{ steps.tag.outputs.version }}" \
+            --notes "SITL binaries for ArduDeck, built from ArduPilot ${{ inputs.ardupilot_ref || env.DEFAULT_ARDUPILOT_REF }}."
+
+  build:
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            suffix: linux-x64
+          - os: macos-15
+            suffix: macos-arm64
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout ArduPilot
         uses: actions/checkout@v4
@@ -42,11 +78,18 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install build dependencies
+      - name: Install build dependencies (Linux)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc g++ gawk git make cmake ccache libxml2-dev libxslt-dev
-          pip install empy==3.3.4 pexpect setuptools future dronecan lxml pymavlink
+
+      - name: Install build dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install gawk
+
+      - name: Install Python dependencies
+        run: pip install empy==3.3.4 pexpect setuptools future dronecan lxml pymavlink
 
       - name: Configure SITL
         working-directory: ardupilot
@@ -54,9 +97,9 @@ jobs:
 
       - name: Build vehicles
         working-directory: ardupilot
-        timeout-minutes: 20
+        timeout-minutes: 60
         run: |
-          VEHICLES="${{ inputs.vehicles || 'copter,plane,rover,sub' }}"
+          VEHICLES="${{ inputs.vehicles || env.DEFAULT_VEHICLES }}"
           IFS=',' read -ra VEHICLE_LIST <<< "$VEHICLES"
           for v in "${VEHICLE_LIST[@]}"; do
             echo "::group::Building $v"
@@ -69,26 +112,14 @@ jobs:
           mkdir -p output
           for f in ardupilot/build/sitl/bin/*; do
             name=$(basename "$f")
-            [ -x "$f" ] && [ -f "$f" ] && cp "$f" "output/${name}-linux-x64"
+            [ -x "$f" ] && [ -f "$f" ] && cp "$f" "output/${name}-${{ matrix.suffix }}"
           done
           ls -lh output/
-
-      - name: Determine version tag
-        run: |
-          REF="${{ inputs.ardupilot_ref || env.DEFAULT_ARDUPILOT_REF }}"
-          if [[ "$REF" =~ ^[A-Za-z]+-([0-9]+\.[0-9]+.*) ]]; then
-            VERSION="${BASH_REMATCH[1]}"
-          else
-            VERSION="${REF}-$(date +%Y%m%d)"
-          fi
-          echo "SITL_TAG=sitl-v${VERSION}" >> $GITHUB_ENV
-          echo "SITL_VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Upload to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Upload Linux binaries to existing release (macOS arm64 already there from local build)
           for f in output/*; do
-            gh release upload "${{ env.SITL_TAG }}" "$f" --clobber || true
+            gh release upload "${{ needs.release.outputs.tag }}" "$f" --clobber
           done

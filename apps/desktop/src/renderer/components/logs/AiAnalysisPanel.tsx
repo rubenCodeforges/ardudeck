@@ -289,7 +289,8 @@ export function AiAnalysisPanel() {
   const aiMessages = useLogStore((s) => s.aiMessages);
   const isAiAnalyzing = useLogStore((s) => s.isAiAnalyzing);
   const aiAnalysisError = useLogStore((s) => s.aiAnalysisError);
-  const aiProvider = useSettingsStore((s) => s.aiProvider);
+  // Installing Claude Advisor is the switch: its key powers this, no separate provider setup
+  const aiProvider = useSettingsStore((s) => s.aiProvider) ?? 'claude';
   const aiWarningDismissed = useSettingsStore((s) => s.aiWarningDismissed);
   const altitudeUnit = useSettingsStore((s) => s.unitPreferences.altitude);
   const electricCapacityUnit = useSettingsStore((s) => s.unitPreferences.electricCapacity);

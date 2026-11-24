@@ -246,3 +246,26 @@ export function heliBuildWithMultirotorFrame(get: (key: string) => { value: numb
   const frameClass = get('FRAME_CLASS')?.value;
   return get('H_RSC_MODE') !== undefined && frameClass !== undefined && frameClass !== 0 && !HELI_FRAME_CLASSES.has(frameClass);
 }
+
+/** ArduPilot SERVOn_FUNCTION value driving motor N (1-based): Motor1..8 = 33..40, Motor9..12 = 82..85, Motor13..32 = 160..179. */
+function motorServoFunction(motor: number): number | null {
+  if (motor >= 1 && motor <= 8) return 32 + motor;
+  if (motor >= 9 && motor <= 12) return 73 + motor;
+  if (motor >= 13 && motor <= 32) return 147 + motor;
+  return null;
+}
+
+/**
+ * 0-based output channel that drives motor N. ESC telemetry and SERVO_OUTPUT_RAW are indexed by
+ * output channel, not motor number, so a VTOL with Motor1 on SERVO5 must read index 4. Falls back
+ * to motor - 1 when no SERVOn_FUNCTION names the motor (PX4, or params not loaded yet).
+ */
+export function motorOutputIndex(motor: number, get: (key: string) => number | undefined): number {
+  const fn = motorServoFunction(motor);
+  if (fn !== null) {
+    for (let ch = 1; ch <= 32; ch++) {
+      if (get(`SERVO${ch}_FUNCTION`) === fn) return ch - 1;
+    }
+  }
+  return motor - 1;
+}

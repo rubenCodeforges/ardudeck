@@ -711,7 +711,9 @@
       "tuningDesc": "简易调校滑块（不含 PID 细节）",
       "tuningGroupDesc": "PID 增益、速率曲线与自动调参",
       "quickSetup": "快速设置",
-      "quickSetupDesc": "最常更改的设置，以简单的控件呈现"
+      "quickSetupDesc": "最常更改的设置，以简单的控件呈现",
+      "heliSetup": "直升机设置",
+      "heliSetupDesc": "传统直升机的斜盘、总距、尾桨和旋翼转速控制"
     },
     "title": "{{firmware}} 设置",
     "unsaved": "未保存",
@@ -1195,7 +1197,9 @@
     "readyToArm": "可以解锁",
     "skipCheck": "跳过此检查",
     "skipTip": "解锁前停止检查 {{name}}。只有在硬件确实不存在时才这样做。",
-    "willNotArm": "不会解锁"
+    "willNotArm": "不会解锁",
+    "fixHeli": "直升机拒绝解锁:请在直升机设置中修正(电机互锁开关、旋翼转速控制、斜盘)。",
+    "openHeliSetup": "打开直升机设置"
   },
   "px4ArmingConfig": {
     "allActive": "此载具提供的每一项检查都在启用中",
@@ -2526,5 +2530,140 @@
     "flashNote": "写入闪存之前不会发送任何内容。",
     "confirm_other": "重置 {{count}} 个值",
     "staged_other": "已将 {{count}} 个值恢复默认。请检查后写入闪存。"
+  },
+  "heli": {
+    "noParams": "此主板上没有直升机参数。直升机设置需要 ArduCopter 直升机固件。",
+    "svManActive": "手动舵机模式已开启 (H_SV_MAN)。斜盘将跟随它而不是飞控。飞行前请将其设回关闭。",
+    "roles": {
+      "swashServo": "斜盘舵机 {{n}}",
+      "swash2Servo": "斜盘 2 舵机 {{n}}",
+      "tailServo": "尾舵机",
+      "tailEsc": "尾桨电调",
+      "extGyro": "外置陀螺增益",
+      "rsc": "主旋翼电调 / 油门",
+      "tailRsc": "尾桨电调"
+    },
+    "swash": {
+      "title": "斜盘",
+      "subtitle": "斜盘几何结构及舵机推动方式",
+      "type": "斜盘类型",
+      "type2": "斜盘 2 类型",
+      "servoPos": "舵机 {{n}} 位置",
+      "phaseAngle": "相位角补偿",
+      "colDir": "总距方向",
+      "colDir2": "斜盘 2 总距方向",
+      "colDirHint": "在下方设置中点总距后，摇杆上增大总距必须使斜盘升高。若下降，请在此处反向，不要在舵机上反向。",
+      "linearize": "舵机线性化",
+      "flybar": "平衡杆",
+      "dualMode": "双直升机布局",
+      "dcpScaler": "差动总距比例"
+    },
+    "outputs": {
+      "title": "直升机输出",
+      "servo": "SERVO{{ch}}",
+      "none": "尚未给斜盘舵机、尾部或旋翼电调分配任何输出。请在舵机输出中分配。",
+      "missingSwash": "已分配的斜盘舵机少于 3 个。斜盘舵机是舵机输出中的 Motor1、Motor2 和 Motor3。"
+    },
+    "collective": {
+      "title": "总距和周期变距",
+      "subtitle": "桨叶螺距范围,以舵机 PWM 表示",
+      "max": "最大总距",
+      "mid": "零拉力总距",
+      "midHint": "主桨叶螺距为零时的 PWM。在中点总距模式下用螺距尺测量。",
+      "min": "最小总距",
+      "cycMax": "最大周期变距",
+      "cycMaxHint": "桨叶最大周期螺距。用螺距尺测量。",
+      "hover": "学习到的悬停总距: {{v}}%",
+      "svMan": "手动舵机模式",
+      "svManHint": "直接写入主板。用中点配合舵机输出中的舵机微调调平斜盘,再用最大和最小测量桨叶螺距。飞行时设为关闭。",
+      "svManMode": {
+        "0": "关闭",
+        "1": "直通",
+        "2": "最大",
+        "3": "中点",
+        "4": "最小"
+      },
+      "anglesTitle": "桨叶螺距角",
+      "angMax": "最大桨叶螺距",
+      "angZero": "零推力桨叶螺距",
+      "angZeroHint": "旋翼不产生升力时的桨叶螺距。对称桨叶为 0°。",
+      "angMin": "最小桨叶螺距",
+      "landMin": "着陆最小值",
+      "landMinHint": "地面上和着陆过程中允许的最低总距。",
+      "anglesHint": "在手动舵机模式 Max 和 Min 下用螺距尺测量,并输入桨叶的读数。",
+      "subtitleAngles": "桨叶螺距范围(度),用螺距尺测量",
+      "gaugeHint": "拖动标记来修改数值。在手动舵机模式 Max 和 Min 下用螺距尺测量实际桨叶角度。",
+      "endpoints": "舵机端点(PWM)"
+    },
+    "tail": {
+      "title": "尾桨",
+      "subtitle": "偏航的驱动方式",
+      "type": "尾部类型",
+      "gyrGain": "外置陀螺增益",
+      "gyrGainAcro": "Acro 下的外置陀螺增益",
+      "speed": "尾电调速度",
+      "colYaw": "总距到偏航混控",
+      "colYawHint": "将总距混入尾部,使总距变化时机头保持不动。"
+    },
+    "rsc": {
+      "title": "旋翼转速控制",
+      "subtitle": "主旋翼电调或发动机油门的驱动方式",
+      "mode": "旋翼转速控制模式",
+      "noOutput": "没有输出设为 HeliRSC (功能 31)。主旋翼不会转动。请在舵机输出中分配。",
+      "setpoint": "电调调速器设定值",
+      "curve": "油门曲线",
+      "curvePoint": "总距 {{pct}}% 时的油门",
+      "govRpm": "调速器旋翼转速",
+      "govRange": "调速器工作范围",
+      "govDroop": "调速器下垂响应",
+      "govTcGain": "油门曲线增益",
+      "govDisengage": "调速器脱离油门",
+      "govNeedsRpm": "调速器需要旋翼转速传感器。请先设置 RPM1。",
+      "idle": "怠速油门",
+      "ramp": "油门爬升时间",
+      "rampHint": "油门从怠速升到飞行所需的秒数。",
+      "runup": "旋翼加速时间",
+      "runupHint": "旋翼达到全速所需的秒数。在此之前起飞会被保持。",
+      "runupTooShort": "加速时间 ({{runup}} s) 必须比爬升时间 ({{ramp}} s) 至少长 1 s。否则 ArduPilot 会拒绝解锁。",
+      "critical": "临界旋翼转速",
+      "criticalHint": "低于此转速将无法飞行。设置时让估算值在约 3 s 内降到其以下:加速 10 s 时为 70%。",
+      "idleHint": "电动直升机为零。发动机则为离合器分离的地面怠速。",
+      "curveX": "总距 %",
+      "curveY": "油门 %"
+    },
+    "interlock": {
+      "title": "电机联锁开关",
+      "none": "未分配",
+      "channel": "遥控通道 {{ch}}",
+      "hint": "联锁拨低(旋翼关闭)时解锁,然后拨高以加速旋翼。联锁在高位时 ArduPilot 不会解锁。",
+      "missing": "直升机需要电机联锁开关。没有它 ArduPilot 不会解锁。",
+      "state": {
+        "on": "旋翼开启",
+        "off": "旋翼关闭",
+        "unknown": "无遥控信号",
+        "missing": "未分配"
+      }
+    },
+    "status": {
+      "swash": "斜盘",
+      "swashValue": "{{type}} · 3 个舵机中已分配 {{n}} 个",
+      "interlock": "电机互锁",
+      "rsc": "旋翼转速控制",
+      "noRscOutput": "没有旋翼电调输出",
+      "servoMode": "手动舵机模式"
+    },
+    "diagram": {
+      "roll": "横滚",
+      "pitch": "俯仰",
+      "collective": "总距",
+      "tail": "尾部"
+    },
+    "trims": {
+      "title": "舵机微调",
+      "servo": "舵机",
+      "live": "实时 µs",
+      "trim": "微调",
+      "hint": "将手动舵机模式设为 Mid,然后逐个微调舵机,直到斜盘水平且桨叶为零螺距。输入时即发送更改。"
+    }
   }
 }

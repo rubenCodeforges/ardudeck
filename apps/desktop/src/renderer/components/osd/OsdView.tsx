@@ -16,6 +16,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as Reac
 import { MonitorPlay, Cpu, Radio, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { OsdVideoBackdrop } from './OsdVideoBackdrop';
+import { ResizeHandle } from '../ui/ResizeHandle';
 import { useOsdStore, BUNDLED_FONT_NAMES, type OsdElementKey, type OsdElementPosition, type OsdDataSource } from '../../stores/osd-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
 import { useConnectionStore } from '../../stores/connection-store';
@@ -54,37 +55,6 @@ function hudValuesFromDemo(d: DemoTelemetry): FighterHudValues {
   };
 }
 
-/** A thin draggable divider for resizing the side rails. */
-function ResizeHandle({ onDrag }: { onDrag: (dx: number) => void }) {
-  const { t } = useTranslation();
-  const last = useRef(0);
-  const down = (e: ReactPointerEvent) => {
-    e.preventDefault();
-    last.current = e.clientX;
-    const move = (ev: PointerEvent) => {
-      const dx = ev.clientX - last.current;
-      last.current = ev.clientX;
-      onDrag(dx);
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-  };
-  return (
-    <div
-      onPointerDown={down}
-      className="w-1.5 shrink-0 touch-none cursor-col-resize bg-transparent hover:bg-blue-500/40 active:bg-blue-500/60 transition-colors"
-      title={t('osd:osdView.dragToResize')}
-    />
-  );
-}
 
 const RAIL_MIN = 190;
 const RAIL_MAX = 460;

@@ -627,7 +627,7 @@
       "copyAllTip": "Breite, Länge aller Wegpunkte kopieren (einer pro Zeile)",
       "copyCoords": "Koordinaten kopieren",
       "makePolygon": "Polygon erstellen",
-      "makePolygonTip": "Die ausgewählten Wegpunkte in Missionsreihenfolge zu einem Polygon machen und darauf eine Vermessung planen. Praktisch für eine abgelaufene oder abgeflogene und heruntergeladene Grenze. Braucht mindestens 3 Wegpunkte mit Position.",
+      "makePolygonTip": "Wandelt die Wegpunkte in der Reihenfolge der Mission in ein Polygon um und plant darauf eine Vermessung. Verwendet die ausgewählten Wegpunkte, oder alle, wenn keine ausgewählt sind. Praktisch für eine abgelaufene oder abgeflogene und heruntergeladene Grenze. Benötigt 3 oder mehr Wegpunkte mit Position.",
       "polygonName": "Polygon aus WP {{from}}-{{to}}",
       "copySelectedTip": "Breite, Länge der ausgewählten Wegpunkte kopieren (einer pro Zeile)",
       "copyThisTip": "Breite, Länge dieses Wegpunkts kopieren",
@@ -690,7 +690,9 @@
       "pasteAdded_one": "{{count}} Wegpunkt hinzugefügt",
       "pasteAdded_other": "{{count}} Wegpunkte hinzugefügt",
       "position": "Position ({{format}})",
-      "positionInvalid": "Keine Position in einem bekannten Koordinatenformat"
+      "positionInvalid": "Keine Position in einem bekannten Koordinatenformat",
+      "makePolygonAll": "Polygon aus allen Wegpunkten",
+      "makePolygonSelected": "Polygon aus {{count}} ausgewählten"
     },
     "noCommandsMatch": "Keine Befehle passen zu „{{search}}“",
     "param": {
