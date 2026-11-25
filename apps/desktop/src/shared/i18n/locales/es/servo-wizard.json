@@ -1,0 +1,296 @@
+{
+  "diagrams": {
+    "camera": "Cámara",
+    "deltaHint": "Delta con cola vertical",
+    "elevator": "Timón de profundidad",
+    "flyingWingHint": "Elevones = alerón + timón de profundidad combinados",
+    "front": "FRENTE",
+    "gimbalHint": "Pan = horizontal, Tilt = vertical",
+    "leftAileron": "Alerón I",
+    "leftElevon": "Elevón I",
+    "leftVTail": "Cola V I",
+    "motor1": "Motor 1",
+    "motor2": "Motor 2",
+    "panServo": "Servo de pan",
+    "rightAileron": "Alerón D",
+    "rightElevon": "Elevón D",
+    "rightVTail": "Cola V D",
+    "rudder": "Timón de dirección",
+    "tiltServo": "Servo de tilt",
+    "tricopterHint": "Solo hay que configurar el servo de guiñada",
+    "yawServo": "Servo de guiñada"
+  },
+  "planeTypeStep": {
+    "continue": "Continuar →",
+    "gimbalSubtitle": "Tu placa está configurada como multirrotor. Puedes configurar servos de gimbal para controlar la cámara.",
+    "gimbalTip": "El gimbal usa la entrada de los sticks del emisor para controlar los servos de pan/tilt y estabilizar la cámara.",
+    "gimbalTitle": "Configuración de servos de gimbal",
+    "noServos": "Sin servos",
+    "quadHex": "Quad/Hexa",
+    "servoCount_one": "{{count}} servo",
+    "servoCount_other": "{{count}} servos",
+    "subtitle": "Selecciona el tipo de aeronave para la configuración de servos correcta.",
+    "tip": "<b>¿Quad con cámara?</b> Elige Gimbal. <b2>¿Avión?</b2> La mayoría son Tradicional.",
+    "title": "¿Qué tipo de aeronave tienes?"
+  },
+  "servoAssignmentStep": {
+    "clickToHighlight": "Haz clic en una superficie de control para resaltarla",
+    "continue": "Continuar: probar servos →",
+    "duplicateWarning": "Aviso: ¡hay varias superficies asignadas al mismo servo!",
+    "noAircraft": "No se ha seleccionado ningún tipo de aeronave",
+    "subtitle": "Asocia cada superficie de control con la salida de servo a la que está conectada en tu controlador de vuelo.",
+    "tip": "<b>Consejo:</b> Revisa el cableado de tu controlador de vuelo. Las salidas de servo suelen etiquetarse S1-S8 o SERVO1-8. S1 = Servo 0 en iNav.",
+    "title": "Asignar servos a las superficies de control"
+  },
+  "servoEndpointSlider": {
+    "centerHandle": "centro",
+    "centerUs": "Centro (µs)",
+    "maxHandle": "máx",
+    "maxUs": "Máx (µs)",
+    "minHandle": "mín",
+    "minUs": "Mín (µs)",
+    "testCenter": "Probar centro",
+    "testMax": "Probar máx",
+    "testMin": "Probar mín"
+  },
+  "servoEndpointsStep": {
+    "continue": "Continuar: revisar →",
+    "enableFeedback": "Activar realimentación de servos en vivo",
+    "feedbackEnabled": "● Realimentación de servos en vivo activada",
+    "livePosition": "Posición en vivo",
+    "quickTips": "Consejos rápidos:",
+    "rate": "Rate:",
+    "rateHint": "Reduce el recorrido. 100% = recorrido completo, 50% = medio recorrido.",
+    "subtitle": "Define hasta dónde puede moverse cada servo. Si tu servo hace un ruido de roce con el stick a tope, reduce aquí los límites.",
+    "testingPosition": "Probando la posición del servo...",
+    "tipGrinding": "<b>¿Ruido de roce?</b> Reduce el valor Mín o Máx",
+    "tipNotLevel": "<b>¿No está nivelado con el stick centrado?</b> Ajusta el valor Centro",
+    "tipSensitive": "<b>¿Demasiado sensible?</b> Baja el porcentaje de Rate",
+    "title": "Ajuste fino del recorrido de los servos"
+  },
+  "servoPresets": {
+    "aircraft": {
+      "delta": {
+        "description": "Ala delta con elevones y timón de dirección",
+        "name": "Delta",
+        "tip": "Como un ala volante, pero con cola vertical para el timón de dirección."
+      },
+      "flyingWing": {
+        "description": "Delta/ala volante con 2 elevones",
+        "name": "Ala volante",
+        "tip": "Los elevones combinan la función de alerón y timón de profundidad. Sin superficies de cola."
+      },
+      "gimbal": {
+        "description": "Gimbal de cámara de 2 ejes (pan/tilt)",
+        "name": "Gimbal",
+        "tip": "Para estabilizar la cámara. Usa la entrada del emisor, no una salida estabilizada."
+      },
+      "traditional": {
+        "description": "Avión estándar con alerones, timón de profundidad y timón de dirección",
+        "name": "Tradicional",
+        "tip": "La configuración más habitual en aviones. Superficies de control separadas para cada eje."
+      },
+      "tricopter": {
+        "description": "Tricóptero con servo de guiñada",
+        "name": "Tricóptero",
+        "tip": "Solo hay que configurar el servo de guiñada trasero. Los motores se gestionan aparte."
+      },
+      "vtail": {
+        "description": "Avión con cola en V (ruddervators)",
+        "name": "Cola en V",
+        "tip": "Las superficies de la cola en V combinan timón de profundidad y de dirección. Alerones estándar."
+      }
+    },
+    "inputSource": {
+      "gimbalPitch": "Cabeceo del gimbal",
+      "gimbalRoll": "Alabeo del gimbal",
+      "pitch": "Cabeceo",
+      "rcPitch": "Cabeceo del emisor (manual)",
+      "rcRoll": "Alabeo del emisor (manual)",
+      "rcThrottle": "Acelerador del emisor (manual)",
+      "rcYaw": "Guiñada del emisor (manual)",
+      "roll": "Alabeo",
+      "throttle": "Acelerador",
+      "yaw": "Guiñada"
+    },
+    "surface": {
+      "aileronLeft": {
+        "description": "Alabea el avión a la izquierda cuando baja",
+        "name": "Alerón izquierdo",
+        "shortName": "Aler I"
+      },
+      "aileronRight": {
+        "description": "Alabea el avión a la derecha cuando baja",
+        "name": "Alerón derecho",
+        "shortName": "Aler D"
+      },
+      "elevator": {
+        "description": "Sube el morro cuando el borde de salida sube",
+        "name": "Timón de profundidad",
+        "shortName": "Prof"
+      },
+      "elevonLeft": {
+        "description": "Ala volante: combina alabeo y cabeceo",
+        "name": "Elevón izquierdo",
+        "shortName": "Elev I"
+      },
+      "elevonRight": {
+        "description": "Ala volante: combina alabeo y cabeceo",
+        "name": "Elevón derecho",
+        "shortName": "Elev D"
+      },
+      "gimbalPan": {
+        "description": "Rotación horizontal del gimbal de cámara",
+        "name": "Pan del gimbal",
+        "shortName": "Pan"
+      },
+      "gimbalTilt": {
+        "description": "Rotación vertical del gimbal de cámara",
+        "name": "Tilt del gimbal",
+        "shortName": "Tilt"
+      },
+      "rudder": {
+        "description": "Gira el avión a izquierda/derecha (guiñada)",
+        "name": "Timón de dirección",
+        "shortName": "Dir"
+      },
+      "vtailLeft": {
+        "description": "Cola en V: combina timón de profundidad y de dirección",
+        "name": "Cola V izquierda",
+        "shortName": "CV I"
+      },
+      "vtailRight": {
+        "description": "Cola en V: combina timón de profundidad y de dirección",
+        "name": "Cola V derecha",
+        "shortName": "CV D"
+      },
+      "yawServo": {
+        "description": "Servo de cola del tricóptero para el control de guiñada",
+        "name": "Servo de guiñada",
+        "shortName": "Guiñ"
+      }
+    }
+  },
+  "servoReviewStep": {
+    "beforeSaving": "Antes de guardar:",
+    "controlSurface": "Superficie de control",
+    "input": "Entrada",
+    "mixerPreview": "Vista previa de reglas del mezclador",
+    "noteConnected": "Asegúrate de que tu controlador de vuelo está conectado",
+    "noteEeprom": "Los ajustes se guardan en la EEPROM (persisten al apagar)",
+    "notePropellers": "Desconecta las hélices por seguridad",
+    "noteTest": "Tras guardar, prueba todos los controles antes de volar",
+    "nothingToReview": "No hay configuración que revisar",
+    "rev": "REV",
+    "saveFailed": "No se pudo guardar la configuración",
+    "saveToFc": "Guardar en el controlador de vuelo",
+    "saved": "¡Configuración guardada correctamente!",
+    "savedHint": "Los ajustes se han escrito en el controlador de vuelo. Ya puedes cerrar este asistente.",
+    "source": "Fuente {{source}}",
+    "subtitle": "Verifica la configuración de tus servos antes de guardarla en el controlador de vuelo.",
+    "title": "Revisa tu configuración"
+  },
+  "servoTestStep": {
+    "checkAilerons": "<b>Alerones:</b> stick de alabeo a la derecha → el alerón derecho debe SUBIR, el izquierdo BAJAR",
+    "checkElevator": "<b>Timón de profundidad:</b> stick hacia atrás → el borde de salida debe SUBIR",
+    "checkElevons": "<b>Elevones:</b> prueba los movimientos de alabeo y de cabeceo",
+    "checkRudder": "<b>Timón de dirección:</b> stick de guiñada a la derecha → el timón debe moverse a la DERECHA",
+    "continue": "Continuar: calibrar →",
+    "enablePolling": "Activar sondeo de servos en vivo",
+    "howToCheck": "Cómo comprobar el sentido:",
+    "instruction": {
+      "aileronLeft": "Mueve el stick de alabeo a la DERECHA → este servo debe BAJAR",
+      "aileronRight": "Mueve el stick de alabeo a la DERECHA → este servo debe SUBIR",
+      "default": "Mueve el stick correspondiente",
+      "elevator": "Tira del stick de cabeceo hacia ATRÁS → el borde de salida debe SUBIR",
+      "elevonLeft": "Alabeo a la DERECHA → BAJA. Cabeceo hacia ATRÁS → SUBE (borde de salida)",
+      "elevonRight": "Alabeo a la DERECHA → SUBE. Cabeceo hacia ATRÁS → SUBE (borde de salida)",
+      "gimbalPan": "Mueve el stick de guiñada → la cámara debe girar horizontalmente",
+      "gimbalTilt": "Mueve el stick de cabeceo → la cámara debe inclinarse arriba/abajo",
+      "rudder": "Mueve el stick de guiñada a la DERECHA → el timón debe desviarse a la DERECHA",
+      "vtailLeft": "Cabeceo hacia ATRÁS y guiñada a la DERECHA → prueba ambos movimientos",
+      "vtailRight": "Cabeceo hacia ATRÁS y guiñada a la DERECHA → prueba ambos movimientos",
+      "yawServo": "Mueve el stick de guiñada → el motor debe inclinarse"
+    },
+    "moveStick": "Mueve el stick para probar",
+    "pollingEnabled": "● Sondeo de servos en vivo activado",
+    "responding": "El servo responde",
+    "reverseHint": "Si un servo se mueve en el <b>sentido contrario</b>, haz clic en <rev>Invertir</rev>.",
+    "servoIndex": "Servo {{index}}",
+    "subtitle": "Mueve los sticks de tu emisor y verifica que cada servo responde correctamente.",
+    "title": "Prueba tus servos",
+    "undoReverse": "Deshacer inversión"
+  },
+  "servoTuningCard": {
+    "clickToReverse": "Haz clic para invertir",
+    "fwd": "FWD",
+    "reversedTip": "Servo invertido",
+    "testMax": "Máx →",
+    "testMin": "← Mín"
+  },
+  "servoTuningView": {
+    "clickToSelect": "Haz clic en una superficie para seleccionarla",
+    "noConfig": "Sin configuración de servos",
+    "saveFailed": "No se pudo guardar: {{error}}",
+    "saveToFc": "Guardar en FC",
+    "saved": "Guardado en el controlador de vuelo",
+    "useWizard": "Usa primero el asistente para configurar tus servos."
+  },
+  "servoWizard": {
+    "boardIsMultirotor": "Placa configurada como multirrotor",
+    "changeMixerHint": "Esto cambiará el tipo de mezclador a AIRPLANE, guardará en la EEPROM y reiniciará la placa.",
+    "checkingSupport": "Comprobando compatibilidad con servos...",
+    "completeWizardFirst": "Completa primero el asistente",
+    "configureAsAirplane": "Configurar como avión",
+    "configureAsPlaneQuestion": "¿Quieres configurar esta placa como avión?",
+    "configuring": "Configurando...",
+    "disconnecting": "Desconectando...",
+    "failedWithMessage": "Falló: {{message}}. Prueba la CLI de iNav Configurator.",
+    "fineTuneServos": "Ajuste fino de servos",
+    "notAvailable": "Configuración de servos no disponible",
+    "oldFirmwareNote": "<b>Nota:</b> iNav 2.0.0 es muy antiguo. Si esto no funciona, puede que tengas que usar la CLI de iNav Configurator: <code>mixer AIRPLANE</code> y luego <code>save</code>",
+    "platformChangeFailed": "No se pudo cambiar la plataforma. Para iNav 2.0.0, prueba la CLI de iNav Configurator: mixer AIRPLANE y luego save",
+    "platformChanged": "¡Plataforma cambiada a AIRPLANE! Reconecta para verificar.",
+    "rebooting": "Reiniciando la placa...",
+    "reconnectHint": "Usa el panel de conexión de la parte superior para reconectar.",
+    "reconnecting": "Reconectando...",
+    "savingEeprom": "Cambio de plataforma enviado. Guardando en la EEPROM...",
+    "sendingPlatform": "Enviando configuración de plataforma (MSP2 + CLI de respaldo)...",
+    "servoCount": "- {{count}} servos",
+    "settingPlatform": "Estableciendo el tipo de plataforma en AIRPLANE...",
+    "steps": {
+      "aircraft": {
+        "description": "Selecciona el tipo de aeronave",
+        "label": "Aeronave"
+      },
+      "assign": {
+        "description": "Asocia servos a superficies de control",
+        "label": "Asignar"
+      },
+      "endpoints": {
+        "description": "Ajusta los límites de los servos",
+        "label": "Calibrar"
+      },
+      "review": {
+        "description": "Revisa y guarda",
+        "label": "Guardar"
+      },
+      "test": {
+        "description": "Verifica el movimiento de los servos",
+        "label": "Probar"
+      }
+    },
+    "tune": "Ajustar",
+    "unknownError": "Error desconocido",
+    "useConnectionPanel": "Usa el panel de conexión para reconectar con tu placa.",
+    "usedFor": "La configuración de servos se usa para:",
+    "usedForFixedWing": "<b>Aeronaves de ala fija</b> - alerones, timón de profundidad, timón de dirección",
+    "usedForFlyingWing": "<b>Alas volantes</b> - mezcla de elevones",
+    "usedForGimbal": "<b>Servos de gimbal</b> - pan/tilt de cámara (requiere placa compatible)",
+    "waitingReboot": "Esperando a que la placa se reinicie (5 s)...",
+    "wizard": "Asistente"
+  },
+  "wizardNav": {
+    "back": "← Atrás"
+  }
+}

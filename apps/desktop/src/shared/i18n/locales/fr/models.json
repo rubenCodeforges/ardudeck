@@ -1,0 +1,88 @@
+{
+  "layersEntry": {
+    "label": "Modèles 3D",
+    "tip": "Ajoutez vos propres modèles 3D (glTF, KMZ, 3D Tiles, CityJSON, nuages de points LAS/LAZ) à toutes les vues 3D"
+  },
+  "dialog": {
+    "title": "Modèles 3D",
+    "subtitle": "Vos propres modèles, affichés dans toutes les vues 3D",
+    "import": "Importer",
+    "importing": "Importation...",
+    "importTip": "Choisissez des fichiers glTF/GLB, KMZ, un tileset.json 3D Tiles, CityJSON, ou des nuages de points LAS, LAZ et PLY",
+    "failedTitle_one": "{{count}} fichier n'a pas pu être importé",
+    "failedTitle_other": "{{count}} fichiers n'ont pas pu être importés",
+    "dismiss": "Fermer",
+    "needsPlacementHint_one": "{{count}} modèle n'a pas de position dans ses données. Il a été placé là où vous l'avez déposé (ou au centre de la carte). Développez-le pour définir sa position.",
+    "needsPlacementHint_other": "{{count}} modèles n'ont pas de position dans leurs données. Ils ont été placés là où vous les avez déposés (ou au centre de la carte). Développez-les pour définir leur position.",
+    "emptyTitle": "Aucun modèle 3D pour le moment",
+    "emptyHint": "Importez des fichiers, déposez-les sur une carte ou surveillez un dossier.",
+    "warningsTitle_one": "{{count}} importation à vérifier",
+    "warningsTitle_other": "{{count}} importations à vérifier"
+  },
+  "row": {
+    "collapse": "Réduire",
+    "editPlacement": "Modifier la position",
+    "placedByData": "Placé par les données",
+    "placedByHand": "Placé à la main",
+    "fromFolder": "Depuis un dossier",
+    "needsPosition": "Position requise",
+    "hide": "Masquer dans les vues 3D",
+    "show": "Afficher dans les vues 3D",
+    "remove": "Retirer le modèle",
+    "confirmRemove": "Retirer",
+    "removeWatchedTip": "Ce modèle provient d'un dossier surveillé. Retirez le dossier ou modifiez sa table à la place.",
+    "points_one": "{{formatted}} point",
+    "points_other": "{{formatted}} points",
+    "pointsThinned": "{{shown}} points sur {{total}}",
+    "pointsThinnedTip": "Les grands nuages sont éclaircis uniformément pour garder chaque vue 3D fluide"
+  },
+  "editor": {
+    "lat": "Latitude",
+    "lng": "Longitude",
+    "alt": "Altitude (m)",
+    "altMode": "Mode d'altitude",
+    "altModes": {
+      "amsl": "Au-dessus du niveau de la mer",
+      "agl": "Au-dessus du sol",
+      "clamp": "Au sol"
+    },
+    "yaw": "Lacet (°)",
+    "pitch": "Tangage (°)",
+    "roll": "Roulis (°)",
+    "scale": "Échelle",
+    "readOnlyNote": "Ce modèle provient d'un dossier surveillé. Sa table (models.json, CSV ou GeoJSON) contrôle la position : modifiez la table pour le déplacer.",
+    "placeAtCentre": "Placer au centre de la carte",
+    "placeAtCentreTip": "Déplacer le modèle au centre de la dernière carte utilisée",
+    "adjustOnMap": "Ajuster sur la carte",
+    "adjustOnMapTip": "Faites glisser l'origine du modèle sur la carte 2D et tournez sa poignée de cap"
+  },
+  "watch": {
+    "title": "Dossiers surveillés",
+    "add": "Ajouter un dossier",
+    "remove": "Arrêter la surveillance",
+    "explain": "Placez les modèles dans un dossier avec une table models.json, CSV ou GeoJSON à côté : la table positionne chaque modèle. Les modifications du dossier ou de la table se rechargent en direct.",
+    "none": "Aucun dossier surveillé."
+  },
+  "toast": {
+    "imported_one": "{{count}} modèle importé",
+    "imported_other": "{{count}} modèles importés",
+    "failed_one": "{{count}} échec",
+    "failed_other": "{{count}} échecs",
+    "needsPlacement_one": "{{count}} nécessite une position",
+    "needsPlacement_other": "{{count}} nécessitent une position",
+    "details": "Détails",
+    "warnings_one": "{{count}} avertissement",
+    "warnings_other": "{{count}} avertissements"
+  },
+  "adjust": {
+    "hint": "Ajustement de {{name}} : faites glisser le point pour le déplacer, la poignée pour le faire tourner",
+    "edit": "Modifier les valeurs",
+    "done": "Terminé"
+  },
+  "drop": {
+    "overlay": "Déposez pour ajouter un modèle 3D"
+  },
+  "format": {
+    "pointCloud": "Nuage de points"
+  }
+}

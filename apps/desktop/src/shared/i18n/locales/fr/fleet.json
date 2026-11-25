@@ -1,0 +1,103 @@
+{
+  "draggableFleetActions": {
+    "title": "Opérations de flotte"
+  },
+  "fleetContextMenu": {
+    "addToFleet": "Ajouter à la flotte",
+    "alt": "alt",
+    "chipTip": "{{label}} (m)",
+    "commandVehicle": "Commander ce véhicule",
+    "createLeader": "Créer un leader",
+    "currentShape": "{{label}} (actuelle)",
+    "disband": "Dissoudre la flotte",
+    "disbandTip": "Dissout cette flotte : ses ailiers repassent en contrôle manuel",
+    "formUp_one": "Rassembler {{count}} drone libre",
+    "formUp_other": "Rassembler {{count}} drones libres",
+    "formationShape": "Forme de la formation",
+    "gap": "écart",
+    "join": "Rejoindre {{label}}",
+    "leadsFleet": "Dirige une flotte",
+    "leave": "Quitter la flotte",
+    "leaveTip": "Retirer {{label}} de la flotte : les autres gardent la formation",
+    "reformShape": "Reformer : {{label}}",
+    "startMission": "Démarrer la mission",
+    "takeOffFleet": "Décoller la flotte"
+  },
+  "fleetCoordination": {
+    "alt": "alt",
+    "altitudeTip": "Altitude de décollage (m)",
+    "collapseFleet": "Réduire la flotte",
+    "engineError": "erreur du moteur",
+    "engineReportTip": "Dernier rapport du moteur de coordination (décollage groupé / démarrage de mission)",
+    "expandFleet": "Développer la flotte",
+    "fleet": "Flotte",
+    "leaderModeTip": "Mode {{label}}",
+    "reformTip": "Reformer la flotte de {{label}} : {{shape}}",
+    "startMission": "Démarrer la mission",
+    "startMissionTip": "{{label}} vole sa mission téléversée en AUTO ; ses ailiers gardent la formation et suivent",
+    "startMissions": "Démarrer les missions ({{count}})",
+    "startMissionsTip": "Téléverse le groupe de WP assigné à chaque véhicule et démarre les {{count}} missions en AUTO",
+    "takeOff": "Décoller",
+    "takeOffAll": "Tout décoller",
+    "takeOffAllTip": "Tous les véhicules connectés s'arment et montent ensemble à {{alt}} m",
+    "takeOffFleetTip": "Armer et monter à {{alt}} m uniquement la flotte de {{label}}"
+  },
+  "fleetDisclosure": {
+    "collapseAll": "Tout réduire",
+    "collapseEveryTip": "Réduire toutes les flottes",
+    "expandAll": "Tout développer",
+    "expandEveryTip": "Développer toutes les flottes",
+    "fleets": "Flottes"
+  },
+  "fleetGroupActions": {
+    "arm": "Armer",
+    "confirmArm_one": "Armer {{count}} véhicule ?",
+    "confirmArm_other": "Armer {{count}} véhicules ?",
+    "confirmDisarm_one": "Désarmer {{count}} véhicule ?",
+    "confirmDisarm_other": "Désarmer {{count}} véhicules ?",
+    "confirmRtl_one": "Renvoyer {{count}} véhicule à la maison (RTL) ?",
+    "confirmRtl_other": "Renvoyer {{count}} véhicules à la maison (RTL) ?",
+    "confirmStart_one": "Démarrer la mission sur {{count}} véhicule ?",
+    "confirmStart_other": "Démarrer la mission sur {{count}} véhicules ?",
+    "selected": "{{count}} sélectionné(s)",
+    "start": "Démarrer"
+  },
+  "fleetStrip": {
+    "collapseFleet": "Réduire la flotte",
+    "deselectTip": "{{label}} : cliquer pour désélectionner",
+    "dragHere": "Glissez un véhicule ici",
+    "dropToRemove": "Déposer pour retirer de la flotte",
+    "expandFleet": "Développer la flotte",
+    "fleet": "Flotte",
+    "identityTip": "{{airframe}} : {{state}} (cliquer pour définir la couleur d'identité)",
+    "lead": "Leader",
+    "orders": "Ordres",
+    "selectTip": "Sélectionner pour les commandes de groupe",
+    "setColour": "Définir la couleur {{color}}",
+    "unassigned": "Non assigné",
+    "vehicleTip": "{{label}} : {{mode}}",
+    "vehicleTipArmed": "{{label}} : {{mode}} : ARMÉ"
+  },
+  "formationGlyphs": {
+    "box": "Boîte (grille)",
+    "column": "Colonne (sillage)",
+    "diamond": "Losange",
+    "echelonLeft": "Échelon gauche",
+    "echelonRight": "Échelon droit",
+    "line": "Ligne de front (mur)",
+    "survey": "Balayage de relevé (large)",
+    "vee": "Vé (delta)"
+  },
+  "heartbeatDot": {
+    "none": "Aucun heartbeat pour l'instant",
+    "receiving": "Heartbeat reçu",
+    "stale": "Aucun heartbeat depuis {{seconds}} s"
+  },
+  "missionPathsToggle": {
+    "all": "Trajectoires de tous les véhicules",
+    "allTip": "Tracer la trajectoire de chaque véhicule (sélectionné en plein, les autres atténués)",
+    "selected": "Sélection uniquement",
+    "selectedTip": "Tracer uniquement la trajectoire du véhicule sélectionné",
+    "title": "Trajectoires de mission"
+  }
+}

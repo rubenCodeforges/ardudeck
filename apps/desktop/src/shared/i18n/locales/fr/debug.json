@@ -1,0 +1,22 @@
+{
+  "debugConsole": {
+    "console": "Console",
+    "dockBottom": "Ancrer en bas",
+    "dockLeft": "Ancrer à gauche",
+    "dockRight": "Ancrer à droite",
+    "entries_one": "{{count}} entrée",
+    "entries_other": "{{count}} entrées",
+    "filter": {
+      "all": "Tout",
+      "error": "Erreur",
+      "info": "Info",
+      "packet": "Paquet"
+    },
+    "fix": "Corriger ›",
+    "jumpToLatest": "↓ Aller au dernier (en pause)",
+    "msgs_one": "{{count}} msg",
+    "msgs_other": "{{count}} msgs",
+    "noLogEntries": "Aucune entrée de journal",
+    "noMessages": "Aucun message de l'autopilote"
+  }
+}

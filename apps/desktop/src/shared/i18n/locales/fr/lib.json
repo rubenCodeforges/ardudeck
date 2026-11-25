@@ -1,0 +1,246 @@
+{
+  "vehicleTemplates": {
+    "apply": {
+      "armed": "Le véhicule est armé, désarmez-le avant d'appliquer",
+      "expectedFc": "Un vrai contrôleur de vol était attendu, mais la connexion est un SITL",
+      "expectedSitl": "Un SITL était attendu, mais la connexion est un vrai contrôleur de vol",
+      "noParams": "Paramètres pas encore chargés, récupérez-les d'abord",
+      "noTemplate": "Aucun modèle trouvé pour ce profil",
+      "notConnected": "Aucun véhicule connecté",
+      "nothingToApply": "Le véhicule correspond déjà au profil, rien à modifier",
+      "restoreNote": "Restauration depuis l'instantané du {{date}}",
+      "snapshotReason": "Appliquer {{name}}"
+    },
+    "helpers": {
+      "airspeedCruise": "Décrochage × 1,5 = {{speed}} m/s (croisière efficace)",
+      "airspeedMax": "Deux fois la croisière = {{speed}} m/s (au moins 50 % au-dessus du minimum, pour le contrôle d'altitude TECS)",
+      "airspeedMin": "Décrochage × 1,25 = {{speed}} m/s (au moins 20 % au-dessus du décrochage, comme l'exige ArduPilot)",
+      "armingCheck": "Activer tous les contrôles pre-arm",
+      "battMonitor": "Surveillance analogique de la tension et du courant",
+      "capacity": "Capacité issue du profil ({{capacity}} mAh)",
+      "critVolt": "{{cells}}S × {{volts}} V (seuil critique {{chem}})",
+      "elevonGain": "Gain de mixage d'elevons standard",
+      "elevonLeft": "Sortie elevon gauche (aile delta)",
+      "elevonRight": "Sortie elevon droit (aile delta)",
+      "lowVolt": "{{cells}}S × {{volts}} V (seuil bas {{chem}})",
+      "simCapacity": "Capacité simulée ({{capacity}} mAh)",
+      "simDrag": "Coefficient de traînée issu du profil",
+      "simEngine": "Mis à l'échelle depuis un rapport poussée/poids de {{ratio}} (multiplicateur de puissance moteur)",
+      "simServo": "Temps de réponse du servo à partir de {{speed}}°/s",
+      "simVoltage": "Tension simulée à pleine charge ({{cells}}S × 4,20 V)",
+      "trimAirspeed": "Croisière {{speed}} m/s en cm/s, le nom utilisé par le firmware avant la 4.5",
+      "vtailGain": "Gain de mixage d'empennage en V standard",
+      "vtailLeft": "Empennage en V gauche (mixage tangage + lacet)",
+      "vtailRight": "Empennage en V droit (mixage tangage + lacet)",
+      "airspeedStall": "Décrochage × 1,05 = {{speed}} m/s (légèrement au-dessus du vrai décrochage, pour éviter le décrochage et pour l'atterrissage)"
+    },
+    "reason": {
+      "aileron": "Aileron",
+      "all4MotorsTiltWithWing": "Les 4 moteurs s'inclinent avec l'aile",
+      "belowThisVTOLMotorsAssistFixed": "En dessous, les moteurs VTOL assistent l'aile fixe",
+      "bicopter2MotorTiltrotor": "Bicoptère (tiltrotor à 2 moteurs)",
+      "boat": "Bateau",
+      "boatRoverFrameClass": "Bateau (classe de châssis rover)",
+      "bodyFrameControlInput": "Commande dans le repère du corps",
+      "bodyFrameStickInput": "Entrée de manche dans le repère du corps",
+      "continuousTilt": "Inclinaison continue",
+      "cruiseSpeed60OfMax": "Vitesse de croisière = 60 % du max",
+      "differential": "Différentiel",
+      "elevator": "Profondeur",
+      "elevonLeft": "Elevon gauche",
+      "elevonLeftDeltaWing": "Elevon gauche (aile delta)",
+      "elevonMixGain": "Gain de mixage des elevons",
+      "elevonRight": "Elevon droit",
+      "elevonRightDeltaWing": "Elevon droit (aile delta)",
+      "enableTailsitterMode": "Activer le mode tailsitter",
+      "enableTiltServos": "Activer les servos d'inclinaison",
+      "enableVTOL": "Activer le VTOL",
+      "enableVTOLQuadplane": "Activer le VTOL (quadplane)",
+      "enableVTOLQuadplaneHex": "Activer le VTOL (quadplane hexa)",
+      "fixedWingAssistThreshold": "Seuil d'assistance aile fixe",
+      "forwardThrottle": "Gaz avant",
+      "groundSteering": "Direction au sol",
+      "hArrangement": "Disposition en H",
+      "hexacopter": "Hexacoptère",
+      "hexacopterLiftFrame": "Châssis de sustentation hexacoptère",
+      "motor1": "Moteur 1",
+      "motor1ForwardRightVec": "Moteur 1 (vecteur avant droit)",
+      "motor1HoverForward": "Moteur 1 (stationnaire + avant)",
+      "motor1Left": "Moteur 1 gauche",
+      "motor1Lift": "Moteur 1 (sustentation)",
+      "motor1Tilt": "Inclinaison moteur 1",
+      "motor2": "Moteur 2",
+      "motor2ForwardLeftVec": "Moteur 2 (vecteur avant gauche)",
+      "motor2HoverForward": "Moteur 2 (stationnaire + avant)",
+      "motor2Lift": "Moteur 2 (sustentation)",
+      "motor2Right": "Moteur 2 droit",
+      "motor2Tilt": "Inclinaison moteur 2",
+      "motor3": "Moteur 3",
+      "motor3Lift": "Moteur 3 (sustentation)",
+      "motor3RearRightVec": "Moteur 3 (vecteur arrière droit)",
+      "motor4": "Moteur 4",
+      "motor4Lift": "Moteur 4 (sustentation)",
+      "motor4RearLeftVec": "Moteur 4 (vecteur arrière gauche)",
+      "motor5Lift": "Moteur 5 (sustentation)",
+      "motor5VerticalRight": "Moteur 5 (vertical droit)",
+      "motor6Lift": "Moteur 6 (sustentation)",
+      "motor6VerticalLeft": "Moteur 6 (vertical gauche)",
+      "motors12ActiveInHover": "Moteurs 1+2 actifs en stationnaire",
+      "motors12Tilt": "Inclinaison des moteurs 1+2",
+      "notATailsitter": "Pas un tailsitter",
+      "notATiltrotor": "Pas un tiltrotor",
+      "octaquadCoaxialX8": "OctaQuad (coaxial X8)",
+      "octaquadY6": "OctaQuad / Y6",
+      "octocopter": "Octocoptère",
+      "omniRoverFrame": "Châssis rover omnidirectionnel",
+      "plusArrangement": "Disposition en +",
+      "quadcopter": "Quadricoptère",
+      "quadcopterLiftFrame": "Châssis de sustentation quadricoptère",
+      "r4WheelOmniX": "4 roues omnidirectionnelles (X)",
+      "roverFrame": "Châssis rover",
+      "rudder": "Dérive",
+      "rudderGroundSteering": "Dérive (direction au sol)",
+      "singleCoaxCopterLiftFrame": "Châssis de sustentation monorotor/coaxial",
+      "singleCoaxFor2MotorTailsitter": "Monorotor/coaxial pour tailsitter à 2 moteurs",
+      "tailsitterMode": "Mode tailsitter",
+      "throttle": "Gaz",
+      "throttleFrontLeft": "Gaz avant gauche",
+      "throttleFrontRight": "Gaz avant droit",
+      "throttleL": "Gaz G",
+      "throttleLeft": "Gaz gauche",
+      "throttleLeftHull": "Gaz coque gauche",
+      "throttleRTwinMotor": "Gaz D (bimoteur)",
+      "throttleRearLeft": "Gaz arrière gauche",
+      "throttleRearRight": "Gaz arrière droit",
+      "throttleRight": "Gaz droit",
+      "throttleRightHull": "Gaz coque droite",
+      "tiltServoSharedWingTilt": "Servo d'inclinaison (inclinaison d'aile partagée)",
+      "tiltwingWholeWingTilts": "Tiltwing (toute l'aile s'incline)",
+      "transitionDuration5S": "Durée de transition (5 s)",
+      "tricopter": "Tricoptère",
+      "undefinedAckermannUsesSteering": "Non défini (Ackermann utilise la direction)",
+      "useVTOLForRTLLanding": "Utiliser le VTOL pour l'atterrissage RTL",
+      "vectored6Frame": "Châssis Vectored-6",
+      "vectoredThrustHoverGain": "Gain de stationnaire en poussée vectorielle",
+      "vectoredThrustYawGain": "Gain de lacet en poussée vectorielle",
+      "vectoredYawNoRudder": "Lacet vectoriel (sans dérive)",
+      "vectoredYawTailsitter": "Tailsitter à lacet vectoriel",
+      "vtolAssistBelowThisSpeed": "Assistance VTOL sous cette vitesse",
+      "waypointSpeed": "Vitesse aux waypoints",
+      "waypointSpeedFromMaxSpeed": "Vitesse aux waypoints depuis maxSpeed",
+      "xArrangement": "Disposition en X",
+      "y6bCoaxial": "Y6B (coaxial)",
+      "yArrangement": "Disposition en Y"
+    },
+    "template": {
+      "boat-catamaran": {
+        "description": "Double coque, double hélice, plateforme stable",
+        "name": "Catamaran"
+      },
+      "boat-single-prop": {
+        "description": "Gouvernail + un moteur",
+        "name": "Bateau monohélice"
+      },
+      "boat-twin-prop": {
+        "description": "Deux moteurs, direction par poussée différentielle (sans gouvernail)",
+        "name": "Bateau bihélice"
+      },
+      "copter-coaxial": {
+        "description": "Huit moteurs en 4 paires coaxiales, bête de somme industrielle",
+        "name": "Quad coaxial (X8)"
+      },
+      "copter-hex-plus": {
+        "description": "Six moteurs en +, disposition classique pour charges lourdes",
+        "name": "Hexacoptère (+)"
+      },
+      "copter-hex-x": {
+        "description": "Six moteurs : redondance, charges lourdes",
+        "name": "Hexacoptère (X)"
+      },
+      "copter-octo-plus": {
+        "description": "Huit moteurs en +, charges lourdes symétriques",
+        "name": "Octocoptère (+)"
+      },
+      "copter-octo-x": {
+        "description": "Huit moteurs : redondance maximale, charges lourdes pour le cinéma",
+        "name": "Octocoptère (X)"
+      },
+      "copter-quad-h": {
+        "description": "Quatre moteurs en H, rigide pour les plateformes caméra",
+        "name": "Quadricoptère (H)"
+      },
+      "copter-quad-plus": {
+        "description": "Quatre moteurs en +, moteur 1 vers l'avant",
+        "name": "Quadricoptère (+)"
+      },
+      "copter-quad-x": {
+        "description": "Quatre moteurs en X, le multirotor classique",
+        "name": "Quadricoptère (X)"
+      },
+      "copter-tri": {
+        "description": "Trois moteurs + servo de lacet, efficace et original",
+        "name": "Tricoptère"
+      },
+      "copter-y6": {
+        "description": "Trois bras, deux moteurs chacun (coaxial), redondance compacte",
+        "name": "Y6 (tri coaxial)"
+      },
+      "plane-flying-wing": {
+        "description": "Sans empennage, elevons au bord de fuite",
+        "name": "Aile volante / Delta"
+      },
+      "plane-standard": {
+        "description": "Fuselage traditionnel avec profondeur, dérive et ailerons séparés",
+        "name": "Avion standard"
+      },
+      "plane-twin-boom": {
+        "description": "Deux poutres de queue, idéal pour les pushers et les caméras",
+        "name": "Avion bipoutre"
+      },
+      "plane-v-tail": {
+        "description": "Deux surfaces combinées tangage/lacet, traînée plus propre",
+        "name": "Avion à empennage en V"
+      },
+      "rover-ackermann": {
+        "description": "Type voiture : un seul canal de gaz, servo de direction",
+        "name": "Rover Ackermann"
+      },
+      "rover-omni": {
+        "description": "Roues omnidirectionnelles, peut se déplacer latéralement",
+        "name": "Rover omnidirectionnel"
+      },
+      "rover-skid": {
+        "description": "Entraînement différentiel : type char, sans servo de direction",
+        "name": "Rover à direction différentielle"
+      },
+      "sub-vectored-6": {
+        "description": "Type BlueROV2 : 4 propulseurs vectoriels + 2 verticaux",
+        "name": "Vectoriel à 6 propulseurs"
+      },
+      "vtol-quadplane-hex": {
+        "description": "Avion à aile fixe avec 6 moteurs de sustentation verticaux, VTOL pour charges lourdes",
+        "name": "Hexplane (6 de sustentation)"
+      },
+      "vtol-quadplane-quad": {
+        "description": "Avion à aile fixe avec 4 moteurs de sustentation verticaux",
+        "name": "Quadplane classique (sustentation quad)"
+      },
+      "vtol-tailsitter-conventional": {
+        "description": "Posé sur sa queue, bascule pour voler vers l'avant, elevons pour le contrôle en stationnaire",
+        "name": "Tailsitter (conventionnel)"
+      },
+      "vtol-tailsitter-delta-duo": {
+        "description": "Tailsitter à aile delta et 2 moteurs, compact et efficace",
+        "name": "Tailsitter Delta Duo"
+      },
+      "vtol-tiltrotor-dual": {
+        "description": "Deux moteurs basculent du stationnaire à la croisière, type Osprey",
+        "name": "Tiltrotor (double)"
+      },
+      "vtol-tiltwing": {
+        "description": "Toute l'aile pivote du stationnaire à la croisière",
+        "name": "Tiltwing"
+      }
+    }
+  }
+}

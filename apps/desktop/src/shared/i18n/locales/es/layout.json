@@ -1,0 +1,66 @@
+{
+  "appShell": {
+    "about": "Acerca de ArduDeck",
+    "clickToDisconnect": "Haz clic para desconectar",
+    "disconnected": "Desconectado",
+    "fleetCount": "Flota ({{count}})",
+    "fleetTitle": "Flota conectada mediante enlaces multivehículo. Haz clic para abrir la telemetría.",
+    "noneSelected": " · ninguno seleccionado",
+    "staleDisconnect": "Sin datos desde hace {{seconds}} s. Haz clic para desconectar",
+    "staleShort": "Sin datos {{seconds}} s",
+    "voiceMuted": "Alertas de voz silenciadas. Haz clic para activarlas",
+    "voiceOn": "Alertas de voz activadas. Haz clic para silenciarlas",
+    "waiting": "Esperando...",
+    "osBadge": "OS",
+    "osBadgeTitle": "Ejecutándose en {{osName}}. El enlace con el vehículo y la caché de parámetros los proporciona el sistema."
+  },
+  "armDisarm": {
+    "arm": "ARMAR",
+    "armNotConfigured": "El modo ARM no está configurado en el FC. Asigna un canal AUX para ARM en la pestaña Modes.",
+    "armTitle": "Armar",
+    "armingBlocked": "Armado bloqueado",
+    "disarm": "DESARMAR",
+    "disarmTitle": "Desarmar",
+    "forceArm": "FORZAR ARMADO",
+    "forceArmHint": "Omitir las comprobaciones de seguridad pre-arm",
+    "forceArmLabel": "Forzar armado",
+    "forceArmTitle": "Forzar armado (omite las comprobaciones)",
+    "mspUnknown": "Desconocido",
+    "preArmFailed": "Fallaron las comprobaciones pre-arm",
+    "title": "{{action}} - Clic derecho para ver opciones"
+  },
+  "quickLaunch": {
+    "areaEditorDesc": "Dibuja áreas de misión: varias áreas, huecos, KML",
+    "button": "Quick Launch",
+    "buttonTitle": "Quick Launch: abre herramientas en su propia ventana",
+    "inspectorDesc": "Observa mensajes y gráficas en vivo",
+    "simWorldDesc": "Vuela SITL en un mundo 3D persistente: obstáculos, vallas, misiones",
+    "telemetryDashboard": "Panel de telemetría",
+    "telemetryDashboardDesc": "Telemetría en vivo en su propia pantalla",
+    "locusDesc": "Abre ArduDeck Locus: PPK, fotogrametría y LiDAR"
+  },
+  "updateBanner": {
+    "available": "<b>ArduDeck {{version}}</b> está disponible{{name}}",
+    "downloading": "Descargando <b>ArduDeck {{version}}</b>",
+    "newVersion": "nueva versión",
+    "ready": "<b>ArduDeck {{version}}</b> está listo para instalar",
+    "restartToUpdate": "Reiniciar para actualizar",
+    "viewRelease": "Ver versión"
+  },
+  "bridgeMoved": {
+    "text": "Bridge, el tema en memoria de Sir Patrick Stewart, ahora es un cargo en el Hangar.",
+    "open": "Abrir en el Hangar"
+  },
+  "voiceLevel": {
+    "title": "Avisos de voz",
+    "all": "Todos",
+    "allDesc": "Todos los avisos: modos, waypoints, despegue y aterrizaje, alertas",
+    "allTip": "Voz: todos los avisos",
+    "important": "Solo importantes",
+    "importantDesc": "Alertas, failsafes, advertencias y armado / desarmado",
+    "importantTip": "Voz: solo importantes",
+    "off": "Desactivado",
+    "offDesc": "Sin voz",
+    "offTip": "Voz: desactivada"
+  }
+}

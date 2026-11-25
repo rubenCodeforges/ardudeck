@@ -1,0 +1,22 @@
+{
+  "debugConsole": {
+    "console": "Consola",
+    "dockBottom": "Acoplar abajo",
+    "dockLeft": "Acoplar a la izquierda",
+    "dockRight": "Acoplar a la derecha",
+    "entries_one": "{{count}} entrada",
+    "entries_other": "{{count}} entradas",
+    "filter": {
+      "all": "Todo",
+      "error": "Error",
+      "info": "Info",
+      "packet": "Paquete"
+    },
+    "fix": "Corregir ›",
+    "jumpToLatest": "↓ Ir al último (en pausa)",
+    "msgs_one": "{{count}} msj",
+    "msgs_other": "{{count}} msjs",
+    "noLogEntries": "Sin entradas de registro",
+    "noMessages": "Sin mensajes del piloto automático"
+  }
+}

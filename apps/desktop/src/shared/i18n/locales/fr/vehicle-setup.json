@@ -1,0 +1,919 @@
+{
+  "steps": {
+    "size": {
+      "name": "Votre véhicule",
+      "title": "Quelle taille fait-il ?",
+      "why": "Deux nombres, et l'essentiel de la configuration se remplit à partir d'eux."
+    },
+    "frame": {
+      "name": "Disposition des moteurs",
+      "title": "Comment les moteurs sont-ils placés ?",
+      "why": "Une erreur ici est la cause la plus fréquente d'un multirotor neuf qui se retourne au premier décollage."
+    },
+    "frameHeli": {
+      "name": "Hélicoptère",
+      "title": "Votre hélicoptère",
+      "why": "Le firmware hélico sait déjà que c'est un hélicoptère. Cette étape règle ce qui est commun à tous les véhicules ; le réglage du rotor se trouve dans la configuration Heli."
+    },
+    "orient": {
+      "name": "Orientation de la carte",
+      "title": "Dans quel sens la carte est-elle montée ?",
+      "why": "Pour que la carte sache où est l'avant."
+    },
+    "radio": {
+      "name": "Récepteur",
+      "title": "Connectez votre récepteur",
+      "why": "Un récepteur sur un port série n'est pas trouvé tout seul. Indiquez à ArduDeck où il est branché."
+    },
+    "compass": {
+      "name": "Compas",
+      "title": "Quel compas utiliser ?",
+      "why": "Celui du mât GPS est loin des courants des moteurs et généralement le meilleur."
+    },
+    "modes": {
+      "name": "Modes de vol",
+      "title": "Que fait l'inter de modes ?",
+      "why": "Trois positions, trois modes. Choisissez-en un par position."
+    },
+    "motors": {
+      "name": "Moteurs",
+      "title": "Vérifiez les moteurs",
+      "why": "Un moteur à la fois. Répondez à ce que vous voyez."
+    },
+    "battery": {
+      "name": "Batterie et failsafes",
+      "title": "Batterie et que se passe-t-il quand ça tourne mal",
+      "why": "Des alertes à la bonne tension, et un plan pour la batterie faible et la perte de signal."
+    },
+    "ready": {
+      "name": "Prêt à armer",
+      "title": "Prêt à armer ?",
+      "why": "Ce que le contrôleur de vol lui-même signale comme encore bloquant."
+    },
+    "psize": {
+      "name": "Votre avion",
+      "title": "Mesurez l'aile",
+      "why": "Une règle et une balance de cuisine suffisent. ArduDeck calcule la vitesse de décrochage, et les limites de vitesse air en découlent."
+    },
+    "power": {
+      "name": "Motorisation",
+      "title": "Qu'est-ce qui le fait avancer ?",
+      "why": "Détermine les sorties des gaz et s'il y a un test moteur ou non."
+    },
+    "extras": {
+      "name": "Options",
+      "title": "Autre chose sur l'avion ?",
+      "why": "Volets, aérofreins, roulette directrice, train rentrant : chacun demande une sortie."
+    },
+    "launch": {
+      "name": "Décollage",
+      "title": "Comment décolle-t-il ?",
+      "why": "Détermine quand le moteur a le droit de démarrer."
+    },
+    "soar": {
+      "name": "Vol à voile",
+      "title": "Doit-il utiliser les thermiques ?",
+      "why": "ArduPilot peut spiraler dans l'air ascendant pour rester en l'air plus longtemps."
+    },
+    "airframe": {
+      "name": "Cellule",
+      "title": "Quel type d'avion est-ce ?",
+      "why": "Détermine quelle sortie commande quelle surface."
+    },
+    "wingTail": {
+      "name": "Aile et empennage",
+      "title": "À quoi ressemblent l'aile et l'empennage ?",
+      "why": "La moitié avion du VTOL : détermine quelle sortie commande quelle surface."
+    },
+    "wingTailsitter": {
+      "title": "Comment se dirige-t-il en vol avion ?",
+      "why": "Un tailsitter vole sur son aile ; la question est ce qui déplace l'air."
+    },
+    "outputs": {
+      "name": "Sorties",
+      "title": "Qu'est-ce qui est branché sur chaque sortie ?",
+      "why": "Servos et ESC sur les sorties qu'ArduPilot attend pour cette cellule."
+    },
+    "surfaces": {
+      "name": "Gouvernes",
+      "title": "Les gouvernes bougent-elles dans le bon sens ?",
+      "why": "Vérifié en FBWA, où la carte stabilise. Une gouverne qui lutte dans le mauvais sens fait crasher au lancement."
+    },
+    "thrcheck": {
+      "name": "Moteur",
+      "title": "Vérifiez le moteur",
+      "why": "Sans hélice. Montez un peu les gaz : il doit tourner, et s'arrêter à zéro."
+    },
+    "airspeed": {
+      "name": "Capteur de vitesse air",
+      "title": "Y a-t-il un capteur de vitesse air ?",
+      "why": "Optionnel. Sans lui, ArduPilot estime la vitesse air à partir du GPS et des gaz."
+    },
+    "vtype": {
+      "name": "Type de VTOL",
+      "title": "Comment fait-il du stationnaire ?",
+      "why": "Le firmware dit avion ; cela lui indique comment fonctionnent les moteurs de sustentation."
+    },
+    "vframe": {
+      "name": "Disposition des moteurs de sustentation",
+      "title": "Comment les moteurs de sustentation sont-ils placés ?",
+      "why": "Mêmes dispositions qu'un copter : 3, 4, 6 ou 8 moteurs. Seules les sorties diffèrent."
+    },
+    "assist": {
+      "name": "Assistance VTOL",
+      "title": "Les moteurs de sustentation doivent-ils aider en vol avion ?",
+      "why": "Q_ASSIST_SPEED. Une mauvaise valeur est une cause fréquente d'échec pre-arm."
+    },
+    "drive": {
+      "name": "Direction",
+      "title": "Comment se dirige-t-il ?",
+      "why": "Détermine ce que font la sortie 1 et la sortie 3."
+    },
+    "drivetest": {
+      "name": "Test moteur et direction",
+      "title": "Vérifiez les roues",
+      "why": "Roues décollées du sol. Répondez à ce que vous voyez."
+    },
+    "drivetestBoat": {
+      "title": "Vérifiez le moteur et le gouvernail",
+      "why": "Sur un support ou en eau peu profonde. Répondez à ce que vous voyez."
+    },
+    "motordrv": {
+      "name": "Pilote moteur",
+      "title": "Qu'est-ce qui pilote le moteur ?",
+      "why": "Un ESC, ou un pilote de moteur à balais. Détermine le type de sortie et la zone morte."
+    },
+    "windvane": {
+      "name": "Girouette",
+      "title": "Comment détecte-t-il le vent ?",
+      "why": "Un voilier a besoin de la direction du vent pour naviguer seul."
+    },
+    "water": {
+      "name": "Capteur de profondeur",
+      "title": "Eau douce ou eau salée ?",
+      "why": "La profondeur est calculée à partir de la pression, qui dépend de l'eau."
+    },
+    "leak": {
+      "name": "Capteur de fuite",
+      "title": "Où est le capteur de fuite ?",
+      "why": "Pour qu'il remonte à la surface avant que l'électronique ne se noie."
+    },
+    "subframe": {
+      "name": "Disposition des propulseurs",
+      "title": "Quel châssis est-ce ?",
+      "why": "Choisit le mixage des propulseurs."
+    },
+    "thrusters": {
+      "name": "Sens des propulseurs",
+      "title": "Les propulseurs poussent-ils dans le bon sens ?",
+      "why": "Hélices et câblage en décident ; ArduSub peut le détecter et le corriger dans l'eau."
+    },
+    "joystick": {
+      "name": "Contrôle",
+      "title": "Comment allez-vous le piloter ?",
+      "why": "Les subs se pilotent généralement avec une manette via le câble, pas avec une radio."
+    }
+  },
+  "reason": {
+    "acroYaw": "Vitesse de lacet en Acro, d'après la limite d'accélération de lacet pour des hélices de {{prop}} po",
+    "accel": "Limite d'accélération de roulis et de tangage pour des hélices de {{prop}} po",
+    "accelYaw": "Limite d'accélération de lacet pour des hélices de {{prop}} po",
+    "rateFilter": "Filtre du contrôleur de vitesse angulaire, moitié du filtre gyro ({{hz}} Hz)",
+    "rateFilterOff": "Filtre désactivé, comme le règle Mission Planner",
+    "yawErrorFilter": "Filtre d'erreur de lacet 2 Hz",
+    "thrMixMan": "Mixage des gaz en modes manuels",
+    "accelFilter": "Filtre accéléromètre 10 Hz",
+    "gyroFilter": "Filtre gyro {{hz}} Hz pour des hélices de {{prop}} po",
+    "thrustExpo": "Courbe de poussée pour des hélices de {{prop}} po",
+    "hover": "Gaz de stationnaire initial ; appris en vol",
+    "motVoltMax": "Tension de batterie pleine pour la mise à l'échelle des moteurs, {{cells}} éléments",
+    "motVoltMin": "Tension de batterie vide pour la mise à l'échelle des moteurs, {{cells}} éléments",
+    "battLow": "Alerte batterie faible à {{volts}} V ({{cells}} éléments)",
+    "battCritical": "Batterie critique à {{volts}} V ({{cells}} éléments)",
+    "battArm": "Pas d'armement sous {{volts}} V ({{cells}} éléments)",
+    "battCapacity": "Capacité de la batterie {{capacity}} mAh",
+    "stall": "Vitesse de décrochage {{speed}} m/s",
+    "airspeedMin": "Vitesse air minimale {{speed}} m/s, 25 % au-dessus du décrochage",
+    "airspeedCruise": "Vitesse air de croisière {{speed}} m/s, 1,5x le décrochage",
+    "airspeedMax": "Vitesse air maximale {{speed}} m/s, environ 2x la croisière"
+  },
+  "outputs": {
+    "role": {
+      "aileronsY": "Ailerons (câble en Y)",
+      "aileronLeft": "Aileron, aile gauche",
+      "aileronRight": "Aileron, aile droite",
+      "elevator": "Profondeur",
+      "rudder": "Dérive",
+      "vtailLeft": "Empennage en V gauche",
+      "vtailRight": "Empennage en V droit",
+      "elevonLeft": "Elevon gauche",
+      "elevonRight": "Elevon droit",
+      "throttle": "Gaz",
+      "throttleEngine": "Gaz (moteur thermique)",
+      "motor": "Moteur",
+      "motorLeft": "Moteur gauche",
+      "motorRight": "Moteur droit",
+      "ignition": "Allumage",
+      "starter": "Démarreur",
+      "flaperonLeft": "Flaperon gauche",
+      "flaperonRight": "Flaperon droit",
+      "flaps": "Volets",
+      "airbrake": "Aérofrein",
+      "spoilerLeft": "Spoiler gauche",
+      "spoilerRight": "Spoiler droit",
+      "groundSteering": "Roulette avant / arrière",
+      "landingGear": "Train d'atterrissage",
+      "liftMotor": "Moteur de sustentation {{n}}",
+      "triYawServo": "Servo d'inclinaison de lacet du moteur arrière",
+      "steering": "Direction",
+      "throttleLeft": "Gaz gauche",
+      "throttleRight": "Gaz droit",
+      "omniMotor": "Moteur {{n}}"
+    },
+    "test": {
+      "aileron": "Manche à droite : l'aileron droit monte, le gauche descend",
+      "aileronLeft": "Manche à droite : l'aileron gauche descend",
+      "aileronRight": "Manche à droite : l'aileron droit monte",
+      "elevator": "Manche vers l'arrière : la profondeur monte",
+      "rudder": "Lacet à droite : la dérive va à droite",
+      "vtailPitch": "Manche vers l'arrière : les deux surfaces montent",
+      "vtailYaw": "Lacet à droite : les deux se déplacent à droite",
+      "elevonRoll": "Manche à droite : l'elevon gauche descend",
+      "elevonPitch": "Manche vers l'arrière : les deux montent",
+      "flaperonLeft": "Manche à droite : le gauche descend ; inter de volets : les deux descendent",
+      "flaperonRight": "Manche à droite : le droit monte",
+      "flaps": "Inter de volets en bas : les volets descendent",
+      "airbrake": "Inter d'aérofrein : les aérofreins sortent",
+      "spoilerLeft": "Manche à droite : le spoiler gauche bouge",
+      "spoilerRight": "Manche à droite : le spoiler droit bouge",
+      "groundSteering": "Lacet à droite : la roue braque à droite",
+      "landingGear": "Inter de train : le train bouge"
+    }
+  },
+  "vehicle": {
+    "copter": "Copter",
+    "heli": "Hélicoptère",
+    "plane": "Avion",
+    "vtol": "VTOL",
+    "rover": "Rover",
+    "boat": "Bateau",
+    "sub": "Sub"
+  },
+  "choice": {
+    "airframe": {
+      "normal": {
+        "label": "Avion classique",
+        "hint": "aileron, profondeur, dérive"
+      },
+      "three": {
+        "label": "3 voies",
+        "hint": "pas d'ailerons : la dérive dirige"
+      },
+      "wing": {
+        "label": "Aile volante ou delta",
+        "hint": "deux elevons, pas d'empennage"
+      },
+      "vtail": {
+        "label": "Empennage en V",
+        "hint": "ailerons et un empennage en forme de V"
+      },
+      "invv": {
+        "label": "V inversé",
+        "hint": "empennage en A, souvent sur poutres jumelées"
+      }
+    },
+    "airframeTail": {
+      "wing": {
+        "label": "Aile volante avec elevons",
+        "hint": "le tailsitter habituel : les elevons font tangage et roulis en vol avion"
+      },
+      "none": {
+        "label": "Aucune gouverne",
+        "hint": "dirigé uniquement par les moteurs"
+      }
+    },
+    "power": {
+      "electric": {
+        "label": "Un moteur électrique",
+        "hint": "le cas habituel"
+      },
+      "twin": {
+        "label": "Deux moteurs",
+        "hint": "un par aile, dirige aussi par la poussée"
+      },
+      "ic": {
+        "label": "Moteur thermique (essence)",
+        "hint": "allumage, démarreur, coupe-moteur"
+      },
+      "glider": {
+        "label": "Sans moteur",
+        "hint": "planeur pur"
+      }
+    },
+    "extras": {
+      "flaps": {
+        "label": "Volets",
+        "hint": "servos de volets séparés"
+      },
+      "flaperon": {
+        "label": "Flaperons",
+        "hint": "ailerons qui font aussi office de volets"
+      },
+      "airbrake": {
+        "label": "Aérofrein",
+        "hint": "une sortie d'aérofrein"
+      },
+      "spoiler": {
+        "label": "Spoilers / crocodile",
+        "hint": "spoilers séparés façon planeur"
+      },
+      "steer": {
+        "label": "Roulette directrice",
+        "hint": "roulette avant ou arrière"
+      },
+      "gear": {
+        "label": "Train rentrant",
+        "hint": "train d'atterrissage"
+      }
+    },
+    "launch": {
+      "hand": {
+        "label": "Lancer à la main",
+        "hint": "le moteur démarre après le lancer"
+      },
+      "bungee": {
+        "label": "Sandow",
+        "hint": "long délai pour que l'hélice dégage le câble"
+      },
+      "cat": {
+        "label": "Catapulte"
+      },
+      "runway": {
+        "label": "Piste, roulette avant",
+        "hint": "décolle depuis le sol"
+      },
+      "tdrag": {
+        "label": "Piste, train classique",
+        "hint": "garde la queue au sol au début"
+      },
+      "belly": {
+        "label": "Lancer à la main, atterrissage sur le ventre",
+        "hint": "aucune roue"
+      }
+    },
+    "soar": {
+      "yes": {
+        "label": "Oui, vol thermique",
+        "hint": "SOAR_ENABLE = 1, puis redémarrer"
+      },
+      "no": {
+        "label": "Pas maintenant",
+        "hint": "simplement planer"
+      }
+    },
+    "airspeed": {
+      "none": {
+        "label": "Pas de capteur",
+        "hint": "vitesse air estimée à partir du GPS et des gaz"
+      },
+      "i2c": {
+        "label": "Numérique, sur I2C",
+        "hint": "p. ex. MS4525"
+      },
+      "can": {
+        "label": "DroneCAN",
+        "hint": "sur le port CAN"
+      }
+    },
+    "vtype": {
+      "quad": {
+        "label": "Quadplane",
+        "hint": "moteurs de sustentation séparés, le plus courant"
+      },
+      "tilt": {
+        "label": "Tilt-rotor",
+        "hint": "les moteurs basculent vers l'avant pour le vol avion"
+      },
+      "tail": {
+        "label": "Tailsitter",
+        "hint": "décolle debout sur la queue"
+      }
+    },
+    "assist": {
+      "off": {
+        "label": "Pas encore",
+        "hint": "Q_ASSIST_SPEED = -1, pour les premiers vols"
+      },
+      "on": {
+        "label": "Oui, sous une vitesse",
+        "hint": "25 % au-dessus du décrochage"
+      }
+    },
+    "driveRover": {
+      "steer": {
+        "label": "Servo de direction + moteur",
+        "hint": "comme une voiture RC : les roues avant braquent"
+      },
+      "skid": {
+        "label": "Direction différentielle",
+        "hint": "côtés gauche et droit motorisés, comme un char"
+      },
+      "omni": {
+        "label": "Omni ou mecanum",
+        "hint": "3 ou 4 roues qui roulent aussi latéralement"
+      },
+      "balance": {
+        "label": "Robot gyropode",
+        "hint": "deux roues, s'équilibre seul"
+      }
+    },
+    "driveBoat": {
+      "rudder": {
+        "label": "Gouvernail + moteur",
+        "hint": "un servo de gouvernail dirige"
+      },
+      "diff": {
+        "label": "Deux moteurs",
+        "hint": "dirige par différence de vitesse"
+      },
+      "vector": {
+        "label": "Hors-bord / vectoriel",
+        "hint": "le moteur lui-même pivote"
+      },
+      "sail": {
+        "label": "Voilier",
+        "hint": "treuil de voile, aile rigide ou mât rotatif"
+      }
+    },
+    "motordrv": {
+      "esc": {
+        "label": "ESC avant et arrière",
+        "hint": "réglez l'ESC en avant et arrière, neutre à 1500"
+      },
+      "relay": {
+        "label": "À balais, avec une broche de sens",
+        "hint": "L298N et similaires : PWM plus une broche de relais"
+      },
+      "bipolar": {
+        "label": "À balais, pilote bipolaire",
+        "hint": "50 % = arrêt, en dessous = arrière, au-dessus = avant"
+      }
+    },
+    "windvane": {
+      "nmea": {
+        "label": "Instrument de vent NMEA",
+        "hint": "vitesse et direction en un seul"
+      },
+      "analog": {
+        "label": "Girouette analogique",
+        "hint": "sur une broche analogique"
+      },
+      "none": {
+        "label": "Pas encore de girouette",
+        "hint": "ne peut pas naviguer seul sans"
+      }
+    },
+    "subframe": {
+      "1": {
+        "label": "BlueROV2",
+        "hint": "vectoriel, 6 propulseurs"
+      },
+      "2": {
+        "label": "BlueROV2 Heavy",
+        "hint": "vectoriel 6DOF, 8 propulseurs"
+      },
+      "3": {
+        "label": "Vectoriel 6DOF 90°",
+        "hint": "8 propulseurs"
+      },
+      "0": {
+        "label": "BlueROV1",
+        "hint": "6 propulseurs"
+      },
+      "4": {
+        "label": "SimpleROV-3",
+        "hint": "3 propulseurs"
+      },
+      "5": {
+        "label": "SimpleROV-4",
+        "hint": "4 propulseurs"
+      },
+      "6": {
+        "label": "SimpleROV-5",
+        "hint": "5 propulseurs"
+      },
+      "7": {
+        "label": "Personnalisé",
+        "hint": "votre propre disposition de propulseurs"
+      }
+    },
+    "thrusters": {
+      "auto": {
+        "label": "Détecter pour moi",
+        "hint": "détection des moteurs ArduSub, environ une minute dans l'eau"
+      },
+      "manual": {
+        "label": "Un par un",
+        "hint": "faire tourner chaque propulseur et inverser ceux qui poussent dans le mauvais sens"
+      }
+    },
+    "water": {
+      "fresh": {
+        "label": "Eau douce",
+        "hint": "lacs, rivières, piscines"
+      },
+      "salt": {
+        "label": "Eau salée",
+        "hint": "la mer"
+      }
+    },
+    "leak": {
+      "nav": {
+        "label": "Intégré au Navigator",
+        "hint": "LEAK1_PIN = 27"
+      },
+      "aux": {
+        "label": "Sur une broche AUX",
+        "hint": "AUX1..6 = broches 50..55"
+      },
+      "none": {
+        "label": "Pas de capteur de fuite",
+        "hint": "déconseillé"
+      }
+    },
+    "joystick": {
+      "pad": {
+        "label": "Manette via le câble",
+        "hint": "la méthode habituelle : boutons pour les modes, l'armement, les lumières"
+      },
+      "rc": {
+        "label": "Radio RC",
+        "hint": "nécessite une bouée reliée pour l'antenne"
+      }
+    },
+    "omniType": {
+      "1": "Omni3",
+      "2": "OmniX",
+      "3": "OmniPlus",
+      "4": "Omni3 Mecanum"
+    }
+  },
+  "note": {
+    "airframe": {
+      "three": "Écrit RUDDER_ONLY = 1 : le manche de roulis dirige avec la dérive. La direction au sol automatique est désactivée sur ces avions.",
+      "invv": "Mêmes sorties qu'un empennage en V ; les sens sont généralement inversés, ce que la vérification des gouvernes détecte."
+    },
+    "airframeTail": {
+      "none": "Q_TAILSIT_ENABLE = 2 : les moteurs font toute la direction, en stationnaire et en vol avion."
+    },
+    "power": {
+      "twin": "Les deux moteurs aident aussi le lacet par poussée différentielle (RUDD_DT_GAIN).",
+      "icWarn": "Un coupe-moteur sur la radio est requis avant de pouvoir démarrer le moteur. ArduDeck écrit ICE_ENABLE = 1 ; les réglages du moteur apparaissent après un redémarrage.",
+      "gliderWarn": "Sans moteur : le test moteur est ignoré et le vol thermique est proposé. ArduPilot n'a pas de page dédiée au planeur pur, considérez donc ce parcours comme non vérifié."
+    },
+    "extras": {
+      "all": "Choisissez tout ce que cet avion possède, ou rien. Chacun reçoit sa propre sortie et apparaît dans la vérification des gouvernes."
+    },
+    "launch": {
+      "hand": "Le moteur ne démarre pas lors d'un lancer à la main tant que le nez est au-dessus de 40° ou les ailes au-delà de 30°. Une hélice propulsive sans délai peut démarrer dans votre main : le délai l'évite.",
+      "bungee": "Le moteur ne démarre pas lors d'un lancer à la main tant que le nez est au-dessus de 40° ou les ailes au-delà de 30°. Une hélice propulsive sans délai peut démarrer dans votre main : le délai l'évite.",
+      "belly": "Le moteur ne démarre pas lors d'un lancer à la main tant que le nez est au-dessus de 40° ou les ailes au-delà de 30°. Une hélice propulsive sans délai peut démarrer dans votre main : le délai l'évite."
+    },
+    "soar": {
+      "yes": "Le vol à voile nécessite un capteur de vitesse air. TECS_SPDWEIGHT = 2 est écrit avec lui ; les limites d'altitude (SOAR_ALT_MIN, SOAR_ALT_CUTOFF, SOAR_ALT_MAX) apparaissent après le redémarrage."
+    },
+    "airspeed": {
+      "i2c": "Écrit pour un MS4525. Un DLVR ou un autre capteur demande son propre ARSPD_TYPE. Étalonnez le décalage zéro au sol, tube couvert.",
+      "can": "Étalonnez le décalage zéro au sol, tube couvert."
+    },
+    "vtype": {
+      "quad": "Q_ENABLE = 1 nécessite un redémarrage : les paramètres Q_ n'existent qu'ensuite.",
+      "tilt": "Q_ENABLE = 1 nécessite un redémarrage : les paramètres Q_ n'existent qu'ensuite. Q_TILT_ENABLE est écrit après le redémarrage.",
+      "tail": "Q_ENABLE = 1 nécessite un redémarrage : les paramètres Q_ n'existent qu'ensuite. Les réglages du tailsitter sont écrits après le redémarrage."
+    },
+    "assist": {
+      "offWarn": "Depuis Plane 4.2, 0 ne désactive plus : cela signifie assistance pendant les transitions uniquement et échoue aux vérifications pre-arm. Désactivé = -1.",
+      "onWarn": "Depuis Plane 4.2, 0 ne désactive plus : cela signifie assistance pendant les transitions uniquement et échoue aux vérifications pre-arm. Désactivé = -1."
+    },
+    "driveRover": {
+      "balance": "Les robots gyropodes ont aussi besoin d'encodeurs de roue. Apprenez la vitesse de croisière et les gaz lors du premier trajet."
+    },
+    "driveBoat": {
+      "vector": "Réglez MOT_VEC_ANGLEMAX sur la déflexion du moteur à pleine direction dans Paramètres.",
+      "sail": "SAIL_ENABLE = 1 nécessite un redémarrage. Ensuite, placez la voile sur une sortie libre : fonction 89 grand-voile, 128 aile rigide ou 137 rotation de mât. La girouette est l'étape suivante."
+    },
+    "motordrv": {
+      "esc": "Les servos ne doivent pas partager un groupe de sorties avec des sorties de moteur à balais. Redémarrez après avoir changé le type de moteur. Montez les gaz lentement au premier trajet et enregistrez le point de démarrage des roues comme MOT_THR_MIN.",
+      "relay": "Les servos ne doivent pas partager un groupe de sorties avec des sorties de moteur à balais. Redémarrez après avoir changé le type de moteur. Montez les gaz lentement au premier trajet et enregistrez le point de démarrage des roues comme MOT_THR_MIN.",
+      "bipolar": "Les servos ne doivent pas partager un groupe de sorties avec des sorties de moteur à balais. Redémarrez après avoir changé le type de moteur. Montez les gaz lentement au premier trajet et enregistrez le point de démarrage des roues comme MOT_THR_MIN."
+    },
+    "windvane": {
+      "nmea": "Montez-la haut, à l'écart de la voile. Étalonnez sa direction une fois qu'elle donne une lecture.",
+      "analog": "Montez-la haut, à l'écart de la voile. Étalonnez sa direction une fois qu'elle donne une lecture.",
+      "noneWarn": "Sans girouette, un voilier ne peut pas naviguer seul."
+    },
+    "subframe": {
+      "4": "Les châssis auxquels il manque un axe comptent sur le poids et la flottabilité pour rester stables sur cet axe.",
+      "5": "Les châssis auxquels il manque un axe comptent sur le poids et la flottabilité pour rester stables sur cet axe.",
+      "6": "Les châssis auxquels il manque un axe comptent sur le poids et la flottabilité pour rester stables sur cet axe.",
+      "7Warn": "Personnalisé nécessite un firmware qui connaît votre disposition : le mixage des propulseurs est compilé, pas défini par des paramètres. Avec un tel build flashé, poursuivez à partir de la vérification des propulseurs."
+    },
+    "leak": {
+      "nav": "Touchez la sonde avec un doigt mouillé : l'alarme de fuite doit se déclencher.",
+      "aux": "Touchez la sonde avec un doigt mouillé : l'alarme de fuite doit se déclencher.",
+      "noneWarn": "Sans capteur de fuite, le sub ne peut pas remonter seul quand l'eau entre."
+    },
+    "joystick": {
+      "pad": "Les boutons de la manette utilisent les valeurs par défaut d'ArduSub : 1 Manual, 2 Depth Hold, 3 Stabilize, 4 désarmer, 6 armer. Modifiez-les dans Cockpit ou dans la configuration du joystick.",
+      "rcWarn": "La RC ne traverse pas l'eau : le récepteur nécessite une bouée reliée."
+    },
+    "check": {
+      "surfaces": "Mettez-le en FBWA, sans hélice. N'intervertissez jamais les fiches et n'inversez jamais sur l'émetteur : basculez Inversé ici.",
+      "surfacesMixed": "Gouvernes mixtes : si un seul axe est faux, les fonctions gauche et droite sont échangées (échangez-les dans Sorties). Si les deux axes sont faux, basculez Inversé.",
+      "thrcheck": "Sans hélice. Un ESC PWM simple peut nécessiter d'abord l'étalonnage unique de la plage des gaz.",
+      "thrcheckIc": "Ne mettez jamais la main près de l'hélice entre les tentatives de redémarrage automatiques.",
+      "drivetest": "Roues décollées du sol, gaz à 20 %. Mauvais sens : basculez Inversé sur cette sortie dans Sorties, n'intervertissez pas les fiches. Si le test moteur indique que la commande a été rejetée, l'étape du récepteur n'est pas encore faite.",
+      "drivetestBoat": "Sur un support ou en eau peu profonde, hélice hors de portée des mains. Mauvais sens : basculez Inversé sur cette sortie.",
+      "thrusters": "La détection automatique ne corrige que les propulseurs qui font rouler, tanguer ou virer le sub. Ne faites jamais tourner les propulseurs à l'air plus de 30 s. Écrit MOT_n_DIRECTION.",
+      "water": "Remettez la profondeur à zéro en surface avant chaque plongée : Étalonnage, Baromètre."
+    }
+  },
+  "wizard": {
+    "title": "Configurer un nouveau véhicule",
+    "stepOf": "Étape {{n}} sur {{total}}",
+    "back": "Retour",
+    "next": "Suivant",
+    "finish": "Terminer",
+    "reviewNote": "Les changements sont présentés pour vérification avant d'être écrits",
+    "reviewing": "En attente de votre vérification...",
+    "restarting": "Redémarrage du contrôleur de vol...",
+    "reason": "Configuration d'un nouveau véhicule : {{step}}",
+    "cancelled": "Rien n'a été écrit : la vérification a été annulée.",
+    "writeFailed": "Certains paramètres n'ont pas pu être écrits.",
+    "restartNeeded": "Cela ne prend effet qu'après le redémarrage du contrôleur de vol.",
+    "restartFor": "Ces réglages apparaissent après un redémarrage : {{params}}",
+    "restartNow": "Redémarrer maintenant",
+    "later": "Plus tard",
+    "restartFailed": "Le contrôleur de vol n'a pas accepté le redémarrage.",
+    "notBack": "Le contrôleur de vol n'est pas revenu après le redémarrage.",
+    "stillMissing": "Toujours absents après le redémarrage : {{params}}. Ce firmware ne les a peut-être pas.",
+    "noVehicle": "Connectez un véhicule ArduPilot et chargez ses paramètres pour commencer.",
+    "blocker": "Le contrôleur de vol signale : {{text}}",
+    "state": {
+      "found": "trouvé",
+      "needsPilot": "à vérifier"
+    },
+    "writes": "Écrit",
+    "afterRestart": "après redémarrage",
+    "source": "Valeurs issues de {{source}}",
+    "size": {
+      "preset": "{{prop}} po, {{mm}} mm",
+      "frame": "Moteur à moteur, en diagonale",
+      "frameNote": "la taille imprimée sur la plupart des châssis",
+      "prop": "Hélice",
+      "propNote": "premier nombre sur l'hélice, 10x4.5 donne 10",
+      "cells": "Batterie",
+      "cellsNote": "lu d'après la tension de la batterie, corrigez-le si faux",
+      "overlap": "Des hélices de {{prop}} po sont trop grandes pour un châssis de {{mm}} mm : elles se toucheraient.",
+      "toScale": "À l'échelle : {{mm}} mm de moteur à moteur, hélices de {{prop}} po.",
+      "fills": "Ceci est rempli pour vous",
+      "skip": "Passer, garder les valeurs par défaut"
+    },
+    "heli": {
+      "firmware": {
+        "title": "Firmware hélico",
+        "text": "Les hélicoptères utilisent le firmware hélico séparé ; FRAME_CLASS est déjà réglé."
+      },
+      "wizard": {
+        "title": "Cet assistant",
+        "text": "Orientation de la carte, récepteur, compas, modes et batterie : les étapes communes à tous les véhicules."
+      },
+      "heliSetup": {
+        "title": "Réglage du rotor",
+        "text": "Plateau cyclique, collectif, vitesse du rotor (RSC) et type de rotor de queue restent dans la configuration Heli."
+      },
+      "interlock": {
+        "title": "Motor interlock",
+        "text": "Un inter de motor interlock est requis pour armer (RC8_OPTION 32 par défaut)."
+      }
+    },
+    "tailsitter": {
+      "dual": {
+        "label": "Deux moteurs",
+        "hint": "un de chaque côté de l'aile, dirigé par différence de vitesse"
+      },
+      "single": {
+        "label": "Un moteur",
+        "hint": "dans le nez, les elevons dirigent"
+      },
+      "copter": {
+        "label": "Type copter",
+        "hint": "3 moteurs ou plus, comme un quad sur sa queue"
+      }
+    },
+    "frameClass": {
+      "quad": "Quad",
+      "hexa": "Hexa",
+      "octa": "Octo",
+      "x8": "X8 (quad coaxial)",
+      "y6": "Y6 (tri coaxial)",
+      "dodeca": "Hexa coaxial",
+      "tri": "Tri",
+      "deca": "Déca",
+      "single": "Copter simple",
+      "coax": "Copter coaxial",
+      "bi": "Bicopter"
+    },
+    "noPicture": "Pas d'image des moteurs pour ce châssis.",
+    "frameNote": {
+      "single": "Les sorties 1 à 4 commandent les volets (avant, droite, arrière, gauche), la sortie 5 le moteur. Il n'y a pas de test d'ordre des moteurs : vérifiez les volets armé en Stabilize, sans hélice.",
+      "coax": "Les sorties 1 à 4 commandent les volets, 5 et 6 le moteur supérieur (CCW) et inférieur (CW). Il n'y a pas de test d'ordre des moteurs : vérifiez les volets armé en Stabilize, sans hélice.",
+      "bi": "Moteurs sur les fonctions 73 / 74, servos d'inclinaison sur 75 / 76. ArduPilot ne documente pas les sorties par défaut : vérifiez-les dans Sorties.",
+      "tri": "Le moteur arrière est monté sur un servo de lacet sur la sortie 7. Réglez SERVO7_TRIM là où la queue ne tourne pas ; MOT_YAW_SV_ANGLE limite l'inclinaison.",
+      "stacked": "Les paires coaxiales sont empilées. Le test moteur fait tourner le moteur du haut avant celui du bas : observez lequel tourne."
+    },
+    "tiltMask": "Quels moteurs basculent ?",
+    "tiltMaskOpt": {
+      "3": "Les deux avant",
+      "15": "Les quatre"
+    },
+    "tiltMaskOther": "Réglez Q_TILT_MASK sur les moteurs basculants dans Paramètres.",
+    "vframeNote": "Le test moteur qui suit utilise cette image, comme pour un copter. Les gouvernes de l'avion gardent les sorties 1 à 4.",
+    "vframeNoteTail": "Pas d'image des moteurs pour un ou deux moteurs : les moteurs gauche et droit sont vérifiés ici.",
+    "output": "Sortie {{n}}",
+    "autoByFirmware": "défini par Q_ENABLE",
+    "noSuchOutput": "absente de cette carte",
+    "already": "déjà réglé",
+    "willChange": "devient {{from}}",
+    "aileron": {
+      "y": {
+        "label": "Une sortie, câble en Y",
+        "hint": "la méthode la plus courante"
+      },
+      "two": {
+        "label": "Deux sorties",
+        "hint": "une par servo : chacune peut être trimée et inversée séparément"
+      }
+    },
+    "outputsNote": "Valeurs par défaut d'ArduPilot d'abord, options sur les sorties libres suivantes. Changez-en une seulement si votre câblage diffère ; la vérification des gouvernes détecte les erreurs.",
+    "outputsNoteVtol": "Les moteurs de sustentation utilisent 4 + numéro du moteur et sont définis par Q_ENABLE. Les options évitent ces sorties.",
+    "check": {
+      "button": "Vérifier",
+      "stab": {
+        "title": "Vérification de la stabilisation",
+        "text": "Inclinez l'avion à droite : les ailerons s'y opposent"
+      },
+      "motorL": {
+        "title": "Moteur gauche",
+        "text": "Montez un peu les gaz : le moteur gauche tourne"
+      },
+      "motorR": {
+        "title": "Moteur droit",
+        "text": "Le moteur droit tourne"
+      },
+      "kill": {
+        "title": "Coupe-moteur",
+        "text": "Actionnez-le : l'allumage se coupe"
+      },
+      "start": {
+        "title": "Démarrage",
+        "text": "Le démarreur tourne, puis le moteur ralentit au ralenti"
+      },
+      "spin": {
+        "title": "Rotation",
+        "text": "Montez un peu les gaz : le moteur tourne"
+      },
+      "stop": {
+        "title": "Arrêt",
+        "text": "Gaz à zéro : il s'arrête"
+      },
+      "balance": {
+        "title": "Équilibre",
+        "text": "Roues décollées, inclinez-le vers l'avant à la main en Manual : les roues avancent"
+      },
+      "motorA": {
+        "title": "Test moteur A",
+        "text": "Il avance"
+      },
+      "motorB": {
+        "title": "Test moteur B",
+        "text": "Il tourne à droite"
+      },
+      "motorC": {
+        "title": "Test moteur C",
+        "text": "Le côté gauche avance"
+      },
+      "motorD": {
+        "title": "Test moteur D",
+        "text": "Le côté droit avance"
+      },
+      "omni": {
+        "title": "Chaque moteur",
+        "text": "Fait tourner la roue indiquée dans la disposition, vers l'avant"
+      },
+      "sail": {
+        "title": "Voile",
+        "text": "Manche des gaz vers le bas : la voile se borde"
+      },
+      "rudder": {
+        "title": "Gouvernail",
+        "text": "Manche à droite : le bateau tournerait à droite"
+      },
+      "inWater": {
+        "title": "Dans l'eau",
+        "text": "Flottabilité neutre ou légèrement positive, eau calme"
+      },
+      "room": {
+        "title": "Espace pour bouger",
+        "text": "Câble détendu, rien autour"
+      },
+      "zeroDepth": {
+        "title": "Profondeur zéro",
+        "text": "En surface, avant de plonger"
+      }
+    },
+    "reversed": "Inversé",
+    "normal": "Normal",
+    "yes": "Oui",
+    "psize": {
+      "span": "Envergure",
+      "spanNote": "d'un bout d'aile à l'autre",
+      "root": "Corde au milieu",
+      "rootNote": "du bord d'attaque au bord de fuite",
+      "tip": "Corde en bout d'aile",
+      "tipNote": "0 pour un delta pointu",
+      "mass": "Poids, prêt à voler",
+      "massNote": "avec batterie, sur une balance de cuisine",
+      "stall": "Vitesse de décrochage",
+      "own": "Votre propre valeur. L'estimation serait de {{estimate}} m/s.",
+      "from": "D'après {{area}} dm² d'aile portant {{mass}} g.",
+      "useEstimate": "Utiliser l'estimation",
+      "knowIt": "Vous la connaissez par le vol ?",
+      "fills": "Ceci est rempli pour vous",
+      "note": "Plane 4.5 a renommé ces paramètres : les firmwares plus anciens reçoivent ARSPD_FBW_MIN, TRIM_ARSPD_CM et ARSPD_FBW_MAX. ArduDeck écrit les noms que la carte possède."
+    },
+    "battery": {
+      "chemistry": "Chimie",
+      "chem": {
+        "lipo": "LiPo",
+        "lipohv": "LiPo HV",
+        "liion": "Li-ion"
+      },
+      "cells": "Éléments",
+      "capacity": "Capacité",
+      "monitor": {
+        "4": {
+          "label": "Module de puissance",
+          "hint": "tension et courant"
+        },
+        "3": {
+          "label": "Tension seule",
+          "hint": "pas de capteur de courant"
+        },
+        "8": {
+          "label": "Batterie intelligente",
+          "hint": "DroneCAN"
+        },
+        "9": {
+          "label": "Depuis les ESC",
+          "hint": "télémétrie ESC"
+        }
+      },
+      "mark": {
+        "critical": "critique",
+        "low": "faible",
+        "arm": "armement",
+        "full": "pleine"
+      },
+      "note": "Tensions issues des paramètres initiaux de Mission Planner. Étalonnez les lectures de tension et de courant dans l'onglet Batterie avec un multimètre."
+    },
+    "failsafe": {
+      "low": "Batterie faible",
+      "crit": "Batterie critique",
+      "radio": "Signal radio perdu",
+      "tether": "Câble / station au sol perdu",
+      "leak": "Fuite détectée"
+    },
+    "ready": {
+      "none": "Rien ne bloque. Il va s'armer.",
+      "noneSub": "Montez les hélices, reculez et armez.",
+      "count_one": "{{count}} point bloque encore",
+      "count_other": "{{count}} points bloquent encore",
+      "sub": "Corrigez-les dans l'ordre que vous voulez. Cette liste se met à jour dès que le contrôleur de vol est d'accord.",
+      "fix": "Corriger dans {{step}}"
+    },
+    "rx": {
+      "live": "Récepteur connecté : {{count}} canaux",
+      "waiting": "Pas encore de signal du récepteur. Allumez la radio."
+    },
+    "omniType": "Disposition des roues",
+    "leakPin": "Broche de fuite",
+    "subModes": "Les subs changent de mode avec les boutons de la manette, pas avec un inter. Valeurs par défaut d'ArduSub : 1 Manual, 2 Depth Hold, 3 Stabilize. Modifiez-les dans Cockpit ou dans la configuration du joystick.",
+    "alreadySet": "Déjà réglé sur la carte",
+    "tag": {
+      "recommended": "recommandé",
+      "unverified": "non vérifié",
+      "caution": "attention"
+    }
+  }
+}

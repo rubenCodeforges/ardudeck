@@ -1,0 +1,767 @@
+{
+  "boardUartLabels": {
+    "sbusUart1Inverter": "El pad SBUS del UART1 tiene inversor integrado",
+    "sbusUart2": "Pad SBUS en el UART2",
+    "sbusUart2Inverter": "El pad SBUS del UART2 tiene inversor integrado"
+  },
+  "calibrationOrientation": {
+    "leftSide": "Pon el vehículo sobre su lado IZQUIERDO",
+    "level": "Coloca el vehículo nivelado, boca arriba",
+    "noseDown": "Pon el vehículo con el MORRO HACIA ABAJO",
+    "noseUp": "Pon el vehículo con el MORRO HACIA ARRIBA",
+    "pitchDown": "Cabecea {{deg}}° hacia abajo",
+    "pitchUp": "Cabecea {{deg}}° hacia arriba",
+    "rightSide": "Pon el vehículo sobre su lado DERECHO",
+    "rollLeft": "Alabea {{deg}}° a la izquierda",
+    "rollRight": "Alabea {{deg}}° a la derecha",
+    "upsideDown": "Pon el vehículo BOCA ABAJO"
+  },
+  "calibrationQuality": {
+    "accelDriftingAdvice": "Dentro de los límites de armado pero con deriva. Recalibra sobre una superficie nivelada, manteniendo cada posición firme.",
+    "accelFactoryDefaults": "Valores de fábrica: este acelerómetro nunca se ha calibrado.",
+    "accelFactoryDefaultsAdvice": "Haz la calibración del acelerómetro de seis puntos antes de volar.",
+    "accelGood": "Buena.",
+    "accelGoodOffsets": "Buena: offsets {{offsets}} m/s/s.",
+    "accelNotRead": "No se leyeron los valores de calibración del vehículo.",
+    "accelOffsetsHigh": "Aceptada pero alta: offsets {{offsets}} m/s/s.",
+    "accelOffsetsPastLimit": "Offsets {{offsets}} m/s/s, por encima del límite de armado de {{limit}}.",
+    "accelOffsetsPastLimitAdvice": "El vehículo se negará a armar. Recalibra sobre una superficie realmente nivelada.",
+    "accelScaleHigh": "Aceptada pero alta: escala desviada un {{percent}}%.",
+    "accelScalePastLimit": "Escala desviada un {{percent}}%, por encima del límite de armado.",
+    "accelScalePastLimitAdvice": "El vehículo se negará a armar. Recalibra, manteniendo cada posición inmóvil.",
+    "fitnessGood": "Buena: {{value}}.",
+    "fitnessRejected": "Rechazada: {{value}}, por encima del límite de {{limit}}.",
+    "fitnessRejectedAdvice": "Aléjate de metal, baterías y cableado, y calibra de nuevo.",
+    "fitnessValue": "fitness {{value}} mGauss",
+    "fitnessWeak": "Aceptada pero débil: {{value}}.",
+    "fitnessWeakAdvice": "El controlador de vuelo la aceptó, pero es probable que haya deriva de rumbo. Recalibra lejos de metal y cableado de potencia, y gira por todos los ejes, para un ajuste inferior a {{good}}.",
+    "noFitness": "El controlador de vuelo no informó de ningún fitness.",
+    "notPersisted_one": "{{count}} valor de calibración no sobrevivió al reinicio.",
+    "notPersisted_other": "{{count}} valores de calibración no sobrevivieron al reinicio.",
+    "nothingToVerify": "Nada que verificar.",
+    "persisted": "Calibración confirmada en el vehículo tras el reinicio.",
+    "readBackConfirmed": "Calibración releída del controlador de vuelo.",
+    "readBackFailed": "No se pudo releer la calibración del vehículo.",
+    "noCompassFitness": "No se informó del fitness de la brújula.",
+    "recorded": "Registrada."
+  },
+  "calibrationTypes": {
+    "accel6point": {
+      "description": "Calibración completa de 6 posiciones para máxima precisión.",
+      "name": "Acelerómetro (6 puntos)"
+    },
+    "accelLevel": {
+      "description": "Calibración rápida de nivel en 1 posición. Coloca tu vehículo sobre una superficie plana.",
+      "name": "Acelerómetro (nivel)"
+    },
+    "accelQuick": {
+      "description": "Una posición, vehículo nivelado e inmóvil. Escribe los offsets que ArduPilot necesita para armar, sin dar la vuelta al vehículo.",
+      "name": "Acelerómetro (rápida)"
+    },
+    "compass": {
+      "description": "Gira tu vehículo en todas las direcciones para calibrar la brújula.",
+      "name": "Brújula / Magnetómetro"
+    },
+    "gyro": {
+      "description": "Calibración rápida del giroscopio. Mantén tu vehículo completamente inmóvil.",
+      "name": "Giroscopio"
+    },
+    "opflow": {
+      "description": "Calibra el sensor de flujo óptico. Solo iNav.",
+      "name": "Flujo óptico"
+    },
+    "position": {
+      "inverted": "Invertido (boca abajo)",
+      "leftSide": "Lado izquierdo abajo",
+      "level": "Nivelado (boca arriba)",
+      "noseDown": "Morro abajo",
+      "noseUp": "Morro arriba",
+      "rightSide": "Lado derecho abajo"
+    }
+  },
+  "cameraTypes": {
+    "srtHint": "ffmpeg, OBS, VLC (solo H264)",
+    "webrtcHint": "Ábrelo en cualquier navegador, latencia mínima"
+  },
+  "devLoadGuard": {
+    "alreadyInstalled": "{{slug}} ya está instalado. Quítalo primero.",
+    "noSlug": "El manifiesto no tiene slug",
+    "reserved": "{{slug}} controla una función integrada y no se puede cargar en modo desarrollo"
+  },
+  "dronebridgeTypes": {
+    "esp32Mode": {
+      "accessPoint": "Punto de acceso",
+      "longRange": "Largo alcance",
+      "station": "Estación (cliente)"
+    }
+  },
+  "firmwareTypes": {
+    "customFile": "Archivo personalizado"
+  },
+  "fleetLogMaintenance": {
+    "batteryDetail": "El voltaje mínimo del pack ha bajado ~{{drop}} V respecto a vuelos anteriores. Puede que el pack esté envejeciendo.",
+    "batteryTitle": "Caída de voltaje de la batería en aumento",
+    "labelCompass": "brújula",
+    "labelPower": "alimentación",
+    "labelVibration": "vibración",
+    "recurringDetail": "{{bad}} de los últimos {{total}} vuelos marcaron {{label}}. Investiga antes de la próxima misión.",
+    "recurringTitle": "Problema recurrente de {{label}}",
+    "vibrationDetail": "La vibración máxima reciente promedia {{recent}} m/s2 frente a {{prior}} antes. Revisa el equilibrado de motores y hélices y el aislamiento.",
+    "vibrationTitle": "La vibración va en aumento"
+  },
+  "flightModeMeta": {
+    "commit": "commit",
+    "gps": "GPS",
+    "group": {
+      "assisted": "Asistido",
+      "auto": "Autónomo / Nav",
+      "manual": "Manual / Acro",
+      "return": "Retorno y aterrizaje",
+      "tuning": "Tuning"
+    },
+    "inFlight": "en vuelo",
+    "mustBeArmed": "El vehículo debe estar armado",
+    "needsGps": "Necesita GPS / fijación de posición",
+    "noGps": "no necesita GPS"
+  },
+  "gisAreaImport": {
+    "invalidKml": "KML no válido: no se pudo analizar el XML",
+    "invalidKmlDetail": "KML no válido: no se pudo analizar el XML ({{detail}})"
+  },
+  "mapLayers": {
+    "bingHybrid": "Bing Híbrido",
+    "bingSat": "Bing Sat",
+    "dark": "Oscuro",
+    "dem": "DEM",
+    "googleHybrid": "Híbrido",
+    "googleSat": "Google Sat",
+    "openaip": "OpenAIP",
+    "osm": "Calles",
+    "radar": "Radar",
+    "satellite": "Satélite",
+    "terrain": "Terreno"
+  },
+  "mavlinkChannels": {
+    "rateGroup": {
+      "attitude": "Suavidad del horizonte",
+      "extra3": "Sensores extra",
+      "position": "Mapa / posición",
+      "raw": "IMU en bruto (solo tuning)",
+      "rc": "Entradas RC",
+      "status": "Batería y estado",
+      "vfr": "Velocidad, altitud, acelerador"
+    }
+  },
+  "missionTypes": {
+    "command": {
+      "CONDITION_CHANGE_ALT": {
+        "description": "Ascender/descender hasta la altitud y continuar",
+        "name": "Condición alt"
+      },
+      "CONDITION_DELAY": {
+        "description": "Esperar unos segundos antes del siguiente comando",
+        "name": "Condición espera"
+      },
+      "CONDITION_DISTANCE": {
+        "description": "Esperar hasta estar a cierta distancia del siguiente waypoint",
+        "name": "Condición dist"
+      },
+      "CONDITION_YAW": {
+        "description": "Alcanzar un rumbo objetivo antes del siguiente comando",
+        "name": "Condición guiñada"
+      },
+      "DO_AUTOTUNE_ENABLE": {
+        "description": "Activar/desactivar autotune",
+        "name": "Autotune"
+      },
+      "DO_AUX_FUNCTION": {
+        "description": "Activar el interruptor de una función auxiliar",
+        "name": "Función aux"
+      },
+      "DO_CHANGE_ALTITUDE": {
+        "description": "Cambiar la altitud a la velocidad indicada",
+        "name": "Cambiar altitud"
+      },
+      "DO_CHANGE_SPEED": {
+        "description": "Cambiar la velocidad objetivo",
+        "name": "Cambiar velocidad"
+      },
+      "DO_CONTROL_VIDEO": {
+        "description": "Controlar el sistema de vídeo a bordo",
+        "name": "Control de vídeo"
+      },
+      "DO_DIGICAM_CONFIGURE": {
+        "description": "Configurar los ajustes de la cámara digital",
+        "name": "Config. cámara"
+      },
+      "DO_DIGICAM_CONTROL": {
+        "description": "Disparar el obturador de la cámara",
+        "name": "Control cámara"
+      },
+      "DO_ENGINE_CONTROL": {
+        "description": "Arrancar/parar el motor",
+        "name": "Control de motor"
+      },
+      "DO_FENCE_ENABLE": {
+        "description": "Activar/desactivar el geofence",
+        "name": "Activar fence"
+      },
+      "DO_FLIGHTTERMINATION": {
+        "description": "Terminar el vuelo de inmediato",
+        "name": "Terminar vuelo"
+      },
+      "DO_GIMBAL_MANAGER_PITCHYAW": {
+        "description": "Establecer los ángulos de cabeceo y guiñada del gimbal",
+        "name": "Cabeceo/guiñada gimbal"
+      },
+      "DO_GO_AROUND": {
+        "description": "Abortar el aterrizaje y dar otra pasada",
+        "name": "Dar otra pasada"
+      },
+      "DO_GRIPPER": {
+        "description": "Abrir/cerrar el gripper",
+        "name": "Gripper"
+      },
+      "DO_GUIDED_LIMITS": {
+        "description": "Establecer límites para el modo Guided",
+        "name": "Límites Guided"
+      },
+      "DO_INVERTED_FLIGHT": {
+        "description": "Activar/desactivar el vuelo invertido",
+        "name": "Vuelo invertido"
+      },
+      "DO_JUMP": {
+        "description": "Saltar al waypoint N y repetir X veces",
+        "name": "Salto"
+      },
+      "DO_JUMP_TAG": {
+        "description": "Saltar a un elemento de misión con etiqueta",
+        "name": "Salto a etiqueta"
+      },
+      "DO_LAND_START": {
+        "description": "Marcador del inicio de la secuencia de aterrizaje",
+        "name": "Inicio aterrizaje"
+      },
+      "DO_MOTOR_TEST": {
+        "description": "Probar un motor individual",
+        "name": "Test de motor"
+      },
+      "DO_MOUNT_CONFIGURE": {
+        "description": "Configurar el modo de montura del gimbal",
+        "name": "Config. montura"
+      },
+      "DO_MOUNT_CONTROL": {
+        "description": "Controlar los ángulos del gimbal",
+        "name": "Control montura"
+      },
+      "DO_PARACHUTE": {
+        "description": "Desplegar el paracaídas o activar el despliegue automático",
+        "name": "Paracaídas"
+      },
+      "DO_PAUSE_CONTINUE": {
+        "description": "Pausar o reanudar la misión actual",
+        "name": "Pausar/Continuar"
+      },
+      "DO_RALLY_LAND": {
+        "description": "Volar a un punto rally y aterrizar",
+        "name": "Aterrizar en rally"
+      },
+      "DO_REPEAT_RELAY": {
+        "description": "Alternar el relé encendido/apagado N veces",
+        "name": "Repetir relé"
+      },
+      "DO_REPEAT_SERVO": {
+        "description": "Alternar el servo entre valores PWM",
+        "name": "Repetir servo"
+      },
+      "DO_REPOSITION": {
+        "description": "Reposicionar el vehículo en una ubicación",
+        "name": "Reposicionar"
+      },
+      "DO_SEND_SCRIPT_MESSAGE": {
+        "description": "Enviar un mensaje al script Lua de a bordo",
+        "name": "Mensaje a script"
+      },
+      "DO_SET_ACTUATOR": {
+        "description": "Establecer una salida de actuador (PX4)",
+        "name": "Fijar actuador"
+      },
+      "DO_SET_CAM_TRIGG_DIST": {
+        "description": "Disparar la cámara a intervalos de distancia",
+        "name": "Disparo de cámara"
+      },
+      "DO_SET_CAM_TRIGG_INTERVAL": {
+        "description": "Disparar la cámara a intervalos de tiempo",
+        "name": "Intervalo de cámara"
+      },
+      "DO_SET_HOME": {
+        "description": "Establecer una nueva posición de home",
+        "name": "Fijar home"
+      },
+      "DO_SET_MISSION_CURRENT": {
+        "description": "Saltar a un elemento de misión sin contar",
+        "name": "Fijar elemento de misión"
+      },
+      "DO_SET_MODE": {
+        "description": "Establecer el modo de vuelo",
+        "name": "Fijar modo"
+      },
+      "DO_SET_PARAMETER": {
+        "description": "Establecer un parámetro del controlador de vuelo",
+        "name": "Fijar parámetro"
+      },
+      "DO_SET_RELAY": {
+        "description": "Encender/apagar el relé",
+        "name": "Fijar relé"
+      },
+      "DO_SET_RESUME_REPEAT_DIST": {
+        "description": "Establecer la distancia para reanudar la misión tras RTL",
+        "name": "Dist. de reanudación"
+      },
+      "DO_SET_REVERSE": {
+        "description": "Establecer el sentido de marcha adelante/atrás",
+        "name": "Fijar marcha atrás"
+      },
+      "DO_SET_ROI": {
+        "description": "Establecer una región de interés para la cámara",
+        "name": "Fijar ROI"
+      },
+      "DO_SET_ROI_LOCATION": {
+        "description": "Apuntar la cámara a una ubicación",
+        "name": "Ubicación ROI"
+      },
+      "DO_SET_ROI_NONE": {
+        "description": "Cancelar el ROI y dejar de seguir",
+        "name": "Sin ROI"
+      },
+      "DO_SET_ROI_SYSID": {
+        "description": "Seguir a otro vehículo por su ID de sistema",
+        "name": "ROI de sistema"
+      },
+      "DO_SET_ROI_WPNEXT_OFFSET": {
+        "description": "Apuntar la cámara al siguiente waypoint",
+        "name": "ROI siguiente WP"
+      },
+      "DO_SET_SERVO": {
+        "description": "Poner el servo en un valor PWM",
+        "name": "Fijar servo"
+      },
+      "DO_SPRAYER": {
+        "description": "Activar/desactivar el pulverizador agrícola",
+        "name": "Pulverizador"
+      },
+      "DO_VTOL_TRANSITION": {
+        "description": "Transición entre VTOL y ala fija",
+        "name": "Transición VTOL"
+      },
+      "DO_WINCH": {
+        "description": "Controlar el motor del cabrestante",
+        "name": "Cabrestante"
+      },
+      "IMAGE_START_CAPTURE": {
+        "description": "Empezar a tomar fotos a intervalos",
+        "name": "Iniciar captura"
+      },
+      "IMAGE_STOP_CAPTURE": {
+        "description": "Dejar de tomar fotos",
+        "name": "Parar captura"
+      },
+      "JUMP_TAG": {
+        "description": "Marcar una etiqueta para DO_JUMP_TAG",
+        "name": "Etiqueta de salto"
+      },
+      "NAV_ALTITUDE_WAIT": {
+        "description": "Esperar en altitud hasta alcanzar el ritmo de ascenso",
+        "name": "Espera de altitud"
+      },
+      "NAV_ARC_WAYPOINT": {
+        "description": "Volar un arco curvo a través del waypoint",
+        "name": "Waypoint en arco"
+      },
+      "NAV_ATTITUDE_TIME": {
+        "description": "Mantener la actitud durante el tiempo indicado",
+        "name": "Actitud por tiempo"
+      },
+      "NAV_CONTINUE_AND_CHANGE_ALT": {
+        "description": "Continuar al siguiente WP mientras se cambia la altitud",
+        "name": "Continuar/Cambiar alt"
+      },
+      "NAV_DELAY": {
+        "description": "Esperar el tiempo indicado o hasta una hora del día",
+        "name": "Espera"
+      },
+      "NAV_GUIDED_ENABLE": {
+        "description": "Activar/desactivar el modo Guided desde el ordenador de a bordo",
+        "name": "Activar Guided"
+      },
+      "NAV_LAND": {
+        "description": "Aterrizar en la ubicación indicada",
+        "name": "Aterrizar"
+      },
+      "NAV_LAND_LOCAL": {
+        "name": "Aterrizaje local"
+      },
+      "NAV_LOITER_TIME": {
+        "description": "Hacer loiter en la ubicación durante X segundos",
+        "name": "Loiter por tiempo"
+      },
+      "NAV_LOITER_TO_ALT": {
+        "description": "Hacer loiter y subir/bajar hasta la altitud",
+        "name": "Loiter hasta alt"
+      },
+      "NAV_LOITER_TURNS": {
+        "description": "Hacer loiter de N vueltas alrededor de la ubicación",
+        "name": "Loiter por vueltas"
+      },
+      "NAV_LOITER_UNLIM": {
+        "description": "Hacer loiter en la ubicación indefinidamente",
+        "name": "Loiter ilimitado"
+      },
+      "NAV_PAYLOAD_PLACE": {
+        "description": "Descender y soltar la carga",
+        "name": "Soltar carga"
+      },
+      "NAV_RETURN_TO_LAUNCH": {
+        "description": "Volver a la ubicación de lanzamiento/home",
+        "name": "RTL"
+      },
+      "NAV_SCRIPT_TIME": {
+        "description": "Ejecutar un script Lua durante el tiempo indicado",
+        "name": "Script por tiempo"
+      },
+      "NAV_SPLINE_WAYPOINT": {
+        "description": "Waypoint spline para curvas suaves",
+        "name": "WP spline"
+      },
+      "NAV_TAKEOFF": {
+        "description": "Despegar hasta la altitud indicada",
+        "name": "Despegue"
+      },
+      "NAV_TAKEOFF_LOCAL": {
+        "name": "Despegue local"
+      },
+      "NAV_VTOL_LAND": {
+        "description": "Aterrizaje VTOL en la ubicación",
+        "name": "Aterrizaje VTOL"
+      },
+      "NAV_VTOL_TAKEOFF": {
+        "description": "Despegue VTOL hasta la altitud",
+        "name": "Despegue VTOL"
+      },
+      "NAV_WAYPOINT": {
+        "description": "Navegar al waypoint con tiempo de loiter opcional",
+        "name": "Waypoint"
+      },
+      "SET_CAMERA_FOCUS": {
+        "description": "Establecer el enfoque de la cámara",
+        "name": "Enfoque de cámara"
+      },
+      "SET_CAMERA_MODE": {
+        "description": "Establecer el modo de funcionamiento de la cámara",
+        "name": "Modo de cámara"
+      },
+      "SET_CAMERA_SOURCE": {
+        "description": "Establecer la fuente de vídeo de la cámara",
+        "name": "Fuente de cámara"
+      },
+      "SET_CAMERA_ZOOM": {
+        "description": "Establecer el nivel de zoom de la cámara",
+        "name": "Zoom de cámara"
+      },
+      "SET_YAW_SPEED": {
+        "description": "Establecer el ángulo y la velocidad de guiñada del rover",
+        "name": "Fijar vel. de guiñada"
+      },
+      "VIDEO_START_CAPTURE": {
+        "description": "Empezar a grabar vídeo",
+        "name": "Iniciar vídeo"
+      },
+      "VIDEO_STOP_CAPTURE": {
+        "description": "Dejar de grabar vídeo",
+        "name": "Parar vídeo"
+      }
+    },
+    "unknownCommand": "CMD desconocido {{command}}"
+  },
+  "missionValidation": {
+    "altHigh": "{{count}} waypoint(s) por encima de {{altitude}}: revisa tu referencia de altitud.",
+    "altNonPositive": "{{count}} waypoint(s) a una altitud igual o inferior a {{altitude}}.",
+    "badJumps": "{{count}} comando(s) DO_JUMP apuntan a un waypoint inexistente.",
+    "ceiling": "{{count}} elementos superan el límite de {{ceiling}} elementos del FC. Divide la misión en vuelos más pequeños.",
+    "emptyGroup": "El grupo \"{{name}}\" no tiene waypoints.",
+    "midMissionReturn_one": "{{count}} survey vuelve a home antes de que termine la misión. Conéctalos para volar seguido.",
+    "midMissionReturn_other": "{{count}} surveys vuelven a home antes de que termine la misión. Conéctalos para volar seguido.",
+    "noTakeoff": "No hay comando de despegue: el vehículo volará al primer waypoint desde su estado actual.",
+    "hazard": "El tramo {{from}} a {{to}} cruza el peligro \"{{zone}}\"",
+    "hazardFromHome": "El tramo de home a {{to}} cruza el peligro \"{{zone}}\""
+  },
+  "parameterGroups": {
+    "all": {
+      "description": "Todos los parámetros",
+      "name": "Todos"
+    },
+    "arming": {
+      "description": "Comprobaciones y requisitos de armado",
+      "name": "Armado"
+    },
+    "battery": {
+      "description": "Configuración del monitor de batería",
+      "name": "Batería"
+    },
+    "compass": {
+      "description": "Ajustes de brújula y magnetómetro",
+      "name": "Brújula"
+    },
+    "failsafe": {
+      "description": "Acciones y umbrales de failsafe",
+      "name": "Failsafe"
+    },
+    "flight_modes": {
+      "description": "Configuración de modos de vuelo",
+      "name": "Modos de vuelo"
+    },
+    "gps": {
+      "description": "Configuración del GPS",
+      "name": "GPS"
+    },
+    "logging": {
+      "description": "Registro de datos y planificador",
+      "name": "Registro"
+    },
+    "motors": {
+      "description": "Configuración de motores y ESC",
+      "name": "Motores"
+    },
+    "navigation": {
+      "description": "Ajustes de waypoints y navegación",
+      "name": "Navegación"
+    },
+    "rc": {
+      "description": "Ajustes de entrada del radiocontrol",
+      "name": "Entrada RC"
+    },
+    "tuning": {
+      "description": "Tuning de PID y actitud",
+      "name": "Tuning"
+    }
+  },
+  "prearmChecks": {
+    "category": {
+      "battery": "Batería",
+      "gps": "GPS",
+      "mission": "Misión",
+      "motors": "Motores",
+      "rc": "RC",
+      "sensors": "Sensores",
+      "system": "Sistema"
+    },
+    "hint": {
+      "apAccel": "Los acelerómetros necesitan calibración.",
+      "apAhrsInconsistent": "Los núcleos de la IMU no coinciden, normalmente por una calibración obsoleta. Recalibra los acelerómetros. En SITL, reinicia con \"Wipe EEPROM\".",
+      "apAhrsNotReady": "La estimación de actitud no está lista. Mantén el vehículo inmóvil y dale un minuto, o corrige los errores de sensor mostrados arriba.",
+      "apAirspeed": "El sensor de velocidad aerodinámica no responde. Revisa su cableado y el tubo pitot.",
+      "apBaro": "El barómetro no responde. Revisa el hardware del controlador de vuelo y reinícialo.",
+      "apBattery": "La batería está baja o no se reporta correctamente. Cárgala o sustitúyela, y revisa el monitor de batería si la lectura parece errónea.",
+      "apBoardType": "El tipo de placa configurado no coincide con este controlador de vuelo.",
+      "apCompassInconsistent": "Las lecturas de las brújulas no coinciden o el campo magnético parece incorrecto. Aléjate de metal y cables de potencia, revisa la orientación de cada brújula y recalibra.",
+      "apCompassUncalibrated": "La brújula no se ha calibrado, o su calibración ya no encaja.",
+      "apCompassUnhealthy": "Una brújula no responde. Revisa su cableado y que se detecte.",
+      "apEkfAttitude": "El EKF no puede converger. Mantén el vehículo inmóvil. En SITL, reinicia con \"Wipe EEPROM\" y espera 60-90 s tras el arranque.",
+      "apFence": "El fence necesita una posición, o el vehículo está fuera de él. Espera a tener fijación GPS, o mueve el vehículo dentro del fence.",
+      "apFrameClass": "La disposición del frame no está definida para este vehículo. Establece la clase y el tipo de frame según cómo estén dispuestos los motores.",
+      "apGeneric": "No se conoce ninguna solución automática para esta comprobación. El mensaje viene directamente del controlador de vuelo; la referencia pre-arm explica cada uno.",
+      "apGpsNotReady": "El GPS aún no tiene un fix utilizable, o no se detecta. Espera a cielo abierto; si persiste, revisa la configuración del GPS.",
+      "apGyro": "Los giroscopios no coinciden o no están calibrados. Mantén el vehículo completamente inmóvil y reinicia, o haz una calibración del giroscopio.",
+      "apLogging": "El registro no está disponible: la tarjeta SD falta, está llena o ha fallado. Inserta o sustituye la tarjeta.",
+      "apMission": "La misión no puede empezar tal como está. Revísala en el planificador de misiones.",
+      "apNeed3dFix": "Esperando un fix 3D de GPS. Ve a cielo abierto y espera.",
+      "apNeedAlt": "El EKF necesita una estimación de altitud. Esto se deriva de otros errores de sensor, corrígelos primero.",
+      "apNeedPosition": "El EKF necesita una posición válida. Espera a tener fijación GPS y 60-90 s tras el arranque para que converja.",
+      "apRadioFailsafe": "El controlador de vuelo está en failsafe de radio. Enciende el emisor y comprueba que está vinculado y que su rango de acelerador queda por encima del valor de failsafe.",
+      "apRangefinder": "El telémetro no responde. Revisa su cableado. Si no hay ninguno instalado, su tipo debe ser ninguno.",
+      "apRcUncalibrated": "Los canales de radio no se han calibrado.",
+      "apSafetySwitch": "Mantén pulsado el interruptor de seguridad del vehículo hasta que su luz quede fija.",
+      "apThrottleHigh": "El acelerador no está al mínimo. Baja el stick del acelerador del todo y revisa su trim en el emisor.",
+      "apWaitOrReboot": "El controlador de vuelo te pide esperar a que los sensores se estabilicen, o reiniciarlo.",
+      "px4Accel": "El acelerómetro no está calibrado o es inconsistente.",
+      "px4Attitude": "La estimación de actitud no es estable. Nivela el vehículo, reduce la vibración y deja que el estimador se asiente.",
+      "px4Battery": "La batería está baja o en mal estado. Cárgala o sustitúyela, y revisa la configuración de la batería si la lectura parece errónea.",
+      "px4Esc": "Se detectó un problema de ESC o de motor. Revisa el cableado del ESC, la telemetría y las salidas de motor.",
+      "px4Generic": "No se conoce ninguna solución automática para esta comprobación. El mensaje viene directamente del controlador de vuelo; la referencia de comprobaciones prevuelo explica cada uno.",
+      "px4Geofence": "Una condición del geofence impide armar. Mueve el vehículo dentro del fence, o revisa el fence.",
+      "px4GpsFix": "Esperando un fix de GPS. Ve a cielo abierto y espera; si persiste, revisa la configuración del GPS.",
+      "px4Gyro": "El giroscopio no está calibrado. Mantén el vehículo completamente inmóvil durante la calibración.",
+      "px4Home": "La posición de home aún no está establecida. Espera a tener una posición válida para poder capturar home.",
+      "px4KillSwitch": "El kill switch está activado. Desactívalo en el emisor antes de armar.",
+      "px4Mag": "El magnetómetro no está calibrado, o sus lecturas no coinciden. Aléjate de metal y cables de potencia y recalibra.",
+      "px4PositionEstimate": "La estimación de posición no está lista. Espera a tener fijación GPS a cielo abierto y a que el estimador se asiente.",
+      "px4Radio": "La radio no está calibrada o se perdió su señal. Enciende el emisor, comprueba que está vinculado y calíbrala.",
+      "px4Vibration": "Vibración alta o saturación del acelerómetro. Mejora el montaje y el aislamiento del controlador de vuelo, y equilibra las hélices."
+    },
+    "link": {
+      "ardupilotReference": "Referencia pre-arm de ArduPilot",
+      "batterySetup": "Configuración de batería",
+      "calibrateAccel": "Calibrar acelerómetro",
+      "calibrateCompass": "Calibrar brújula",
+      "calibrateGyro": "Calibrar giroscopio",
+      "calibrateRadio": "Calibrar radio",
+      "checkRcInputs": "Revisar entradas RC",
+      "compassSetup": "Configuración de brújula",
+      "failsafeSettings": "Ajustes de failsafe",
+      "gpsSetup": "Configuración de GPS",
+      "loggingSetup": "Configuración de registro",
+      "openFence": "Abrir fence",
+      "openMission": "Abrir misión",
+      "openSitl": "Abrir SITL",
+      "px4Reference": "Referencia de comprobaciones prevuelo de PX4",
+      "sensorSetup": "Configuración de sensores"
+    }
+  },
+  "rallyTypes": {
+    "landImmediately": "Aterrizar de inmediato",
+    "landIntoWind": "Aterrizar contra el viento"
+  },
+  "safetyConfigChecks": {
+    "calibrationLost": {
+      "consequence": "Se escribió pero no sobrevivió al reinicio. La aeronave vuela con lo que hubiera antes.",
+      "sensor": "sensor",
+      "title": "La última calibración de {{type}} no está en la aeronave"
+    },
+    "compassWeak": {
+      "consequence": "El mantenimiento de posición puede divagar o dar vueltas. Recalibrar lejos de metal y cableado de potencia suele arreglarlo.",
+      "title": "La calibración de la brújula es más débil de lo que debería"
+    },
+    "ekfFailsafeReportOnly": {
+      "consequence": "El failsafe de navegación está en solo informar. Si la posición o el rumbo se degradan en vuelo, la aeronave seguirá intentando volar el modo en el que estás.",
+      "consequenceWeakCompass": "La calibración de tu brújula ya es débil, y el failsafe de navegación está en solo informar. Una aeronave desorientada seguirá volando en lugar de aterrizar.",
+      "recommend": "Aterrizar cuando falle la navegación",
+      "title": "Si la aeronave pierde la noción de dónde está, no pasará nada"
+    },
+    "ekfThresholdDisabled": {
+      "consequence": "Nada te impedirá armar con una estimación de rumbo o posición mala, y el failsafe en vuelo tampoco podrá activarse.",
+      "recommend": "Restaurar el umbral por defecto",
+      "title": "La comprobación de calidad de navegación está desactivada"
+    },
+    "fenceRtlWithWeakCompass": {
+      "consequence": "Volar a casa necesita el mismo rumbo en el que tu calibración de brújula es débil. Aterrizar donde está, no.",
+      "recommend": "Aterrizar en lugar de volar a casa",
+      "title": "Al violar el fence la aeronave intentará volar a casa"
+    },
+    "px4BatteryWarningOnly": {
+      "consequence": "La aeronave seguirá volando con el pack vacío hasta caerse del cielo. Nada la aterriza por ti.",
+      "recommend": "Volver al llegar a crítico, aterrizar al llegar a vacío",
+      "title": "Una batería agotada solo producirá un aviso"
+    },
+    "px4FenceNoAction": {
+      "consequence": "El fence está configurado sin acción, así que no retendrá, devolverá ni aterrizará la aeronave cuando salga del área permitida.",
+      "recommend": "Mantener la posición en el fence",
+      "title": "Cruzar el geofence no hace nada"
+    },
+    "px4FenceRtlWithWeakCompass": {
+      "consequence": "Volar a casa necesita el mismo rumbo en el que tu calibración de brújula es débil. Mantener la posición, no.",
+      "recommend": "Mantener la posición en lugar de volar a casa",
+      "title": "Al violar el fence la aeronave intentará volar a casa"
+    },
+    "px4GcsLossDisabled": {
+      "consequence": "Si la telemetría se cae mientras la aeronave está fuera del alcance del RC, seguirá adelante sin forma de alcanzarla.",
+      "recommend": "Volver a casa al perder el enlace",
+      "title": "Perder el enlace con la estación de tierra no hace nada"
+    },
+    "px4MagCheckDisabled": {
+      "consequence": "Nada te impedirá armar junto a acero o con un magnetómetro que da lecturas absurdas.",
+      "recommend": "Negarse a armar con una brújula mala",
+      "title": "La comprobación de intensidad de la brújula está desactivada"
+    },
+    "px4RcLossTerminates": {
+      "consequence": "La terminación de vuelo y el desarmado dejan caer la aeronave donde está. Una pérdida breve de RC se convierte en un choque.",
+      "recommend": "Volver a casa al perder la radio",
+      "title": "Perder la radio cortará los motores"
+    }
+  },
+  "safetyMonitor": {
+    "controllerFighting": "Término I acumulado venciendo a P: el comando se opone a la demanda.",
+    "enablePidStreaming": "Activar streaming de PID (GCS_PID_MASK)",
+    "latchCleared": "Bloqueo de PELIGRO borrado por el operador",
+    "signal": {
+      "bodyRates": "Rates del cuerpo en tierra",
+      "controllerFighting": "El controlador se pelea consigo mismo",
+      "integratorLoad": "Carga del integrador",
+      "motorSpread": "Dispersión de motores en tierra",
+      "restingAttitude": "Desviación de actitud en reposo",
+      "throttleClimbCoherence": "Acelerador frente a ascenso"
+    },
+    "throttleNotLifting": "Acelerador arriba pero sin elevarse.",
+    "tipoverDetected": "Patrón previo a un vuelco detectado durante el arranque de motores"
+  },
+  "sitlCustomFrame": {
+    "missingField": "Campo ausente o no numérico: {{key}}",
+    "notJsonObject": "No es un objeto JSON",
+    "slungLoadHardpoint": "slungLoad: hardpoint debe ser un array de tres números",
+    "slungLoadMissingField": "slungLoad: campo ausente o no numérico: {{key}}",
+    "slungLoadNotObject": "slungLoad debe ser un objeto",
+    "slungLoadServoChannel": "slungLoad: {{key}} debe ser un canal de servo entero",
+    "template": {
+      "heavy_industrial_14s": "Octa industrial pesado 14S",
+      "heavy_octa": "Octa de carga pesada (clase Callisto)",
+      "hexa": "Hexa (cine mediano)",
+      "small_quad": "Quad pequeño (por defecto)"
+    }
+  },
+  "sitlUnsafeParams": {
+    "adsb": "tipo de transpondedor ADSB de hardware",
+    "batteryMonitor": "tipo de monitor de batería de hardware",
+    "boardSpecific": "identidad de hardware / específico de la placa",
+    "driverFamily": "identidad de hardware / familia de drivers",
+    "gpsDriver": "tipo de driver de GPS de hardware",
+    "rangefinder": "tipo de telémetro de hardware",
+    "serialProtocol": "protocolo serie de bus de hardware"
+  },
+  "telemetryTypes": {
+    "gpsFix": {
+      "noFix": "Sin fix",
+      "noGps": "Sin GPS"
+    },
+    "planeLandDisabled": "El aterrizaje de ala fija requiere una misión con un waypoint NAV_LAND (o el modo AUTOLAND + DO_LAND_START)"
+  },
+  "trafficTypes": {
+    "adsbPreset": {
+      "adsb-fi": "adsb.fi (gratis, sin clave)",
+      "adsbexchange": "ADSBExchange (clave de RapidAPI)",
+      "airplanes-live": "airplanes.live (gratis, sin clave)",
+      "custom": "Endpoint personalizado"
+    }
+  },
+  "vehicleProfile": {
+    "frame": {
+      "antennaTracker": "Antenna tracker",
+      "fixedWing": "Ala fija",
+      "helicopter": "Helicóptero",
+      "multirotor": "Multirrotor",
+      "rover": "Rover",
+      "submarine": "Submarino",
+      "surfaceBoat": "Barco de superficie",
+      "unknown": "Desconocido",
+      "vtol": "VTOL"
+    },
+    "frameUnknownId": "Frame {{frame}}",
+    "unidentified": "Vehículo sin identificar"
+  },
+  "userModelParsers": {
+    "badLatLng": "falta la latitud o la longitud, o está fuera de rango",
+    "badNumber": "{{field}} no es un número válido",
+    "emptyTable": "La tabla de ubicación no tiene filas.",
+    "invalidJson": "La tabla de ubicación no es un JSON válido ({{detail}})",
+    "missingFile": "la fila no indica ningún archivo de modelo",
+    "noCrs": "Este archivo CityJSON no indica ningún sistema de referencia de coordenadas (metadata.referenceSystem), así que no se puede ubicar.",
+    "noGeometry": "Este archivo CityJSON no tiene superficies que se puedan dibujar.",
+    "noValidRows": "No se pudo ubicar ningún modelo de la tabla de ubicación. Fila {{row}}: {{problem}}.",
+    "notCityJson": "Este archivo no es CityJSON.",
+    "notFeatureCollection": "La tabla GeoJSON debe ser una FeatureCollection de elementos Point.",
+    "notModelList": "models.json debe ser una lista de modelos, o un objeto con una lista \"models\".",
+    "unknownCrs": "Sistema de referencia de coordenadas EPSG:{{epsg}} desconocido. Este archivo CityJSON no se puede ubicar."
+  },
+  "vtolTransition": {
+    "toHover": "A HOVER",
+    "toWing": "A ALA"
+  }
+}

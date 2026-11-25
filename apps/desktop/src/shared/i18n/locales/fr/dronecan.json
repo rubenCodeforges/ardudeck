@@ -1,0 +1,133 @@
+{
+  "applyHint": "L'écriture d'une valeur l'applique immédiatement sur le nœud. Utilisez « Enregistrer sur le nœud » pour qu'elle survive à un redémarrage.",
+  "applyHintRestart": "Certaines de vos modifications ne prennent effet qu'après le redémarrage du nœud. Écrivez, puis « Enregistrer sur le nœud », puis redémarrez-le.",
+  "busHealth": {
+    "bitrate": "Débit",
+    "busOff": "Événements bus-off",
+    "diagnosis": {
+      "bus-off": {
+        "hint": "Le contrôleur CAN est passé en bus-off : le bus présente un défaut électrique. Vérifiez un court-circuit ou un faux contact sur CAN_H/CAN_L, une masse manquante ou une terminaison absente.",
+        "title": "Erreurs de bus"
+      },
+      "healthy": {
+        "hint": "",
+        "title": "Bus sain"
+      },
+      "idle": {
+        "hint": "Rien n'est émis ni reçu sur ce bus. Vérifiez qu'un port CAN utilise DroneCAN et que le contrôleur de vol a été redémarré après la modification des réglages CAN.",
+        "title": "Aucun trafic"
+      },
+      "no-ack": {
+        "hint": "Le contrôleur de vol envoie des trames mais aucun appareil ne les acquitte. Vérifiez le câble (CAN_H et CAN_L non inversés), que l'appareil est alimenté, que les deux extrémités sont terminées par 120 Ω (la plupart des autopilotes en ont une intégrée) et que le débit correspond à celui de l'appareil (le défaut DroneCAN est 1 Mbit/s).",
+        "title": "Rien ne répond sur le bus"
+      },
+      "rx-errors": {
+        "hint": "Des trames arrivent endommagées ou sont perdues. Vérifiez la terminaison, la longueur du câble et le débit de chaque appareil.",
+        "title": "Erreurs de réception"
+      }
+    },
+    "measuring": "Mesure…",
+    "received": "Reçues",
+    "sent": "Envoyées OK",
+    "subtitle": "CAN{{port}} vu par le contrôleur de vol, mesuré toutes les 5 s",
+    "timeouts": "Non acquittées",
+    "title": "État du bus",
+    "unavailable": "Ce firmware ne fournit pas de statistiques CAN (nécessite MAVLink FTP et @SYS/can0_stats.txt)."
+  },
+  "col": {
+    "default": "Défaut",
+    "name": "Nom",
+    "range": "Plage",
+    "value": "Valeur"
+  },
+  "confirmRestart": "Confirmer le redémarrage",
+  "danger": "Attention",
+  "dangerTip": "Une valeur incorrecte peut faire sortir ce nœud du bus CAN ou écraser son bootloader. Le récupérer nécessite alors une connexion USB ou SLCAN au nœud.",
+  "discard": "Annuler",
+  "docsSource": "Descriptions issues de la documentation ArduPilot AP_Periph",
+  "error": {
+    "failed": "Le contrôleur de vol a refusé le transfert CAN pour ce port.",
+    "noResponse": "Aucune réponse du contrôleur de vol. Vérifiez que le pilote du port est activé et que le FC a été redémarré après la modification des réglages CAN.",
+    "request": "Échec de la requête : {{error}}",
+    "start": "Impossible de démarrer le transfert CAN : {{error}}",
+    "unsupported": "Ce firmware ne prend pas en charge le transfert CAN via MAVLink, ArduDeck ne peut donc pas voir le bus DroneCAN."
+  },
+  "fcHint": "Il s'agit du contrôleur de vol lui-même. Ses réglages se trouvent dans le tableau de paramètres habituel.",
+  "filterPlaceholder": "Filtrer les paramètres",
+  "framesTip": "Trames CAN reçues du bus pendant que cet onglet est ouvert",
+  "frames_one": "{{count}} trame",
+  "frames_other": "{{count}} trames",
+  "hardware": "Matériel",
+  "health": {
+    "critical": "Critique",
+    "error": "Erreur",
+    "ok": "Sain",
+    "warning": "Avertissement"
+  },
+  "loadingParams": "Lecture des paramètres… {{count}}",
+  "mode": {
+    "initialization": "Initialisation",
+    "maintenance": "Maintenance",
+    "offline": "Hors ligne",
+    "operational": "Opérationnel",
+    "softwareUpdate": "Mise à jour du firmware"
+  },
+  "noBitsSet": "Aucune sélection",
+  "noBus": {
+    "body": "Aucun port CAN n'utilise le protocole DroneCAN. Réglez CAN_P1_DRIVER sur 1 et CAN_D1_PROTOCOL sur DroneCAN, puis redémarrez le contrôleur de vol.",
+    "title": "Aucun bus DroneCAN configuré"
+  },
+  "noParams": "Ce nœud ne signale aucun paramètre.",
+  "nodeFallbackName": "Nœud {{id}}",
+  "offline": "Hors ligne",
+  "paramsSubtitle_one": "Nœud {{id}} · {{count}} paramètre",
+  "paramsSubtitle_other": "Nœud {{id}} · {{count}} paramètres",
+  "port": "CAN{{port}}",
+  "reboot": "Redémarrer",
+  "rebootTip": "Prend effet après le redémarrage du nœud.",
+  "reload": "Recharger",
+  "requestError": {
+    "not-active": "la surveillance est arrêtée",
+    "notConnected": "non connecté",
+    "rejected": "le nœud l'a rejeté",
+    "timeout": "le nœud n'a pas répondu"
+  },
+  "restart": "Redémarrer le nœud",
+  "restarted": "Redémarrage envoyé. Le nœud réapparaît dans quelques secondes.",
+  "review": {
+    "asksToWrite": "{{from}} demande de modifier les paramètres du nœud",
+    "saveOnNode": "Enregistrer aussi sur le nœud, pour que les valeurs survivent à un redémarrage",
+    "title": "Vérifier les modifications DroneCAN",
+    "write_one": "Écrire {{count}} modification",
+    "write_other": "Écrire {{count}} modifications"
+  },
+  "saveToNode": "Enregistrer sur le nœud",
+  "saveToNodeTip": "Stocker les valeurs actuelles dans la flash du nœud pour qu'elles survivent à un redémarrage",
+  "saved": "Enregistré sur le nœud.",
+  "software": "Logiciel",
+  "start": "Démarrer",
+  "status": {
+    "active": "Surveillance",
+    "failed": "Refusé",
+    "idle": "Arrêté",
+    "noResponse": "Aucune réponse",
+    "starting": "Connexion",
+    "unsupported": "Non pris en charge"
+  },
+  "stop": "Arrêter",
+  "stoppedHint": "La surveillance est arrêtée. Appuyez sur Démarrer pour lire le bus.",
+  "subtitle": "Appareils du bus CAN, lus via le contrôleur de vol",
+  "thisFc": "Ce FC",
+  "title": "DroneCAN",
+  "uniqueId": "ID unique",
+  "uptime": "Durée de fonctionnement",
+  "valueNotListed": "{{value}} (absent de la liste)",
+  "waitingForNodes": "Écoute du bus. Les nœuds apparaissent dans la seconde qui suit l'envoi de leur état.",
+  "writeChanges_one": "Écrire {{count}} modification",
+  "writeChanges_other": "Écrire {{count}} modifications",
+  "writeFailed": "Non écrit : {{names}}",
+  "writtenAndSaved_one": "{{count}} valeur écrite et enregistrée sur le nœud.",
+  "writtenAndSaved_other": "{{count}} valeurs écrites et enregistrées sur le nœud.",
+  "written_one": "{{count}} valeur écrite.",
+  "written_other": "{{count}} valeurs écrites."
+}

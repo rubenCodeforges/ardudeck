@@ -1,0 +1,68 @@
+{
+  "guideHost": {
+    "dontShowAgain": "No volver a mostrar las guías automáticamente",
+    "gotIt": "Entendido",
+    "stepOf": "{{step}} de {{total}}"
+  },
+  "guidesAndTours": {
+    "allMarkedUnseen": "Todo marcado como no visto",
+    "guides": "Guías",
+    "offerWalkthroughs": "Ofrecer recorridos al abrir una vista por primera vez",
+    "resetAll": "Restablecer todo",
+    "title": "Guías y tours",
+    "tours": "Tours"
+  },
+  "layoutsDemo": {
+    "workspace": "Espacio de trabajo · {{name}}"
+  },
+  "registry": {
+    "grouping": {
+      "blurb": "Arrastra un instrumento del mapa sobre otro para acoplarlos en una tarjeta compartida. Arrastra un miembro hacia fuera para liberarlo, o escala todo el grupo a la vez.",
+      "title": "Agrupación de instrumentos"
+    },
+    "mapSplit": {
+      "blurb": "El botón Split del mapa comparte el panel con Vision. Arrastra el divisor para ajustar el tamaño; el diseño Pilot empieza así, con visión sintética.",
+      "title": "Mapa y visión lado a lado"
+    },
+    "workspaceLayouts": {
+      "blurb": "El botón Workspace cambia entre Pilot, FPV y Mission, cada uno con sus propios paneles, instrumentos de cabina y división. Guarda los tuyos y compártelos como archivo.",
+      "title": "Diseños de espacio de trabajo"
+    },
+    "sitl": {
+      "title": "Simula antes de volar",
+      "blurb": "Abre SITL desde la barra lateral, elige un vehículo y lanza un simulador, o cambia a Swarm para lanzar una flota. ArduDeck descarga el firmware la primera vez y se conecta solo."
+    },
+    "crsf": {
+      "title": "Telemetría desde un backpack ExpressLRS",
+      "blurb": "Pon el modo de telemetría de ELRS en WiFi, únete a la red del backpack y conecta con CRSF en el puerto 14550. Funciona con cualquier receptor CRSF sin cambiar nada en la aeronave. Para un enlace bidireccional, usa el modo MAVLink."
+    },
+    "cargo": {
+      "title": "Añade funciones con Cargo",
+      "blurb": "El Cargo Bay lista el Cargo que puedes añadir: instala, actualiza o quita cada uno. El Cargo instalado trae sus propias vistas y tarjetas a la aplicación."
+    },
+    "adjust": {
+      "title": "Ajusta mientras vuelas",
+      "blurb": "Desde la pantalla de telemetría, cambia la velocidad objetivo, la altitud y el radio de loiter sin salir de la vista de vuelo. Un cambio del radio de loiter se muestra para revisarlo antes de escribirlo."
+    },
+    "language": {
+      "title": "ArduDeck habla tu idioma",
+      "blurb": "Ajustes, Configuración, Idioma: English, Deutsch, Español, Français, Türkçe, 简体中文, 繁體中文 y Українська (beta). Sistema sigue el idioma de tu ordenador."
+    }
+  },
+  "splitDemo": {
+    "split": "Split",
+    "synthetic": "Sintética"
+  },
+  "releaseDemos": {
+    "launch": "Lanzar",
+    "connected": "Conectado",
+    "install": "Instalar",
+    "installed": "Instalado",
+    "speed": "Velocidad",
+    "altitude": "Altitud",
+    "radius": "Radio de loiter",
+    "review": "Revisar",
+    "language": "Idioma",
+    "system": "Sistema"
+  }
+}

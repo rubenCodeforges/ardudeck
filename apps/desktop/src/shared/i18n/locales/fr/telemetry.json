@@ -1,0 +1,116 @@
+{
+  "layoutDetails": {
+    "description": "Description",
+    "editTitle": "Modifier la disposition",
+    "name": "Nom",
+    "nameTaken": "Ce nom est déjà utilisé.",
+    "optional": "(facultatif)",
+    "replace": "Remplacer",
+    "replaceContents": "Remplacer le contenu par l'écran actuel",
+    "replaceContentsHint": "Panneaux, instruments du cockpit, séparation de la carte et mode de vision tels qu'ils sont actuellement.",
+    "replacesExisting": "Une disposition nommée « {{name}} » existe déjà. L'enregistrement la remplace.",
+    "saveTitle": "Enregistrer la disposition"
+  },
+  "layouts": {
+    "fpvDescription": "Carte et Vision côte à côte.",
+    "fpvLabel": "FPV",
+    "importInvalidJson": "Ce fichier n'est pas un JSON valide.",
+    "importNoPanels": "La disposition de ce fichier ne contient aucun agencement de panneaux.",
+    "importNotLayout": "Ce fichier n'est pas une disposition d'espace de travail ArduDeck.",
+    "importedName": "Disposition importée",
+    "missionDescription": "Carte, waypoints, profil d'altitude.",
+    "missionLabel": "Mission",
+    "pilotDescription": "Carte avec vision synthétique en écran partagé.",
+    "pilotLabel": "Pilote"
+  },
+  "panelHeader": {
+    "hideInstrument": "Masquer l'instrument de la carte",
+    "popOut": "Détacher",
+    "popOutTitle": "Ouvrir {{title}} dans une nouvelle fenêtre",
+    "showInstrument": "Afficher comme instrument sur la carte"
+  },
+  "quickStats": {
+    "alt": "ALT",
+    "armed": "Armé",
+    "bat": "BAT",
+    "disarmed": "Désarmé",
+    "hdg": "CAP",
+    "noLink": "Pas de liaison",
+    "notConnected": "Non connecté",
+    "sat": "SAT",
+    "spd": "VIT",
+    "thr": "GAZ"
+  },
+  "savedLayout": {
+    "confirmDelete": "Supprimer ?",
+    "copyToClipboard": "Copier dans le presse-papiers",
+    "deleteTip": "Supprimer",
+    "renameTip": "Renommer ou décrire",
+    "saveAsFile": "Enregistrer en fichier…",
+    "share": "Partager…",
+    "shareTip": "Partager"
+  },
+  "sensorHealth": {
+    "unhealthyTitle": "Défaillant : {{sensors}} - consultez le panneau Messages pour plus de détails"
+  },
+  "share": {
+    "copied": "Copié",
+    "failed": "Partage impossible",
+    "saved": "Enregistré"
+  },
+  "speed": {
+    "eco": "Éco",
+    "ecoTip": "Mises à jour lentes : ménage les liaisons de télémétrie faibles ou longue portée",
+    "fc": "FC",
+    "fcTip": "Hors jeu : ArduDeck ne demande jamais d'autres débits. Le véhicule continue d'émettre aux débits enregistrés sur le contrôleur de vol. À choisir si vous avez réglé ces débits vous-même.",
+    "max": "Max",
+    "maxTip": "Mises à jour les plus rapides, pour les liaisons rapides comme USB ou WiFi",
+    "normal": "Normal",
+    "normalTip": "Vitesse de mise à jour équilibrée, adaptée à la plupart des liaisons"
+  },
+  "workspace": {
+    "buttonTip": "Espace de travail : disposition des panneaux, vue et panneaux",
+    "title": "Espace de travail"
+  },
+  "workspaceDialog": {
+    "addPanel": "Ajouter un panneau",
+    "builtIn": "Intégrées",
+    "clipboardReadFailed": "Impossible de lire le presse-papiers.",
+    "fromFile": "Depuis un fichier…",
+    "import": "Importer",
+    "importTip": "Importer une disposition partagée par quelqu'un",
+    "map2d": "Carte 2D",
+    "map3d": "Terrain 3D",
+    "mapView": "Vue de la carte",
+    "offlineHint": "Dessinez un rectangle sur la carte pour mettre ses tuiles en cache et voler sans connexion.",
+    "offlineMaps": "Cartes hors ligne",
+    "panelLayout": "Disposition des panneaux",
+    "pasteFromClipboard": "Coller depuis le presse-papiers",
+    "resetToPreset": "Revenir au préréglage",
+    "saveCurrentAs": "Enregistrer l'actuelle sous…",
+    "saveOfflineArea": "Enregistrer une zone pour usage hors ligne",
+    "saved": "Enregistrées",
+    "selectingArea": "Sélection… dessinez un rectangle sur la carte",
+    "telemetryRate": "Débit de télémétrie",
+    "telemetryRateHint": "Fréquence à laquelle le véhicule envoie la télémétrie. FC laisse intacts les débits propres au contrôleur de vol.",
+    "cargoPanelMissing": "Ce panneau provient d'un Cargo qui n'est pas chargé actuellement."
+  },
+  "replay": {
+    "badge": "REPLAY",
+    "badgeTip": "Relecture d'un vol enregistré. Rien n'est envoyé à un véhicule.",
+    "pause": "Pause",
+    "play": "Lecture",
+    "restart": "Reprendre depuis le début",
+    "seek": "Position dans le vol",
+    "speedTip": "Vitesse de lecture",
+    "speed": "{{speed}}x",
+    "stop": "Arrêter la relecture",
+    "chooseTitle": "Rejouer un vol",
+    "chooseIntro": "Quel enregistrement voulez-vous relire ?",
+    "chooseBusy": "Déconnectez d'abord le véhicule.",
+    "chooseTlog": "Journal de télémétrie (.tlog)",
+    "chooseTlogDesc": "Ce qu'ArduDeck a reçu par la liaison radio. Enregistré automatiquement ; aussi fluide que le débit de télémétrie.",
+    "chooseBin": "Journal embarqué (.bin)",
+    "chooseBinDesc": "L'enregistrement propre au contrôleur de vol, sur sa carte SD. Généralement bien plus fluide ; téléchargez-le d'abord depuis le véhicule."
+  }
+}

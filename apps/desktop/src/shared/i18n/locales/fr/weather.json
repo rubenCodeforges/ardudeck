@@ -1,0 +1,100 @@
+{
+  "briefing": {
+    "clouds": "Nuages",
+    "context": "Contexte",
+    "fetching": "Récupération des prévisions...",
+    "flightConditions": "Conditions de vol",
+    "forecastValid": "Prévisions valables {{clock}} heure locale sur site · Open-Meteo",
+    "launchGates": "Seuils de lancement",
+    "limits": "Limites : rafales {{gustC}} / {{gustN}} m/s, vent {{windC}} / {{windN}} m/s, probabilité de précipitations {{probC}} / {{probN}} %, précipitations {{mmC}} / {{mmN}} mm, visibilité inférieure à {{visC}} / {{visN}} km.",
+    "locationAt": "{{location}} · {{clock}} heure locale",
+    "noPosition": "Aucune position à briefer",
+    "noPositionHint": "Connectez un véhicule, définissez un point de départ ou ouvrez la carte de mission pour que le briefing sache où interroger la météo.",
+    "precip": "Précip.",
+    "precipChance": "Probabilité de précip.",
+    "precipChanceTip": "Prudence {{caution}} %, interdit {{nogo}} %",
+    "precipTip": "Prudence {{caution}} mm, interdit {{nogo}} mm",
+    "pressure": "Pression",
+    "refreshTip": "Actualiser les prévisions",
+    "temp": "Temp.",
+    "title": "Briefing météo avant vol",
+    "unavailable": "Prévisions indisponibles",
+    "updated": "mis à jour {{time}}",
+    "visibility": "Visibilité",
+    "visibilityTip": "Prudence en dessous de {{caution}} km, interdit en dessous de {{nogo}} km",
+    "windLimitTip": "Prudence {{caution}}, interdit {{nogo}} {{unit}}"
+  },
+  "condition": {
+    "clear": "Dégagé",
+    "fog": "Brouillard",
+    "overcast": "Couvert",
+    "partlyCloudy": "Partiellement nuageux",
+    "rain": "Pluie"
+  },
+  "geomag": {
+    "activity": "Activité géomagnétique",
+    "calm": "Calme",
+    "declination": "Déclinaison",
+    "fieldStrength": "Intensité du champ",
+    "forecastKp": "Kp prévu (72 h)",
+    "forecastPeak": "Pic prévu sur 72 h",
+    "inHours": "dans {{hours}} h",
+    "inclination": "Inclinaison",
+    "kpBarTip": "Kp {{kp}} ({{gScale}}) à {{clock}} heure locale",
+    "kpThresholdTip": "Prudence Kp {{caution}}, interdit Kp {{nogo}} (tempête G1)",
+    "noStorm": "Aucune tempête prévue sur 72 h",
+    "peakKp": "Kp max {{kp}}",
+    "peakTip": "Kp prévu le plus élevé dans les 72 prochaines heures",
+    "sources": "Kp de NOAA SWPC · champ de WMM2025 (hors ligne)",
+    "title": "Géomagnétisme",
+    "unavailable": "Météo spatiale indisponible",
+    "unavailableHint": "Impossible de joindre le service Kp de la NOAA. Le verdict météo n'est pas affecté.",
+    "within72h": "sous 72 h",
+    "wmmInvalid": "WMM2025 est hors de sa période de validité ; les valeurs de déclinaison et de champ sont approximatives."
+  },
+  "locationDialog": {
+    "clickToSet": "Cliquez sur la carte pour définir le point du briefing",
+    "enterCoords": "Saisir les coordonnées",
+    "noMatches": "Aucun résultat.",
+    "noPoint": "Aucun point sélectionné",
+    "resetAuto": "Revenir en automatique",
+    "resetTip": "Suivre automatiquement la position du véhicule / du point de départ / de la carte",
+    "searchPlaceholder": "Rechercher un lieu (ville, aérodrome, repère)...",
+    "subtitle": "Cliquez sur la carte pour placer un point, faites glisser l'épingle pour affiner, ou recherchez un lieu.",
+    "title": "Lieu du briefing",
+    "typeCoordsTip": "Saisir des coordonnées exactes",
+    "useLocation": "Utiliser ce lieu"
+  },
+  "locationPicker": {
+    "change": "Changer de lieu",
+    "noPosition": "Aucune position",
+    "pickTip": "Choisir le lieu du briefing sur une carte",
+    "planned": "Planifié"
+  },
+  "reason": {
+    "gustsCaution": "Des rafales de {{value}} approchent de la limite ({{limit}}). Surveillez de près.",
+    "gustsNogo": "Des rafales de {{value}} dépassent la limite de sécurité ({{limit}}). Risque de perte de contrôle.",
+    "precipCaution": "Faibles précipitations de {{value}} mm détectées. Protégez la cellule.",
+    "precipNogo": "Précipitations de {{value}} mm. Électronique en danger, ne décollez pas.",
+    "precipProbCaution": "Probabilité de précipitations en hausse ({{value}} %). Surveillez le ciel.",
+    "precipProbNogo": "Forte probabilité de précipitations ({{value}} %). Attendez-vous à de la pluie dans l'heure.",
+    "visibilityCaution": "Visibilité réduite à {{value}} km. Maintenez le contact visuel.",
+    "visibilityNogo": "Faible visibilité de {{value}} km, sous le minimum de {{limit}} km.",
+    "windCaution": "Un vent soutenu de {{value}} approche de la limite ({{limit}}).",
+    "windNogo": "Un vent soutenu de {{value}} dépasse la limite de sécurité ({{limit}})."
+  },
+  "source": {
+    "home": "Point de départ",
+    "map": "Centre de la carte",
+    "override": "Lieu choisi",
+    "vehicle": "Position du véhicule"
+  },
+  "status": {
+    "caution": "PRUDENCE",
+    "cautionSummary": "Les conditions sont limites. Examinez les paramètres signalés avant le lancement.",
+    "go": "GO",
+    "goSummary": "Les conditions sont dans les limites pour le lancement.",
+    "nogoPill": "NO GO",
+    "nogoSummary": "Un ou plusieurs paramètres dépassent les limites de sécurité. Ne décollez pas."
+  }
+}

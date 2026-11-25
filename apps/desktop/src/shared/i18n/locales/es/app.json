@@ -1,0 +1,80 @@
+{
+  "altFrameReset": "Se restableció la referencia de altitud predeterminada a Home (el vehículo rechazó la referencia al terreno).",
+  "cliExit": {
+    "body": "Al salir de la pestaña CLI se enviará un comando de salida que reinicia el controlador de vuelo (2-4 segundos).",
+    "leave": "Salir y reiniciar",
+    "reconnect": "La aplicación se reconectará automáticamente cuando la placa se reinicie.",
+    "stay": "Permanecer en CLI",
+    "title": "¿Salir del terminal CLI?"
+  },
+  "legacyStream": {
+    "allow": "Solicitar streams y guardarlos en este vehículo",
+    "body": "{{label}} no respondió nada a la solicitud moderna por mensaje. La solicitud antigua suele funcionar, pero en esta aeronave ArduPilot<b> guarda esas tasas en sus parámetros SR*_</b>, donde permanecen después de este vuelo y en cualquier otra estación de tierra.",
+    "conservative": "Si lo permites, las tasas solicitadas son las conservadoras (actitud 10 Hz), no la velocidad de telemetría que elegiste, para que un enlace de radio lento siga siendo usable.",
+    "decline": "No tocar mi vehículo",
+    "declineHint": "Al rechazar se mantienen las tasas que el vehículo ya tiene. Puedes subir tú mismo sus parámetros SR*_ en Parámetros.",
+    "fleetLink": "Este es un enlace de flota, así que ocurriría en cada conexión.",
+    "notWithoutAsking": "ArduDeck no cambiará tu vehículo sin preguntarte.",
+    "title": "Sin telemetría de {{label}}"
+  },
+  "mismatch": {
+    "body": "Tu perfil de vehículo está configurado como <profile>{{profile}}</profile> pero el controlador de vuelo conectado es un <fc>{{fc}}</fc>.",
+    "dontAskAgain": "No volver a preguntar",
+    "hint": "Las estimaciones de rendimiento y los ajustes pueden no ser precisos para tu vehículo real.",
+    "ignoreOnce": "Ignorar esta vez",
+    "title": "El tipo de vehículo no coincide",
+    "updateProfile": "Cambiar el perfil a {{type}}"
+  },
+  "pseudoTx": {
+    "assignHint": "Pulsa <b>Asignar</b> y luego mueve el stick o activa el interruptor que quieras en ese canal. Los canales sin asignar se mantienen en 1500.",
+    "detailConnected": "{{device}} - {{frames}} tramas RC enviadas",
+    "detailOff": "Apagado - los deslizadores de abajo controlan el RC",
+    "detailWaiting": "Esperando un emisor - pon EdgeTX en modo USB Joystick",
+    "framesToVehicle": "{{fps}} tramas/s al vehículo",
+    "gamepadWarning": " - parece un gamepad, no un emisor",
+    "monitorCounts": "{{axes}} ejes - {{buttons}} botones",
+    "monitorMapping": " - mapeo \"{{mode}}\"",
+    "monitorRawHid": " - HID sin procesar",
+    "moveIt": "muévelo",
+    "overrideTip": "Envía RC_CHANNELS_OVERRIDE al vehículo conectado. El joystick CONTROLARÁ la aeronave.",
+    "reversedRestore": "El canal está invertido - haz clic para restaurar",
+    "source": {
+      "axis": "eje {{index}}",
+      "button": "botón {{index}}",
+      "buttons": "botones {{low}}/{{high}}",
+      "unassigned": "sin asignar"
+    },
+    "standardLayoutWarning": "El navegador aplicó su disposición estándar de gamepad a este dispositivo, que conserva solo cuatro ejes y descarta el resto, así que los interruptores nunca llegan. Vuelve a conectarlo con el emisor ya en modo USB Joystick, o usa un modelo cuyo descriptor USB no se reconozca como mando de juego.",
+    "title": "Volar con emisor USB",
+    "trainerActive": "Sesión de Trainer activa - el Trainer controla los sticks",
+    "unavailable": "No disponible",
+    "vehicleOff": "Apagado - no envía nada a la aeronave"
+  },
+  "sidebar": {
+    "collapse": "Contraer barra lateral",
+    "expand": "Expandir barra lateral"
+  },
+  "vehicleType": {
+    "boat": "Barco",
+    "copter": "Multicóptero",
+    "plane": "Ala fija",
+    "rover": "Rover",
+    "sub": "Submarino",
+    "vtol": "VTOL"
+  },
+  "welcome": {
+    "drawMissionAreas": "Dibuja áreas de misión en un mapa en vivo",
+    "firmwareFlashDesc": "Flashea firmware por USB o DFU",
+    "flightLogAnalysis": "Análisis de logs de vuelo",
+    "flightLogAnalysisDesc": "Revisión de logs de vuelo con IA",
+    "flightReplay": "Reproducción de vuelo",
+    "flightReplayDesc": "Reproduce un vuelo grabado (.tlog o .bin)",
+    "intro": "Conéctate a tu controlador de vuelo desde el panel de la izquierda, o ve directo a una de las herramientas de abajo.",
+    "missionLibraryDesc": "Explora y gestiona planes guardados",
+    "radioHudDesc": "Pantalla de telemetría de ArduDeck en tu radio EdgeTX",
+    "simWorldDesc": "Vuela SITL en un mundo 3D persistente",
+    "sitlDesc": "Prueba firmware sin hardware",
+    "title": "Te damos la bienvenida a ArduDeck",
+    "waypointsSurveysGeofences": "Waypoints, surveys y geovallas"
+  }
+}

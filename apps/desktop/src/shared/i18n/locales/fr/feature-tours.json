@@ -1,0 +1,275 @@
+{
+  "registry": {
+    "altitudePlanning": {
+      "blurb": "Le profil trace désormais correctement les waypoints relatifs, au terrain et ASL par rapport au vrai terrain, avec des étiquettes AGL, des alertes de collision fiables et le zoom.",
+      "panel": {
+        "body": "Les waypoints sont tracés par rapport au terrain dans leur propre référentiel d'altitude : un levé à 80 m relatifs sur un site de montagne s'affiche <b>80 m (80 m AGL)</b>, et non comme une fausse collision. L'axe montre la <b>hauteur au-dessus du point de départ</b> avec l'ASL à côté, les segments qui suivent le terrain épousent le sol, et la ligne pointillée est votre marge de sécurité. <b>Molette pour zoomer, glisser pour se déplacer</b>, faites glisser le point d'un waypoint pour changer son altitude, et laissez <b>Auto Adjust</b> corriger les vrais conflits avec le terrain.",
+        "title": "L'altitude, dans le référentiel où vous l'avez planifiée"
+      },
+      "title": "Un profil d'altitude qui comprend les référentiels"
+    },
+    "calibration": {
+      "blurb": "Accéléromètre, compas, niveau et le reste, chacun en étape guidée avec retour en direct.",
+      "title": "Étalonnage des capteurs",
+      "types": {
+        "body": "Chaque carte est un étalonnage guidé. Les cartes dont le véhicule n'a pas le capteur restent grisées. L'étalonnage du compas montre les directions déjà couvertes pendant que vous tournez l'appareil. Un correctif pre-arm qui nécessite un étalonnage ouvre directement la bonne carte.",
+        "title": "Choisissez ce que vous voulez étalonner"
+      }
+    },
+    "flightInfo": {
+      "blurb": "Un briefing avant vol en direct pour toute mission ou tout levé : autonomie et batteries, distance et altitude, vent et météo du site, et votre fenêtre de jour.",
+      "panel": {
+        "body": "Le nouvel onglet <b>Flight Info</b> transforme votre mission en chiffres sur lesquels un pilote décide : <b>temps de vol</b> et nombre de <b>batteries</b> nécessaires, <b>distance</b> totale et <b>altitude</b> par rapport au plafond, et <b>météo du site</b> en direct.",
+        "body2": "Le vent s'affiche sous forme de <b>compas</b>, et la barre de <b>lumière du jour</b> indique où se termine le vol par rapport au coucher du soleil, pour voir d'un coup d'œil si vous atterrissez avant la nuit.",
+        "title": "Briefez le vol avant de le faire"
+      },
+      "title": "Nouveau : le briefing Flight Info"
+    },
+    "libraryProjects": {
+      "blurb": "Un site, toutes ses zones de levé et ses missions, locales et du coffre, au même endroit.",
+      "tabs": {
+        "body": "Donnez un nom de <b>projet</b> à une mission ou à une zone de levé en l'enregistrant et elle se regroupe sous <b>Projects</b> avec tout le reste de ce site, y compris le contenu du coffre. Ouvrez une zone ou une mission à partir de là et elle arrive dans le planificateur.",
+        "title": "Missions, zones et projets"
+      },
+      "title": "Projets"
+    },
+    "logExplorer": {
+      "blurb": "Plusieurs graphiques avec axes y indépendants, statistiques liées à la fenêtre, panneaux d'événements et de FFT, et une carte de trajectoire qui suit votre curseur.",
+      "chartActions": {
+        "body": "Basculez entre un axe y partagé et <b>un axe par champ</b> pour que le régime et l'attitude puissent partager un graphique. Les <b>min / moy / max</b> de la légende se recalculent sur la fenêtre visible quand vous zoomez et déplacez, et le bouton d'export enregistre exactement cette fenêtre en CSV. Events, Params et <b>FFT</b> se trouvent dans le menu des panneaux.",
+        "title": "Axes indépendants, statistiques en direct, CSV"
+      },
+      "fieldPicker": {
+        "body": "Recherchez tous les messages que contient le journal et ajoutez des champs au <b>graphique actif</b> : ajoutez d'autres graphiques et le sélecteur cible celui sur lequel vous êtes. Les messages multi-instances (deux GPS, quatre ESC) se déploient par instance, et les unités viennent directement du journal.",
+        "title": "Choisissez n'importe quel champ enregistré"
+      },
+      "title": "Log Explorer, reconstruit"
+    },
+    "mapInstruments": {
+      "blurb": "Jauges, attitude, messages et RTK flottent sur la carte. Déplacez-les, groupez-les et enregistrez l'agencement avec une disposition.",
+      "pick": {
+        "body": "<b>Instruments</b> active ou désactive la vitesse, l'altitude, l'attitude, le cap, la batterie, les <b>Messages</b> et le <b>RTK</b>, ou charge tout un préréglage de cockpit. Faites glisser un instrument sur un autre pour les <b>grouper</b> dans un même plateau ; faites-le glisser dehors pour les séparer.",
+        "body2": "Une disposition <b>Workspace</b> enregistrée mémorise les instruments avec les panneaux. Réglages, Guides rejoue la visite guidée animée.",
+        "title": "Choisissez ce qui flotte sur la carte"
+      },
+      "stream": {
+        "body": "<b>Stream</b> publie la vue Vision, avec ou sans HUD, en RTSP, WebRTC et SRT. Ouvrez-la dans VLC, ffmpeg, OpenCV ou un navigateur.",
+        "title": "Diffusez la vue synthétique"
+      },
+      "title": "Instruments sur la carte"
+    },
+    "missionPlanning": {
+      "areaSurvey": {
+        "body": "Planifiez par <b>GSD</b> (cm/px) au lieu de deviner l'altitude, voyez des estimations en direct de <b>batterie et de données</b>, et découpez un gros chantier en <b>sorties à la taille d'une batterie</b> en un clic. Le crosshatch peut même voler ses deux passes à <b>deux hauteurs différentes</b> pour une meilleure 3D.",
+        "title": "Des levés de zone plus malins"
+      },
+      "blurb": "Missions groupées, levés de corridor et de zone avec des virages adaptés, import SIG, projets, caps des waypoints et annulation complète.",
+      "corridor": {
+        "title": "Levés de corridor",
+        "body": "Sous <b>Survey</b>, choisissez <b>Corridor</b> pour les routes, voies ferrées, lignes électriques et pipelines. Tracez l'axe central et réglez la largeur du corridor. ArduDeck place des bandes le long de celui-ci, espacées selon l'empreinte de votre caméra et le recouvrement, le nombre de bandes n'est donc jamais deviné. Une <b>marge</b> couvre au-delà du bord et le <b>dépassement</b> garde les virages hors de la ligne cartographiée. <b>Plane</b> obtient des virages en hippodrome dans les coudes serrés, <b>Copter</b> tourne sur place. Les rovers et tondeuses choisissent la caméra <b>Manual</b> pour régler directement l'espacement."
+      },
+      "export": {
+        "title": "Enregistrez un projet, ou exportez",
+        "body": "<b>Save project</b> garde ensemble les groupes de waypoints, chaque zone de levé et ses réglages, tous modifiables plus tard ; les projets sont regroupés dans la Library sous le nom du chantier ou du site. L'export écrit du <b>.waypoints</b> (ArduPilot, Mission Planner) ou du <b>.plan</b> (QGroundControl)."
+      },
+      "gisImport": {
+        "body": "Importez directement une limite de levé depuis du <b>KML</b>, du <b>KMZ</b> ou du <b>GeoJSON</b> : un groupe de levé par polygone, les anneaux intérieurs conservés comme zones d'exclusion. Plus besoin de retracer une limite à la main.",
+        "title": "Importer une zone depuis un SIG"
+      },
+      "groups": {
+        "body": "Chaque waypoint vit désormais dans un <b>groupe</b> nommé et coloré. Cliquez sur la pastille pour changer la couleur, sur la case pour l'afficher ou le masquer sur la carte, et sur le bouton de groupe pour téléverser ou enregistrer seulement ce groupe. Chaque en-tête affiche d'un coup d'œil la <b>distance, le temps de vol et le GSD</b> du groupe.",
+        "title": "Les missions sont organisées en groupes"
+      },
+      "history": {
+        "body": "<b>Annuler / rétablir</b> complet (Cmd/Ctrl+Z) sur les modifications, plus une <b>sauvegarde automatique</b> : si l'application se ferme en pleine planification, votre mission est récupérée au prochain lancement.",
+        "title": "Annuler, rétablir et récupération après plantage"
+      },
+      "title": "La planification de mission, en mieux",
+      "turns": {
+        "title": "Des virages adaptés",
+        "body": "<b>Skip</b> saute des lignes pour que chaque virage à 180° ait la place voulue (1, 3, 5, puis 2, 4), et <b>Camera off on turns</b> limite les photos aux lignes de balayage. Une <b>approche</b> aligne l'appareil avant la première photo."
+      },
+      "heading": {
+        "title": "Cap par waypoint",
+        "body": "Définissez un <b>Heading</b> sur un waypoint : le véhicule le prend en route vers ce waypoint et sur celui-ci (0 est le nord). Laissez vide pour le cap normal."
+      }
+    },
+    "multiVehicle": {
+      "blurb": "Le multi-véhicule est là : un interrupteur démarre le moteur, les véhicules apparaissent dès qu'ils sont en ligne, et ArduDeck les commande individuellement ou ensemble.",
+      "tab": {
+        "body": "Passez la barre latérale de connexion sur <b>Multi-vehicle</b> et activez-le : ArduDeck démarre son moteur en arrière-plan et les véhicules apparaissent à l'arrivée de leurs heartbeats, sans ports ni URL. <b>Add a vehicle</b> couvre les liaisons radio, internet, cellulaires et de seconde station au sol. Cliquez sur un véhicule dans la liste de la flotte et la télémétrie, la carte et les commandes basculent sur lui.",
+        "title": "Mode multi-véhicule"
+      },
+      "title": "Nouveau : pilotez toute une flotte"
+    },
+    "osdTool": {
+      "blurb": "Composez un HUD sol entièrement personnalisé, modifiez l'OSD texte du contrôleur de vol, ou créez une disposition RubyFPV : la barre de destination montre toujours où chacun aboutit.",
+      "destinationBar": {
+        "body": "Cette barre fait foi : le <b>HUD personnalisé</b> est dessiné par ArduDeck sur votre écran et votre flux vidéo et n'est <b>jamais téléversé</b> sur le contrôleur de vol ; l'éditeur d'<b>OSD texte</b> lit et écrit la vraie disposition OSDn_* du contrôleur de vol ; le concepteur <b>RubyFPV</b> exporte une disposition pour les stations au sol RubyFPV. Les trois se prévisualisent sur votre flux vidéo en direct.",
+        "title": "Trois OSD, trois destinations"
+      },
+      "title": "OSD Tool : sachez où vit votre surimpression"
+    },
+    "quickLaunch": {
+      "areaEditor": {
+        "body": "Le nouvel <b>Area Editor</b> s'ouvre d'ici : une carte plein écran pour dessiner des <b>zones et corridors</b> de levé, multi-polygones, trous, import KML, un <b>briefing de vol</b> en direct (bascule hectares/acres) et une recherche <b>go-to</b> pour aller sur n'importe quel site. <b>Send to mission</b> l'envoie directement dans le planificateur.",
+        "title": "Découvrez l'Area Editor"
+      },
+      "blurb": "Ouvrez des outils dans leurs propres fenêtres depuis l'en-tête, et plongez directement dans le nouvel Area Editor pour dessiner des zones et corridors de levé.",
+      "title": "Quick Launch et l'Area Editor",
+      "welcomeCards": {
+        "body": "Aucun véhicule connecté ? Ces cartes ouvrent les outils qui fonctionnent hors ligne : <b>Mission Planning</b>, l'<b>Area Editor</b>, le <b>SITL</b>, le <b>3D Sim World</b>, le <b>Radio HUD</b>, <b>Flight Log Analysis</b>, <b>Firmware Flash</b> et votre <b>Mission Library</b>.",
+        "title": "Allez directement à un outil"
+      },
+      "windows": {
+        "body": "Ouvrez le <b>MAVLink Inspector</b>, le <b>Telemetry Dashboard</b> ou le <b>3D Sim World</b> dans une fenêtre séparée, idéal sur un <b>second écran</b> pendant que vous continuez à planifier ou à régler dans la fenêtre principale. Chacun reste actif à côté du reste de l'application.",
+        "title": "Quick Launch : des outils dans leur propre fenêtre"
+      }
+    },
+    "radioHud": {
+      "apply": {
+        "body": "Branchez la radio en USB (choisissez <b>USB Storage</b> sur son écran) et cliquez sur <b>Apply</b> : widget, configuration, pack vocal et cartes arrivent ensemble sur la carte SD. Puis sur la radio : disposition App, widget plein écran, ArduDeck.",
+        "title": "Un clic jusqu'à la radio"
+      },
+      "blurb": "Concevez un écran de télémétrie ArduDeck pour votre radio EdgeTX (aperçu en direct, disposition par glisser-déposer, cartes de terrain hors ligne, alertes vocales) et envoyez-le sur la carte SD en un clic.",
+      "config": {
+        "body": "Tout ici est un <b>override</b>. Laissé en auto, le widget se configure tout seul à partir de la télémétrie du véhicule via ELRS (nombre d'éléments, capacité, % de batterie), sans connexion ArduDeck sur le terrain.",
+        "title": "Zéro configuration par défaut"
+      },
+      "edit": {
+        "body": "Sur les radios couleur : faites glisser, redimensionnez et échangez <b>17 tuiles d'instrument</b> sur jusqu'à 8 pages balayables (ou partez d'un préréglage). Sur les monochromes : chaque emplacement de données, la grande valeur et le panneau central (horizon ou mur de données) s'assignent directement.",
+        "title": "Faites de l'écran le vôtre"
+      },
+      "maps": {
+        "body": "Cliquez sur votre terrain de vol et ArduDeck assemble des <b>images satellite à trois niveaux de zoom</b> pour la tuile Map : véhicule, point de départ, trace et mission planifiée dessinés par-dessus, entièrement hors ligne. Touchez la tuile sur la radio pour changer le zoom.",
+        "title": "Cartes hors ligne sur la radio"
+      },
+      "model": {
+        "body": "Les radios couleur (TX15, TX16S, NV14...) reçoivent le widget complet : l'aperçu est un miroir fidèle de cet écran. Les radios monochromes (Boxer, Zorro, TX12, X9D) reçoivent un script de télémétrie 1 bit dense avec les mêmes alertes vocales. Les dispositions se redimensionnent quand vous changez.",
+        "title": "Choisissez votre radio"
+      },
+      "title": "Votre radio devient une mini station au sol"
+    },
+    "rtkNtrip": {
+      "blurb": "Diffusez des corrections RTK centimétriques depuis n'importe quel caster NTRIP directement vers votre véhicule, et suivez le fix sur la carte.",
+      "map": {
+        "body": "Sous <b>Instruments</b> se trouve aussi un instrument <b>RTK</b> qui affiche le type de fix et l'âge des corrections directement sur la carte, là où vous regardez de toute façon.",
+        "title": "Le RTK sur la carte"
+      },
+      "panel": {
+        "body": "Ajoutez le panneau <b>RTK / NTRIP</b>, pointez-le vers un caster NTRIP et choisissez un point de montage. ArduDeck transmet les <b>corrections RTCM</b> via MAVLink ; avec un GPS compatible RTK, le fix monte à <b>RTK Fixed</b> (1-2 cm). Avec plusieurs véhicules connectés, chacun reçoit les corrections.",
+        "title": "Panneau RTK / NTRIP"
+      },
+      "title": "Corrections RTK via NTRIP",
+      "workspace": {
+        "body": "Le bouton <b>Workspace</b> contient les dispositions et tous les panneaux que vous pouvez ajouter. Le panneau RTK en fait partie.",
+        "title": "Les panneaux se trouvent dans le Workspace"
+      }
+    },
+    "unitPreferences": {
+      "blurb": "Pieds, mph, nœuds, acres : choisissez les unités d'affichage par grandeur et toute l'application suit.",
+      "title": "Planifiez dans vos propres unités",
+      "units": {
+        "body": "Réglez séparément distance, altitude, vitesse, surface, masse et plus : la planification de mission, les panneaux de télémétrie, le log explorer et les estimations de levé s'affichent tous dans votre choix. Les valeurs envoyées au véhicule restent métriques en interne, rien ne change donc au vol.",
+        "title": "Unités d'affichage"
+      }
+    },
+    "vehicleSetup": {
+      "battery": {
+        "body": "Type de moniteur, mesure de tension et de courant, et tensions basse, critique et d'armement, suggérées à partir du nombre d'éléments et de la chimie.",
+        "title": "Batterie"
+      },
+      "blurb": "Chaque onglet ici est une page au-dessus des paramètres dont une tâche a besoin, en mots simples. Le tableau brut est le dernier recours.",
+      "links": {
+        "body": "<b>Serial Ports</b> règle ce qui tourne sur chaque port. <b>Telemetry Rates</b> détermine quel canal MAVLink est un port et montre ce que coûte chaque débit sur la liaison.",
+        "title": "Liaisons"
+      },
+      "outputs": {
+        "body": "<b>Motor Test</b> fait tourner un moteur à la fois avec vibrations et données ESC en direct (hélices retirées, il demande d'abord). <b>Servo Output</b> règle la fonction, l'inversion et la plage de chaque canal avec une barre en direct.",
+        "title": "Sorties"
+      },
+      "rc": {
+        "body": "<b>Receiver</b> affiche le protocole et chaque canal en direct. <b>Modes</b> associe les positions des interrupteurs aux modes et montre dans quel emplacement se trouve l'interrupteur en ce moment.",
+        "title": "RC"
+      },
+      "roverTuning": {
+        "body": "Gains des contrôleurs de direction et de vitesse, limites de <b>Speed & Steering</b>, et <b>Navigation</b> pour le suivi de waypoints et le loiter.",
+        "title": "Tuning"
+      },
+      "safety": {
+        "body": "<b>Arming</b> liste les contrôles pre-arm et ce qui échoue actuellement. <b>Failsafes & fence</b> règle ce qui se passe à la perte de liaison, batterie faible et franchissement de fence. Les correctifs rapides pre-arm ouvrent ces pages.",
+        "title": "Sécurité"
+      },
+      "sensors": {
+        "body": "<b>Health</b> pour chaque capteur en direct, <b>Configuration</b> pour l'orientation de la carte, les compas et le câblage GPS, et <b>LEDs & Sound</b> pour la LED, le buzzer et le bouton de sécurité.",
+        "title": "Capteurs"
+      },
+      "servoOutput": {
+        "body": "Fonction, inversion, min, trim et max de chaque sortie, avec la position en direct sur chaque ligne.",
+        "title": "Servo Output"
+      },
+      "storage": {
+        "body": "<b>Logging</b> choisit ce que la carte enregistre. <b>Files</b> parcourt le contrôleur de vol via MAVLink-FTP. <b>Parameters</b> est le tableau complet, pour ce qu'aucune page ne couvre encore.",
+        "title": "Stockage"
+      },
+      "tabs": {
+        "body": "Chaque onglet règle une tâche et écrit les bons paramètres pour ce firmware, avec des données en direct à côté des réglages pour que vous voyiez l'effet. La plupart des onglets sont dans un groupe : les étapes suivantes ouvrent chacun d'eux.",
+        "title": "Des pages, pas des noms de paramètres"
+      },
+      "title": "Configuration du véhicule sans le tableau de paramètres",
+      "tuning": {
+        "body": "Gains <b>PID</b> par axe, <b>Rates</b> et expo, préréglages <b>Tuning</b>, et <b>AutoTune</b> se règlent sans chercher ses paramètres. AutoTune refuse les modifications tant que vous êtes armé.",
+        "title": "Tuning"
+      }
+    },
+    "vtolDualTuning": {
+      "blurb": "Les QuadPlanes ont deux jeux de contrôleurs. L'onglet PID vous permet désormais de choisir lequel vous réglez.",
+      "title": "Réglez séparément le VTOL et la voilure fixe",
+      "toggle": {
+        "body": "Un QuadPlane utilise des contrôleurs distincts pour le vol stationnaire et le vol vers l'avant. Cet interrupteur bascule l'onglet PID entre le contrôleur de taux <b>VTOL</b> (<code>Q_A_RAT_</code>) et le contrôleur <b>voilure fixe</b> (<code>RLL_RATE_</code> / <code>RLL2SRV_</code>).",
+        "body2": "Les curseurs, préréglages et profils suivent tous votre choix, vous pouvez donc régler chaque jeu sans quitter la page.",
+        "title": "Deux contrôleurs, un seul autopilote"
+      }
+    },
+    "quickSetup": {
+      "title": "Quick Setup",
+      "blurb": "Configurez une carte Betaflight ou INAV en quatre étapes : préréglage, émetteur, vérification, application.",
+      "launch": {
+        "title": "Quick Setup en quatre étapes",
+        "body": "Choisissez un <b>préréglage</b> pour votre châssis, vérifiez votre <b>émetteur</b>, <b>examinez</b> chaque changement, puis <b>appliquez</b>. Rien n'est écrit avant la dernière étape."
+      },
+      "presets": {
+        "title": "Partez d'un préréglage",
+        "body": "Les préréglages correspondent aux châssis et styles de vol courants. Choisissez le plus proche ; chaque valeur pourra être affinée ensuite dans les onglets."
+      },
+      "transmitter": {
+        "title": "Vérifiez l'émetteur",
+        "body": "Bougez chaque stick et chaque interrupteur : les barres doivent suivre. Un canal inversé ou permuté se corrige ici, avant que quoi que ce soit en dépende."
+      },
+      "review": {
+        "title": "Vérifiez avant d'écrire",
+        "body": "Chaque changement est listé avec son ancienne et sa nouvelle valeur. Revenez en arrière pour changer de préréglage, ou continuez pour appliquer."
+      },
+      "apply": {
+        "title": "Appliquez, puis testez",
+        "body": "ArduDeck écrit le préréglage et l'enregistre sur la carte. Quand c'est fini, testez les sorties et les moteurs hélices retirées."
+      }
+    },
+    "fleetFocus": {
+      "title": "Focus sur un véhicule de la flotte",
+      "blurb": "Avec plusieurs véhicules connectés, les outils agissent sur celui que vous ciblez.",
+      "pick": {
+        "title": "Choisissez le véhicule sur lequel vous travaillez",
+        "body": "Cliquez sur un véhicule dans la bande de la flotte pour le cibler. La télémétrie, la carte et les commandes suivent le véhicule ciblé."
+      },
+      "tools": {
+        "title": "Les outils suivent le focus",
+        "body": "Étalonnage, test moteur, transfert de fichiers, journaux et redémarrage n'agissent que sur le véhicule ciblé, et seules ses réponses comptent. Vérifiez le focus avant d'étalonner."
+      },
+      "switch": {
+        "title": "Changez sans vous déconnecter",
+        "body": "Ciblez un autre véhicule à tout moment. Les autres restent connectés et continuent de diffuser en arrière-plan."
+      }
+    }
+  }
+}

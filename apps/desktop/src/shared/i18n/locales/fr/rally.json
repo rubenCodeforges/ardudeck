@@ -1,0 +1,21 @@
+{
+  "rallyListPanel": {
+    "alt": "Alt : {{value}}",
+    "breakAlt": "Alt. de sortie",
+    "breakAltHint": "Altitude à laquelle quitter l'attente et commencer l'atterrissage",
+    "detailsTitle": "Point de ralliement R{{n}}",
+    "downloading": "Téléchargement...",
+    "empty": "Aucun point de ralliement",
+    "emptyHint": "Cliquez sur \"Add Rally\" sur la carte pour en créer un",
+    "flags": "Options",
+    "landHeading": "Cap d'atterrissage (°)",
+    "landHeadingHint": "0 = toute direction",
+    "landImmediately": "Atterrir immédiatement (sans attente)",
+    "landIntoWind": "Atterrir face au vent",
+    "pointCount_one": "{{count}} point",
+    "pointCount_other": "{{count}} points",
+    "subtitle": "Lieux d'atterrissage d'urgence",
+    "title": "Points de ralliement",
+    "uploading": "Envoi..."
+  }
+}

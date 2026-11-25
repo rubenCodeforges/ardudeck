@@ -1,0 +1,133 @@
+{
+  "applyHint": "Al escribir un valor, se aplica en el nodo de inmediato. Usa \"Guardar en el nodo\" para que sobreviva a un reinicio.",
+  "applyHintRestart": "Algunos de tus cambios solo surten efecto tras reiniciar el nodo. Escribe, luego \"Guardar en el nodo\" y después reinícialo.",
+  "busHealth": {
+    "bitrate": "Bitrate",
+    "busOff": "Eventos bus-off",
+    "diagnosis": {
+      "bus-off": {
+        "hint": "El controlador CAN entró en bus-off: el bus tiene una falla eléctrica. Revisa si hay CAN_H/CAN_L en cortocircuito o sueltos, falta de tierra o falta de terminación.",
+        "title": "Errores de bus"
+      },
+      "healthy": {
+        "hint": "",
+        "title": "Bus en buen estado"
+      },
+      "idle": {
+        "hint": "No se envía ni se recibe nada en este bus. Comprueba que un puerto CAN use DroneCAN y que el controlador de vuelo se reinició tras cambiar los ajustes de CAN.",
+        "title": "Sin tráfico"
+      },
+      "no-ack": {
+        "hint": "El controlador de vuelo envía tramas pero ningún dispositivo las confirma. Revisa el cable (CAN_H y CAN_L no intercambiados), que el dispositivo esté alimentado, que ambos extremos estén terminados con 120 Ω (la mayoría de los autopilotos ya traen una) y que el bitrate coincida con el del dispositivo (el valor por defecto de DroneCAN es 1 Mbit/s).",
+        "title": "Nada responde en el bus"
+      },
+      "rx-errors": {
+        "hint": "Las tramas llegan dañadas o se pierden. Revisa la terminación, la longitud del cable y el bitrate en cada dispositivo.",
+        "title": "Errores de recepción"
+      }
+    },
+    "measuring": "Midiendo…",
+    "received": "Recibidas",
+    "sent": "Enviadas OK",
+    "subtitle": "CAN{{port}} tal como lo ve el controlador de vuelo, medido cada 5 s",
+    "timeouts": "Sin confirmar",
+    "title": "Estado del bus",
+    "unavailable": "Este firmware no informa estadísticas de CAN (requiere MAVLink FTP y @SYS/can0_stats.txt)."
+  },
+  "col": {
+    "default": "Por defecto",
+    "name": "Nombre",
+    "range": "Rango",
+    "value": "Valor"
+  },
+  "confirmRestart": "Confirmar reinicio",
+  "danger": "Precaución",
+  "dangerTip": "Un valor incorrecto puede sacar este nodo del bus CAN o sobrescribir su bootloader. Recuperarlo requiere entonces una conexión USB o SLCAN con el nodo.",
+  "discard": "Descartar",
+  "docsSource": "Descripciones de la documentación de AP_Periph de ArduPilot",
+  "error": {
+    "failed": "El controlador de vuelo rechazó el reenvío CAN para este puerto.",
+    "noResponse": "Sin respuesta del controlador de vuelo. Comprueba que el driver del puerto esté activado y que el FC se reinició tras cambiar los ajustes de CAN.",
+    "request": "La solicitud falló: {{error}}",
+    "start": "No se pudo iniciar el reenvío CAN: {{error}}",
+    "unsupported": "Esta versión del firmware no tiene reenvío CAN por MAVLink, así que ArduDeck no puede ver el bus DroneCAN."
+  },
+  "fcHint": "Este es el propio controlador de vuelo. Sus ajustes están en la tabla de parámetros normal.",
+  "filterPlaceholder": "Filtrar parámetros",
+  "framesTip": "Tramas CAN recibidas del bus mientras esta pestaña está abierta",
+  "frames_one": "{{count}} trama",
+  "frames_other": "{{count}} tramas",
+  "hardware": "Hardware",
+  "health": {
+    "critical": "Crítico",
+    "error": "Error",
+    "ok": "Correcto",
+    "warning": "Advertencia"
+  },
+  "loadingParams": "Leyendo parámetros… {{count}}",
+  "mode": {
+    "initialization": "Inicializando",
+    "maintenance": "Mantenimiento",
+    "offline": "Sin conexión",
+    "operational": "Operativo",
+    "softwareUpdate": "Actualizando firmware"
+  },
+  "noBitsSet": "Nada seleccionado",
+  "noBus": {
+    "body": "Ningún puerto CAN usa el protocolo DroneCAN. Establece CAN_P1_DRIVER en 1 y CAN_D1_PROTOCOL en DroneCAN, y reinicia el controlador de vuelo.",
+    "title": "No hay bus DroneCAN configurado"
+  },
+  "noParams": "Este nodo no informa parámetros.",
+  "nodeFallbackName": "Nodo {{id}}",
+  "offline": "Sin conexión",
+  "paramsSubtitle_one": "Nodo {{id}} · {{count}} parámetro",
+  "paramsSubtitle_other": "Nodo {{id}} · {{count}} parámetros",
+  "port": "CAN{{port}}",
+  "reboot": "Reiniciar",
+  "rebootTip": "Surte efecto cuando el nodo se reinicia.",
+  "reload": "Recargar",
+  "requestError": {
+    "not-active": "la monitorización está detenida",
+    "notConnected": "no hay conexión",
+    "rejected": "el nodo lo rechazó",
+    "timeout": "el nodo no respondió"
+  },
+  "restart": "Reiniciar nodo",
+  "restarted": "Reinicio enviado. El nodo reaparece en unos segundos.",
+  "review": {
+    "asksToWrite": "{{from}} pide cambiar parámetros del nodo",
+    "saveOnNode": "Guardar también en el nodo, para que los valores sobrevivan a un reinicio",
+    "title": "Revisar cambios de DroneCAN",
+    "write_one": "Escribir {{count}} cambio",
+    "write_other": "Escribir {{count}} cambios"
+  },
+  "saveToNode": "Guardar en el nodo",
+  "saveToNodeTip": "Almacena los valores actuales en la flash del nodo para que sobrevivan a un reinicio",
+  "saved": "Guardado en el nodo.",
+  "software": "Software",
+  "start": "Iniciar",
+  "status": {
+    "active": "Monitorizando",
+    "failed": "Rechazado",
+    "idle": "Detenido",
+    "noResponse": "Sin respuesta",
+    "starting": "Conectando",
+    "unsupported": "No compatible"
+  },
+  "stop": "Detener",
+  "stoppedHint": "La monitorización está detenida. Pulsa Iniciar para leer el bus.",
+  "subtitle": "Dispositivos del bus CAN, leídos a través del controlador de vuelo",
+  "thisFc": "Este FC",
+  "title": "DroneCAN",
+  "uniqueId": "ID único",
+  "uptime": "Tiempo activo",
+  "valueNotListed": "{{value}} (no está en la lista)",
+  "waitingForNodes": "Escuchando el bus. Los nodos aparecen en cuanto envían su estado.",
+  "writeChanges_one": "Escribir {{count}} cambio",
+  "writeChanges_other": "Escribir {{count}} cambios",
+  "writeFailed": "No se escribió: {{names}}",
+  "writtenAndSaved_one": "{{count}} valor escrito y guardado en el nodo.",
+  "writtenAndSaved_other": "{{count}} valores escritos y guardados en el nodo.",
+  "written_one": "{{count}} valor escrito.",
+  "written_other": "{{count}} valores escritos."
+}

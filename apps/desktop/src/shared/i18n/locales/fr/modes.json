@@ -1,0 +1,270 @@
+{
+  "auxChannelPicker": {
+    "current": "Actuel"
+  },
+  "auxChannels": {
+    "aux1": "Généralement un inter à 2 positions",
+    "aux10": "Canal supplémentaire",
+    "aux11": "Canal supplémentaire",
+    "aux12": "Canal supplémentaire",
+    "aux2": "Souvent un inter à 3 positions",
+    "aux3": "Inter supplémentaire",
+    "aux4": "Inter supplémentaire",
+    "aux5": "Canal supplémentaire (potentiomètre/slider)",
+    "aux6": "Canal supplémentaire (potentiomètre/slider)",
+    "aux7": "Canal supplémentaire",
+    "aux8": "Canal supplémentaire",
+    "aux9": "Canal supplémentaire"
+  },
+  "modeCard": {
+    "channel": "Canal :",
+    "configure": "Configurer",
+    "configureTitle": "Configurer les réglages de {{name}}",
+    "editMode": "Modifier le mode",
+    "essential": "ESSENTIEL",
+    "range": "Plage :",
+    "removeMode": "Supprimer le mode",
+    "unknownMode": "Mode inconnu"
+  },
+  "modeConfigStep": {
+    "correctPosition": "Votre inter est dans la bonne position. Ce mode serait actif en vol.",
+    "essentialMode": "MODE ESSENTIEL",
+    "isActive": "{{name}} est ACTIF !",
+    "moveSwitch": "Placez votre {{channel}} en position {{position}} pour voir {{name}} s'activer.",
+    "nextMode": "Mode suivant",
+    "noMode": "Aucun mode à configurer",
+    "reviewConfiguration": "Vérifier la configuration",
+    "switch": "inter",
+    "testIt": "Testez ! Actionnez votre inter pour voir s'il s'active :",
+    "tryNow": "Essayez maintenant !",
+    "whenActivate": "Quand doit-il s'activer ? (plage PWM)",
+    "whichSwitch": "Quel inter doit activer ce mode ?"
+  },
+  "modeFallback": "Mode {{id}}",
+  "modePresets": {
+    "airmode": {
+      "beginner": "AVANCÉ : conserve toute l'autorité des manches même à gaz nul. Indispensable pour les figures et flips en freestyle. Généralement laissé actif en permanence.",
+      "description": "Contrôle total à gaz nul"
+    },
+    "angle": {
+      "beginner": "MODE DÉBUTANT : votre appareil se remet automatiquement à plat quand vous relâchez les manches. L'angle d'inclinaison maximal est limité. Parfait pour apprendre à voler !",
+      "description": "Auto-stabilisé"
+    },
+    "arm": {
+      "beginner": "INTER DE SÉCURITÉ : arme/désarme votre appareil. Mettez-le TOUJOURS sur un inter dédié ! Une fois armé, les hélices peuvent tourner à tout moment.",
+      "description": "Activer les moteurs"
+    },
+    "beeper": {
+      "beginner": "LOCALISATION : fait bipper fort votre appareil pour le retrouver après un crash. Très utile quand il atterrit dans les hautes herbes !",
+      "description": "Retrouver l'appareil"
+    },
+    "blackbox": {
+      "beginner": "ENREGISTREMENT : enregistre les données de vol sur la carte SD pour analyse. Utile pour régler les PID et analyser les crashs.",
+      "description": "Journal de vol"
+    },
+    "failsafe": {
+      "beginner": "URGENCE : déclenche le comportement failsafe (généralement atterrissage ou désarmement). Normalement activé automatiquement en cas de perte de signal.",
+      "description": "Atterrissage d'urgence"
+    },
+    "flaperon": {
+      "beginner": "Active les flaperons pour une approche plus lente. Les ailerons s'abaissent pour faire office de volets.",
+      "description": "Mode volets"
+    },
+    "gcsNav": {
+      "beginner": "Autorise la station au sol à envoyer des commandes de navigation (aller ici, etc.).",
+      "description": "Contrôle depuis la station au sol"
+    },
+    "gimbalLevelTilt": {
+      "beginner": "Garde l'axe de tangage du gimbal à l'horizontale quelle que soit l'attitude de l'appareil. Utile pour stabiliser la caméra.",
+      "description": "Mise à niveau du tangage du gimbal"
+    },
+    "headingHold": {
+      "beginner": "Maintient le cap magnétique actuel. Utile pour voler en ligne droite.",
+      "description": "Maintien du cap"
+    },
+    "homeReset": {
+      "beginner": "Définit la position actuelle comme nouveau point home. À utiliser si vous changez d'endroit pendant une session.",
+      "description": "Réinitialiser la position home"
+    },
+    "horizon": {
+      "beginner": "MODE INTERMÉDIAIRE : se stabilise près du centre des manches comme ANGLE, mais autorise flips et rolls à fond de manche. Un pont entre ANGLE et ACRO.",
+      "description": "Auto-stabilisé + acro"
+    },
+    "manual": {
+      "beginner": "Contrôle direct des servos/moteurs sans stabilisation. Réservé aux pilotes expérimentés !",
+      "description": "Contrôle direct"
+    },
+    "navAlthold": {
+      "beginner": "Maintient l'altitude actuelle avec le baromètre/GPS. Les gaz contrôlent le taux de montée/descente.",
+      "description": "Maintien d'altitude"
+    },
+    "navCourseHold": {
+      "beginner": "Maintient le cap actuel tout en permettant de contrôler l'altitude. Idéal pour voler en ligne droite.",
+      "description": "Maintien de route"
+    },
+    "navCruise": {
+      "beginner": "Mode croisière pour aile fixe : maintient le cap et l'altitude. Parfait pour les vols longue distance.",
+      "description": "Régulateur de croisière"
+    },
+    "navLaunch": {
+      "beginner": "Séquence de lancement automatique pour aile fixe. Lancez l'avion et il montera à une altitude sûre.",
+      "description": "Lancement automatique"
+    },
+    "navPoshold": {
+      "beginner": "Maintien de position GPS : l'appareil reste sur place. Idéal pour la photo aérienne ou pour s'arrêter.",
+      "description": "Maintien de position"
+    },
+    "navRth": {
+      "beginner": "Return To Home : l'appareil monte à une altitude sûre et revient au point de décollage. Fonction de sécurité essentielle !",
+      "description": "Retour à la maison"
+    },
+    "navWp": {
+      "beginner": "Exécute la mission de waypoints téléversée. L'appareil rejoint chaque waypoint automatiquement.",
+      "description": "Mission de waypoints"
+    },
+    "prearm": {
+      "beginner": "Inter de sécurité : doit être activé avant l'armement. Évite un armement accidentel.",
+      "description": "Vérification pre-arm"
+    },
+    "turnAssist": {
+      "beginner": "Coordonne automatiquement la dérive avec les ailerons pour des virages fluides. Idéal pour les débutants en aile fixe.",
+      "description": "Virages coordonnés"
+    },
+    "turtle": {
+      "beginner": "Retourne un appareil crashé grâce à la rotation des moteurs. Pour multirotors uniquement.",
+      "description": "Retourner"
+    },
+    "wpPlanner": {
+      "beginner": "Active la planification de waypoints en vol via les manches.",
+      "description": "Planificateur de mission"
+    }
+  },
+  "modesAdvancedEditor": {
+    "addFirstMode": "Ajouter votre premier mode",
+    "addMode": "Ajouter un mode",
+    "auxChannel": "Canal AUX",
+    "essential": "ESSENTIEL",
+    "loadingModes": "Chargement des modes...",
+    "noModesConfigured": "Aucun mode configuré",
+    "noModesFound": "Aucun mode trouvé",
+    "noModesHint": "Ajoutez des modes pour définir la réaction de votre appareil aux positions des inters.",
+    "noMoreModes": "Plus aucun mode disponible",
+    "pwmRange": "Plage PWM",
+    "searchModes": "Rechercher des modes...",
+    "useMainSave": "Utilisez le bouton Enregistrer principal pour sauvegarder"
+  },
+  "modesWizard": {
+    "pressAgain": "Appuyez à nouveau pour abandonner la configuration",
+    "stepCheck": "Vérifier",
+    "stepConfigure": "Configurer",
+    "stepSave": "Enregistrer",
+    "stepStyle": "Style",
+    "subtitle": "Configurez vos modes de vol",
+    "title": "Assistant de configuration des modes"
+  },
+  "presets": {
+    "beginner": {
+      "description": "Sûr et simple, idéal pour apprendre",
+      "name": "Débutant",
+      "tip": "Votre appareil restera toujours à plat. Parfait pour apprendre le vol stationnaire et les mouvements de base !"
+    },
+    "cinematic": {
+      "description": "Ultra-fluide pour filmer",
+      "name": "Cinéma",
+      "tip": "NAV RTH ramène votre appareil à la maison en cas de perte de signal (GPS requis !). Parfait pour filmer à longue distance."
+    },
+    "fixedWing": {
+      "description": "Pour avions avec navigation",
+      "name": "Aile fixe",
+      "tip": "Configuration complète pour aile fixe avec aide au lancement, RTH et navigation par waypoints."
+    },
+    "freestyle": {
+      "description": "Équilibré pour figures et fluidité",
+      "name": "Freestyle",
+      "tip": "L'inter à trois positions sur AUX2 donne ANGLE/HORIZON/ACRO. Actionnez un inter pour changer de style de vol !"
+    },
+    "racing": {
+      "description": "Rapide et réactif pour la vitesse",
+      "name": "Course",
+      "tip": "Mode ACRO pur pour un contrôle maximal. Le beeper sur AUX3 aide à retrouver votre appareil après un crash !"
+    }
+  },
+  "rangeSlider": {
+    "activeRange": "Plage active",
+    "always": "TOUJOURS",
+    "clickToSet": "Cliquer pour définir la plage",
+    "dragHandles": "Faites glisser les poignées",
+    "end": "Fin :",
+    "high": "HAUT",
+    "hintAlways": "Toujours ON",
+    "hintHigh": "Inter en HAUT",
+    "hintLow": "Inter en BAS",
+    "hintMid": "Inter au MILIEU",
+    "low": "BAS",
+    "mid": "MILIEU",
+    "start": "Début :",
+    "switchPosition": "Position de l'inter",
+    "yourTransmitter": "Votre émetteur"
+  },
+  "rcChannelBar": {
+    "active": "ACTIF",
+    "inactive": "INACTIF",
+    "rc": "RC :"
+  },
+  "reviewStep": {
+    "armMissing": "Le mode ARM n'est pas configuré !",
+    "armMissingHint": "Sans le mode ARM, vous ne pourrez pas armer votre appareil. Revenez en arrière et affectez ARM à un inter.",
+    "beforeFly": "Avant de voler :",
+    "configuredModes": "Modes configurés :",
+    "configured_one": "Vous avez configuré {{count}} mode.",
+    "configured_other": "Vous avez configuré {{count}} modes.",
+    "presetTitle": "Préréglage {{name}}",
+    "ready": "Prêt",
+    "saveToFc": "Enregistrer sur le contrôleur de vol",
+    "saved": "Configuration enregistrée !",
+    "savedHint": "Votre configuration des modes a été écrite sur le contrôleur de vol.",
+    "tipArm": "Testez toujours ARM dans un lieu sûr, hélices démontées",
+    "tipAux": "Vérifiez bien les positions de vos inters AUX",
+    "tipFailsafe": "Vérifiez que votre failsafe est correctement réglé",
+    "title": "Vérifiez votre configuration",
+    "usingPreset_one": "Préréglage {{name}} avec {{count}} mode.",
+    "usingPreset_other": "Préréglage {{name}} avec {{count}} modes."
+  },
+  "transmitterCheckStep": {
+    "armSwitch": "Actionnez votre inter ARM (généralement AUX1)",
+    "channelsDetected": "{{count}} canaux détectés !",
+    "confirm": "Je vois mes manches et mes inters réagir dans le visualiseur ci-dessus",
+    "connectedHint": "Votre émetteur est connecté. Actionnez les inters pour détecter les canaux AUX.",
+    "continue": "Continuer vers la configuration des modes",
+    "leftStick": "Déplacez le manche gauche haut/bas et gauche/droite",
+    "noChannels": "Aucun canal détecté ?",
+    "otherSwitches": "Actionnez les autres inters que vous comptez utiliser",
+    "quickCheck": "Vérification rapide :",
+    "rightStick": "Déplacez le manche droit haut/bas et gauche/droite",
+    "subtitle": "Déplacez vos manches et actionnez vos inters pour vérifier qu'ils sont bien reçus. Chaque canal devient vert quand il détecte un mouvement.",
+    "tipBound": "Vérifiez que votre émetteur est allumé et lié à votre récepteur",
+    "tipProtocol": "Vérifiez que le bon protocole de récepteur est réglé dans le configurateur",
+    "tipReceiver": "Vérifiez que le récepteur est connecté à votre contrôleur de vol",
+    "tipReconnect": "Essayez de débrancher puis rebrancher votre contrôleur de vol",
+    "title": "Vérifiez votre émetteur",
+    "waiting": "En attente d'un mouvement de canal...",
+    "waitingHint": "Poussez tous vos manches à leurs extrêmes pour vérifier la connexion."
+  },
+  "transmitterVisualizer": {
+    "additionalSwitch": "Inter supplémentaire",
+    "aux1": "Inter (généralement ARM)",
+    "aux2": "Inter ou 3 pos.",
+    "leftHorizontal": "Manche gauche horizontal",
+    "leftVertical": "Manche gauche vertical",
+    "rightHorizontal": "Manche droit horizontal",
+    "rightVertical": "Manche droit vertical"
+  },
+  "welcomeStep": {
+    "manualSetup": "Configuration manuelle",
+    "manualSetupHint": "Configurer les modes un par un (avancé)",
+    "newToFpv": "Nouveau en FPV ?",
+    "newToFpvHint": "Commencez par le préréglage <b>Débutant</b>. Il active le mode ANGLE qui garde votre appareil à plat automatiquement, parfait pour apprendre !",
+    "subtitle": "Choisissez un préréglage pour configurer rapidement les modes de vol essentiels à votre style, ou configurez les modes manuellement pour un contrôle total.",
+    "title": "Choisissez votre style de vol"
+  }
+}

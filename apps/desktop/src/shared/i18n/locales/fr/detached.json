@@ -1,0 +1,16 @@
+{
+  "detachedRoot": {
+    "closeTitle": "Fermer cette fenêtre et revenir à ArduDeck",
+    "dockBack": "Réancrer",
+    "keepOnTop": "Garder cette fenêtre au premier plan d'ArduDeck",
+    "missing": "(manquant)",
+    "notRegistered": "Le componentId <code>{{id}}</code> n'est pas enregistré.",
+    "pinned": "Épinglée au premier plan, cliquez pour désépingler",
+    "toggleOnTop": "Activer/désactiver le premier plan permanent",
+    "unknownComponent": "Composant inconnu"
+  },
+  "surface": {
+    "linkServiceOff": "Le service de liaison ArduDeck OS n'est pas en cours d'exécution",
+    "searching": "Recherche du véhicule…"
+  }
+}

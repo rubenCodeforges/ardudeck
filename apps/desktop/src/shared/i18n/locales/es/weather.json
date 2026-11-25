@@ -1,0 +1,100 @@
+{
+  "briefing": {
+    "clouds": "Nubes",
+    "context": "Contexto",
+    "fetching": "Obteniendo pronóstico...",
+    "flightConditions": "Condiciones de vuelo",
+    "forecastValid": "Pronóstico válido {{clock}} hora local en el sitio · Open-Meteo",
+    "launchGates": "Criterios de despegue",
+    "limits": "Límites: ráfagas {{gustC}} / {{gustN}} m/s, viento {{windC}} / {{windN}} m/s, prob. de precipitación {{probC}} / {{probN}}%, precipitación {{mmC}} / {{mmN}} mm, visibilidad por debajo de {{visC}} / {{visN}} km.",
+    "locationAt": "{{location}} · {{clock}} hora local",
+    "noPosition": "Sin posición para el informe",
+    "noPositionHint": "Conecta un vehículo, define una posición de casa o abre el mapa de misión para que el informe sepa dónde consultar el tiempo.",
+    "precip": "Precip.",
+    "precipChance": "Prob. precip.",
+    "precipChanceTip": "Precaución {{caution}}%, no-go {{nogo}}%",
+    "precipTip": "Precaución {{caution}} mm, no-go {{nogo}} mm",
+    "pressure": "Presión",
+    "refreshTip": "Actualizar pronóstico",
+    "temp": "Temp.",
+    "title": "Informe meteorológico prevuelo",
+    "unavailable": "Pronóstico no disponible",
+    "updated": "actualizado {{time}}",
+    "visibility": "Visibilidad",
+    "visibilityTip": "Precaución por debajo de {{caution}} km, no-go por debajo de {{nogo}} km",
+    "windLimitTip": "Precaución {{caution}}, no-go {{nogo}} {{unit}}"
+  },
+  "condition": {
+    "clear": "Despejado",
+    "fog": "Niebla",
+    "overcast": "Nublado",
+    "partlyCloudy": "Parcialmente nublado",
+    "rain": "Lluvia"
+  },
+  "geomag": {
+    "activity": "Actividad geomagnética",
+    "calm": "Calma",
+    "declination": "Declinación",
+    "fieldStrength": "Intensidad de campo",
+    "forecastKp": "Kp previsto (72 h)",
+    "forecastPeak": "Pico previsto a 72 h",
+    "inHours": "en {{hours}} h",
+    "inclination": "Inclinación",
+    "kpBarTip": "Kp {{kp}} ({{gScale}}) a las {{clock}} hora local",
+    "kpThresholdTip": "Precaución Kp {{caution}}, no-go Kp {{nogo}} (tormenta G1)",
+    "noStorm": "Sin tormenta prevista en 72 h",
+    "peakKp": "Kp máximo {{kp}}",
+    "peakTip": "Kp más alto previsto en las próximas 72 horas",
+    "sources": "Kp de NOAA SWPC · campo de WMM2025 (sin conexión)",
+    "title": "Geomagnético",
+    "unavailable": "Clima espacial no disponible",
+    "unavailableHint": "No se pudo contactar con el servicio Kp de NOAA. El veredicto meteorológico no se ve afectado.",
+    "within72h": "en 72 h",
+    "wmmInvalid": "WMM2025 está fuera de su ventana de validez; los valores de declinación y campo son aproximados."
+  },
+  "locationDialog": {
+    "clickToSet": "Haz clic en el mapa para fijar el punto del informe",
+    "enterCoords": "Introducir coordenadas",
+    "noMatches": "Sin resultados.",
+    "noPoint": "Ningún punto seleccionado",
+    "resetAuto": "Volver a automático",
+    "resetTip": "Seguir automáticamente la posición del vehículo, de casa o del mapa",
+    "searchPlaceholder": "Busca un lugar (ciudad, aeródromo, punto de referencia)...",
+    "subtitle": "Haz clic en el mapa para colocar un punto, arrastra el marcador para afinarlo o busca un lugar.",
+    "title": "Ubicación del informe",
+    "typeCoordsTip": "Escribe coordenadas exactas",
+    "useLocation": "Usar esta ubicación"
+  },
+  "locationPicker": {
+    "change": "Cambiar ubicación",
+    "noPosition": "Sin posición",
+    "pickTip": "Elige la ubicación del informe en un mapa",
+    "planned": "Planificada"
+  },
+  "reason": {
+    "gustsCaution": "Ráfagas de {{value}} cerca del límite ({{limit}}). Vigila de cerca.",
+    "gustsNogo": "Ráfagas de {{value}} superan el límite seguro ({{limit}}). Riesgo de pérdida de control.",
+    "precipCaution": "Precipitación ligera de {{value}} mm detectada. Protege la aeronave.",
+    "precipNogo": "Precipitación de {{value}} mm. Electrónica en riesgo, no despegues.",
+    "precipProbCaution": "Aumenta la probabilidad de precipitación ({{value}}%). Vigila el cielo.",
+    "precipProbNogo": "Alta probabilidad de precipitación ({{value}}%). Se espera lluvia en la próxima hora.",
+    "visibilityCaution": "Visibilidad reducida de {{value}} km. Mantén el contacto visual.",
+    "visibilityNogo": "Visibilidad baja de {{value}} km, por debajo del mínimo de {{limit}} km.",
+    "windCaution": "Viento sostenido de {{value}} cerca del límite ({{limit}}).",
+    "windNogo": "Viento sostenido de {{value}} supera el límite seguro ({{limit}})."
+  },
+  "source": {
+    "home": "Posición de casa",
+    "map": "Centro del mapa",
+    "override": "Ubicación elegida",
+    "vehicle": "Posición del vehículo"
+  },
+  "status": {
+    "caution": "PRECAUCIÓN",
+    "cautionSummary": "Las condiciones son justas. Revisa los parámetros marcados antes de despegar.",
+    "go": "GO",
+    "goSummary": "Las condiciones están dentro de los límites para despegar.",
+    "nogoPill": "NO GO",
+    "nogoSummary": "Uno o más parámetros superan los límites seguros. No despegues."
+  }
+}

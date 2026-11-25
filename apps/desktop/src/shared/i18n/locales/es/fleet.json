@@ -1,0 +1,103 @@
+{
+  "draggableFleetActions": {
+    "title": "Operaciones de flota"
+  },
+  "fleetContextMenu": {
+    "addToFleet": "Añadir a la flota",
+    "alt": "alt",
+    "chipTip": "{{label}} (m)",
+    "commandVehicle": "Dar órdenes a este vehículo",
+    "createLeader": "Crear líder",
+    "currentShape": "{{label}} (actual)",
+    "disband": "Disolver flota",
+    "disbandTip": "Disuelve esta flota: sus escoltas vuelven al control manual",
+    "formUp_one": "Formar con {{count}} dron libre",
+    "formUp_other": "Formar con {{count}} drones libres",
+    "formationShape": "Forma de formación",
+    "gap": "separación",
+    "join": "Unirse a {{label}}",
+    "leadsFleet": "Lidera una flota",
+    "leave": "Salir de la flota",
+    "leaveTip": "Saca a {{label}} de la flota: el resto mantiene la formación",
+    "reformShape": "Reformar: {{label}}",
+    "startMission": "Iniciar misión",
+    "takeOffFleet": "Despegar flota"
+  },
+  "fleetCoordination": {
+    "alt": "alt",
+    "altitudeTip": "Altitud de despegue (m)",
+    "collapseFleet": "Contraer flota",
+    "engineError": "error del motor",
+    "engineReportTip": "Último informe del motor de coordinación (despegue en grupo / inicio de misión)",
+    "expandFleet": "Expandir flota",
+    "fleet": "Flota",
+    "leaderModeTip": "Modo {{label}}",
+    "reformTip": "Reformar la flota de {{label}}: {{shape}}",
+    "startMission": "Iniciar misión",
+    "startMissionTip": "{{label}} vuela su misión subida en AUTO; sus escoltas mantienen la formación y lo siguen",
+    "startMissions": "Iniciar misiones ({{count}})",
+    "startMissionsTip": "Sube el grupo de WP asignado a cada vehículo e inicia las {{count}} misiones en AUTO",
+    "takeOff": "Despegar",
+    "takeOffAll": "Despegar todos",
+    "takeOffAllTip": "Todos los vehículos conectados arman y suben juntos a {{alt}} m",
+    "takeOffFleetTip": "Armar y subir solo la flota de {{label}} a {{alt}} m"
+  },
+  "fleetDisclosure": {
+    "collapseAll": "Contraer todo",
+    "collapseEveryTip": "Contraer todas las flotas",
+    "expandAll": "Expandir todo",
+    "expandEveryTip": "Expandir todas las flotas",
+    "fleets": "Flotas"
+  },
+  "fleetGroupActions": {
+    "arm": "Armar",
+    "confirmArm_one": "¿Armar {{count}} vehículo?",
+    "confirmArm_other": "¿Armar {{count}} vehículos?",
+    "confirmDisarm_one": "¿Desarmar {{count}} vehículo?",
+    "confirmDisarm_other": "¿Desarmar {{count}} vehículos?",
+    "confirmRtl_one": "¿Enviar {{count}} vehículo a casa (RTL)?",
+    "confirmRtl_other": "¿Enviar {{count}} vehículos a casa (RTL)?",
+    "confirmStart_one": "¿Iniciar la misión en {{count}} vehículo?",
+    "confirmStart_other": "¿Iniciar la misión en {{count}} vehículos?",
+    "selected": "{{count}} seleccionados",
+    "start": "Iniciar"
+  },
+  "fleetStrip": {
+    "collapseFleet": "Contraer flota",
+    "deselectTip": "{{label}}: clic para deseleccionar",
+    "dragHere": "Arrastra un vehículo aquí",
+    "dropToRemove": "Suelta para quitar de la flota",
+    "expandFleet": "Expandir flota",
+    "fleet": "Flota",
+    "identityTip": "{{airframe}} - {{state}} (clic para elegir el color de identidad)",
+    "lead": "Líder",
+    "orders": "Órdenes",
+    "selectTip": "Seleccionar para comandos de grupo",
+    "setColour": "Poner color {{color}}",
+    "unassigned": "Sin asignar",
+    "vehicleTip": "{{label}} - {{mode}}",
+    "vehicleTipArmed": "{{label}} - {{mode}} - ARMADO"
+  },
+  "formationGlyphs": {
+    "box": "Caja (cuadrícula)",
+    "column": "Columna (en fila)",
+    "diamond": "Diamante",
+    "echelonLeft": "Escalón izquierdo",
+    "echelonRight": "Escalón derecho",
+    "line": "Línea de frente (muro)",
+    "survey": "Barrido de levantamiento (ancho)",
+    "vee": "Uve (delta)"
+  },
+  "heartbeatDot": {
+    "none": "Aún sin heartbeat",
+    "receiving": "Recibiendo heartbeat",
+    "stale": "Sin heartbeat desde hace {{seconds}} s"
+  },
+  "missionPathsToggle": {
+    "all": "Rutas de todos los vehículos",
+    "allTip": "Dibuja la ruta de vuelo de cada vehículo (el seleccionado en sólido, los demás atenuados)",
+    "selected": "Solo el seleccionado",
+    "selectedTip": "Dibuja solo la ruta de vuelo del vehículo seleccionado",
+    "title": "Rutas de misión"
+  }
+}

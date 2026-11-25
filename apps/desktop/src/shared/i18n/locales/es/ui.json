@@ -1,0 +1,35 @@
+{
+  "detachable": {
+    "dockBackHere": "Acoplar de nuevo aquí",
+    "openInNewWindow": "Abrir {{title}} en una ventana nueva",
+    "openInSeparateWindow": "Abrir en una ventana aparte"
+  },
+  "errorBoundary": {
+    "labelHitError": "{{label}} ha tenido un error",
+    "somethingWentWrong": "Algo salió mal"
+  },
+  "experienceLevelDialog": {
+    "advancedDescription": "Interfaz limpia sin ayudas. Oculta las tarjetas educativas y los consejos integrados.",
+    "beginnerDescription": "Muestra consejos, explicaciones y guías por toda la interfaz para ayudarte a aprender.",
+    "changeAnytime": "Puedes cambiarlo cuando quieras en Ajustes",
+    "subtitle": "Elige tu nivel de experiencia para adaptar la interfaz",
+    "title": "Te damos la bienvenida a ArduDeck"
+  },
+  "infoCard": {
+    "tip": "Consejo:"
+  },
+  "presetSelector": {
+    "hint": "Haz clic para aplicar un estilo de tuning"
+  },
+  "profileManager": {
+    "namePlaceholder": "Nombre...",
+    "resetToFactoryDefaults": "Restaurar valores de fábrica",
+    "saveAsProfile": "Guardar los ajustes actuales como perfil"
+  },
+  "rateCurve": {
+    "maxRate": "Máx: <v>{{maxRate}}°/s</v>"
+  },
+  "tagInput": {
+    "addTags": "Añadir etiquetas..."
+  }
+}

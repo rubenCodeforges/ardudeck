@@ -1,0 +1,36 @@
+{
+  "activeTour": {
+    "nextFeature": "Siguiente función",
+    "nextTitle": "Siguiente: {{title}}"
+  },
+  "tourLaunchGate": {
+    "apNotInstalled": "ArduPilot SITL aún no está instalado. Ve a la vista SITL para descargar el binario: el tour continuará automáticamente cuando te conectes.",
+    "apNotSupported": "ArduPilot SITL no es compatible con esta plataforma.",
+    "connectOwnFc": "Conectaré mi propio FC",
+    "connectOwnToContinue": "Conecta tu propio FC para continuar el tour.",
+    "failedToStartSitl": "No se pudo iniciar SITL",
+    "goToSitlInstall": "Ir a SITL para instalar",
+    "intro": "Este recorrido muestra funciones que necesitan un controlador de vuelo en vivo. Puedes iniciar una simulación segura con <b>{{sitl}}</b> para probarlo, o conectar tu propio FC.",
+    "launch": "Iniciar {{sitl}}",
+    "needsVehicle": "El tour necesita un vehículo",
+    "notNow": "Ahora no",
+    "startingSitl": "Iniciando SITL...",
+    "tcpConnectionFailed": "SITL se inició pero falló la conexión TCP"
+  },
+  "tourPanelsGate": {
+    "layoutAdjustment": "Ajuste de diseño",
+    "missing": "Faltan: <b>{{panels}}</b>",
+    "panelsNotInLayout": "Este tour recorre paneles que no están en tu diseño actual:",
+    "recommendedLayout": "diseño recomendado",
+    "skipTour": "Omitir este tour",
+    "switchPrompt": "¿Cambiar al diseño <b>{{preset}}</b> para ver el tour? Tu diseño actual se conserva: puedes volver desde el menú de diseños en cualquier momento.",
+    "switchTo": "Cambiar a {{preset}}"
+  },
+  "tourPrompt": {
+    "dontOfferAgain": "No ofrecer más tours",
+    "noThanks": "No, gracias",
+    "quickTour": "Tour rápido",
+    "remindLater": "Recordármelo luego",
+    "showMe": "Muéstrame"
+  }
+}

@@ -46,7 +46,7 @@
     },
     "language": {
       "title": "ArduDeck 說你的語言",
-      "blurb": "在設定中選擇語言:English、Deutsch、简体中文、繁體中文和 Українська(測試版)。選擇「系統」則跟隨你的電腦。"
+      "blurb": "在設定中選擇語言:English、Deutsch、Español、Français、Türkçe、简体中文、繁體中文和 Українська(測試版)。選擇「系統」則跟隨你的電腦。"
     }
   },
   "splitDemo": {

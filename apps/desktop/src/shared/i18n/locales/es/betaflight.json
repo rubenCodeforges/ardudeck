@@ -1,0 +1,19 @@
+{
+  "dashboard": {
+    "accCalStarted": "Calibración del acelerómetro iniciada. ¡Mantén la placa quieta!",
+    "armedBadge": "ARMADO",
+    "calibrateAcc": "Calibrar ACC",
+    "connectedOn": "{{variant}} {{version}} en {{board}}",
+    "cpuLoad": "Carga de CPU",
+    "cycleTime": "Tiempo de ciclo",
+    "disarmedBadge": "DESARMADO",
+    "fix": "Fix",
+    "lastUpdate": "Última actualización: {{time}}",
+    "rebootConfirm": "¿Reiniciar el controlador de vuelo?",
+    "refreshPorts": "Actualizar puertos",
+    "startTelemetry": "Iniciar telemetría",
+    "stopTelemetry": "Detener telemetría",
+    "subtitle": "Conéctate a placas Betaflight, iNav o Cleanflight",
+    "used": "Usado"
+  }
+}

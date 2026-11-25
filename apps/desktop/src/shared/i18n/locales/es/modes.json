@@ -1,0 +1,270 @@
+{
+  "auxChannelPicker": {
+    "current": "Actual"
+  },
+  "auxChannels": {
+    "aux1": "Normalmente un interruptor de 2 posiciones",
+    "aux10": "Canal adicional",
+    "aux11": "Canal adicional",
+    "aux12": "Canal adicional",
+    "aux2": "A menudo un interruptor de 3 posiciones",
+    "aux3": "Interruptor adicional",
+    "aux4": "Interruptor adicional",
+    "aux5": "Canal adicional (potenciómetro/slider)",
+    "aux6": "Canal adicional (potenciómetro/slider)",
+    "aux7": "Canal adicional",
+    "aux8": "Canal adicional",
+    "aux9": "Canal adicional"
+  },
+  "modeCard": {
+    "channel": "Canal:",
+    "configure": "Configurar",
+    "configureTitle": "Configurar los ajustes de {{name}}",
+    "editMode": "Editar modo",
+    "essential": "ESENCIAL",
+    "range": "Rango:",
+    "removeMode": "Quitar modo",
+    "unknownMode": "Modo desconocido"
+  },
+  "modeConfigStep": {
+    "correctPosition": "Tu interruptor está en la posición correcta. Este modo estaría activo en vuelo.",
+    "essentialMode": "MODO ESENCIAL",
+    "isActive": "¡{{name}} está ACTIVO!",
+    "moveSwitch": "Mueve tu {{channel}} a la posición {{position}} para ver cómo se activa {{name}}.",
+    "nextMode": "Siguiente modo",
+    "noMode": "No hay modo que configurar",
+    "reviewConfiguration": "Revisar configuración",
+    "switch": "interruptor",
+    "testIt": "¡Pruébalo! Acciona tu interruptor para ver si se activa:",
+    "tryNow": "¡Pruébalo ahora!",
+    "whenActivate": "¿Cuándo debe activarse? (rango PWM)",
+    "whichSwitch": "¿Qué interruptor debe activar este modo?"
+  },
+  "modeFallback": "Modo {{id}}",
+  "modePresets": {
+    "airmode": {
+      "beginner": "AVANZADO - Mantiene toda la autoridad de los sticks incluso con el acelerador a cero. Esencial para trucos de freestyle y flips. Normalmente se deja activo siempre.",
+      "description": "Control total con el acelerador a cero"
+    },
+    "angle": {
+      "beginner": "MODO PRINCIPIANTE - Tu aeronave se nivelará sola al soltar los sticks. El ángulo máximo de inclinación está limitado. ¡Perfecto para aprender a volar!",
+      "description": "Autonivelado"
+    },
+    "arm": {
+      "beginner": "INTERRUPTOR DE SEGURIDAD - Arma y desarma tu aeronave. ¡Ponlo SIEMPRE en un interruptor dedicado! Con la aeronave armada, las hélices pueden girar en cualquier momento.",
+      "description": "Activar motores"
+    },
+    "beeper": {
+      "beginner": "LOCALIZADOR - Hace que tu aeronave pite fuerte para ayudarte a encontrarla tras un accidente. ¡Muy útil cuando cae en hierba alta!",
+      "description": "Localizar aeronave"
+    },
+    "blackbox": {
+      "beginner": "REGISTRO - Guarda los datos de vuelo en la tarjeta SD para analizarlos. Útil para ajustar los PID y revisar accidentes.",
+      "description": "Registro de vuelo"
+    },
+    "failsafe": {
+      "beginner": "EMERGENCIA - Activa el comportamiento de failsafe (normalmente aterrizar o desarmar). Normalmente se activa solo al perder la señal.",
+      "description": "Aterrizaje de emergencia"
+    },
+    "flaperon": {
+      "beginner": "Activa los flaperones para una aproximación de aterrizaje más lenta. Los alerones bajan para actuar como flaps.",
+      "description": "Modo flaps"
+    },
+    "gcsNav": {
+      "beginner": "Permite que la estación de tierra envíe comandos de navegación (volar hasta aquí, etc.).",
+      "description": "Control desde tierra"
+    },
+    "gimbalLevelTilt": {
+      "beginner": "Mantiene nivelado el eje de inclinación del gimbal sin importar la actitud de la aeronave. Útil para estabilizar la cámara.",
+      "description": "Nivelado de inclinación del gimbal"
+    },
+    "headingHold": {
+      "beginner": "Mantiene el rumbo magnético actual. Útil para volar en línea recta.",
+      "description": "Mantener rumbo"
+    },
+    "homeReset": {
+      "beginner": "Establece la posición actual como nuevo punto de origen. Úsalo cuando cambies de lugar durante una sesión.",
+      "description": "Restablecer posición de origen"
+    },
+    "horizon": {
+      "beginner": "MODO INTERMEDIO - Se autonivela cerca del centro del stick como ANGLE, pero permite flips y rolls a stick completo. Un puente entre ANGLE y ACRO.",
+      "description": "Autonivelado + acro"
+    },
+    "manual": {
+      "beginner": "Control directo de servos/motores sin estabilización. ¡Solo para pilotos con experiencia!",
+      "description": "Control directo"
+    },
+    "navAlthold": {
+      "beginner": "Mantiene la altitud actual con barómetro/GPS. El acelerador controla la velocidad de ascenso/descenso.",
+      "description": "Mantener altitud"
+    },
+    "navCourseHold": {
+      "beginner": "Mantiene el rumbo actual y permite controlar la altitud. Bueno para volar en línea recta.",
+      "description": "Mantener rumbo de navegación"
+    },
+    "navCruise": {
+      "beginner": "Modo crucero para ala fija: mantiene rumbo y altitud. Perfecto para vuelos de largo alcance.",
+      "description": "Control de crucero"
+    },
+    "navLaunch": {
+      "beginner": "Secuencia de lanzamiento automático para ala fija. Lanza el avión y subirá hasta una altitud segura.",
+      "description": "Lanzamiento automático"
+    },
+    "navPoshold": {
+      "beginner": "Mantener posición por GPS: la aeronave se queda en el sitio. Genial para fotografía aérea o cuando necesitas detenerte.",
+      "description": "Mantener posición"
+    },
+    "navRth": {
+      "beginner": "Return To Home: la aeronave subirá a una altitud segura y volverá al punto de despegue. ¡Una función de seguridad esencial!",
+      "description": "Regreso al origen"
+    },
+    "navWp": {
+      "beginner": "Ejecuta la misión de waypoints cargada. La aeronave volará a cada waypoint automáticamente.",
+      "description": "Misión de waypoints"
+    },
+    "prearm": {
+      "beginner": "Interruptor de seguridad: debe estar activado antes de armar. Evita armados accidentales.",
+      "description": "Comprobación pre-arm"
+    },
+    "turnAssist": {
+      "beginner": "Coordina automáticamente el timón con los alerones para giros suaves. Genial para principiantes en ala fija.",
+      "description": "Giros coordinados"
+    },
+    "turtle": {
+      "beginner": "Da la vuelta a una aeronave volcada tras un accidente haciendo girar los motores. Solo para multirrotores.",
+      "description": "Voltear"
+    },
+    "wpPlanner": {
+      "beginner": "Activa la planificación de waypoints en vuelo mediante comandos de stick.",
+      "description": "Planificador de misión"
+    }
+  },
+  "modesAdvancedEditor": {
+    "addFirstMode": "Añade tu primer modo",
+    "addMode": "Añadir modo",
+    "auxChannel": "Canal AUX",
+    "essential": "ESENCIAL",
+    "loadingModes": "Cargando modos...",
+    "noModesConfigured": "No hay modos configurados",
+    "noModesFound": "No se encontraron modos",
+    "noModesHint": "Añade modos para controlar cómo responde tu aeronave a las posiciones de los interruptores.",
+    "noMoreModes": "No hay más modos disponibles",
+    "pwmRange": "Rango PWM",
+    "searchModes": "Buscar modos...",
+    "useMainSave": "Usa el botón Guardar principal para guardar los cambios"
+  },
+  "modesWizard": {
+    "pressAgain": "Pulsa de nuevo para descartar la configuración",
+    "stepCheck": "Comprobar",
+    "stepConfigure": "Configurar",
+    "stepSave": "Guardar",
+    "stepStyle": "Estilo",
+    "subtitle": "Configura tus modos de vuelo",
+    "title": "Asistente de modos"
+  },
+  "presets": {
+    "beginner": {
+      "description": "Seguro y sencillo, ideal para aprender",
+      "name": "Principiante",
+      "tip": "Tu aeronave siempre se mantendrá nivelada. ¡Perfecto para aprender a mantenerse en el aire y los movimientos básicos!"
+    },
+    "cinematic": {
+      "description": "Ultrasuave para grabar",
+      "name": "Cinemático",
+      "tip": "NAV RTH trae tu aeronave de vuelta si se pierde la señal (¡requiere GPS!). Perfecto para grabar a larga distancia."
+    },
+    "fixedWing": {
+      "description": "Para aviones con navegación",
+      "name": "Ala fija",
+      "tip": "Configuración completa para ala fija con asistencia de lanzamiento, RTH y navegación por waypoints."
+    },
+    "freestyle": {
+      "description": "Equilibrado para trucos y fluidez",
+      "name": "Freestyle",
+      "tip": "Un interruptor de tres posiciones en AUX2 te da ANGLE/HORIZON/ACRO. ¡Acciona un interruptor para cambiar tu estilo de vuelo!"
+    },
+    "racing": {
+      "description": "Rápido y reactivo para velocidad",
+      "name": "Carreras",
+      "tip": "Modo ACRO puro para el máximo control. ¡El beeper en AUX3 ayuda a encontrar tu aeronave tras un accidente!"
+    }
+  },
+  "rangeSlider": {
+    "activeRange": "Rango activo",
+    "always": "SIEMPRE",
+    "clickToSet": "Haz clic para fijar el rango",
+    "dragHandles": "Arrastra los controles",
+    "end": "Fin:",
+    "high": "ALTO",
+    "hintAlways": "Siempre ACTIVO",
+    "hintHigh": "Interruptor ARRIBA",
+    "hintLow": "Interruptor ABAJO",
+    "hintMid": "Interruptor al MEDIO",
+    "low": "BAJO",
+    "mid": "MEDIO",
+    "start": "Inicio:",
+    "switchPosition": "Posición del interruptor",
+    "yourTransmitter": "Tu emisor"
+  },
+  "rcChannelBar": {
+    "active": "ACTIVO",
+    "inactive": "INACTIVO",
+    "rc": "RC:"
+  },
+  "reviewStep": {
+    "armMissing": "¡El modo ARM no está configurado!",
+    "armMissingHint": "Sin el modo ARM no podrás armar tu aeronave. Vuelve atrás y asigna ARM a un interruptor.",
+    "beforeFly": "Antes de volar:",
+    "configuredModes": "Modos configurados:",
+    "configured_one": "Has configurado {{count}} modo.",
+    "configured_other": "Has configurado {{count}} modos.",
+    "presetTitle": "Preajuste {{name}}",
+    "ready": "Listo",
+    "saveToFc": "Guardar en el controlador de vuelo",
+    "saved": "¡Configuración guardada!",
+    "savedHint": "La configuración de modos se ha escrito en el controlador de vuelo.",
+    "tipArm": "Prueba siempre ARM en una zona segura y sin hélices",
+    "tipAux": "Revisa de nuevo las posiciones de tus interruptores AUX",
+    "tipFailsafe": "Comprueba que tu failsafe esté bien configurado",
+    "title": "Revisa tu configuración",
+    "usingPreset_one": "Usando el preajuste {{name}} con {{count}} modo.",
+    "usingPreset_other": "Usando el preajuste {{name}} con {{count}} modos."
+  },
+  "transmitterCheckStep": {
+    "armSwitch": "Acciona tu interruptor ARM (normalmente AUX1)",
+    "channelsDetected": "¡{{count}} canales detectados!",
+    "confirm": "Veo que mis sticks e interruptores responden en el visualizador de arriba",
+    "connectedHint": "Tu emisor está conectado. Mueve los interruptores para detectar los canales AUX.",
+    "continue": "Continuar con la configuración de modos",
+    "leftStick": "Mueve el stick izquierdo arriba/abajo e izquierda/derecha",
+    "noChannels": "¿No se detectan canales?",
+    "otherSwitches": "Mueve cualquier otro interruptor que pienses usar",
+    "quickCheck": "Comprobación rápida:",
+    "rightStick": "Mueve el stick derecho arriba/abajo e izquierda/derecha",
+    "subtitle": "Mueve tus sticks y acciona tus interruptores para verificar que se reciben. Cada canal debería iluminarse en verde al detectar movimiento.",
+    "tipBound": "Asegúrate de que tu emisor está encendido y vinculado a tu receptor",
+    "tipProtocol": "Verifica que el protocolo de receptor correcto esté configurado en el configurador",
+    "tipReceiver": "Comprueba que el receptor está conectado a tu controlador de vuelo",
+    "tipReconnect": "Prueba a desconectar y volver a conectar tu controlador de vuelo",
+    "title": "Comprueba tu emisor",
+    "waiting": "Esperando movimiento de los canales...",
+    "waitingHint": "Mueve todos tus sticks hasta los extremos para verificar la conexión."
+  },
+  "transmitterVisualizer": {
+    "additionalSwitch": "Interruptor adicional",
+    "aux1": "Interruptor (normalmente ARM)",
+    "aux2": "Interruptor o de 3 pos.",
+    "leftHorizontal": "Stick izquierdo horizontal",
+    "leftVertical": "Stick izquierdo vertical",
+    "rightHorizontal": "Stick derecho horizontal",
+    "rightVertical": "Stick derecho vertical"
+  },
+  "welcomeStep": {
+    "manualSetup": "Configuración manual",
+    "manualSetupHint": "Configura los modos uno a uno (avanzado)",
+    "newToFpv": "¿Nuevo en FPV?",
+    "newToFpvHint": "Empieza con el preajuste <b>Principiante</b>. Activa el modo ANGLE, que mantiene tu aeronave nivelada automáticamente. ¡Perfecto para aprender!",
+    "subtitle": "Elige un preajuste para configurar rápidamente los modos de vuelo esenciales según tu estilo, o configura los modos manualmente para tener control total.",
+    "title": "Elige tu estilo de vuelo"
+  }
+}

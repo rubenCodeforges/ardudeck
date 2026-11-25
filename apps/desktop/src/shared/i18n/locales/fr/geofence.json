@@ -1,0 +1,34 @@
+{
+  "fenceListPanel": {
+    "aboveMaxAlt": "Au-dessus de l'altitude maximale",
+    "alt": "Alt : {{value}}",
+    "belowMinAlt": "En dessous de l'altitude minimale",
+    "breachCount_one": "{{count}} violation",
+    "breachCount_other": "{{count}} violations",
+    "circleCount_one": "{{count}} cercle",
+    "circleCount_other": "{{count}} cercles",
+    "circleRadius": "Cercle ({{radius}} m)",
+    "editHint": "Cliquez sur une zone (ici ou sur la carte) pour la déplacer, la remodeler ou la supprimer.",
+    "exclusionZones": "Zones d'exclusion ({{count}})",
+    "fenceBreached": "Clôture franchie",
+    "inclusionZones": "Zones d'inclusion ({{count}})",
+    "mspUnsupported": "Le geofencing n'est pas pris en charge sur les cartes iNav/Betaflight. Vous pouvez tout de même planifier des clôtures et les enregistrer dans un fichier pour référence.",
+    "noExclusionZones": "Aucune zone d'exclusion",
+    "noInclusionZones": "Aucune zone d'inclusion",
+    "noReturnPoint": "Aucun point de retour défini",
+    "outsideBoundary": "Hors limite",
+    "polygonCount_one": "{{count}} polygone",
+    "polygonCount_other": "{{count}} polygones",
+    "polygonPts": "Polygone ({{count}} pts)",
+    "returnPoint": "Point de retour",
+    "radiusLabel": "Rayon"
+  },
+  "fenceMapOverlay": {
+    "clickToEdit": "Cliquez pour modifier ou supprimer cette zone",
+    "delete": "Supprimer",
+    "deleteZone": "Supprimer cette zone (Suppr)",
+    "dragToMove": "Faites glisser pour déplacer toute la zone",
+    "rightClickDelete": "Clic droit pour supprimer",
+    "radiusHandle": "Rayon {{radius}} m\nFaites glisser, ou faites défiler sur ce point, pour redimensionner"
+  }
+}

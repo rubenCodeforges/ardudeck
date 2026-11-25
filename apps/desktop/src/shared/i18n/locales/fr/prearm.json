@@ -1,0 +1,24 @@
+{
+  "preArmParamFix": {
+    "openInParameters": "Ouvrir dans Paramètres",
+    "openParamTitle": "Ouvrir {{paramId}} dans Paramètres"
+  },
+  "preflightCheckCard": {
+    "issues_one": "{{count}} problème",
+    "issues_other": "{{count}} problèmes",
+    "readyToArm": "Prêt à armer",
+    "recheck": "Revérifier",
+    "title": "Contrôles pré-vol"
+  },
+  "safetyConfigCard": {
+    "applied": "Appliqué",
+    "items_one": "{{count}} élément",
+    "items_other": "{{count}} éléments",
+    "setsParamTip": "Règle {{param}} sur {{value}}",
+    "severityAdvisory": "Bon à savoir",
+    "severityCritical": "Ne pas voler",
+    "severityWarning": "À vérifier",
+    "title": "Configuration de sécurité",
+    "writeFailed": "Écriture impossible, ouvrez plutôt le paramètre"
+  }
+}

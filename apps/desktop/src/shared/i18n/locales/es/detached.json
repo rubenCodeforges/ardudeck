@@ -1,0 +1,16 @@
+{
+  "detachedRoot": {
+    "closeTitle": "Cierra esta ventana y vuelve a ArduDeck",
+    "dockBack": "Acoplar de nuevo",
+    "keepOnTop": "Mantén esta ventana sobre ArduDeck",
+    "missing": "(falta)",
+    "notRegistered": "El componentId <code>{{id}}</code> no está registrado.",
+    "pinned": "Fijada encima, haz clic para soltarla",
+    "toggleOnTop": "Alternar siempre encima",
+    "unknownComponent": "Componente desconocido"
+  },
+  "surface": {
+    "linkServiceOff": "El servicio de enlace de ArduDeck OS no se está ejecutando",
+    "searching": "Buscando el vehículo…"
+  }
+}

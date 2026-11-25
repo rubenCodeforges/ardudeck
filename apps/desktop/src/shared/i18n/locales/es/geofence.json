@@ -1,0 +1,34 @@
+{
+  "fenceListPanel": {
+    "aboveMaxAlt": "Por encima de la altitud máxima",
+    "alt": "Alt: {{value}}",
+    "belowMinAlt": "Por debajo de la altitud mínima",
+    "breachCount_one": "{{count}} infracción",
+    "breachCount_other": "{{count}} infracciones",
+    "circleCount_one": "{{count}} círculo",
+    "circleCount_other": "{{count}} círculos",
+    "circleRadius": "Círculo ({{radius}}m)",
+    "editHint": "Haz clic en una zona (aquí o en el mapa) para moverla, remodelarla o eliminarla.",
+    "exclusionZones": "Zonas de exclusión ({{count}})",
+    "fenceBreached": "Geofence vulnerado",
+    "inclusionZones": "Zonas de inclusión ({{count}})",
+    "mspUnsupported": "El geofencing no es compatible con placas iNav/Betaflight. Aun así puedes planificar geofences y guardarlos en un archivo de referencia.",
+    "noExclusionZones": "Sin zonas de exclusión",
+    "noInclusionZones": "Sin zonas de inclusión",
+    "noReturnPoint": "Sin punto de retorno definido",
+    "outsideBoundary": "Fuera del perímetro",
+    "polygonCount_one": "{{count}} polígono",
+    "polygonCount_other": "{{count}} polígonos",
+    "polygonPts": "Polígono ({{count}} pts)",
+    "returnPoint": "Punto de retorno",
+    "radiusLabel": "Radio"
+  },
+  "fenceMapOverlay": {
+    "clickToEdit": "Haz clic para editar o eliminar esta zona",
+    "delete": "Eliminar",
+    "deleteZone": "Eliminar esta zona (Supr)",
+    "dragToMove": "Arrastra para mover toda la zona",
+    "rightClickDelete": "Clic derecho para eliminar",
+    "radiusHandle": "Radio {{radius}} m\nArrastra, o usa la rueda sobre este punto, para cambiar el tamaño"
+  }
+}

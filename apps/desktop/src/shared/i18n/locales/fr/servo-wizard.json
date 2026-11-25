@@ -1,0 +1,296 @@
+{
+  "diagrams": {
+    "camera": "Caméra",
+    "deltaHint": "Delta avec dérive verticale",
+    "elevator": "Profondeur",
+    "flyingWingHint": "Elevons = aileron + profondeur combinés",
+    "front": "AVANT",
+    "gimbalHint": "Pan = horizontal, Tilt = vertical",
+    "leftAileron": "Aileron G",
+    "leftElevon": "Elevon G",
+    "leftVTail": "Empennage V G",
+    "motor1": "Moteur 1",
+    "motor2": "Moteur 2",
+    "panServo": "Servo Pan",
+    "rightAileron": "Aileron D",
+    "rightElevon": "Elevon D",
+    "rightVTail": "Empennage V D",
+    "rudder": "Dérive",
+    "tiltServo": "Servo Tilt",
+    "tricopterHint": "Seul le servo de lacet doit être configuré",
+    "yawServo": "Servo de lacet"
+  },
+  "planeTypeStep": {
+    "continue": "Continuer →",
+    "gimbalSubtitle": "Votre carte est configurée comme multirotor. Vous pouvez configurer les servos de la nacelle pour le contrôle de la caméra.",
+    "gimbalTip": "La nacelle utilise les manches de la radio pour piloter les servos pan/tilt et stabiliser la caméra.",
+    "gimbalTitle": "Configuration des servos de nacelle",
+    "noServos": "Aucun servo",
+    "quadHex": "Quad/Hexa",
+    "servoCount_one": "{{count}} servo",
+    "servoCount_other": "{{count}} servos",
+    "subtitle": "Sélectionnez le type de votre aéronef pour la bonne configuration des servos.",
+    "tip": "<b>Un quad avec caméra ?</b> Choisissez Nacelle. <b2>Un avion ?</b2> La plupart sont Traditionnels.",
+    "title": "Quel type d'aéronef avez-vous ?"
+  },
+  "servoAssignmentStep": {
+    "clickToHighlight": "Cliquez sur une gouverne pour la mettre en évidence",
+    "continue": "Continuer : tester les servos →",
+    "duplicateWarning": "Attention : plusieurs gouvernes sont assignées au même servo !",
+    "noAircraft": "Aucun type d'aéronef sélectionné",
+    "subtitle": "Associez chaque gouverne à la sortie servo à laquelle elle est reliée sur votre contrôleur de vol.",
+    "tip": "<b>Astuce :</b> Vérifiez le câblage de votre contrôleur de vol. Les sorties servo sont généralement étiquetées S1-S8 ou SERVO1-8. S1 = Servo 0 dans iNav.",
+    "title": "Assigner les servos aux gouvernes"
+  },
+  "servoEndpointSlider": {
+    "centerHandle": "centre",
+    "centerUs": "Centre (µs)",
+    "maxHandle": "max",
+    "maxUs": "Max (µs)",
+    "minHandle": "min",
+    "minUs": "Min (µs)",
+    "testCenter": "Tester le centre",
+    "testMax": "Tester le max",
+    "testMin": "Tester le min"
+  },
+  "servoEndpointsStep": {
+    "continue": "Continuer : vérifier →",
+    "enableFeedback": "Activer le retour servo en direct",
+    "feedbackEnabled": "● Retour servo en direct activé",
+    "livePosition": "Position en direct",
+    "quickTips": "Astuces rapides :",
+    "rate": "Taux :",
+    "rateHint": "Réduit la plage de débattement. 100 % = débattement complet, 50 % = demi-débattement.",
+    "subtitle": "Définissez jusqu'où chaque servo peut aller. Si votre servo grince à fond de manche, réduisez les limites ici.",
+    "testingPosition": "Test de la position du servo...",
+    "tipGrinding": "<b>Un grincement ?</b> Réduisez la valeur Min ou Max",
+    "tipNotLevel": "<b>Pas au neutre manche au centre ?</b> Ajustez la valeur Centre",
+    "tipSensitive": "<b>Trop sensible ?</b> Diminuez le pourcentage du taux",
+    "title": "Affiner le débattement des servos"
+  },
+  "servoPresets": {
+    "aircraft": {
+      "delta": {
+        "description": "Aile delta avec elevons et dérive",
+        "name": "Delta",
+        "tip": "Comme une aile volante, mais avec une dérive verticale."
+      },
+      "flyingWing": {
+        "description": "Delta/aile volante avec 2 elevons",
+        "name": "Aile volante",
+        "tip": "Les elevons combinent les fonctions d'aileron et de profondeur. Pas de surfaces de queue."
+      },
+      "gimbal": {
+        "description": "Nacelle caméra 2 axes (pan/tilt)",
+        "name": "Nacelle",
+        "tip": "Pour la stabilisation de la caméra. Utilise l'entrée radio, pas une sortie stabilisée."
+      },
+      "traditional": {
+        "description": "Avion standard avec ailerons, profondeur, dérive",
+        "name": "Traditionnel",
+        "tip": "Configuration la plus courante pour les avions. Une gouverne distincte par axe."
+      },
+      "tricopter": {
+        "description": "Tricoptère avec servo de lacet",
+        "name": "Tricoptère",
+        "tip": "Seul le servo de lacet arrière doit être configuré. Les moteurs sont gérés séparément."
+      },
+      "vtail": {
+        "description": "Avion à empennage en V (ruddervators)",
+        "name": "Empennage en V",
+        "tip": "Les surfaces de l'empennage en V combinent profondeur et dérive. Ailerons standard."
+      }
+    },
+    "inputSource": {
+      "gimbalPitch": "Tangage nacelle",
+      "gimbalRoll": "Roulis nacelle",
+      "pitch": "Tangage",
+      "rcPitch": "Tangage radio (manuel)",
+      "rcRoll": "Roulis radio (manuel)",
+      "rcThrottle": "Gaz radio (manuel)",
+      "rcYaw": "Lacet radio (manuel)",
+      "roll": "Roulis",
+      "throttle": "Gaz",
+      "yaw": "Lacet"
+    },
+    "surface": {
+      "aileronLeft": {
+        "description": "Fait rouler l'avion à gauche quand il descend",
+        "name": "Aileron gauche",
+        "shortName": "Ail G"
+      },
+      "aileronRight": {
+        "description": "Fait rouler l'avion à droite quand il descend",
+        "name": "Aileron droit",
+        "shortName": "Ail D"
+      },
+      "elevator": {
+        "description": "Cabre le nez quand le bord de fuite monte",
+        "name": "Profondeur",
+        "shortName": "Prof"
+      },
+      "elevonLeft": {
+        "description": "Aile volante : combine roulis et tangage",
+        "name": "Elevon gauche",
+        "shortName": "Elev G"
+      },
+      "elevonRight": {
+        "description": "Aile volante : combine roulis et tangage",
+        "name": "Elevon droit",
+        "shortName": "Elev D"
+      },
+      "gimbalPan": {
+        "description": "Rotation horizontale de la nacelle caméra",
+        "name": "Pan nacelle",
+        "shortName": "Pan"
+      },
+      "gimbalTilt": {
+        "description": "Rotation verticale de la nacelle caméra",
+        "name": "Tilt nacelle",
+        "shortName": "Tilt"
+      },
+      "rudder": {
+        "description": "Fait pivoter l'avion en lacet à gauche/droite",
+        "name": "Dérive",
+        "shortName": "Dérive"
+      },
+      "vtailLeft": {
+        "description": "Empennage en V : combine profondeur et dérive",
+        "name": "Empennage V gauche",
+        "shortName": "EV G"
+      },
+      "vtailRight": {
+        "description": "Empennage en V : combine profondeur et dérive",
+        "name": "Empennage V droit",
+        "shortName": "EV D"
+      },
+      "yawServo": {
+        "description": "Servo de queue du tricoptère pour le contrôle du lacet",
+        "name": "Servo de lacet",
+        "shortName": "Lacet"
+      }
+    }
+  },
+  "servoReviewStep": {
+    "beforeSaving": "Avant d'enregistrer :",
+    "controlSurface": "Gouverne",
+    "input": "Entrée",
+    "mixerPreview": "Aperçu des règles de mixage",
+    "noteConnected": "Assurez-vous que votre contrôleur de vol est connecté",
+    "noteEeprom": "Les réglages sont stockés en EEPROM (conservés hors tension)",
+    "notePropellers": "Débranchez les hélices par sécurité",
+    "noteTest": "Après l'enregistrement, testez toutes les commandes avant le vol",
+    "nothingToReview": "Aucune configuration à vérifier",
+    "rev": "INV",
+    "saveFailed": "Échec de l'enregistrement de la configuration",
+    "saveToFc": "Enregistrer sur le contrôleur de vol",
+    "saved": "Configuration enregistrée avec succès !",
+    "savedHint": "Les réglages ont été écrits sur le contrôleur de vol. Vous pouvez maintenant fermer cet assistant.",
+    "source": "Source {{source}}",
+    "subtitle": "Vérifiez la configuration de vos servos avant de l'enregistrer sur le contrôleur de vol.",
+    "title": "Vérifier votre configuration"
+  },
+  "servoTestStep": {
+    "checkAilerons": "<b>Ailerons :</b> Manche de roulis à droite → l'aileron droit doit monter, le gauche doit descendre",
+    "checkElevator": "<b>Profondeur :</b> Manche tiré vers soi → le bord de fuite doit monter",
+    "checkElevons": "<b>Elevons :</b> Testez les mouvements de roulis et de tangage",
+    "checkRudder": "<b>Dérive :</b> Manche de lacet à droite → la dérive doit aller à droite",
+    "continue": "Continuer : étalonner →",
+    "enablePolling": "Activer l'interrogation des servos en direct",
+    "howToCheck": "Comment vérifier le sens :",
+    "instruction": {
+      "aileronLeft": "Manche de roulis à DROITE → ce servo doit descendre",
+      "aileronRight": "Manche de roulis à DROITE → ce servo doit monter",
+      "default": "Actionnez le manche correspondant",
+      "elevator": "Manche de tangage vers l'ARRIÈRE → le bord de fuite doit monter",
+      "elevonLeft": "Roulis à DROITE → BAS. Tangage vers l'ARRIÈRE → HAUT (bord de fuite)",
+      "elevonRight": "Roulis à DROITE → HAUT. Tangage vers l'ARRIÈRE → HAUT (bord de fuite)",
+      "gimbalPan": "Actionnez le manche de lacet → la caméra doit tourner horizontalement",
+      "gimbalTilt": "Actionnez le manche de tangage → la caméra doit s'incliner vers le haut/bas",
+      "rudder": "Manche de lacet à DROITE → la dérive doit braquer à DROITE",
+      "vtailLeft": "Tangage vers l'ARRIÈRE et lacet à DROITE → testez les deux mouvements",
+      "vtailRight": "Tangage vers l'ARRIÈRE et lacet à DROITE → testez les deux mouvements",
+      "yawServo": "Actionnez le manche de lacet → le moteur doit s'incliner"
+    },
+    "moveStick": "Bougez le manche pour tester",
+    "pollingEnabled": "● Interrogation des servos en direct activée",
+    "responding": "Le servo répond",
+    "reverseHint": "Si un servo bouge dans le <b>mauvais sens</b>, cliquez sur <rev>Inverser</rev>.",
+    "servoIndex": "Servo {{index}}",
+    "subtitle": "Bougez les manches de votre émetteur et vérifiez que chaque servo répond correctement.",
+    "title": "Tester vos servos",
+    "undoReverse": "Annuler l'inversion"
+  },
+  "servoTuningCard": {
+    "clickToReverse": "Cliquez pour inverser",
+    "fwd": "NORM",
+    "reversedTip": "Servo inversé",
+    "testMax": "Max →",
+    "testMin": "← Min"
+  },
+  "servoTuningView": {
+    "clickToSelect": "Cliquez sur une gouverne pour la sélectionner",
+    "noConfig": "Aucune configuration de servos",
+    "saveFailed": "Échec de l'enregistrement : {{error}}",
+    "saveToFc": "Enregistrer sur le FC",
+    "saved": "Enregistré sur le contrôleur de vol",
+    "useWizard": "Utilisez d'abord l'assistant pour configurer vos servos."
+  },
+  "servoWizard": {
+    "boardIsMultirotor": "Carte configurée comme multirotor",
+    "changeMixerHint": "Cela changera le type de mixeur en AIRPLANE, enregistrera en EEPROM et redémarrera la carte.",
+    "checkingSupport": "Vérification de la prise en charge des servos...",
+    "completeWizardFirst": "Terminez d'abord l'assistant",
+    "configureAsAirplane": "Configurer comme avion",
+    "configureAsPlaneQuestion": "Voulez-vous configurer cette carte comme un avion ?",
+    "configuring": "Configuration...",
+    "disconnecting": "Déconnexion...",
+    "failedWithMessage": "Échec : {{message}}. Essayez le CLI d'iNav Configurator.",
+    "fineTuneServos": "Affiner les servos",
+    "notAvailable": "Configuration des servos indisponible",
+    "oldFirmwareNote": "<b>Remarque :</b> iNav 2.0.0 est très ancien. Si cela ne fonctionne pas, vous devrez peut-être utiliser le CLI d'iNav Configurator : <code>mixer AIRPLANE</code> puis <code>save</code>",
+    "platformChangeFailed": "Échec du changement de plateforme. Pour iNav 2.0.0, essayez le CLI d'iNav Configurator : mixer AIRPLANE puis save",
+    "platformChanged": "Plateforme changée en AIRPLANE ! Reconnectez-vous pour vérifier.",
+    "rebooting": "Redémarrage de la carte...",
+    "reconnectHint": "Utilisez le panneau de connexion en haut pour vous reconnecter.",
+    "reconnecting": "Reconnexion...",
+    "savingEeprom": "Changement de plateforme envoyé. Enregistrement en EEPROM...",
+    "sendingPlatform": "Envoi de la configuration de plateforme (MSP2 + repli CLI)...",
+    "servoCount": "- {{count}} servos",
+    "settingPlatform": "Réglage du type de plateforme sur AIRPLANE...",
+    "steps": {
+      "aircraft": {
+        "description": "Sélectionnez votre type d'aéronef",
+        "label": "Aéronef"
+      },
+      "assign": {
+        "description": "Associer les servos aux gouvernes",
+        "label": "Assigner"
+      },
+      "endpoints": {
+        "description": "Ajuster les limites des servos",
+        "label": "Étalonner"
+      },
+      "review": {
+        "description": "Vérifier et enregistrer",
+        "label": "Enregistrer"
+      },
+      "test": {
+        "description": "Vérifier le mouvement des servos",
+        "label": "Tester"
+      }
+    },
+    "tune": "Régler",
+    "unknownError": "Erreur inconnue",
+    "useConnectionPanel": "Veuillez utiliser le panneau de connexion pour vous reconnecter à votre carte.",
+    "usedFor": "La configuration des servos sert pour :",
+    "usedForFixedWing": "<b>Aéronefs à aile fixe</b> - ailerons, profondeur, dérive",
+    "usedForFlyingWing": "<b>Ailes volantes</b> - mixage d'elevons",
+    "usedForGimbal": "<b>Servos de nacelle</b> - pan/tilt de la caméra (nécessite une carte compatible)",
+    "waitingReboot": "Attente du redémarrage de la carte (5 s)...",
+    "wizard": "Assistant"
+  },
+  "wizardNav": {
+    "back": "← Retour"
+  }
+}

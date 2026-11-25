@@ -1,0 +1,209 @@
+{
+  "legacyConfigView": {
+    "badge": "CLI hérité",
+    "configError": "Erreur de configuration",
+    "howItWorks": "<b>Fonctionnement :</b> les modifications sont envoyées immédiatement sous forme de commandes CLI. Consultez le terminal CLI pour voir les commandes envoyées. Une fois terminé, cliquez sur « Enregistrer dans l'EEPROM » pour conserver les modifications (la carte redémarrera).",
+    "loading": "Chargement de la configuration depuis le CLI...",
+    "notConnected": "Connectez une carte héritée pour la configurer",
+    "reboot": {
+      "done": "Enregistrement terminé",
+      "error": "Échec de l'enregistrement",
+      "rebooting": "Redémarrage de la carte",
+      "reconnecting": "Reconnexion",
+      "saving": "Enregistrement de la configuration"
+    },
+    "runningDump": "Exécution de la commande dump",
+    "saveAndReboot": "Enregistrer et redémarrer",
+    "saveConfirmBody": "Cela enregistrera toutes les modifications dans le contrôleur de vol et <b>redémarrera la carte</b>. Vous devrez vous reconnecter une fois le redémarrage terminé.",
+    "saveConfirmTitle": "Enregistrer dans l'EEPROM ?",
+    "saveToEeprom": "Enregistrer dans l'EEPROM",
+    "subtitle": "Configuration par commandes CLI (carte F3)",
+    "tabs": {
+      "mixer": "Mixeur",
+      "modes": "Modes",
+      "pid": "PID",
+      "rates": "Rates",
+      "servo": "Servo"
+    },
+    "unsavedChanges": "Modifications non enregistrées"
+  },
+  "legacyMixerTab": {
+    "addMotor": "Ajouter un moteur ({{count}}/{{max}})",
+    "addServoRule": "Ajouter une règle de servo ({{count}}/{{max}})",
+    "description": "Définissez comment les moteurs et les servos réagissent aux sorties du contrôleur de vol. Les valeurs vont de -1,0 à 1,0. Les modifications sont envoyées immédiatement.",
+    "inputSource": "Source d'entrée",
+    "mixStrength": "Intensité du mixage :",
+    "motorMixerTab": "Mixeur moteurs ({{count}})",
+    "motorN": "Moteur {{index}}",
+    "noMotorRules": "Aucune règle de mixeur moteur trouvée.",
+    "noMotorRulesHint": "C'est normal pour les aéronefs à voilure fixe.",
+    "noServoRules": "Aucune règle de mixeur servo trouvée.",
+    "noServoRulesHint": "Ajoutez des règles pour commander les servos à partir des sorties du contrôleur de vol.",
+    "outputChannel": "Canal de sortie",
+    "pitch": "Tangage",
+    "rateLabel": "Taux :",
+    "ratePercent": "Taux (%)",
+    "removeMotor": "Supprimer le mixeur moteur",
+    "removeServoRule": "Supprimer la règle de mixeur servo",
+    "roll": "Roulis",
+    "ruleN": "Règle n° {{index}}",
+    "servoMixerTab": "Mixeur servos ({{count}})",
+    "servoN": "Servo {{index}}",
+    "sourceN": "Source {{index}}",
+    "sources": {
+      "rcAux1": "RC AUX 1",
+      "rcAux2": "RC AUX 2",
+      "rcAux3": "RC AUX 3",
+      "rcAux4": "RC AUX 4",
+      "rcPitch": "RC Tangage",
+      "rcRoll": "RC Roulis",
+      "rcThrottle": "RC Gaz",
+      "rcYaw": "RC Lacet",
+      "stabPitch": "Tangage stabilisé",
+      "stabRoll": "Roulis stabilisé",
+      "stabThrottle": "Gaz stabilisés",
+      "stabYaw": "Lacet stabilisé"
+    },
+    "speed": "Vitesse",
+    "targetServo": "Servo cible",
+    "throttle": "Gaz",
+    "title": "Configuration du mixeur",
+    "yaw": "Lacet"
+  },
+  "legacyModesTab": {
+    "activationRange": "Plage d'activation",
+    "activeModes": "Modes actifs ({{count}})",
+    "clickToEnable": "n° {{index}} - Cliquez pour activer",
+    "description": "Définissez les positions de l'interrupteur AUX qui activent chaque mode de vol. Faites glisser les poignées de plage ou saisissez les valeurs directement. Réglez les deux sur 900 pour désactiver.",
+    "disableMode": "Désactiver le mode",
+    "disabledModes": "Désactivés ({{count}})",
+    "mode": "Mode",
+    "modeDescriptions": {
+      "m0": "Activer les moteurs",
+      "m1": "Mode auto-stabilisé",
+      "m10": "Retour au point de départ",
+      "m11": "Maintien de la position GPS",
+      "m12": "Passthrough direct",
+      "m13": "Retrouver mon quad",
+      "m19": "Activer/désactiver l'OSD",
+      "m2": "Hybride auto-stabilisé + acro",
+      "m20": "Activer la télémétrie",
+      "m26": "Enregistrer les données de vol",
+      "m27": "Failsafe d'urgence",
+      "m28": "Mission par waypoints",
+      "m3": "Maintien d'altitude",
+      "m35": "Contrôle flaperon",
+      "m36": "Virages coordonnés",
+      "m38": "Auto-trim des servos",
+      "m39": "Contrôle caméra 1",
+      "m40": "Contrôle caméra 2",
+      "m41": "Contrôle caméra 3",
+      "m45": "Régulateur de vitesse de croisière",
+      "m46": "Freinage multirotor",
+      "m5": "Maintien du cap compas",
+      "m6": "Mode headless",
+      "m7": "Ajuster la référence headfree"
+    },
+    "modeN": "Mode {{id}}",
+    "noRules": "Aucune règle de mode AUX trouvée.",
+    "switchChannel": "Canal de l'interrupteur",
+    "title": "Configuration des modes de vol",
+    "unknownMode": "Mode inconnu"
+  },
+  "legacyPidTab": {
+    "axis": {
+      "pitch": "tangage",
+      "roll": "roulis",
+      "yaw": "lacet"
+    },
+    "dHint": "Amortit les dépassements",
+    "dLabel": "D - Dérivé",
+    "ffHint": "Anticipe le mouvement du manche",
+    "ffLabel": "FF - Feed Forward",
+    "iHint": "Corrige la dérive dans le temps",
+    "iLabel": "I - Intégral",
+    "infoFixedWing": "<b>Mode CLI hérité (voilure fixe) :</b> les modifications sont envoyées immédiatement par commandes CLI. Cliquez sur « Enregistrer dans l'EEPROM » une fois terminé pour les conserver.",
+    "infoMultirotor": "<b>Mode CLI hérité (multirotor) :</b> les modifications sont envoyées immédiatement par commandes CLI. Cliquez sur « Enregistrer dans l'EEPROM » une fois terminé pour les conserver.",
+    "levelDHint": "Réduit les oscillations",
+    "levelDLabel": "D - Amortissement",
+    "levelIHint": "Maintient l'horizontale dans le temps",
+    "levelPHint": "Force de l'auto-stabilisation",
+    "levelPLabel": "P - Force",
+    "levelTitle": "Niveau (mode Angle)",
+    "noData": "Aucune donnée PID chargée. Exécutez d'abord la commande dump.",
+    "pHint": "Réactivité aux commandes du manche",
+    "pLabel": "P - Proportionnel",
+    "presets": {
+      "beginner": {
+        "description": "Doux et tolérant, idéal pour apprendre",
+        "name": "Débutant"
+      },
+      "cinematic": {
+        "description": "Ultra-fluide pour la vidéo",
+        "name": "Cinématique"
+      },
+      "freestyle": {
+        "description": "Réactif et fluide pour les figures",
+        "name": "Freestyle"
+      },
+      "racing": {
+        "description": "Vif et précis pour la vitesse",
+        "name": "Course"
+      }
+    },
+    "profileNamePlaceholder": "Nom du profil...",
+    "quickPresets": "Préréglages rapides",
+    "saveAsProfile": "+ Enregistrer l'actuel comme profil",
+    "saveDialogTitle": "Enregistrer les PID actuels comme profil",
+    "yourProfiles": "Vos profils"
+  },
+  "legacyRatesTab": {
+    "expoHint": "Sensibilité au centre du manche",
+    "globalSettings": "Réglages globaux",
+    "info": "<b>Mode CLI hérité :</b> les modifications sont envoyées immédiatement par commandes CLI. Cliquez sur « Enregistrer dans l'EEPROM » une fois terminé pour les conserver.",
+    "maxRate": "Max : <v>{{rate}}°/s</v>",
+    "noData": "Aucune donnée de rates chargée. Exécutez d'abord la commande dump.",
+    "presets": {
+      "beginner": {
+        "description": "Lent et prévisible, idéal pour apprendre"
+      },
+      "cinematic": {
+        "description": "Ultra-fluide pour le tournage"
+      },
+      "freestyle": {
+        "description": "Équilibré pour les figures et l'enchaînement"
+      },
+      "racing": {
+        "description": "Rapide et réactif pour la vitesse"
+      }
+    },
+    "rateHint": "Vitesse de rotation maximale",
+    "rcRate": "RC Rate",
+    "rcRateHint": "Multiplicateur global de sensibilité du manche",
+    "responseCurve": "Courbe de réponse",
+    "saveDialogTitle": "Enregistrer les rates actuels comme profil",
+    "stick": "Manche",
+    "throttleExpo": "Expo des gaz",
+    "throttleExpoHint": "Courbe des gaz",
+    "throttleMid": "Gaz mi-course",
+    "throttleMidHint": "Point de vol stationnaire",
+    "tpaBreakpoint": "Seuil TPA",
+    "tpaBreakpointHint": "Niveau de gaz où le TPA commence",
+    "tpaDescription": "Réduit la force des PID à gaz élevés pour éviter les oscillations en vol rapide.",
+    "tpaRate": "Taux TPA",
+    "tpaRateHint": "Réduction des PID à pleins gaz",
+    "tpaTitle": "Atténuation des PID selon les gaz"
+  },
+  "legacyServoTab": {
+    "description": "Configurez les positions min/max/centre et le taux de chaque servo. Plage : 750-2250μs pour les cartes F3 héritées. Les modifications sont envoyées immédiatement.",
+    "fullRange": "Plage complète",
+    "maximum": "Maximum",
+    "minimum": "Minimum",
+    "noConfigs": "Aucune configuration de servo trouvée.",
+    "noConfigsHint": "Exécutez la commande dump pour charger la configuration.",
+    "resetDefault": "Réinitialiser",
+    "safeRange": "Plage sûre",
+    "title": "Configuration des fins de course des servos",
+    "travel": "Course : {{range}}μs"
+  }
+}

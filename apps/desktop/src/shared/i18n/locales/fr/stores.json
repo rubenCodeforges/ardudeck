@@ -1,0 +1,363 @@
+{
+  "appStore": {
+    "installFailed": "Échec de l'installation",
+    "uninstallFailed": "Échec de la désinstallation"
+  },
+  "ardupilotSitlStore": {
+    "browseFailed": "Échec de la navigation",
+    "downloadBinaryFailed": "Échec du téléchargement du binaire {{track}}",
+    "downloadFailed": "Échec du téléchargement",
+    "flightGearFailed": "Échec du lancement de FlightGear",
+    "model": {
+      "balancebot": "Robot auto-équilibré",
+      "coax": "Coptère coaxial",
+      "hexa": "Hexacoptère",
+      "plane": "Avion (par défaut)",
+      "quad": "Quad (par défaut)",
+      "quadPlus": "Quad Plus (+)",
+      "rover": "Rover (par défaut)",
+      "sailboat": "Voilier",
+      "single": "Coptère monorotor",
+      "skid": "Direction différentielle",
+      "spoilers": "Avion avec spoilers",
+      "vectored": "Vectoriel (par défaut)",
+      "vectored6dof": "Vectoriel 6DOF",
+      "vtail": "Avion à empennage en V",
+      "glider": "Planeur"
+    },
+    "startFailed": "Échec du démarrage du SITL"
+  },
+  "calibrationStore": {
+    "confirmPositionFailed": "Échec de la confirmation de la position",
+    "finalizing": "Finalisation de l'étalonnage sur le contrôleur de vol...",
+    "instructions": {
+      "compass": "Faites tourner votre véhicule dans toutes les directions",
+      "default": "Suivez les instructions à l'écran",
+      "gyro": "Gardez votre véhicule parfaitement immobile",
+      "level": "Posez votre véhicule sur une surface plane",
+      "opflow": "Maintenez le véhicule stable au-dessus d'une surface texturée"
+    },
+    "loadFileFailed": "Échec du chargement du fichier",
+    "loadSensorConfigFailed": "Échec du chargement de la config des capteurs",
+    "noTrackedParams": "Aucun paramètre suivi n'a pu être lu depuis le contrôleur de vol",
+    "noTypeSelected": "Aucun type d'étalonnage sélectionné",
+    "readParamsFailed": "Échec de la lecture des paramètres d'étalonnage",
+    "saveDataFailed": "Échec de l'enregistrement des données d'étalonnage",
+    "savePersistentFailed": "Échec de l'enregistrement en mémoire permanente",
+    "saving": "Enregistrement de l'étalonnage...",
+    "sensorMissing": "{{name}} nécessite le capteur {{sensor}}, qui n'est pas disponible",
+    "silentFailure": "Le contrôleur de vol a signalé un succès, mais les paramètres d'étalonnage n'ont pas changé. L'étalonnage a échoué silencieusement, veuillez réessayer.",
+    "startFailed": "Échec du démarrage de l'étalonnage",
+    "unsupportedProtocol": "{{name}} n'est pas pris en charge pour le protocole {{protocol}}",
+    "verificationFailed": "Échec de la vérification",
+    "waitingForFc": "En attente du contrôleur de vol..."
+  },
+  "cliStore": {
+    "rebooting": "La carte redémarre...",
+    "reconnecting": "Reconnexion à la carte...",
+    "saveFailed": "Échec de l'enregistrement de la configuration",
+    "savedReconnected": "Configuration enregistrée ! Carte reconnectée.",
+    "savedReconnecting": "Configuration enregistrée ! Reconnexion...",
+    "savingConfig": "Enregistrement de la configuration dans l'EEPROM..."
+  },
+  "fenceStore": {
+    "clearFailed": "Échec de l'effacement de la clôture",
+    "cleared": "Clôture effacée du contrôleur de vol",
+    "downloadFailed": "Échec du téléchargement de la clôture",
+    "downloaded": "{{count}} éléments de clôture téléchargés depuis le contrôleur de vol",
+    "nothingToUpload": "Aucun élément de clôture à envoyer",
+    "uploadFailed": "Échec de l'envoi de la clôture",
+    "uploaded": "{{count}} éléments de clôture envoyés au contrôleur de vol"
+  },
+  "firmwareStore": {
+    "alreadyAirplane": "La carte est déjà configurée en avion",
+    "bootloaderFailed": "Échec de l'entrée en bootloader",
+    "cannotIdentify": "Impossible d'identifier la carte sur {{port}}. Sélectionnez votre carte manuellement.",
+    "checkingPlatform": "Vérification de la configuration de la plateforme...",
+    "configurationFailed": "Échec de la configuration",
+    "configuredAirplane": "Carte configurée en avion ! Reconnectez-vous quand vous êtes prêt.",
+    "configuringAirplane": "Configuration de la carte en avion...",
+    "connectRetry": "Échec de la connexion, nouvelle tentative dans {{seconds}} s...",
+    "connectingAttempt": "Connexion à la carte (tentative {{attempt}}/{{max}})...",
+    "detectionFailed": "Échec de la détection",
+    "downloadFailed": "Échec du téléchargement",
+    "downloadingFirmware": "Téléchargement du firmware...",
+    "fetchBoardsFailed": "Échec de la récupération des cartes",
+    "fetchBoardsNoMessage": "Échec de la récupération des cartes (aucun message d'erreur)",
+    "fetchVersionsFailed": "Échec de la récupération des versions",
+    "fetchVersionsNoMessage": "Échec de la récupération des versions (aucun message d'erreur)",
+    "noBoard": "Aucune carte connectée. Cliquez d'abord sur Connecter.",
+    "noBootloader": "Aucun bootloader STM32 trouvé sur {{port}}. Assurez-vous que la carte est en mode bootloader.",
+    "noFile": "Aucun fichier firmware sélectionné",
+    "noPortForReconnect": "Aucun port trouvé pour la reconnexion",
+    "noUsbDevice": "Aucun périphérique USB détecté. Assurez-vous que votre contrôleur de vol est connecté.",
+    "noVersion": "Aucune version de firmware sélectionnée",
+    "probeFailed": "Échec de la sonde",
+    "readMixerFailed": "Échec de la lecture de la config du mixeur iNav",
+    "reconnectAfterFlashFailed": "Impossible de se connecter après le flash. La puce USB-série peut nécessiter un débranchement/rebranchement physique. Déconnectez la carte, reconnectez-la, puis utilisez l'assistant Servo pour la configurer en avion.",
+    "savingEeprom": "Enregistrement dans l'EEPROM...",
+    "setPlatformFailed": "Échec du réglage du type de plateforme sur avion",
+    "startingFlash": "Démarrage du flash...",
+    "vehicleTypeMismatch": "Type de véhicule incompatible : vous avez sélectionné {{selected}} mais la version choisie est {{version}}. Resélectionnez le véhicule et la version, puis réessayez.",
+    "waitingReboot": "En attente du redémarrage de la carte (6 s)..."
+  },
+  "fleetRepoStore": {
+    "boundarySaved": "Limite enregistrée dans {{site}}",
+    "boundaryUnchanged": "Limite inchangée depuis le dernier instantané",
+    "cannotIdentify": "Impossible d'identifier le véhicule. Choisissez-en un sous \"Working on\" dans le coffre.",
+    "deleteFailed": "Impossible de supprimer le véhicule",
+    "deleted": "Véhicule supprimé. Ses instantanés restent dans l'historique.",
+    "firmwareMismatch": "Cet instantané a été pris depuis {{snapshotFirmware}}, mais ce véhicule exécute {{liveFirmware}}. Les noms de paramètres ne se transposent pas d'une pile de vol à l'autre.",
+    "linkFailed": "Échec de la liaison",
+    "linked": "Véhicule lié ; les instantanés continuent dans cette unité",
+    "missionSaved": "Mission enregistrée dans {{site}}",
+    "missionUnchanged": "Mission inchangée depuis le dernier instantané",
+    "newVehicleSaved": "Nouveau véhicule \"{{name}}\" enregistré ({{count}} params)",
+    "noChanges": "Aucun changement depuis le dernier instantané",
+    "noMission": "Aucune mission chargée à capturer.",
+    "noParams": "Aucun paramètre chargé à capturer.",
+    "noSurveyPolygon": "Aucun polygone de relevé sur la carte à capturer.",
+    "readSnapshotFailed": "Impossible de lire l'instantané depuis le coffre.",
+    "renameFailed": "Échec du renommage",
+    "restoredPartial": "{{applied}} restauré(s), {{failed}} en échec",
+    "restored_one": "{{count}} paramètre restauré",
+    "restored_other": "{{count}} paramètres restaurés",
+    "snapshotFailed": "Échec de l'instantané",
+    "snapshotSaved": "Instantané enregistré ({{count}} params)",
+    "syncFailed": "Échec de la synchronisation",
+    "synced": "Synchronisé avec GitHub",
+    "vaultUnavailable": "Coffre indisponible",
+    "wrongOwner": "Cet instantané appartient à {{owner}}, pas au véhicule connecté. Ouvrez un instantané de l'historique de ce véhicule, ou réglez \"Working on\" sur {{owner}} s'il s'agit de cet aéronef."
+  },
+  "flightControlStore": {
+    "trainerActive": "Session Trainer active - le Trainer contrôle les manches"
+  },
+  "groupShapeStore": {
+    "description": {
+      "edgesOnly": "Seules les extrémités de la série sont bombées, les jauges du milieu restent à plat",
+      "roundedAll": "Chaque jauge ronde bombe son propre cercle",
+      "square": "Carte plate, sans bombé - l'aspect d'origine"
+    },
+    "label": {
+      "edgesOnly": "Arrondi (extrémités)",
+      "roundedAll": "Arrondi (chaque jauge)",
+      "square": "Carré"
+    }
+  },
+  "guideStore": {
+    "emptyFile": "Fichier vide",
+    "importUnavailable": "Importation indisponible",
+    "noShapes": "Aucun polygone ni ligne trouvé dans le fichier",
+    "noValidPoints": "Aucun point valide à ajouter."
+  },
+  "legacyConfigStore": {
+    "loadFailed": "Échec du chargement de la config",
+    "rebooting": "La carte redémarre...",
+    "reconnecting": "Reconnexion à la carte...",
+    "saveFailed": "Échec de l'enregistrement de la configuration",
+    "savedReconnect": "Configuration enregistrée ! La carte a redémarré. Veuillez vous reconnecter.",
+    "savingConfig": "Enregistrement de la configuration dans l'EEPROM..."
+  },
+  "missionLibraryStore": {
+    "readFailed": "Impossible de lire cette mission depuis la sauvegarde",
+    "writeFailed": "Impossible d'écrire dans la sauvegarde"
+  },
+  "missionStore": {
+    "clearFailed": "Échec de l'effacement de la mission",
+    "clearWaypointsFailed": "Échec de l'effacement des waypoints",
+    "cleared": "Mission effacée du contrôleur de vol",
+    "clearedFromFc": "Mission effacée du FC",
+    "downloadFailed": "Échec du téléchargement de la mission",
+    "downloadedFromFcInto": "{{count}} waypoints téléchargés depuis le contrôleur de vol dans \"{{group}}\"",
+    "downloadedInto": "{{count}} waypoints téléchargés depuis le FC dans \"{{group}}\"",
+    "groupEmptySave": "Aucun waypoint à enregistrer dans ce groupe",
+    "groupEmptyUpload": "Aucun waypoint à envoyer dans ce groupe",
+    "mspNotSupported": "Échec du téléchargement des waypoints - MSP non pris en charge",
+    "noWaypointsOnFc": "Aucun waypoint sur le FC",
+    "noWaypointsToUpload": "Aucun waypoint à envoyer (tous les groupes désélectionnés ?)",
+    "recovered": "{{count}} waypoints récupérés de votre dernière session",
+    "savedToFile": "{{count}} waypoints enregistrés dans un fichier",
+    "uploadFailed": "Échec de l'envoi de la mission",
+    "uploadToVehicleFailed": "Échec de l'envoi de la mission au véhicule",
+    "uploadWaypointsFailed": "Échec de l'envoi des waypoints",
+    "uploadedToFc": "{{count}} waypoints envoyés au FC",
+    "uploadedToFlightController": "{{count}} waypoints envoyés au contrôleur de vol",
+    "uploadedToVehicle": "{{count}} waypoints envoyés au véhicule",
+    "vehicleMissionLabel": "Mission du véhicule @ {{stamp}}",
+    "fromVehicleGroup": "Depuis le véhicule @ {{stamp}}",
+    "downloadedGroup": "Téléchargé @ {{stamp}}",
+    "hazardBlocked": "Envoi bloqué : la route traverse un danger. Déviez-la, ou passez outre avec le code PIN administrateur."
+  },
+  "modesWizardStore": {
+    "clearSlotFailed": "Échec de l'effacement de l'emplacement de mode {{i}}",
+    "eepromSaveFailed": "Modes envoyés mais échec de l'enregistrement dans l'EEPROM",
+    "loadFailed": "Échec du chargement des modes",
+    "loadFromFcFailed": "Échec du chargement des modes depuis le FC",
+    "saveFailed": "Échec de l'enregistrement des modes",
+    "setModeFailed": "Échec du réglage du mode {{i}}"
+  },
+  "moduleStore": {
+    "activationFailed": "Échec de l'activation",
+    "installFailed": "Échec de l'installation",
+    "toggleFailed": "Échec du basculement",
+    "updateFailed": "Échec de la mise à jour",
+    "updateFailedFor": "Échec de la mise à jour de {{slug}}"
+  },
+  "orchestratorEngineStore": {
+    "addSourceFailed": "Échec de l'ajout de la source",
+    "startFailed": "Échec du démarrage du multi-véhicule"
+  },
+  "osdStore": {
+    "ardupilotFont": "ArduPilot choisit une police via le paramètre OSD_FONT, pas par envoi",
+    "connectFcFirst": "Connectez-vous d'abord à un contrôleur de vol",
+    "connectFirst": "Connectez-vous d'abord à un FC ArduPilot ou Betaflight/iNav",
+    "connectForFont": "Connectez une carte Betaflight/iNAV pour envoyer une police analogique",
+    "downloadingParams": "Téléchargement des paramètres…",
+    "fontUploadFailed": "Échec de l'envoi de la police : {{msg}}",
+    "fontUploaded": "Police envoyée ({{count}} caractères), redémarrez le FC pour appliquer",
+    "loadFontFailed": "Échec du chargement de la police",
+    "loadedFromFc": "{{count}} éléments chargés depuis le FC",
+    "loadedFromScreen": "{{resolved}} éléments chargés depuis l'écran {{screen}}",
+    "noConfig": "Aucune config OSD renvoyée par le FC",
+    "noFont": "Aucune police chargée",
+    "noOsdParams": "Aucun paramètre OSD sur cette carte (définir OSD_TYPE ?)",
+    "readFailed": "Échec de la lecture : {{msg}}",
+    "reading": "Lecture depuis le contrôleur de vol...",
+    "unknownError": "erreur inconnue",
+    "unknownFont": "Police intégrée inconnue : {{name}}",
+    "uploadFailed": "Échec de l'envoi : {{msg}}",
+    "uploadedPartial": "{{confirmed}}/{{total}} envoyés ; {{failed}} non confirmés",
+    "uploadedSaved": "{{count}} éléments envoyés et enregistrés dans le FC",
+    "uploadedToScreen": "{{count}} paramètres envoyés à l'écran {{screen}}",
+    "uploadingFont": "Envoi de la police vers la NVM du FC…",
+    "uploadingLayout": "Envoi de la disposition OSD...",
+    "uploadingParams": "Envoi de {{count}} paramètres..."
+  },
+  "parameterStore": {
+    "requestFailed": "Échec de la demande des paramètres",
+    "setFailed": "Échec du réglage du paramètre"
+  },
+  "pseudoTxStore": {
+    "enableFirst": "Activez d'abord l'émetteur USB",
+    "linkLost": "Liaison avec le véhicule perdue - contrôle au joystick relâché",
+    "needsMavlink": "Nécessite un véhicule MAVLink connecté",
+    "noBridge": "Aucun pont RC SITL dans cette fenêtre - les trames ne vont nulle part",
+    "overrideRejected": "Override rejeté par la liaison"
+  },
+  "px4SitlStore": {
+    "disconnecting": "Déconnexion du SITL arrêté.",
+    "downloadFailed": "Échec du téléchargement",
+    "startFailed": "Échec du démarrage du SITL"
+  },
+  "quickSetupStore": {
+    "applyFailed": "Échec de l'application",
+    "applyPresetFailed": "Échec de l'application du préréglage",
+    "changePlatformFailed": "Échec du changement de type de plateforme",
+    "connectionLost": "Connexion perdue pendant la configuration. Veuillez vous reconnecter et réessayer.",
+    "noPreset": "Aucun préréglage sélectionné",
+    "notConnected": "Non connecté au contrôleur de vol. Veuillez d'abord vous connecter.",
+    "platformChangeUnknown": "Erreur inconnue pendant le changement de plateforme",
+    "reconnectFailed": "Échec de la reconnexion après le changement de plateforme. Veuillez vous reconnecter manuellement et réessayer.",
+    "saveEepromFailed": "Échec de l'enregistrement dans l'EEPROM",
+    "setPidsFailed": "Échec du réglage des PID",
+    "setRatesFailed": "Échec du réglage des rates",
+    "task": {
+      "checkPlatform": "Vérification de la plateforme",
+      "clearModes": "Effacement des anciens modes",
+      "clearServoMixer": "Effacement du mixeur de servos",
+      "exitCli": "Sortie du mode CLI",
+      "failsafe": "Réglage du failsafe",
+      "modes": "Réglage des modes de vol",
+      "motorMixer": "Configuration du mixeur moteurs",
+      "pids": "Réglage des PID",
+      "rates": "Réglage des rates",
+      "saveEeprom": "Enregistrement dans l'EEPROM",
+      "saveReboot": "Enregistrement et redémarrage",
+      "sendCli": "Envoi des commandes CLI",
+      "servoMixer": "Configuration du mixeur de servos"
+    }
+  },
+  "rallyStore": {
+    "clearFailed": "Échec de l'effacement des points de ralliement",
+    "cleared": "Points de ralliement effacés du contrôleur de vol",
+    "downloadFailed": "Échec du téléchargement des points de ralliement",
+    "downloaded": "{{count}} points de ralliement téléchargés depuis le contrôleur de vol",
+    "nothingToUpload": "Aucun point de ralliement à envoyer",
+    "uploadFailed": "Échec de l'envoi des points de ralliement",
+    "uploaded": "{{count}} points de ralliement envoyés au contrôleur de vol"
+  },
+  "servoWizardStore": {
+    "changePlatformFailed": "Impossible de changer la plateforme en {{platform}}. Pour iNav 2.0.0, vous devrez peut-être utiliser iNav Configurator pour changer le type de mixeur, puis vous reconnecter.",
+    "checkSupportFailed": "Échec de la vérification de la prise en charge des servos. Veuillez réessayer.",
+    "firmwareTooOld": "La configuration des servos n'est pas prise en charge sur ce firmware. iNav 2.0.0 est peut-être trop ancien - essayez de passer à une version plus récente.",
+    "multirotorNoServos": "Les sorties servo ne sont pas disponibles sur cette carte en mode multirotor. C'est une limite matérielle : toutes les cartes de contrôleur de vol ne peuvent pas sortir de signaux servo une fois configurées en quad/hexa.",
+    "noServos": "Aucune sortie servo détectée. Assurez-vous que votre carte prend en charge les servos.",
+    "noServosGimbal": "Aucune sortie servo disponible sur cette carte pour le contrôle de la nacelle.",
+    "platformChangeError": "Erreur lors du changement de plateforme : {{error}}. Essayez d'utiliser iNav Configurator pour changer le type de mixeur.",
+    "saveEepromFailed": "Échec de l'enregistrement dans l'EEPROM",
+    "setServoFailed": "Échec du réglage de la config du servo {{index}}",
+    "step": {
+      "aircraft": "Aéronef",
+      "aircraftDesc": "Sélectionnez votre type d'aéronef",
+      "assign": "Affecter",
+      "assignDesc": "Associer les servos aux gouvernes",
+      "endpoints": "Étalonner",
+      "endpointsDesc": "Ajuster les limites des servos",
+      "review": "Enregistrer",
+      "reviewDesc": "Vérifier et enregistrer",
+      "test": "Tester",
+      "testDesc": "Vérifier le mouvement des servos"
+    },
+    "timeout": "Délai dépassé"
+  },
+  "signingStore": {
+    "enableFailed": "Échec de l'activation de la signature",
+    "sendFailed": "Échec de l'envoi au FC",
+    "setKeyFailed": "Échec du réglage de la clé"
+  },
+  "sitlStore": {
+    "bridgeStopped": "Pont de protocole arrêté.",
+    "cannotDeleteStandard": "Impossible de supprimer les profils standard",
+    "flightGearFailed": "Échec du lancement de FlightGear",
+    "nameExists": "Ce nom de profil existe déjà",
+    "noProfile": "Aucun profil sélectionné",
+    "profileDescription": {
+      "Airplane": "Préconfiguré pour les tests d'aile fixe avec mixeur avion.",
+      "Default": "Installation iNav neuve avec réglages d'usine. À utiliser pour les tests généraux.",
+      "Quadcopter": "Préconfiguré pour les tests de quad avec mixeur en X."
+    },
+    "startFailed": "Échec du démarrage du SITL",
+    "startingBridge": "Démarrage du pont de protocole...",
+    "startingInav": "Démarrage du SITL iNav...",
+    "stoppingBridge": "Arrêt du pont de protocole...",
+    "waitingFlightGear": "En attente de l'initialisation de FlightGear (15-30 secondes)...",
+    "waitingXPlane": "En attente de l'initialisation de X-Plane (10 secondes)...",
+    "xplaneFailed": "Échec du lancement de X-Plane"
+  },
+  "surveyAreaStore": {
+    "readFailed": "Impossible de lire cette zone depuis le coffre",
+    "writeFailed": "Impossible d'écrire dans le coffre"
+  },
+  "surveyStore": {
+    "emptyFile": "Fichier vide",
+    "generateFailed": "Impossible de générer un relevé à partir des zones importées",
+    "generating": "Génération des waypoints...",
+    "generatorFailed": "Échec du générateur : {{message}}",
+    "importUnavailable": "Importation indisponible",
+    "importing": "Importation du relevé - génération des waypoints...",
+    "loading": "Chargement du relevé...",
+    "noShapes": "Aucune limite polygonale ni ligne trouvée dans le fichier",
+    "recomputing": "Recalcul de {{count}} waypoints...",
+    "reloadingArea": "Rechargement de la zone enregistrée..."
+  },
+  "swarmSitlStore": {
+    "startFailed": "Échec du démarrage de l'essaim"
+  },
+  "weatherStore": {
+    "unavailable": "Données météo indisponibles. Vérifiez votre connexion Internet et réessayez."
+  },
+  "windStore": {
+    "fetchFailed": "Échec de la récupération du vent",
+    "unavailable": "Données de vent indisponibles"
+  }
+}

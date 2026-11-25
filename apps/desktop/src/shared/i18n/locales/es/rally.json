@@ -1,0 +1,21 @@
+{
+  "rallyListPanel": {
+    "alt": "Alt: {{value}}",
+    "breakAlt": "Alt. de salida",
+    "breakAltHint": "Altitud a la que salir del loiter y empezar a aterrizar",
+    "detailsTitle": "Punto rally R{{n}}",
+    "downloading": "Descargando...",
+    "empty": "Sin puntos rally",
+    "emptyHint": "Haz clic en \"Add Rally\" en el mapa para crear uno",
+    "flags": "Flags",
+    "landHeading": "Rumbo de aterrizaje (°)",
+    "landHeadingHint": "0 = cualquier dirección",
+    "landImmediately": "Aterrizar de inmediato (sin loiter)",
+    "landIntoWind": "Aterrizar contra el viento",
+    "pointCount_one": "{{count}} punto",
+    "pointCount_other": "{{count}} puntos",
+    "subtitle": "Ubicaciones de aterrizaje de emergencia",
+    "title": "Puntos rally",
+    "uploading": "Subiendo..."
+  }
+}

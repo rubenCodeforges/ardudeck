@@ -1,0 +1,36 @@
+{
+  "activeTour": {
+    "nextFeature": "Fonction suivante",
+    "nextTitle": "Suivant : {{title}}"
+  },
+  "tourLaunchGate": {
+    "apNotInstalled": "ArduPilot SITL n'est pas encore installé. Rendez-vous dans la vue SITL pour télécharger le binaire : la visite reprendra automatiquement une fois connecté.",
+    "apNotSupported": "ArduPilot SITL n'est pas pris en charge sur cette plateforme.",
+    "connectOwnFc": "Je connecte mon propre contrôleur de vol",
+    "connectOwnToContinue": "Connectez votre propre contrôleur de vol pour continuer la visite.",
+    "failedToStartSitl": "Échec du démarrage de SITL",
+    "goToSitlInstall": "Aller à SITL pour l'installer",
+    "intro": "Cette visite présente des fonctions qui nécessitent un contrôleur de vol en direct. Vous pouvez lancer une simulation <b>{{sitl}}</b> sans risque pour l'essayer, ou connecter votre propre contrôleur de vol.",
+    "launch": "Lancer {{sitl}}",
+    "needsVehicle": "La visite nécessite un véhicule",
+    "notNow": "Pas maintenant",
+    "startingSitl": "Démarrage de SITL...",
+    "tcpConnectionFailed": "SITL a démarré mais la connexion TCP a échoué"
+  },
+  "tourPanelsGate": {
+    "layoutAdjustment": "Ajustement de la disposition",
+    "missing": "Manquant : <b>{{panels}}</b>",
+    "panelsNotInLayout": "Cette visite parcourt des panneaux qui ne sont pas dans votre disposition actuelle :",
+    "recommendedLayout": "disposition recommandée",
+    "skipTour": "Passer cette visite",
+    "switchPrompt": "Passer à la disposition <b>{{preset}}</b> pour suivre la visite ? Votre disposition actuelle reste enregistrée : vous pouvez y revenir à tout moment depuis le menu des dispositions.",
+    "switchTo": "Passer à {{preset}}"
+  },
+  "tourPrompt": {
+    "dontOfferAgain": "Ne plus proposer de visites",
+    "noThanks": "Non merci",
+    "quickTour": "Visite rapide",
+    "remindLater": "Me le rappeler plus tard",
+    "showMe": "Montrez-moi"
+  }
+}

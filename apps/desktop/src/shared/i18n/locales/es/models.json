@@ -1,0 +1,88 @@
+{
+  "layersEntry": {
+    "label": "Modelos 3D",
+    "tip": "Añade tus propios modelos 3D (glTF, KMZ, 3D Tiles, CityJSON, nubes de puntos LAS/LAZ) a todas las vistas 3D"
+  },
+  "dialog": {
+    "title": "Modelos 3D",
+    "subtitle": "Tus propios modelos, visibles en todas las vistas 3D",
+    "import": "Importar",
+    "importing": "Importando...",
+    "importTip": "Elige glTF/GLB, KMZ, un tileset.json de 3D Tiles, CityJSON o archivos de nube de puntos LAS, LAZ y PLY",
+    "failedTitle_one": "No se pudo importar {{count}} archivo",
+    "failedTitle_other": "No se pudieron importar {{count}} archivos",
+    "dismiss": "Descartar",
+    "needsPlacementHint_one": "{{count}} modelo no tiene posición en sus datos. Se colocó donde lo soltaste (o en el centro del mapa). Expándelo para fijar su posición.",
+    "needsPlacementHint_other": "{{count}} modelos no tienen posición en sus datos. Se colocaron donde los soltaste (o en el centro del mapa). Expándelos para fijar su posición.",
+    "emptyTitle": "Aún no hay modelos 3D",
+    "emptyHint": "Importa archivos, suéltalos sobre un mapa o vigila una carpeta.",
+    "warningsTitle_one": "{{count}} importación por revisar",
+    "warningsTitle_other": "{{count}} importaciones por revisar"
+  },
+  "row": {
+    "collapse": "Contraer",
+    "editPlacement": "Editar posición",
+    "placedByData": "Colocado por los datos",
+    "placedByHand": "Colocado a mano",
+    "fromFolder": "De carpeta",
+    "needsPosition": "Necesita posición",
+    "hide": "Ocultar en las vistas 3D",
+    "show": "Mostrar en las vistas 3D",
+    "remove": "Quitar modelo",
+    "confirmRemove": "Quitar",
+    "removeWatchedTip": "Este modelo viene de una carpeta vigilada. Quita la carpeta o edita su tabla en su lugar.",
+    "points_one": "{{formatted}} punto",
+    "points_other": "{{formatted}} puntos",
+    "pointsThinned": "{{shown}} de {{total}} puntos",
+    "pointsThinnedTip": "Las nubes grandes se aclaran de forma uniforme para mantener fluidas todas las vistas 3D"
+  },
+  "editor": {
+    "lat": "Latitud",
+    "lng": "Longitud",
+    "alt": "Altitud (m)",
+    "altMode": "Modo de altitud",
+    "altModes": {
+      "amsl": "Sobre el nivel del mar",
+      "agl": "Sobre el suelo",
+      "clamp": "Sobre el terreno"
+    },
+    "yaw": "Guiñada (grados)",
+    "pitch": "Cabeceo (grados)",
+    "roll": "Alabeo (grados)",
+    "scale": "Escala",
+    "readOnlyNote": "Este modelo viene de una carpeta vigilada. Su tabla (models.json, CSV o GeoJSON) controla la posición; edita la tabla para moverlo.",
+    "placeAtCentre": "Colocar en el centro del mapa",
+    "placeAtCentreTip": "Mueve el modelo al centro del último mapa que usaste",
+    "adjustOnMap": "Ajustar en el mapa",
+    "adjustOnMapTip": "Arrastra el origen del modelo en el mapa 2D y gira su control de rumbo"
+  },
+  "watch": {
+    "title": "Carpetas vigiladas",
+    "add": "Añadir carpeta",
+    "remove": "Dejar de vigilar",
+    "explain": "Pon los modelos en una carpeta junto con una tabla models.json, CSV o GeoJSON: la tabla coloca cada modelo. Los cambios en la carpeta o en la tabla se recargan en vivo.",
+    "none": "No hay carpetas vigiladas."
+  },
+  "toast": {
+    "imported_one": "{{count}} modelo importado",
+    "imported_other": "{{count}} modelos importados",
+    "failed_one": "{{count}} falló",
+    "failed_other": "{{count}} fallaron",
+    "needsPlacement_one": "{{count}} necesita una posición",
+    "needsPlacement_other": "{{count}} necesitan una posición",
+    "details": "Detalles",
+    "warnings_one": "{{count}} aviso",
+    "warnings_other": "{{count}} avisos"
+  },
+  "adjust": {
+    "hint": "Ajustando {{name}}: arrastra el punto para moverlo, el control para girarlo",
+    "edit": "Editar valores",
+    "done": "Listo"
+  },
+  "drop": {
+    "overlay": "Suelta para añadir un modelo 3D"
+  },
+  "format": {
+    "pointCloud": "Nube de puntos"
+  }
+}

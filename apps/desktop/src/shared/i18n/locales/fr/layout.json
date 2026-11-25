@@ -1,0 +1,66 @@
+{
+  "appShell": {
+    "about": "À propos d'ArduDeck",
+    "clickToDisconnect": "Cliquer pour déconnecter",
+    "disconnected": "Déconnecté",
+    "fleetCount": "Flotte ({{count}})",
+    "fleetTitle": "Flotte connectée via des liaisons multi-véhicules. Cliquer pour ouvrir la télémétrie.",
+    "noneSelected": " · aucun sélectionné",
+    "staleDisconnect": "Aucune donnée depuis {{seconds}} s. Cliquer pour déconnecter",
+    "staleShort": "Aucune donnée {{seconds}} s",
+    "voiceMuted": "Alertes vocales coupées. Cliquer pour réactiver",
+    "voiceOn": "Alertes vocales actives. Cliquer pour couper",
+    "waiting": "En attente...",
+    "osBadge": "OS",
+    "osBadgeTitle": "Exécuté sur {{osName}}. La liaison avec le véhicule et le cache des paramètres sont fournis par le système."
+  },
+  "armDisarm": {
+    "arm": "ARMER",
+    "armNotConfigured": "Le mode ARM n'est pas configuré sur le FC. Définissez un canal AUX pour ARM dans l'onglet Modes.",
+    "armTitle": "Armer",
+    "armingBlocked": "Armement bloqué",
+    "disarm": "DÉSARMER",
+    "disarmTitle": "Désarmer",
+    "forceArm": "FORCER L'ARMEMENT",
+    "forceArmHint": "Ignorer les contrôles de sécurité pre-arm",
+    "forceArmLabel": "Forcer l'armement",
+    "forceArmTitle": "Forcer l'armement (ignore les contrôles)",
+    "mspUnknown": "Inconnu",
+    "preArmFailed": "Échec des contrôles pre-arm",
+    "title": "{{action}} - Clic droit pour les options"
+  },
+  "quickLaunch": {
+    "areaEditorDesc": "Dessiner des zones de mission : multi-zones, trous, KML",
+    "button": "Lancement rapide",
+    "buttonTitle": "Lancement rapide : ouvrir les outils dans leur propre fenêtre",
+    "inspectorDesc": "Suivre les messages et graphiques en direct",
+    "simWorldDesc": "Piloter le SITL dans un monde 3D persistant : obstacles, geofences, missions",
+    "telemetryDashboard": "Tableau de bord télémétrie",
+    "telemetryDashboardDesc": "Télémétrie en direct sur son propre écran",
+    "locusDesc": "Ouvrir ArduDeck Locus : PPK, photogrammétrie et LiDAR"
+  },
+  "updateBanner": {
+    "available": "<b>ArduDeck {{version}}</b> est disponible{{name}}",
+    "downloading": "Téléchargement d'<b>ArduDeck {{version}}</b>",
+    "newVersion": "nouvelle version",
+    "ready": "<b>ArduDeck {{version}}</b> est prêt à être installé",
+    "restartToUpdate": "Redémarrer pour mettre à jour",
+    "viewRelease": "Voir la version"
+  },
+  "bridgeMoved": {
+    "text": "Bridge, le thème à la mémoire de Sir Patrick Stewart, est désormais un Cargo dans le Hangar.",
+    "open": "Ouvrir dans le Hangar"
+  },
+  "voiceLevel": {
+    "title": "Annonces vocales",
+    "all": "Toutes",
+    "allDesc": "Toutes les annonces : modes, waypoints, décollage et atterrissage, alertes",
+    "allTip": "Voix : toutes les annonces",
+    "important": "Importantes uniquement",
+    "importantDesc": "Alertes, failsafes, avertissements et armement / désarmement",
+    "importantTip": "Voix : importantes uniquement",
+    "off": "Désactivées",
+    "offDesc": "Aucune voix",
+    "offTip": "Voix : désactivée"
+  }
+}

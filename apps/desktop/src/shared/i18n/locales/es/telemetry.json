@@ -1,0 +1,116 @@
+{
+  "layoutDetails": {
+    "description": "Descripción",
+    "editTitle": "Editar disposición",
+    "name": "Nombre",
+    "nameTaken": "Ese nombre ya está en uso.",
+    "optional": "(opcional)",
+    "replace": "Reemplazar",
+    "replaceContents": "Reemplazar el contenido con la pantalla actual",
+    "replaceContentsHint": "Paneles, instrumentos de cabina, división del mapa y modo de visión tal como están ahora.",
+    "replacesExisting": "Ya existe una disposición llamada \"{{name}}\". Al guardar se reemplaza.",
+    "saveTitle": "Guardar disposición"
+  },
+  "layouts": {
+    "fpvDescription": "Mapa y visión lado a lado.",
+    "fpvLabel": "FPV",
+    "importInvalidJson": "Ese archivo no es un JSON válido.",
+    "importNoPanels": "La disposición de ese archivo no tiene una distribución de paneles.",
+    "importNotLayout": "Ese archivo no es una disposición de espacio de trabajo de ArduDeck.",
+    "importedName": "Disposición importada",
+    "missionDescription": "Mapa, waypoints, perfil de altitud.",
+    "missionLabel": "Misión",
+    "pilotDescription": "Mapa con visión sintética dividida.",
+    "pilotLabel": "Piloto"
+  },
+  "panelHeader": {
+    "hideInstrument": "Ocultar instrumento del mapa",
+    "popOut": "Separar",
+    "popOutTitle": "Abrir {{title}} en una ventana nueva",
+    "showInstrument": "Mostrar como instrumento en el mapa"
+  },
+  "quickStats": {
+    "alt": "ALT",
+    "armed": "Armado",
+    "bat": "BAT",
+    "disarmed": "Desarmado",
+    "hdg": "RUM",
+    "noLink": "Sin enlace",
+    "notConnected": "Sin conexión",
+    "sat": "SAT",
+    "spd": "VEL",
+    "thr": "ACEL"
+  },
+  "savedLayout": {
+    "confirmDelete": "¿Eliminar?",
+    "copyToClipboard": "Copiar al portapapeles",
+    "deleteTip": "Eliminar",
+    "renameTip": "Renombrar o describir",
+    "saveAsFile": "Guardar como archivo…",
+    "share": "Compartir…",
+    "shareTip": "Compartir"
+  },
+  "sensorHealth": {
+    "unhealthyTitle": "Con fallos: {{sensors}} - revisa el panel de Mensajes para más detalles"
+  },
+  "share": {
+    "copied": "Copiado",
+    "failed": "No se pudo compartir",
+    "saved": "Guardado"
+  },
+  "speed": {
+    "eco": "Eco",
+    "ecoTip": "Actualizaciones lentas: suaves con enlaces de telemetría débiles o de largo alcance",
+    "fc": "FC",
+    "fcTip": "Sin intervenir: ArduDeck nunca pide otras tasas de datos. El vehículo sigue enviando con las tasas guardadas en el controlador de vuelo. Elígelo si ajustaste esas tasas tú mismo.",
+    "max": "Máx",
+    "maxTip": "Actualizaciones más rápidas, para enlaces rápidos como USB o WiFi",
+    "normal": "Normal",
+    "normalTip": "Velocidad de actualización equilibrada, buena para la mayoría de enlaces"
+  },
+  "workspace": {
+    "buttonTip": "Espacio de trabajo: disposición de paneles, vista y paneles",
+    "title": "Espacio de trabajo"
+  },
+  "workspaceDialog": {
+    "addPanel": "Añadir panel",
+    "builtIn": "Integradas",
+    "clipboardReadFailed": "No se pudo leer el portapapeles.",
+    "fromFile": "Desde archivo…",
+    "import": "Importar",
+    "importTip": "Importa una disposición que alguien compartió",
+    "map2d": "Mapa 2D",
+    "map3d": "Terreno 3D",
+    "mapView": "Vista del mapa",
+    "offlineHint": "Dibuja un recuadro en el mapa para guardar sus teselas y volar sin conexión.",
+    "offlineMaps": "Mapas sin conexión",
+    "panelLayout": "Disposición de paneles",
+    "pasteFromClipboard": "Pegar desde el portapapeles",
+    "resetToPreset": "Restablecer al preajuste",
+    "saveCurrentAs": "Guardar actual como…",
+    "saveOfflineArea": "Guardar un área para uso sin conexión",
+    "saved": "Guardadas",
+    "selectingArea": "Seleccionando… dibuja un recuadro en el mapa",
+    "telemetryRate": "Tasa de telemetría",
+    "telemetryRateHint": "Con qué frecuencia el vehículo envía telemetría. FC deja intactas las tasas propias del controlador de vuelo.",
+    "cargoPanelMissing": "Este panel viene de un Cargo que no está cargado ahora."
+  },
+  "replay": {
+    "badge": "REPETICIÓN",
+    "badgeTip": "Reproduciendo un vuelo grabado. No se envía nada a ningún vehículo.",
+    "pause": "Pausa",
+    "play": "Reproducir",
+    "restart": "Reproducir desde el inicio",
+    "seek": "Posición en el vuelo",
+    "speedTip": "Velocidad de reproducción",
+    "speed": "{{speed}}x",
+    "stop": "Detener repetición",
+    "chooseTitle": "Repetir un vuelo",
+    "chooseIntro": "¿Qué grabación quieres reproducir?",
+    "chooseBusy": "Desconecta primero el vehículo.",
+    "chooseTlog": "Registro de telemetría (.tlog)",
+    "chooseTlogDesc": "Lo que ArduDeck recibió por el enlace de radio. Se graba automáticamente; es tan fluido como lo fue la tasa de telemetría.",
+    "chooseBin": "Registro a bordo (.bin)",
+    "chooseBinDesc": "La grabación propia del controlador de vuelo en su tarjeta SD. Suele ser mucho más fluida; descárgala primero del vehículo."
+  }
+}

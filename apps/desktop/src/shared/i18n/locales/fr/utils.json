@@ -1,0 +1,390 @@
+{
+  "flightBriefing": {
+    "batteries": "Batteries",
+    "ceiling": "plafond {{altitude}} AGL",
+    "distance": "Distance",
+    "flightTime": "Temps de vol",
+    "flightTimeDetail": "estimé à vitesse de croisière",
+    "gusts": "rafales {{speed}}",
+    "maxAltitude": "Altitude max",
+    "maxFromHome": "Distance max du home",
+    "reserve": "Réserve",
+    "reserveDetail": "sur la dernière batterie",
+    "setProfile": "définissez un profil de véhicule pour l'endurance",
+    "unknown": "inconnu",
+    "usableEach": "~{{duration}} utilisables chacune",
+    "wind": "Vent",
+    "flightTimeWindDetail": "face au vent de surface prévu ({{duration}} par air calme) ; le vent en altitude est généralement plus fort",
+    "windBlocked": "Tronçons contre le vent",
+    "windBlockedDetail": "le vent prévu est égal ou supérieur à la vitesse de croisière sur ces tronçons, l'appareil ne peut donc pas les tenir",
+    "flightTimeLayerWindDetail": "face au vent de la couche à {{altitude}} ({{duration}} par air calme)"
+  },
+  "joystickSafety": {
+    "assign": "Assignez d'abord {{names}}",
+    "offTarget": "{{name}} (CH{{ch}}) à {{pwm}}, doit être {{want}}",
+    "channel": "CH{{n}}",
+    "role": {
+      "roll": "Roulis",
+      "pitch": "Tangage",
+      "throttle": "Gaz",
+      "yaw": "Lacet"
+    },
+    "want": {
+      "centre": "environ {{pwm}} (centre)",
+      "idle": "{{pwm}} ou moins (ralenti)",
+      "zeroThrust": "environ {{pwm}} (poussée nulle)",
+      "radio": "environ {{pwm}} (votre radio)",
+      "low": "{{pwm}} ou moins (bas)",
+      "high": "{{pwm}} ou plus (haut)"
+    }
+  },
+  "osdCategories": {
+    "altitude": {
+      "description": "Altitude, MSL, variomètre",
+      "name": "Altitude et vario"
+    },
+    "attitude": {
+      "description": "Réticule, horizon, tangage, roulis, cap",
+      "name": "Attitude"
+    },
+    "battery": {
+      "description": "Tension, courant, capacité, rendement",
+      "name": "Batterie et puissance"
+    },
+    "general": {
+      "description": "Mode de vol, alertes, infos de l'appareil",
+      "name": "Général"
+    },
+    "gps": {
+      "description": "Satellites, HDOP, coordonnées",
+      "name": "GPS"
+    },
+    "mission": {
+      "description": "VTX, indicateurs de vent",
+      "name": "Mission"
+    },
+    "radio": {
+      "description": "RSSI, position des gaz",
+      "name": "Radio et commandes"
+    },
+    "sensors": {
+      "description": "Température, force G, données ESC",
+      "name": "Capteurs"
+    },
+    "speed": {
+      "description": "Vitesse sol, vitesse air, distance",
+      "name": "Vitesse et distance"
+    },
+    "timers": {
+      "description": "Temps de vol, temps sous tension, restant",
+      "name": "Chronomètres"
+    }
+  },
+  "osdElements": {
+    "airspeed": {
+      "description": "Vitesse air indiquée par le tube de Pitot",
+      "name": "Vitesse air"
+    },
+    "altitude": {
+      "description": "Altitude au-dessus du sol / du home",
+      "name": "Altitude (AGL)"
+    },
+    "armed_status": {
+      "description": "Affiche l'état ARMED ou DISARMED",
+      "name": "État d'armement"
+    },
+    "artificial_horizon": {
+      "description": "Indicateur de ligne d'horizon artificiel",
+      "name": "Horizon artificiel"
+    },
+    "baro_temp": {
+      "description": "Température du capteur baromètre",
+      "name": "Température baro"
+    },
+    "battery_cell_voltage": {
+      "description": "Tension moyenne par cellule",
+      "name": "Tension par cellule"
+    },
+    "battery_percent": {
+      "description": "Pourcentage de charge restante de la batterie",
+      "name": "Batterie en %"
+    },
+    "battery_voltage": {
+      "description": "Tension totale du pack batterie",
+      "name": "Tension batterie"
+    },
+    "coordinates": {
+      "description": "Latitude et longitude sur deux lignes",
+      "name": "Coordonnées"
+    },
+    "craft_name": {
+      "description": "Nom de l'appareil défini par l'utilisateur",
+      "name": "Nom de l'appareil"
+    },
+    "crosshairs": {
+      "description": "Indicateur d'appareil au centre de l'écran",
+      "name": "Réticule"
+    },
+    "current_draw": {
+      "description": "Courant instantané consommé en ampères",
+      "name": "Courant consommé"
+    },
+    "distance": {
+      "description": "Distance au point home",
+      "name": "Distance du home"
+    },
+    "efficiency": {
+      "description": "Indicateur de rendement en mAh par km",
+      "name": "Rendement"
+    },
+    "esc_rpm": {
+      "description": "Tours/min du moteur d'après la télémétrie ESC",
+      "name": "RPM ESC"
+    },
+    "esc_temp": {
+      "description": "Température du contrôleur de vitesse électronique",
+      "name": "Température ESC"
+    },
+    "flight_time": {
+      "description": "Temps écoulé depuis l'armement",
+      "name": "Temps de vol"
+    },
+    "flymode": {
+      "description": "Nom du mode de vol actuel (ANGLE, HORIZON, etc.)",
+      "name": "Mode de vol"
+    },
+    "g_force": {
+      "description": "Charge actuelle en force G",
+      "name": "Force G"
+    },
+    "gps_hdop": {
+      "description": "Dilution horizontale de la précision",
+      "name": "HDOP GPS"
+    },
+    "gps_sats": {
+      "description": "Nombre de satellites GPS en vue",
+      "name": "Satellites GPS"
+    },
+    "heading": {
+      "description": "Cap du compas en degrés",
+      "name": "Cap"
+    },
+    "heading_graph": {
+      "description": "Bande graphique de cap du compas",
+      "name": "Bande de cap"
+    },
+    "home_direction": {
+      "description": "Flèche pointant vers le home",
+      "name": "Direction du home"
+    },
+    "horizon_sidebars": {
+      "description": "Repères latéraux de l'horizon artificiel",
+      "name": "Barres latérales d'horizon"
+    },
+    "imu_temp": {
+      "description": "Température du capteur IMU/gyro",
+      "name": "Température IMU"
+    },
+    "latitude": {
+      "description": "Coordonnée de latitude actuelle",
+      "name": "Latitude"
+    },
+    "longitude": {
+      "description": "Coordonnée de longitude actuelle",
+      "name": "Longitude"
+    },
+    "mah_drawn": {
+      "description": "Total des milliampères-heures consommés",
+      "name": "mAh consommés"
+    },
+    "max_speed": {
+      "description": "Vitesse maximale atteinte en vol",
+      "name": "Vitesse max"
+    },
+    "messages": {
+      "description": "Messages d'état et notifications du FC",
+      "name": "Messages"
+    },
+    "msl_altitude": {
+      "description": "Altitude au-dessus du niveau moyen de la mer",
+      "name": "Altitude MSL"
+    },
+    "on_time": {
+      "description": "Temps écoulé depuis la mise sous tension",
+      "name": "Temps sous tension"
+    },
+    "pitch": {
+      "description": "Angle de tangage de l'appareil en degrés",
+      "name": "Angle de tangage"
+    },
+    "power_watts": {
+      "description": "Consommation de puissance instantanée",
+      "name": "Puissance (Watts)"
+    },
+    "remaining_flight_time": {
+      "description": "Temps de vol restant estimé",
+      "name": "Temps restant"
+    },
+    "roll": {
+      "description": "Angle de roulis/inclinaison de l'appareil en degrés",
+      "name": "Angle de roulis"
+    },
+    "rssi": {
+      "description": "Indicateur de force du signal reçu (%)",
+      "name": "RSSI"
+    },
+    "rssi_dbm": {
+      "description": "Force du signal en dBm (ELRS, Crossfire)",
+      "name": "RSSI (dBm)"
+    },
+    "rtc_time": {
+      "description": "Horloge temps réel (heure actuelle)",
+      "name": "Heure RTC"
+    },
+    "speed": {
+      "description": "Vitesse sol",
+      "name": "Vitesse sol"
+    },
+    "throttle": {
+      "description": "Pourcentage actuel de position des gaz",
+      "name": "Gaz"
+    },
+    "throttle_gauge": {
+      "description": "Jauge visuelle des gaz",
+      "name": "Jauge des gaz"
+    },
+    "vario": {
+      "description": "Indicateur de vitesse verticale (montée/descente)",
+      "name": "Variomètre"
+    },
+    "vtx_channel": {
+      "description": "Bande/canal/puissance de l'émetteur vidéo",
+      "name": "Canal VTX"
+    },
+    "warnings": {
+      "description": "Alertes système (batterie faible, GPS perdu, etc.)",
+      "name": "Alertes"
+    },
+    "wind_horizontal": {
+      "description": "Vitesse et direction du vent horizontal",
+      "name": "Vent (horizontal)"
+    },
+    "wind_vertical": {
+      "description": "Composante verticale du vent",
+      "name": "Vent (vertical)"
+    }
+  },
+  "radioPreflight": {
+    "firmwareFail": "ArduPilot {{major}}.{{minor}} est trop ancien pour le pilotage aux manches via MAVLink : mettez à jour le contrôleur de vol en 4.6 ou plus récent. La télémétrie fonctionne toujours.",
+    "firmwarePass": "ArduPilot {{major}}.{{minor}} prend en charge le pilotage aux manches via une radio MAVLink.",
+    "firmwareUnknown": "Impossible de déterminer la version du firmware pour l'instant.",
+    "firmwareVersion": "Le firmware prend en charge le RC via la radio",
+    "rcOverMavlink": "Pilotage aux manches via la liaison radio",
+    "rcOverMavlinkFail": "Le véhicule est réglé pour ignorer le RC reçu par la liaison radio, vos manches ne feraient donc rien (failsafe radio). Le correctif conserve vos protocoles de récepteur existants activés.",
+    "rcOverMavlinkPass": "Le véhicule accepte le RC transmis par la radio MAVLink.",
+    "rssiSource": "Lecture de la force du signal de la liaison",
+    "rssiSourceFail": "La force du signal n'est pas prise depuis la liaison radio, le RSSI sera donc vide ou erroné.",
+    "rssiSourcePass": "Le véhicule rapporte la force du signal radio depuis la liaison elle-même.",
+    "waitingParams": "En attente de la fin du chargement des paramètres."
+  },
+  "rcSourceArbiter": {
+    "joystickOwns": "Le contrôle par joystick détient la liaison RC",
+    "slidersOwn": "Les curseurs RC virtuels détiennent la liaison RC",
+    "trainerOwnsSticks": "Session Trainer active : le Trainer détient les manches"
+  },
+  "receiverConstants": {
+    "hint": {
+      "CRSF": "Liaison numérique à faible latence. Utilisée par les récepteurs TBS Crossfire et ExpressLRS.",
+      "FPORT": "FrSky F.Port combine SBUS et télémétrie sur un seul fil.",
+      "GHST": "Protocole à latence ultra-faible ImmersionRC Ghost.",
+      "IBUS": "Protocole numérique FlySky. À connecter à un pad RX d'UART libre.",
+      "MSP": "Pour le contrôle GCS/SITL uniquement. Ne pas utiliser avec un récepteur physique.",
+      "SBUS": "Protocole série inversé. Courant sur les récepteurs FrSky et RadioLink. Certaines cartes nécessitent un inverseur matériel.",
+      "SBUS_SHORT": "Protocole série inversé. Courant sur les récepteurs FrSky et RadioLink.",
+      "SPEK2048": "Récepteur satellite Spektrum. Appairez-le d'abord à l'émetteur, puis connectez-le à l'UART.",
+      "SPEK2048_SHORT": "Récepteur satellite Spektrum. Appairez-le d'abord à l'émetteur.",
+      "SRXL2": "Protocole série bidirectionnel Spektrum SRXL2."
+    },
+    "receiverType": {
+      "NONE": "Aucun",
+      "SERIAL": "Série"
+    }
+  },
+  "rssiState": {
+    "noLink": "Pas de liaison de télémétrie",
+    "off": "Le rapport RSSI est désactivé sur le véhicule (RSSI_TYPE = 0)",
+    "unconfigured": "Le récepteur est connecté mais ne rapporte aucune force de signal. RSSI_TYPE doit correspondre au récepteur (3 pour CRSF/ELRS)."
+  },
+  "rubyOsd": {
+    "category": {
+      "Flight": "Vol",
+      "GPS": "GPS",
+      "Grid": "Grille",
+      "Instruments": "Instruments",
+      "Link": "Liaison",
+      "Navigation": "Navigation",
+      "Power": "Puissance",
+      "System": "Système",
+      "Video": "Vidéo"
+    },
+    "element": {
+      "ahi_heading": "Cap AHI",
+      "air_speed": "Vitesse air",
+      "alt_graph": "Graphique d'altitude",
+      "altitude": "Altitude",
+      "battery": "Batterie",
+      "battery_cells": "Cellules de batterie",
+      "cpu_info": "Infos CPU",
+      "distance": "Distance",
+      "efficiency": "Rendement",
+      "fc_temperature": "Température du FC",
+      "flight_mode": "Mode de vol",
+      "flight_mode_change": "Changement de mode de vol",
+      "gps_info": "Infos GPS",
+      "gps_position": "Position GPS",
+      "grid_crosshair": "Réticule",
+      "grid_diagonal": "Grille diagonale",
+      "grid_squares": "Grille carrée",
+      "grid_thirds": "Règle des tiers",
+      "ground_speed": "Vitesse sol",
+      "heading": "Cap",
+      "home": "Home",
+      "horizon": "Horizon",
+      "instruments": "Instruments",
+      "link_quality_bars": "Barres de qualité de liaison",
+      "link_quality_numbers": "Valeurs de qualité de liaison",
+      "pitch": "Tangage",
+      "radio_interfaces": "Interfaces radio",
+      "radio_links": "Liaisons radio",
+      "rc_rssi": "RSSI RC",
+      "signal_bars": "Barres de signal",
+      "speed_alt": "Vitesse et altitude",
+      "speed_to_sides": "Vitesse sur les côtés",
+      "throttle": "Gaz",
+      "time": "Heure",
+      "time_lower": "Heure (bas)",
+      "total_distance": "Distance totale",
+      "tx_power": "Puissance TX",
+      "vehicle_radio_links": "Liaisons radio du véhicule",
+      "vertical_speed": "Vitesse verticale",
+      "video_bitrate_history": "Historique du débit vidéo",
+      "video_mbps": "Mbps vidéo",
+      "video_mode": "Mode vidéo",
+      "wind": "Vent"
+    }
+  },
+  "stickAssign": {
+    "air": {
+      "pitch": "Tangage",
+      "roll": "Roulis",
+      "throttle": "Gaz",
+      "yaw": "Lacet"
+    },
+    "ground": {
+      "pitch": "Tangage (inutilisé)",
+      "roll": "Direction",
+      "throttle": "Gaz",
+      "yaw": "Lacet (inutilisé)"
+    }
+  }
+}

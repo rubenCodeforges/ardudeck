@@ -1,0 +1,209 @@
+{
+  "legacyConfigView": {
+    "badge": "CLI heredado",
+    "configError": "Error de configuración",
+    "howItWorks": "<b>Cómo funciona:</b> Los cambios se envían de inmediato como comandos CLI. Mira el terminal CLI para ver los comandos enviados. Cuando termines, haz clic en \"Guardar en EEPROM\" para que los cambios persistan (la placa se reiniciará).",
+    "loading": "Cargando la configuración desde el CLI...",
+    "notConnected": "Conéctate a una placa heredada para configurarla",
+    "reboot": {
+      "done": "Guardado completo",
+      "error": "Falló el guardado",
+      "rebooting": "Reiniciando la placa",
+      "reconnecting": "Reconectando",
+      "saving": "Guardando la configuración"
+    },
+    "runningDump": "Ejecutando el comando dump",
+    "saveAndReboot": "Guardar y reiniciar",
+    "saveConfirmBody": "Esto guardará todos los cambios en el controlador de vuelo y <b>reiniciará la placa</b>. Tendrás que volver a conectar cuando termine el reinicio.",
+    "saveConfirmTitle": "¿Guardar en EEPROM?",
+    "saveToEeprom": "Guardar en EEPROM",
+    "subtitle": "Configuración mediante comandos CLI (placa F3)",
+    "tabs": {
+      "mixer": "Mixer",
+      "modes": "Modos",
+      "pid": "PID",
+      "rates": "Rates",
+      "servo": "Servo"
+    },
+    "unsavedChanges": "Cambios sin guardar"
+  },
+  "legacyMixerTab": {
+    "addMotor": "Añadir motor ({{count}}/{{max}})",
+    "addServoRule": "Añadir regla de servo ({{count}}/{{max}})",
+    "description": "Define cómo responden los motores y servos a las salidas del controlador de vuelo. Los valores van de -1,0 a 1,0. Los cambios se envían de inmediato.",
+    "inputSource": "Fuente de entrada",
+    "mixStrength": "Intensidad de mezcla:",
+    "motorMixerTab": "Mixer de motores ({{count}})",
+    "motorN": "Motor {{index}}",
+    "noMotorRules": "No se encontraron reglas del mixer de motores.",
+    "noMotorRulesHint": "Es normal en aeronaves de ala fija.",
+    "noServoRules": "No se encontraron reglas del mixer de servos.",
+    "noServoRulesHint": "Añade reglas para controlar servos desde las salidas del controlador de vuelo.",
+    "outputChannel": "Canal de salida",
+    "pitch": "Pitch",
+    "rateLabel": "Rate:",
+    "ratePercent": "Rate (%)",
+    "removeMotor": "Quitar mixer de motor",
+    "removeServoRule": "Quitar regla del mixer de servo",
+    "roll": "Roll",
+    "ruleN": "Regla n.º {{index}}",
+    "servoMixerTab": "Mixer de servos ({{count}})",
+    "servoN": "Servo {{index}}",
+    "sourceN": "Fuente {{index}}",
+    "sources": {
+      "rcAux1": "RC AUX 1",
+      "rcAux2": "RC AUX 2",
+      "rcAux3": "RC AUX 3",
+      "rcAux4": "RC AUX 4",
+      "rcPitch": "RC Pitch",
+      "rcRoll": "RC Roll",
+      "rcThrottle": "RC Throttle",
+      "rcYaw": "RC Yaw",
+      "stabPitch": "Pitch estabilizado",
+      "stabRoll": "Roll estabilizado",
+      "stabThrottle": "Throttle estabilizado",
+      "stabYaw": "Yaw estabilizado"
+    },
+    "speed": "Velocidad",
+    "targetServo": "Servo destino",
+    "throttle": "Throttle",
+    "title": "Configuración del mixer",
+    "yaw": "Yaw"
+  },
+  "legacyModesTab": {
+    "activationRange": "Rango de activación",
+    "activeModes": "Modos activos ({{count}})",
+    "clickToEnable": "#{{index}} - Haz clic para activar",
+    "description": "Define qué posiciones del interruptor AUX activan cada modo de vuelo. Arrastra los controles del rango o introduce los valores directamente. Pon ambos a 900 para desactivar.",
+    "disableMode": "Desactivar modo",
+    "disabledModes": "Desactivados ({{count}})",
+    "mode": "Modo",
+    "modeDescriptions": {
+      "m0": "Activar motores",
+      "m1": "Modo autonivelado",
+      "m10": "Volver a casa",
+      "m11": "Mantener posición GPS",
+      "m12": "Passthrough directo",
+      "m13": "Encontrar mi quad",
+      "m19": "Alternar OSD",
+      "m2": "Híbrido autonivelado + acro",
+      "m20": "Activar telemetría",
+      "m26": "Registrar datos de vuelo",
+      "m27": "Failsafe de emergencia",
+      "m28": "Misión de waypoints",
+      "m3": "Mantener altitud",
+      "m35": "Control de flaperones",
+      "m36": "Giros coordinados",
+      "m38": "Autotrim de servos",
+      "m39": "Control de cámara 1",
+      "m40": "Control de cámara 2",
+      "m41": "Control de cámara 3",
+      "m45": "Control de crucero",
+      "m46": "Frenado de multirrotor",
+      "m5": "Mantener rumbo de la brújula",
+      "m6": "Modo headless",
+      "m7": "Ajustar referencia headfree"
+    },
+    "modeN": "Modo {{id}}",
+    "noRules": "No se encontraron reglas de modos aux.",
+    "switchChannel": "Canal del interruptor",
+    "title": "Configuración de modos de vuelo",
+    "unknownMode": "Modo desconocido"
+  },
+  "legacyPidTab": {
+    "axis": {
+      "pitch": "pitch",
+      "roll": "roll",
+      "yaw": "yaw"
+    },
+    "dHint": "Amortigua los sobreimpulsos",
+    "dLabel": "D - Derivativo",
+    "ffHint": "Anticipa el movimiento de los sticks",
+    "ffLabel": "FF - Feed Forward",
+    "iHint": "Corrige la deriva con el tiempo",
+    "iLabel": "I - Integral",
+    "infoFixedWing": "<b>Modo CLI heredado (ala fija):</b> Los cambios se envían de inmediato mediante comandos CLI. Haz clic en \"Guardar en EEPROM\" al terminar para que los cambios persistan.",
+    "infoMultirotor": "<b>Modo CLI heredado (multirrotor):</b> Los cambios se envían de inmediato mediante comandos CLI. Haz clic en \"Guardar en EEPROM\" al terminar para que los cambios persistan.",
+    "levelDHint": "Reduce la oscilación",
+    "levelDLabel": "D - Amortiguación",
+    "levelIHint": "Mantiene el nivel con el tiempo",
+    "levelPHint": "Con qué fuerza se autonivela",
+    "levelPLabel": "P - Fuerza",
+    "levelTitle": "Nivel (modo Angle)",
+    "noData": "No se cargaron datos PID. Ejecuta primero el comando dump.",
+    "pHint": "Respuesta a la entrada de los sticks",
+    "pLabel": "P - Proporcional",
+    "presets": {
+      "beginner": {
+        "description": "Suave y permisivo, ideal para aprender",
+        "name": "Principiante"
+      },
+      "cinematic": {
+        "description": "Ultrasuave para vídeo",
+        "name": "Cinemático"
+      },
+      "freestyle": {
+        "description": "Receptivo y suave para acrobacias",
+        "name": "Freestyle"
+      },
+      "racing": {
+        "description": "Ágil y preciso para velocidad",
+        "name": "Racing"
+      }
+    },
+    "profileNamePlaceholder": "Nombre del perfil...",
+    "quickPresets": "Preajustes rápidos",
+    "saveAsProfile": "+ Guardar actual como perfil",
+    "saveDialogTitle": "Guardar PID actuales como perfil",
+    "yourProfiles": "Tus perfiles"
+  },
+  "legacyRatesTab": {
+    "expoHint": "Sensibilidad del centro del stick",
+    "globalSettings": "Ajustes globales",
+    "info": "<b>Modo CLI heredado:</b> Los cambios se envían de inmediato mediante comandos CLI. Haz clic en \"Guardar en EEPROM\" al terminar para que los cambios persistan.",
+    "maxRate": "Máx.: <v>{{rate}}°/s</v>",
+    "noData": "No se cargaron datos de rates. Ejecuta primero el comando dump.",
+    "presets": {
+      "beginner": {
+        "description": "Lento y predecible, ideal para aprender"
+      },
+      "cinematic": {
+        "description": "Ultrasuave para grabar"
+      },
+      "freestyle": {
+        "description": "Equilibrado para acrobacias y fluidez"
+      },
+      "racing": {
+        "description": "Rápido y receptivo para velocidad"
+      }
+    },
+    "rateHint": "Velocidad máxima de rotación",
+    "rcRate": "RC Rate",
+    "rcRateHint": "Multiplicador general de sensibilidad de los sticks",
+    "responseCurve": "Curva de respuesta",
+    "saveDialogTitle": "Guardar rates actuales como perfil",
+    "stick": "Stick",
+    "throttleExpo": "Throttle Expo",
+    "throttleExpoHint": "Curva del acelerador",
+    "throttleMid": "Throttle Mid",
+    "throttleMidHint": "Punto de hover",
+    "tpaBreakpoint": "Punto de corte TPA",
+    "tpaBreakpointHint": "Nivel de acelerador donde empieza el TPA",
+    "tpaDescription": "Reduce la fuerza del PID con el acelerador alto para evitar oscilaciones en vuelo rápido.",
+    "tpaRate": "Rate TPA",
+    "tpaRateHint": "Cuánto reducir los PID a pleno acelerador",
+    "tpaTitle": "Atenuación PID por acelerador"
+  },
+  "legacyServoTab": {
+    "description": "Configura las posiciones mín./máx./centro y el rate de cada servo. Rango: 750-2250μs para placas F3 heredadas. Los cambios se envían de inmediato.",
+    "fullRange": "Rango completo",
+    "maximum": "Máximo",
+    "minimum": "Mínimo",
+    "noConfigs": "No se encontraron configuraciones de servo.",
+    "noConfigsHint": "Ejecuta el comando dump para cargar la configuración.",
+    "resetDefault": "Restablecer valores por defecto",
+    "safeRange": "Rango seguro",
+    "title": "Configuración de extremos de servo",
+    "travel": "Recorrido: {{range}}μs"
+  }
+}

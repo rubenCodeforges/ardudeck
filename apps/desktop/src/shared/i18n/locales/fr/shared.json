@@ -1,0 +1,767 @@
+{
+  "boardUartLabels": {
+    "sbusUart1Inverter": "Le pad SBUS sur UART1 a un inverseur intégré",
+    "sbusUart2": "Pad SBUS sur UART2",
+    "sbusUart2Inverter": "Le pad SBUS sur UART2 a un inverseur intégré"
+  },
+  "calibrationOrientation": {
+    "leftSide": "Couchez le véhicule sur son côté GAUCHE",
+    "level": "Posez le véhicule à plat, dans le bon sens",
+    "noseDown": "Placez le véhicule NEZ VERS LE BAS",
+    "noseUp": "Placez le véhicule NEZ VERS LE HAUT",
+    "pitchDown": "Piquez de {{deg}}°",
+    "pitchUp": "Cabrez de {{deg}}°",
+    "rightSide": "Couchez le véhicule sur son côté DROIT",
+    "rollLeft": "Inclinez de {{deg}}° à gauche",
+    "rollRight": "Inclinez de {{deg}}° à droite",
+    "upsideDown": "Retournez le véhicule SUR LE DOS"
+  },
+  "calibrationQuality": {
+    "accelDriftingAdvice": "Dans les limites d'armement mais en dérive. Réétalonnez sur une surface plane en maintenant chaque position stable.",
+    "accelFactoryDefaults": "Valeurs d'usine : cet accéléromètre n'a jamais été étalonné.",
+    "accelFactoryDefaultsAdvice": "Lancez l'étalonnage de l'accéléromètre en six points avant de voler.",
+    "accelGood": "Bon.",
+    "accelGoodOffsets": "Bon : offsets {{offsets}} m/s/s.",
+    "accelNotRead": "Valeurs d'étalonnage non lues depuis le véhicule.",
+    "accelOffsetsHigh": "Accepté mais élevé : offsets {{offsets}} m/s/s.",
+    "accelOffsetsPastLimit": "Offsets {{offsets}} m/s/s, au-delà de la limite d'armement de {{limit}}.",
+    "accelOffsetsPastLimitAdvice": "Le véhicule refusera de s'armer. Réétalonnez sur une surface réellement plane.",
+    "accelScaleHigh": "Accepté mais élevé : échelle décalée de {{percent}} %.",
+    "accelScalePastLimit": "Échelle décalée de {{percent}} %, au-delà de la limite d'armement.",
+    "accelScalePastLimitAdvice": "Le véhicule refusera de s'armer. Réétalonnez en maintenant chaque position immobile.",
+    "fitnessGood": "Bon : {{value}}.",
+    "fitnessRejected": "Rejeté : {{value}}, au-delà de la limite de {{limit}}.",
+    "fitnessRejectedAdvice": "Éloignez-vous du métal, des batteries et du câblage, puis étalonnez à nouveau.",
+    "fitnessValue": "fitness {{value}} mGauss",
+    "fitnessWeak": "Accepté mais faible : {{value}}.",
+    "fitnessWeakAdvice": "Le contrôleur de vol l'a accepté, mais une dérive du cap est probable. Réétalonnez loin du métal et du câblage de puissance, en faisant tourner le véhicule sur tous les axes, pour obtenir un fit inférieur à {{good}}.",
+    "noFitness": "Aucun fitness signalé par le contrôleur de vol.",
+    "notPersisted_one": "{{count}} valeur d'étalonnage n'a pas survécu au redémarrage.",
+    "notPersisted_other": "{{count}} valeurs d'étalonnage n'ont pas survécu au redémarrage.",
+    "nothingToVerify": "Rien à vérifier.",
+    "persisted": "Étalonnage confirmé sur le véhicule après redémarrage.",
+    "readBackConfirmed": "Étalonnage relu depuis le contrôleur de vol.",
+    "readBackFailed": "Impossible de relire l'étalonnage depuis le véhicule.",
+    "noCompassFitness": "Aucun fitness du compas signalé.",
+    "recorded": "Enregistré."
+  },
+  "calibrationTypes": {
+    "accel6point": {
+      "description": "Étalonnage complet en 6 positions pour une précision maximale.",
+      "name": "Accéléromètre (6 points)"
+    },
+    "accelLevel": {
+      "description": "Étalonnage rapide à plat en 1 position. Posez votre véhicule sur une surface plane.",
+      "name": "Accéléromètre (à plat)"
+    },
+    "accelQuick": {
+      "description": "Une position, véhicule à plat et immobile. Écrit les offsets qu'ArduPilot exige avant d'armer, sans retourner le véhicule.",
+      "name": "Accéléromètre (rapide)"
+    },
+    "compass": {
+      "description": "Faites pivoter votre véhicule dans toutes les directions pour étalonner le compas.",
+      "name": "Compas / Magnétomètre"
+    },
+    "gyro": {
+      "description": "Étalonnage rapide du gyro. Gardez votre véhicule complètement immobile.",
+      "name": "Gyroscope"
+    },
+    "opflow": {
+      "description": "Étalonne le capteur de flux optique. iNav uniquement.",
+      "name": "Flux optique"
+    },
+    "position": {
+      "inverted": "Sur le dos (dessus vers le bas)",
+      "leftSide": "Côté gauche vers le bas",
+      "level": "À plat (dessus vers le haut)",
+      "noseDown": "Nez vers le bas",
+      "noseUp": "Nez vers le haut",
+      "rightSide": "Côté droit vers le bas"
+    }
+  },
+  "cameraTypes": {
+    "srtHint": "ffmpeg, OBS, VLC (H264 uniquement)",
+    "webrtcHint": "S'ouvre dans n'importe quel navigateur, latence la plus faible"
+  },
+  "devLoadGuard": {
+    "alreadyInstalled": "{{slug}} est déjà installé. Supprimez-le d'abord.",
+    "noSlug": "Le manifeste n'a pas de slug",
+    "reserved": "{{slug}} contrôle une fonction intégrée et ne peut pas être chargé en mode développeur"
+  },
+  "dronebridgeTypes": {
+    "esp32Mode": {
+      "accessPoint": "Point d'accès",
+      "longRange": "Longue portée",
+      "station": "Station (client)"
+    }
+  },
+  "firmwareTypes": {
+    "customFile": "Fichier personnalisé"
+  },
+  "fleetLogMaintenance": {
+    "batteryDetail": "Tension minimale du pack en baisse d'environ {{drop}} V par rapport aux vols précédents. Le pack vieillit peut-être.",
+    "batteryTitle": "Chute de tension de la batterie en hausse",
+    "labelCompass": "compas",
+    "labelPower": "alimentation",
+    "labelVibration": "vibrations",
+    "recurringDetail": "{{bad}} des {{total}} derniers vols ont signalé : {{label}}. Enquêtez avant la prochaine mission.",
+    "recurringTitle": "Problème récurrent : {{label}}",
+    "vibrationDetail": "Le pic de vibrations récent est en moyenne de {{recent}} m/s2 contre {{prior}} auparavant. Vérifiez l'équilibrage des moteurs et hélices et l'isolation.",
+    "vibrationTitle": "Vibrations en hausse"
+  },
+  "flightModeMeta": {
+    "commit": "validation",
+    "gps": "GPS",
+    "group": {
+      "assisted": "Assisté",
+      "auto": "Autonome / Nav",
+      "manual": "Manuel / Acro",
+      "return": "Retour et atterrissage",
+      "tuning": "Tuning"
+    },
+    "inFlight": "en vol",
+    "mustBeArmed": "Le véhicule doit être armé",
+    "needsGps": "Nécessite un GPS / une position verrouillée",
+    "noGps": "pas de GPS requis"
+  },
+  "gisAreaImport": {
+    "invalidKml": "KML invalide : impossible d'analyser le XML",
+    "invalidKmlDetail": "KML invalide : impossible d'analyser le XML ({{detail}})"
+  },
+  "mapLayers": {
+    "bingHybrid": "Bing Hybride",
+    "bingSat": "Bing Sat",
+    "dark": "Sombre",
+    "dem": "MNT",
+    "googleHybrid": "Hybride",
+    "googleSat": "Google Sat",
+    "openaip": "OpenAIP",
+    "osm": "Plan",
+    "radar": "Radar",
+    "satellite": "Satellite",
+    "terrain": "Relief"
+  },
+  "mavlinkChannels": {
+    "rateGroup": {
+      "attitude": "Fluidité de l'horizon",
+      "extra3": "Capteurs supplémentaires",
+      "position": "Carte / position",
+      "raw": "IMU brute (tuning uniquement)",
+      "rc": "Entrées radio",
+      "status": "Batterie et état",
+      "vfr": "Vitesse, altitude, gaz"
+    }
+  },
+  "missionTypes": {
+    "command": {
+      "CONDITION_CHANGE_ALT": {
+        "description": "Monter/descendre jusqu'à l'altitude puis continuer",
+        "name": "Condition alt."
+      },
+      "CONDITION_DELAY": {
+        "description": "Attendre quelques secondes avant la commande suivante",
+        "name": "Condition délai"
+      },
+      "CONDITION_DISTANCE": {
+        "description": "Attendre d'être à portée du prochain waypoint",
+        "name": "Condition dist."
+      },
+      "CONDITION_YAW": {
+        "description": "Atteindre un cap cible avant la commande suivante",
+        "name": "Condition cap"
+      },
+      "DO_AUTOTUNE_ENABLE": {
+        "description": "Activer/désactiver l'autotune",
+        "name": "Autotune"
+      },
+      "DO_AUX_FUNCTION": {
+        "description": "Déclencher un interrupteur de fonction auxiliaire",
+        "name": "Fonction aux."
+      },
+      "DO_CHANGE_ALTITUDE": {
+        "description": "Changer d'altitude à un taux donné",
+        "name": "Changer l'altitude"
+      },
+      "DO_CHANGE_SPEED": {
+        "description": "Changer la vitesse cible",
+        "name": "Changer la vitesse"
+      },
+      "DO_CONTROL_VIDEO": {
+        "description": "Contrôler le système vidéo embarqué",
+        "name": "Contrôle vidéo"
+      },
+      "DO_DIGICAM_CONFIGURE": {
+        "description": "Configurer les réglages de l'appareil photo numérique",
+        "name": "Config Digicam"
+      },
+      "DO_DIGICAM_CONTROL": {
+        "description": "Déclencher l'obturateur de l'appareil photo",
+        "name": "Contrôle Digicam"
+      },
+      "DO_ENGINE_CONTROL": {
+        "description": "Démarrer/arrêter le moteur",
+        "name": "Contrôle moteur"
+      },
+      "DO_FENCE_ENABLE": {
+        "description": "Activer/désactiver le geofence",
+        "name": "Activer le fence"
+      },
+      "DO_FLIGHTTERMINATION": {
+        "description": "Terminer immédiatement le vol",
+        "name": "Terminaison de vol"
+      },
+      "DO_GIMBAL_MANAGER_PITCHYAW": {
+        "description": "Régler les angles de tangage et de lacet de la nacelle",
+        "name": "Tangage/Lacet nacelle"
+      },
+      "DO_GO_AROUND": {
+        "description": "Interrompre l'atterrissage et remettre les gaz",
+        "name": "Remise de gaz"
+      },
+      "DO_GRIPPER": {
+        "description": "Ouvrir/fermer le gripper",
+        "name": "Gripper"
+      },
+      "DO_GUIDED_LIMITS": {
+        "description": "Définir les limites du mode Guided",
+        "name": "Limites Guided"
+      },
+      "DO_INVERTED_FLIGHT": {
+        "description": "Activer/désactiver le vol dos",
+        "name": "Vol dos"
+      },
+      "DO_JUMP": {
+        "description": "Sauter au waypoint N et répéter X fois",
+        "name": "Saut"
+      },
+      "DO_JUMP_TAG": {
+        "description": "Sauter à l'élément de mission repéré par un tag",
+        "name": "Saut vers tag"
+      },
+      "DO_LAND_START": {
+        "description": "Repère du début de la séquence d'atterrissage",
+        "name": "Début d'atterrissage"
+      },
+      "DO_MOTOR_TEST": {
+        "description": "Tester un moteur individuel",
+        "name": "Test moteur"
+      },
+      "DO_MOUNT_CONFIGURE": {
+        "description": "Configurer le mode du support de nacelle",
+        "name": "Config support"
+      },
+      "DO_MOUNT_CONTROL": {
+        "description": "Contrôler les angles de la nacelle",
+        "name": "Contrôle support"
+      },
+      "DO_PARACHUTE": {
+        "description": "Déployer le parachute ou activer le déploiement automatique",
+        "name": "Parachute"
+      },
+      "DO_PAUSE_CONTINUE": {
+        "description": "Mettre en pause ou reprendre la mission en cours",
+        "name": "Pause/Reprise"
+      },
+      "DO_RALLY_LAND": {
+        "description": "Voler jusqu'au point de ralliement et atterrir",
+        "name": "Atterrissage rally"
+      },
+      "DO_REPEAT_RELAY": {
+        "description": "Basculer le relais on/off N fois",
+        "name": "Répéter relais"
+      },
+      "DO_REPEAT_SERVO": {
+        "description": "Faire alterner le servo entre des valeurs PWM",
+        "name": "Répéter servo"
+      },
+      "DO_REPOSITION": {
+        "description": "Repositionner le véhicule à un emplacement",
+        "name": "Repositionner"
+      },
+      "DO_SEND_SCRIPT_MESSAGE": {
+        "description": "Envoyer un message au script Lua embarqué",
+        "name": "Message script"
+      },
+      "DO_SET_ACTUATOR": {
+        "description": "Régler une sortie d'actionneur (PX4)",
+        "name": "Régler l'actionneur"
+      },
+      "DO_SET_CAM_TRIGG_DIST": {
+        "description": "Déclencher la caméra à intervalles de distance",
+        "name": "Déclenchement caméra"
+      },
+      "DO_SET_CAM_TRIGG_INTERVAL": {
+        "description": "Déclencher la caméra à intervalles de temps",
+        "name": "Intervalle caméra"
+      },
+      "DO_SET_HOME": {
+        "description": "Définir une nouvelle position home",
+        "name": "Définir home"
+      },
+      "DO_SET_MISSION_CURRENT": {
+        "description": "Sauter à un élément de mission sans le compter",
+        "name": "Définir l'élément de mission"
+      },
+      "DO_SET_MODE": {
+        "description": "Définir le mode de vol",
+        "name": "Définir le mode"
+      },
+      "DO_SET_PARAMETER": {
+        "description": "Régler un paramètre du contrôleur de vol",
+        "name": "Régler un paramètre"
+      },
+      "DO_SET_RELAY": {
+        "description": "Régler le relais on/off",
+        "name": "Régler le relais"
+      },
+      "DO_SET_RESUME_REPEAT_DIST": {
+        "description": "Définir la distance de reprise de mission après un RTL",
+        "name": "Dist. de reprise"
+      },
+      "DO_SET_REVERSE": {
+        "description": "Définir le sens de déplacement avant/arrière",
+        "name": "Marche arrière"
+      },
+      "DO_SET_ROI": {
+        "description": "Définir une région d'intérêt pour la caméra",
+        "name": "Définir ROI"
+      },
+      "DO_SET_ROI_LOCATION": {
+        "description": "Pointer la caméra vers un emplacement",
+        "name": "Position ROI"
+      },
+      "DO_SET_ROI_NONE": {
+        "description": "Annuler le ROI, arrêter le suivi",
+        "name": "ROI aucun"
+      },
+      "DO_SET_ROI_SYSID": {
+        "description": "Suivre un autre véhicule par son ID système",
+        "name": "ROI système"
+      },
+      "DO_SET_ROI_WPNEXT_OFFSET": {
+        "description": "Pointer la caméra vers le prochain waypoint",
+        "name": "ROI WP suivant"
+      },
+      "DO_SET_SERVO": {
+        "description": "Régler le servo sur une valeur PWM",
+        "name": "Régler le servo"
+      },
+      "DO_SPRAYER": {
+        "description": "Activer/désactiver le pulvérisateur agricole",
+        "name": "Pulvérisateur"
+      },
+      "DO_VTOL_TRANSITION": {
+        "description": "Transition entre VTOL et aile fixe",
+        "name": "Transition VTOL"
+      },
+      "DO_WINCH": {
+        "description": "Contrôler le moteur du treuil",
+        "name": "Treuil"
+      },
+      "IMAGE_START_CAPTURE": {
+        "description": "Commencer à prendre des photos à intervalle",
+        "name": "Début de capture"
+      },
+      "IMAGE_STOP_CAPTURE": {
+        "description": "Arrêter de prendre des photos",
+        "name": "Fin de capture"
+      },
+      "JUMP_TAG": {
+        "description": "Marquer un tag pour DO_JUMP_TAG",
+        "name": "Tag de saut"
+      },
+      "NAV_ALTITUDE_WAIT": {
+        "description": "Attendre à l'altitude jusqu'à atteindre le taux de montée",
+        "name": "Attente d'altitude"
+      },
+      "NAV_ARC_WAYPOINT": {
+        "description": "Suivre un arc de courbe à travers le waypoint",
+        "name": "Waypoint en arc"
+      },
+      "NAV_ATTITUDE_TIME": {
+        "description": "Maintenir l'assiette pendant une durée donnée",
+        "name": "Assiette temporisée"
+      },
+      "NAV_CONTINUE_AND_CHANGE_ALT": {
+        "description": "Continuer vers le WP suivant en changeant d'altitude",
+        "name": "Continuer/Changer alt."
+      },
+      "NAV_DELAY": {
+        "description": "Attendre une durée donnée ou jusqu'à une heure du jour",
+        "name": "Délai"
+      },
+      "NAV_GUIDED_ENABLE": {
+        "description": "Activer/désactiver le mode Guided depuis l'ordinateur de bord",
+        "name": "Activer Guided"
+      },
+      "NAV_LAND": {
+        "description": "Atterrir à l'emplacement indiqué",
+        "name": "Atterrissage"
+      },
+      "NAV_LAND_LOCAL": {
+        "name": "Atterrissage local"
+      },
+      "NAV_LOITER_TIME": {
+        "description": "Loiter à l'emplacement pendant X secondes",
+        "name": "Loiter temporisé"
+      },
+      "NAV_LOITER_TO_ALT": {
+        "description": "Loiter et monter/descendre jusqu'à l'altitude",
+        "name": "Loiter vers alt."
+      },
+      "NAV_LOITER_TURNS": {
+        "description": "Loiter N tours autour de l'emplacement",
+        "name": "Loiter en tours"
+      },
+      "NAV_LOITER_UNLIM": {
+        "description": "Loiter à l'emplacement indéfiniment",
+        "name": "Loiter illimité"
+      },
+      "NAV_PAYLOAD_PLACE": {
+        "description": "Descendre et larguer la charge utile",
+        "name": "Dépose de charge"
+      },
+      "NAV_RETURN_TO_LAUNCH": {
+        "description": "Retour à l'emplacement de décollage/home",
+        "name": "RTL"
+      },
+      "NAV_SCRIPT_TIME": {
+        "description": "Exécuter un script Lua pendant une durée donnée",
+        "name": "Script temporisé"
+      },
+      "NAV_SPLINE_WAYPOINT": {
+        "description": "Waypoint spline pour des courbes fluides",
+        "name": "WP spline"
+      },
+      "NAV_TAKEOFF": {
+        "description": "Décoller jusqu'à l'altitude indiquée",
+        "name": "Décollage"
+      },
+      "NAV_TAKEOFF_LOCAL": {
+        "name": "Décollage local"
+      },
+      "NAV_VTOL_LAND": {
+        "description": "Atterrissage VTOL à l'emplacement",
+        "name": "Atterrissage VTOL"
+      },
+      "NAV_VTOL_TAKEOFF": {
+        "description": "Décollage VTOL jusqu'à l'altitude",
+        "name": "Décollage VTOL"
+      },
+      "NAV_WAYPOINT": {
+        "description": "Naviguer vers le waypoint avec un temps de loiter optionnel",
+        "name": "Waypoint"
+      },
+      "SET_CAMERA_FOCUS": {
+        "description": "Régler la mise au point de la caméra",
+        "name": "Mise au point caméra"
+      },
+      "SET_CAMERA_MODE": {
+        "description": "Régler le mode de fonctionnement de la caméra",
+        "name": "Mode caméra"
+      },
+      "SET_CAMERA_SOURCE": {
+        "description": "Régler la source vidéo de la caméra",
+        "name": "Source caméra"
+      },
+      "SET_CAMERA_ZOOM": {
+        "description": "Régler le niveau de zoom de la caméra",
+        "name": "Zoom caméra"
+      },
+      "SET_YAW_SPEED": {
+        "description": "Régler l'angle et la vitesse de lacet du rover",
+        "name": "Vitesse de lacet"
+      },
+      "VIDEO_START_CAPTURE": {
+        "description": "Commencer l'enregistrement vidéo",
+        "name": "Début vidéo"
+      },
+      "VIDEO_STOP_CAPTURE": {
+        "description": "Arrêter l'enregistrement vidéo",
+        "name": "Fin vidéo"
+      }
+    },
+    "unknownCommand": "CMD inconnue {{command}}"
+  },
+  "missionValidation": {
+    "altHigh": "{{count}} waypoint(s) au-dessus de {{altitude}} : vérifiez votre référence d'altitude.",
+    "altNonPositive": "{{count}} waypoint(s) à une altitude inférieure ou égale à {{altitude}}.",
+    "badJumps": "{{count}} commande(s) DO_JUMP ciblent un waypoint inexistant.",
+    "ceiling": "{{count}} éléments dépassent la limite de {{ceiling}} éléments du contrôleur de vol. Découpez en vols plus petits.",
+    "emptyGroup": "Le groupe \"{{name}}\" n'a aucun waypoint.",
+    "midMissionReturn_one": "{{count}} survey retourne à home avant la fin de la mission. Reliez-les pour enchaîner directement.",
+    "midMissionReturn_other": "{{count}} surveys retournent à home avant la fin de la mission. Reliez-les pour enchaîner directement.",
+    "noTakeoff": "Aucune commande de décollage : le véhicule volera vers le premier waypoint depuis son état actuel.",
+    "hazard": "Le tronçon {{from}} vers {{to}} traverse la zone dangereuse \"{{zone}}\"",
+    "hazardFromHome": "Le tronçon de home vers {{to}} traverse la zone dangereuse \"{{zone}}\""
+  },
+  "parameterGroups": {
+    "all": {
+      "description": "Tous les paramètres",
+      "name": "Tous"
+    },
+    "arming": {
+      "description": "Contrôles et conditions d'armement",
+      "name": "Armement"
+    },
+    "battery": {
+      "description": "Configuration du moniteur de batterie",
+      "name": "Batterie"
+    },
+    "compass": {
+      "description": "Réglages du compas et du magnétomètre",
+      "name": "Compas"
+    },
+    "failsafe": {
+      "description": "Actions et seuils de failsafe",
+      "name": "Failsafe"
+    },
+    "flight_modes": {
+      "description": "Configuration des modes de vol",
+      "name": "Modes de vol"
+    },
+    "gps": {
+      "description": "Configuration du GPS",
+      "name": "GPS"
+    },
+    "logging": {
+      "description": "Enregistrement des données et ordonnanceur",
+      "name": "Logs"
+    },
+    "motors": {
+      "description": "Configuration des moteurs et ESC",
+      "name": "Moteurs"
+    },
+    "navigation": {
+      "description": "Réglages des waypoints et de la navigation",
+      "name": "Navigation"
+    },
+    "rc": {
+      "description": "Réglages des entrées de la radiocommande",
+      "name": "Entrées RC"
+    },
+    "tuning": {
+      "description": "Réglage des PID et de l'assiette",
+      "name": "Tuning"
+    }
+  },
+  "prearmChecks": {
+    "category": {
+      "battery": "Batterie",
+      "gps": "GPS",
+      "mission": "Mission",
+      "motors": "Moteurs",
+      "rc": "RC",
+      "sensors": "Capteurs",
+      "system": "Système"
+    },
+    "hint": {
+      "apAccel": "Les accéléromètres doivent être étalonnés.",
+      "apAhrsInconsistent": "Les cœurs IMU ne sont pas d'accord, généralement à cause d'un étalonnage périmé. Réétalonnez les accéléromètres. En SITL, redémarrez avec \"Wipe EEPROM\".",
+      "apAhrsNotReady": "L'estimation d'assiette n'est pas prête. Gardez le véhicule immobile et patientez une minute, ou corrigez les erreurs de capteurs affichées ci-dessus.",
+      "apAirspeed": "Le capteur de vitesse air ne répond pas. Vérifiez son câblage et le tube de Pitot.",
+      "apBaro": "Le baromètre ne répond pas. Vérifiez le matériel du contrôleur de vol et redémarrez.",
+      "apBattery": "La batterie est faible ou mal signalée. Rechargez-la ou remplacez-la, et vérifiez le moniteur de batterie si la lecture semble erronée.",
+      "apBoardType": "Le type de carte configuré ne correspond pas à ce contrôleur de vol.",
+      "apCompassInconsistent": "Les lectures des compas divergent ou le champ magnétique semble anormal. Éloignez-vous du métal et des câbles de puissance, vérifiez l'orientation de chaque compas, puis réétalonnez.",
+      "apCompassUncalibrated": "Le compas n'a pas été étalonné, ou son étalonnage n'est plus adapté.",
+      "apCompassUnhealthy": "Un compas ne répond pas. Vérifiez son câblage et qu'il est bien détecté.",
+      "apEkfAttitude": "L'EKF ne parvient pas à converger. Gardez le véhicule immobile. En SITL, redémarrez avec \"Wipe EEPROM\" et attendez 60 à 90 s après le démarrage.",
+      "apFence": "Le fence a besoin d'une position, ou le véhicule est en dehors. Attendez un verrouillage GPS, ou placez le véhicule à l'intérieur du fence.",
+      "apFrameClass": "La disposition du châssis n'est pas définie pour ce véhicule. Réglez la classe et le type de châssis selon la disposition des moteurs.",
+      "apGeneric": "Aucune correction automatique n'est connue pour ce contrôle. Le message provient directement du contrôleur de vol ; la référence pre-arm explique chacun d'eux.",
+      "apGpsNotReady": "Le GPS n'a pas encore de fix exploitable, ou n'est pas détecté. Attendez à ciel ouvert ; si cela persiste, vérifiez la configuration du GPS.",
+      "apGyro": "Les gyros divergent ou ne sont pas étalonnés. Gardez le véhicule complètement immobile et redémarrez, ou lancez un étalonnage des gyros.",
+      "apLogging": "L'enregistrement n'est pas disponible : la carte SD est absente, pleine ou défaillante. Insérez ou remplacez la carte.",
+      "apMission": "La mission ne peut pas démarrer telle quelle. Vérifiez-la dans le planificateur de mission.",
+      "apNeed3dFix": "En attente d'un fix GPS 3D. Placez-vous à ciel ouvert et patientez.",
+      "apNeedAlt": "L'EKF a besoin d'une estimation d'altitude. Cela découle d'autres erreurs de capteurs, corrigez-les d'abord.",
+      "apNeedPosition": "L'EKF a besoin d'une position valide. Attendez un verrouillage GPS et 60 à 90 s après le démarrage pour qu'il converge.",
+      "apRadioFailsafe": "Le contrôleur de vol est en failsafe radio. Allumez l'émetteur et vérifiez qu'il est lié, et que sa plage de gaz reste au-dessus de la valeur du failsafe.",
+      "apRangefinder": "Le télémètre ne répond pas. Vérifiez son câblage. Si aucun n'est installé, son type doit être réglé sur aucun.",
+      "apRcUncalibrated": "Les canaux radio n'ont pas été étalonnés.",
+      "apSafetySwitch": "Appuyez sur le bouton de sécurité du véhicule et maintenez-le jusqu'à ce que son voyant reste fixe.",
+      "apThrottleHigh": "Les gaz ne sont pas au minimum. Baissez complètement le manche des gaz, et vérifiez son trim sur l'émetteur.",
+      "apWaitOrReboot": "Le contrôleur de vol vous demande d'attendre que les capteurs se stabilisent, ou de le redémarrer.",
+      "px4Accel": "L'accéléromètre n'est pas étalonné ou est incohérent.",
+      "px4Attitude": "L'estimation d'assiette n'est pas stable. Mettez le véhicule à plat, réduisez les vibrations et laissez l'estimateur se stabiliser.",
+      "px4Battery": "La batterie est faible ou défaillante. Rechargez-la ou remplacez-la, et vérifiez la configuration de la batterie si la lecture semble erronée.",
+      "px4Esc": "Un problème d'ESC ou de moteur a été détecté. Vérifiez le câblage des ESC, la télémétrie et les sorties moteurs.",
+      "px4Generic": "Aucune correction automatique n'est connue pour ce contrôle. Le message provient directement du contrôleur de vol ; la référence des contrôles pré-vol explique chacun d'eux.",
+      "px4Geofence": "Une condition de geofence empêche l'armement. Placez le véhicule à l'intérieur du fence, ou revoyez le fence.",
+      "px4GpsFix": "En attente d'un fix GPS. Placez-vous à ciel ouvert et patientez ; si cela persiste, vérifiez la configuration du GPS.",
+      "px4Gyro": "Le gyroscope n'est pas étalonné. Gardez le véhicule complètement immobile pendant l'étalonnage.",
+      "px4Home": "La position home n'est pas encore définie. Attendez une position valide pour que home puisse être enregistré.",
+      "px4KillSwitch": "Le kill switch est enclenché. Désenclenchez-le sur l'émetteur avant d'armer.",
+      "px4Mag": "Le magnétomètre n'est pas étalonné, ou ses lectures divergent. Éloignez-vous du métal et des câbles de puissance et réétalonnez.",
+      "px4PositionEstimate": "L'estimation de position n'est pas prête. Attendez un verrouillage GPS à ciel ouvert et que l'estimateur se stabilise.",
+      "px4Radio": "La radio n'est pas étalonnée ou son signal est perdu. Allumez l'émetteur, vérifiez qu'il est lié, et étalonnez-le.",
+      "px4Vibration": "Vibrations élevées ou saturation de l'accéléromètre. Améliorez la fixation et l'isolation du contrôleur de vol, et équilibrez les hélices."
+    },
+    "link": {
+      "ardupilotReference": "Référence pre-arm ArduPilot",
+      "batterySetup": "Configuration de la batterie",
+      "calibrateAccel": "Étalonner l'accéléromètre",
+      "calibrateCompass": "Étalonner le compas",
+      "calibrateGyro": "Étalonner le gyro",
+      "calibrateRadio": "Étalonner la radio",
+      "checkRcInputs": "Vérifier les entrées RC",
+      "compassSetup": "Configuration du compas",
+      "failsafeSettings": "Réglages failsafe",
+      "gpsSetup": "Configuration du GPS",
+      "loggingSetup": "Configuration des logs",
+      "openFence": "Ouvrir le fence",
+      "openMission": "Ouvrir la mission",
+      "openSitl": "Ouvrir SITL",
+      "px4Reference": "Référence des contrôles pré-vol PX4",
+      "sensorSetup": "Configuration des capteurs"
+    }
+  },
+  "rallyTypes": {
+    "landImmediately": "Atterrir immédiatement",
+    "landIntoWind": "Atterrir face au vent"
+  },
+  "safetyConfigChecks": {
+    "calibrationLost": {
+      "consequence": "Il a été écrit mais n'a pas survécu au redémarrage. L'aéronef vole avec ce qui s'y trouvait avant.",
+      "sensor": "capteur",
+      "title": "Le dernier étalonnage {{type}} n'est pas présent sur l'aéronef"
+    },
+    "compassWeak": {
+      "consequence": "Le maintien de position peut dériver ou tourner en rond. Réétalonner loin du métal et du câblage de puissance règle généralement le problème.",
+      "title": "L'étalonnage du compas est plus faible qu'il ne devrait"
+    },
+    "ekfFailsafeReportOnly": {
+      "consequence": "Le failsafe de navigation est réglé sur signalement seul. Si la position ou le cap se dégrade en vol, l'aéronef continuera d'essayer de voler dans le mode actuel.",
+      "consequenceWeakCompass": "Votre étalonnage du compas est déjà faible, et le failsafe de navigation est réglé sur signalement seul. Un aéronef désorienté continuera de voler au lieu d'atterrir.",
+      "recommend": "Atterrir quand la navigation échoue",
+      "title": "Si l'aéronef perd sa position, rien ne se passera"
+    },
+    "ekfThresholdDisabled": {
+      "consequence": "Rien ne vous empêchera d'armer avec une mauvaise estimation de cap ou de position, et le failsafe en vol ne pourra pas non plus se déclencher.",
+      "recommend": "Rétablir le seuil par défaut",
+      "title": "Le contrôle de qualité de navigation est désactivé"
+    },
+    "fenceRtlWithWeakCompass": {
+      "consequence": "Rentrer à home demande le même cap sur lequel votre étalonnage du compas est faible. Atterrir sur place, non.",
+      "recommend": "Atterrir au lieu de rentrer à home",
+      "title": "En cas de franchissement du fence, l'aéronef tentera de rentrer à home"
+    },
+    "px4BatteryWarningOnly": {
+      "consequence": "L'aéronef continuera de voler sur un pack vide jusqu'à tomber du ciel. Rien ne le fera atterrir pour vous.",
+      "recommend": "Retour quand critique, atterrissage quand vide",
+      "title": "Une batterie vide ne produira qu'un avertissement"
+    },
+    "px4FenceNoAction": {
+      "consequence": "Le fence est réglé sur aucune action, il ne retiendra donc pas l'aéronef, ne le fera pas rentrer ni atterrir quand il quitte la zone autorisée.",
+      "recommend": "Maintenir la position au fence",
+      "title": "Franchir le geofence ne fait rien"
+    },
+    "px4FenceRtlWithWeakCompass": {
+      "consequence": "Rentrer à home demande le même cap sur lequel votre étalonnage du compas est faible. Maintenir la position sur place, non.",
+      "recommend": "Maintenir la position au lieu de rentrer à home",
+      "title": "En cas de franchissement du fence, l'aéronef tentera de rentrer à home"
+    },
+    "px4GcsLossDisabled": {
+      "consequence": "Si la télémétrie coupe alors que l'aéronef est hors de portée radio, il poursuivra sa route sans moyen de l'atteindre.",
+      "recommend": "Rentrer à home en cas de perte de liaison",
+      "title": "Perdre la liaison avec la station au sol ne fait rien"
+    },
+    "px4MagCheckDisabled": {
+      "consequence": "Rien ne vous empêchera d'armer à côté d'acier ou avec un magnétomètre qui renvoie n'importe quoi.",
+      "recommend": "Refuser d'armer avec un mauvais compas",
+      "title": "Le contrôle de la force du compas est désactivé"
+    },
+    "px4RcLossTerminates": {
+      "consequence": "La terminaison de vol et le désarmement font tous deux tomber l'aéronef sur place. Une brève coupure radio devient un crash.",
+      "recommend": "Rentrer à home en cas de perte radio",
+      "title": "Perdre la radio coupera les moteurs"
+    }
+  },
+  "safetyMonitor": {
+    "controllerFighting": "Terme I saturé qui domine P : la commande s'oppose à la consigne.",
+    "enablePidStreaming": "Activer le streaming PID (GCS_PID_MASK)",
+    "latchCleared": "Verrou DANGER levé par l'opérateur",
+    "signal": {
+      "bodyRates": "Vitesses angulaires au sol",
+      "controllerFighting": "Le contrôleur se bat contre lui-même",
+      "integratorLoad": "Charge de l'intégrateur",
+      "motorSpread": "Écart des moteurs au sol",
+      "restingAttitude": "Décalage d'assiette au repos",
+      "throttleClimbCoherence": "Gaz vs montée"
+    },
+    "throttleNotLifting": "Gaz augmentés mais pas de décollage.",
+    "tipoverDetected": "Schéma précurseur de basculement détecté pendant la montée en régime"
+  },
+  "sitlCustomFrame": {
+    "missingField": "Champ manquant ou non numérique : {{key}}",
+    "notJsonObject": "Pas un objet JSON",
+    "slungLoadHardpoint": "slungLoad : hardpoint doit être un tableau de trois nombres",
+    "slungLoadMissingField": "slungLoad : champ manquant ou non numérique : {{key}}",
+    "slungLoadNotObject": "slungLoad doit être un objet",
+    "slungLoadServoChannel": "slungLoad : {{key}} doit être un canal servo entier",
+    "template": {
+      "heavy_industrial_14s": "Octo industriel lourd 14S",
+      "heavy_octa": "Octo charges lourdes (classe Callisto)",
+      "hexa": "Hexa (cinéma moyen)",
+      "small_quad": "Petit quad (par défaut)"
+    }
+  },
+  "sitlUnsafeParams": {
+    "adsb": "type de transpondeur ADSB matériel",
+    "batteryMonitor": "type de moniteur de batterie matériel",
+    "boardSpecific": "identité matérielle / spécifique à la carte",
+    "driverFamily": "identité matérielle / famille de pilotes",
+    "gpsDriver": "type de pilote GPS matériel",
+    "rangefinder": "type de télémètre matériel",
+    "serialProtocol": "protocole série du bus matériel"
+  },
+  "telemetryTypes": {
+    "gpsFix": {
+      "noFix": "Pas de fix",
+      "noGps": "Pas de GPS"
+    },
+    "planeLandDisabled": "L'atterrissage d'un avion à aile fixe nécessite une mission avec un waypoint NAV_LAND (ou le mode AUTOLAND + DO_LAND_START)"
+  },
+  "trafficTypes": {
+    "adsbPreset": {
+      "adsb-fi": "adsb.fi (gratuit, sans clé)",
+      "adsbexchange": "ADSBExchange (clé RapidAPI)",
+      "airplanes-live": "airplanes.live (gratuit, sans clé)",
+      "custom": "Point d'accès personnalisé"
+    }
+  },
+  "vehicleProfile": {
+    "frame": {
+      "antennaTracker": "Antenna tracker",
+      "fixedWing": "Aile fixe",
+      "helicopter": "Hélicoptère",
+      "multirotor": "Multirotor",
+      "rover": "Rover",
+      "submarine": "Sous-marin",
+      "surfaceBoat": "Bateau de surface",
+      "unknown": "Inconnu",
+      "vtol": "VTOL"
+    },
+    "frameUnknownId": "Châssis {{frame}}",
+    "unidentified": "Véhicule non identifié"
+  },
+  "userModelParsers": {
+    "badLatLng": "la latitude ou la longitude est manquante ou hors plage",
+    "badNumber": "{{field}} n'est pas un nombre valide",
+    "emptyTable": "La table de placement n'a aucune ligne.",
+    "invalidJson": "La table de placement n'est pas un JSON valide ({{detail}})",
+    "missingFile": "la ligne ne nomme aucun fichier de modèle",
+    "noCrs": "Ce fichier CityJSON ne nomme aucun système de référence de coordonnées (metadata.referenceSystem), il ne peut donc pas être placé.",
+    "noGeometry": "Ce fichier CityJSON n'a aucune surface pouvant être dessinée.",
+    "noValidRows": "Aucun modèle de la table de placement n'a pu être placé. Ligne {{row}} : {{problem}}.",
+    "notCityJson": "Ce fichier n'est pas du CityJSON.",
+    "notFeatureCollection": "La table GeoJSON doit être une FeatureCollection d'entités Point.",
+    "notModelList": "models.json doit être une liste de modèles, ou un objet avec une liste \"models\".",
+    "unknownCrs": "Système de référence de coordonnées inconnu EPSG:{{epsg}}. Ce fichier CityJSON ne peut pas être placé."
+  },
+  "vtolTransition": {
+    "toHover": "VERS STATIONNAIRE",
+    "toWing": "VERS AILE"
+  }
+}

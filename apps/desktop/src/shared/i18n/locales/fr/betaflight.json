@@ -1,0 +1,19 @@
+{
+  "dashboard": {
+    "accCalStarted": "Étalonnage de l'accéléromètre démarré. Ne bougez pas la carte !",
+    "armedBadge": "ARMÉ",
+    "calibrateAcc": "Étalonner l'ACC",
+    "connectedOn": "{{variant}} {{version}} sur {{board}}",
+    "cpuLoad": "Charge CPU",
+    "cycleTime": "Temps de cycle",
+    "disarmedBadge": "DÉSARMÉ",
+    "fix": "Corriger",
+    "lastUpdate": "Dernière mise à jour : {{time}}",
+    "rebootConfirm": "Redémarrer le contrôleur de vol ?",
+    "refreshPorts": "Actualiser les ports",
+    "startTelemetry": "Démarrer la télémétrie",
+    "stopTelemetry": "Arrêter la télémétrie",
+    "subtitle": "Connectez-vous aux cartes Betaflight, iNav ou Cleanflight",
+    "used": "Utilisé"
+  }
+}

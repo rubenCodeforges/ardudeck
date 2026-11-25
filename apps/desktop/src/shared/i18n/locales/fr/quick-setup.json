@@ -1,0 +1,203 @@
+{
+  "apply": {
+    "applied": "Configuration appliquée !",
+    "applying": "Application de la configuration...",
+    "applyingDesc": "Application du préréglage {{name}} à votre contrôleur de vol...",
+    "errorDesc": "Une erreur s'est produite lors de l'application de la configuration. Vous pouvez réessayer ou revenir en arrière.",
+    "failed": "Échec de la configuration",
+    "noPreset": "Aucun préréglage sélectionné.",
+    "platformMismatch": "Plateforme incompatible",
+    "platformMismatchDesc": "Le préréglage sélectionné nécessite la plateforme « {{required}} », mais votre carte est actuellement réglée sur « {{current}} ».",
+    "savedHint": "Votre configuration a été enregistrée dans l'EEPROM. Vous pouvez affiner les réglages un par un dans les onglets dédiés, ou tester votre configuration maintenant.",
+    "starting": "Démarrage...",
+    "stepReconnect": "Nous nous reconnecterons et continuerons d'appliquer votre préréglage",
+    "successDesc": "Votre préréglage {{name}} a été appliqué avec succès à votre contrôleur de vol.",
+    "tasks": "Tâches de configuration",
+    "verifyDirections": "Testez le sens des servos : les gouvernes doivent bouger correctement quand vous bougez les sticks",
+    "verifyMotor": "Vérifiez que la sortie moteur est connectée et tourne dans le bon sens",
+    "verifySafe": "Testez toujours dans un environnement sûr avant de voler",
+    "verifyServoMixer": "Consultez l'onglet <b>Servo Mixer</b> et vérifiez que les servos sont branchés sur les bonnes sorties du contrôleur de vol",
+    "verifyServos": "Vérifiez votre configuration des servos"
+  },
+  "configReview": {
+    "applyConfiguration": "Appliquer la configuration",
+    "delaySeconds": "Délai : {{value}} secondes",
+    "intro": "La configuration suivante sera appliquée à votre contrôleur de vol. Vérifiez les réglages ci-dessous avant de continuer.",
+    "landingTimeout": "Délai d'atterrissage : {{value}} secondes",
+    "modeItem": "{{mode}} sur {{channel}} ({{start}}-{{end}})",
+    "motorMixerMotors": "Mixeur moteur : {{n}} moteurs",
+    "motorMixerQuadX": "Mixeur moteur : Quad X ({{n}} moteurs)",
+    "noPreset": "Aucun préréglage sélectionné. Revenez en arrière et choisissez-en un.",
+    "overwriteHint": "Assurez-vous d'avoir sauvegardé votre configuration si vous voulez conserver vos réglages actuels. Les changements seront enregistrés immédiatement dans l'EEPROM.",
+    "overwriteWarning": "Cela écrasera vos réglages actuels",
+    "pitchPid": "Tangage : P={{p}} I={{i}} D={{d}}",
+    "platformAirplane": "Plateforme : avion",
+    "platformMultirotor": "Plateforme : multirotor",
+    "procedure": "Procédure : {{value}}",
+    "rollPid": "Roulis : P={{p}} I={{i}} D={{d}}",
+    "servoMixerRules": "Mixeur de servos : {{n}} règles",
+    "title": "Vérification : {{name}}",
+    "viaCli": "Via commandes CLI",
+    "viaMsp": "Via protocole MSP",
+    "yawPid": "Lacet : P={{p}} I={{i}}"
+  },
+  "errorDetails": "Détails de l'erreur",
+  "platformChange": {
+    "boardRebooting": "La carte redémarre. Tentative de reconnexion automatique...",
+    "changePlatform": "Changer de plateforme",
+    "changingTitle": "Changement de plateforme...",
+    "errorGeneric": "Une erreur s'est produite lors du changement de plateforme.",
+    "failed": "Échec du changement de plateforme",
+    "pleaseWaitChanging": "Veuillez patienter pendant le changement du type de plateforme...",
+    "rebootingTitle": "Redémarrage du contrôleur de vol...",
+    "reconnecting": "Reconnexion...",
+    "required": "Requis",
+    "savingEeprom": "Enregistrement dans l'EEPROM...",
+    "savingTitle": "Enregistrement de la configuration...",
+    "settingType": "Définition du type de plateforme...",
+    "stepReboot": "La carte redémarrera automatiquement",
+    "stepSaved": "La configuration sera enregistrée dans l'EEPROM",
+    "stepTypeChanged": "Le type de plateforme sera modifié sur votre contrôleur de vol",
+    "waitingReboot": "En attente du redémarrage du contrôleur de vol...",
+    "waitingReconnection": "En attente de la reconnexion...",
+    "whatHappens": "Que se passe-t-il quand vous changez de plateforme ?"
+  },
+  "pleaseWait": "Veuillez patienter...",
+  "presetSelection": {
+    "bfFixedWingExperimental": "La prise en charge des voilures fixes par Betaflight est expérimentale et n'a pas de fonctions de navigation.",
+    "bfGpsRescueHint": "Betaflight utilise <b>GPS Rescue</b> au lieu des modes de navigation d'iNav. Après avoir appliqué un préréglage, configurez GPS Rescue dans l'<b>onglet GPS Rescue</b> pour le retour au point de départ en urgence.",
+    "bfNavNote": "<b>Remarque :</b> les préréglages de navigation (maintien de position GPS, waypoints, RTH) ne sont disponibles que pour iNav. Configurez GPS Rescue séparément dans l'onglet GPS Rescue.",
+    "changeVehicleType": "Changer le type de véhicule",
+    "chooseDifferent": "Choisir un autre préréglage",
+    "cliConfig": "Configuration CLI (héritée)",
+    "currentPlatform": "Actuelle : {{name}}",
+    "fixedWingDesc": "Avions, ailes volantes, planeurs et autres aéronefs à voilure fixe",
+    "flashInav": "Flasher le firmware iNav",
+    "gpsReturnHome": "Retour GPS au point de départ",
+    "inavRecommendation": "Pour les avions, ailes volantes et planeurs, nous recommandons le <b>firmware iNav</b>, qui offre la navigation complète, le lancement automatique, les waypoints et le retour au point de départ.",
+    "inavRecommended": "iNav recommandé",
+    "modesCount": "{{n}} modes",
+    "mspConfig": "Configuration MSP",
+    "multirotorDesc": "Quadricoptères, hexacoptères et autres aéronefs multimoteurs",
+    "oneClick": "Configuration en un clic",
+    "oneClickPresetHint": "Ces préréglages appliquent une configuration complète et testée. Vous pourrez toujours affiner les réglages un par un plus tard dans les onglets dédiés.",
+    "oneClickVehicleHint": "Chaque préréglage applique une configuration complète et testée, avec PID, rates, modes de vol et réglages failsafe. Vous pourrez toujours affiner plus tard.",
+    "pids": "PID",
+    "platformChangeBadge": "Changement de plateforme",
+    "platformChangeDesc": "« {{name}} » nécessite la plateforme {{required}}, mais votre carte est réglée sur {{current}}.",
+    "platformChangeRequired": "Changement de plateforme requis",
+    "presetsAvailable": "{{n}} préréglages disponibles",
+    "selectPresetHint": "Choisissez un préréglage pour configurer <b>tout d'un coup</b> : PID, rates, modes de vol et réglages failsafe.",
+    "selectVehicle": "Choisissez votre type de véhicule pour voir les préréglages disponibles",
+    "stepReconnect": "Nous nous reconnecterons et continuerons l'assistant de configuration",
+    "title": "Quick Setup",
+    "vehiclePresets": "Préréglages {{vehicle}}"
+  },
+  "presets": {
+    "beginner": {
+      "description": "Sûr et stable pour apprendre",
+      "name": "Débutant",
+      "tip": "L'auto-stabilisation vous garde en contrôle. Les rates lents évitent la surcorrection. Parfait pour vos premiers vols !"
+    },
+    "cinematic": {
+      "description": "Ultra fluide pour filmer",
+      "name": "Cinématique",
+      "tip": "Rates bas + expo élevée = mouvements très doux. Maintien de position GPS pour des plans stables. RTH pour la sécurité."
+    },
+    "flyingWing": {
+      "description": "Ailes delta et ailes volantes avec mixage elevons",
+      "name": "Aile volante",
+      "tip": "Mixage elevons configuré (servos gauche/droit sur CH3/CH4). Lancement automatique, RTH et navigation par waypoints prêts."
+    },
+    "freestyle": {
+      "description": "Équilibré pour les figures et le flow",
+      "name": "Freestyle",
+      "tip": "L'interrupteur à trois positions donne ANGLE/HORIZON/ACRO. AIRMODE garde le contrôle à gaz zéro pour les flips !"
+    },
+    "fwGlider": {
+      "description": "Vol à voile efficace et chasse aux thermiques",
+      "name": "Planeur",
+      "tip": "Optimisé pour la finesse. Rates bas pour la précision. Mode vol à voile pour les thermiques. Configuration des servos d'aile volante."
+    },
+    "fwLongRange": {
+      "description": "Portée étendue pour missions FPV",
+      "name": "FPV longue portée",
+      "tip": "Configuration d'aile volante optimisée pour l'efficacité. Suite de navigation complète avec waypoints, croisière et RTH."
+    },
+    "fwSport": {
+      "description": "Avion classique agile pour pilotes expérimentés",
+      "name": "Avion sport",
+      "tip": "Rates plus élevés pour la voltige. Configuration ailerons/profondeur/direction. Basculez entre modes stabilisés et acro."
+    },
+    "fwTrainer": {
+      "description": "Avion classique pour débutants",
+      "name": "Avion école",
+      "tip": "Configuration classique ailerons/profondeur/direction. L'auto-stabilisation garde les ailes stables. Parfait pour apprendre le vol en voilure fixe."
+    },
+    "longRange": {
+      "description": "Portée étendue avec sécurité GPS",
+      "name": "Longue portée",
+      "tip": "PID prudents pour l'efficacité. Croisière GPS et RTH pour la sécurité. Mode ANGLE pour une récupération facile."
+    },
+    "racing": {
+      "description": "Rapide et réactif pour la vitesse",
+      "name": "Course",
+      "tip": "ACRO pur pour un contrôle maximal. Rates élevés pour des corrections rapides. Le beeper aide à retrouver les crashs !"
+    }
+  },
+  "summary": {
+    "action": "Action : {{value}}",
+    "aircraftType": "Type d'aéronef",
+    "delay": "Délai : {{value}} s",
+    "elevonMixing": "Mixage elevons d'aile volante (2 servos)",
+    "expo": "Expo : {{value}} %",
+    "maxRotation": "{{rollRate}} % de rotation max",
+    "modeOnChannel": "{{mode}} sur {{channel}}",
+    "modesConfigured": "{{n}} modes configurés",
+    "pidResponse": "Réponse {{name}}",
+    "pidTuning": "Tuning PID",
+    "pitchPid": "Tangage P : {{p}}, I : {{i}}, D : {{d}}",
+    "quadXLayout": "Disposition moteurs Quad X",
+    "rcRate": "RC Rate : {{value}}",
+    "rollPid": "Roulis P : {{p}}, I : {{i}}, D : {{d}}",
+    "rollPitchRate": "Rate roulis/tangage : {{value}}",
+    "singleMotor": "Moteur unique",
+    "traditionalSetup": "Configuration classique : ailerons/profondeur/direction",
+    "yawPid": "Lacet P : {{p}}, I : {{i}}",
+    "yawRate": "Rate lacet : {{value}}"
+  },
+  "transmitter": {
+    "allPrimaryResponding": "Tous les canaux principaux (roulis, tangage, gaz, lacet) répondent",
+    "applyRetry": "Appliquer et réessayer",
+    "applyingPreset": "Application du préréglage <b>{{name}}</b>",
+    "channelsDetected": "{{n}}/4 canaux détectés",
+    "connected": "Émetteur connecté !",
+    "continue": "Continuer",
+    "fixReceiver": "Corriger la config du récepteur",
+    "loadingConfig": "Chargement de la config depuis le contrôleur de vol...",
+    "noSignal": "Aucun signal RC détecté",
+    "noSignalHint": "Votre récepteur n'est peut-être pas configuré correctement. Vérifiez qu'il est alimenté, lié à votre émetteur et que le bon protocole est défini.",
+    "noneSelected": "Aucun sélectionné",
+    "notLoaded": "Non chargé",
+    "receiverConfiguration": "Configuration du récepteur",
+    "receiverType": "Type de récepteur",
+    "saveFailed": "Échec de l'enregistrement de la config du récepteur",
+    "selectUartHint": "Choisissez l'UART sur lequel votre récepteur est câblé. Un seul port peut avoir Serial RX.",
+    "serialRxPort": "Port Serial RX",
+    "serialRxProtocol": "Protocole Serial RX",
+    "skip": "Passer la vérification de l'émetteur (déconseillé)",
+    "turnOnHint": "Allumez votre émetteur et bougez tous les sticks pour vérifier qu'ils sont bien reçus.",
+    "wiggleEach": "Bougez chaque stick pour détecter les canaux restants",
+    "wiggleSticks": "Bougez vos sticks",
+    "workingHint": "Votre émetteur fonctionne. Vous pouvez passer à la vérification de votre configuration."
+  },
+  "wizard": {
+    "pressAgainToDiscard": "Appuyez à nouveau pour abandonner la configuration",
+    "stepApply": "Appliquer",
+    "stepCheck": "Contrôler",
+    "stepReview": "Vérifier",
+    "stepSelect": "Choisir",
+    "subtitle": "Configurez tout en une fois",
+    "title": "Assistant Quick Setup"
+  }
+}
