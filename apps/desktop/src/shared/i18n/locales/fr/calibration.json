@@ -62,7 +62,7 @@
     "successBody": "L'étalonnage {{name}} a réussi.",
     "successTitle": "Étalonnage terminé !",
     "tryAgain": "Réessayer",
-    "unchangedBody": "Le contrôleur de vol a signalé un succès, mais les paramètres suivis n'ont pas changé. Cela signifie généralement que l'étalonnage a échoué silencieusement : réessayez, et si les valeurs ne bougent toujours pas, consultez les journaux du FC.",
+    "unchangedBody": "Le contrôleur de vol a signalé un succès, mais les paramètres suivis n'ont pas changé. Cela signifie généralement que l'étalonnage a échoué silencieusement : réessayez, et si les valeurs ne bougent toujours pas, consultez les logs du FC.",
     "unconfirmedBody": "Le contrôleur de vol n'a jamais confirmé cet étalonnage et la vérification des paramètres n'a pas permis de trancher. Vérifiez que les paramètres d'étalonnage ont changé avant de voler, ou relancez-le.",
     "unconfirmedTitle": "Terminé, non confirmé",
     "verdictGood": "Bon",

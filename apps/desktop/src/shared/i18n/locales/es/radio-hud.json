@@ -273,7 +273,7 @@
       },
       "minimal": {
         "name": "Mínimo",
-        "desc": "Batería, distancia a home, enlace y hora como cuatro lecturas grandes iguales, legibles a un brazo de distancia."
+        "desc": "Batería, distancia a home, enlace y hora como cuatro lecturas grandes iguales, legibles a la distancia de un brazo."
       },
       "survey": {
         "name": "Survey",
@@ -409,8 +409,8 @@
       },
       "installedTitle": "El script de sonar está configurado",
       "installedBody": "El autopiloto lee el Ping y envía el ecograma. Pon estas pantallas en la radio para verlo.",
-      "companionTitle": "El ordenador de a bordo gestiona el sonar",
-      "companionBody": "La profundidad llega por MAVLink, así que un ordenador de a bordo como BlueOS maneja el Ping. La radio no puede obtener un ecograma así; el Cargo de Sonar lo muestra en ArduDeck.",
+      "companionTitle": "El ordenador companion gestiona el sonar",
+      "companionBody": "La profundidad llega por MAVLink, así que un ordenador companion como BlueOS maneja el Ping. La radio no puede obtener un ecograma así; el Cargo de Sonar lo muestra en ArduDeck.",
       "noneTitle": "No hay Ping en este barco",
       "noneBody": "El ecograma necesita un Blue Robotics Ping conectado al autopiloto y configurado como telémetro. La configuración de hardware tiene un preajuste para ello.",
       "manualTitle": "Copia el script a mano",

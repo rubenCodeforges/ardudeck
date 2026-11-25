@@ -4,13 +4,13 @@
       "description": "Microcontrolador ligero para puentes de telemetría y hubs de sensores"
     },
     "jetson": {
-      "description": "Computadora de a bordo con aceleración GPU para IA, visión artificial y SLAM"
+      "description": "Ordenador de a bordo con aceleración GPU para IA, visión artificial y SLAM"
     },
     "orangePi": {
       "description": "Alternativa económica a la Pi con capacidades similares"
     },
     "raspberryPi": {
-      "description": "Computadora de a bordo completa para vídeo, autonomía y funciones avanzadas"
+      "description": "Ordenador de a bordo completo para vídeo, autonomía y funciones avanzadas"
     }
   },
   "category": {
@@ -29,15 +29,15 @@
     "loadingLogs": "Cargando registros...",
     "logsTitle": "Registros del contenedor: {{name}}",
     "noDocker": "Docker no detectado",
-    "noDockerHint": "Docker no está instalado en la computadora de a bordo.",
+    "noDockerHint": "Docker no está instalado en el ordenador de a bordo.",
     "none": "No se encontraron contenedores",
     "title": "Contenedores Docker",
     "unavailable": "Contenedores no disponibles",
-    "unavailableHint": "Conéctate al agente de la computadora de a bordo para gestionar los contenedores Docker."
+    "unavailableHint": "Conéctate al agente de el ordenador de a bordo para gestionar los contenedores Docker."
   },
   "dashboard": {
     "addPanel": "Añadir panel",
-    "agentHint": "Instala el ArduDeck Agent en tu computadora de a bordo para activar métricas en tiempo real, acceso al terminal y gestión de servicios.",
+    "agentHint": "Instala el ArduDeck Agent en tu ordenador de a bordo para activar métricas en tiempo real, acceso al terminal y gestión de servicios.",
     "agentNotConnected": "ArduDeck Agent no conectado",
     "agentVersion": "Agent v{{version}}",
     "apIp": "IP del AP",
@@ -45,7 +45,7 @@
     "connectHint": "Conéctate a la red WiFi de tu DroneBridge, o lee los ajustes directamente por USB.",
     "deviceFound": "Dispositivo encontrado (USB)",
     "goLive": "Estoy en el WiFi - Conectar",
-    "goLiveHint": "Para gestionar los ajustes en vivo, conecta tu computadora a la red WiFi <ssid> {{ssid}} </ssid> y pulsa abajo.",
+    "goLiveHint": "Para gestionar los ajustes en vivo, conecta tu ordenador a la red WiFi <ssid> {{ssid}} </ssid> y pulsa abajo.",
     "layout": "Diseño:",
     "modeAp": "Punto de acceso",
     "modeEspNowAir": "ESP-NOW aire",
@@ -135,18 +135,18 @@
     "comingSoon": "Llegará en una próxima actualización.",
     "installed": "Instaladas ({{count}})",
     "noBlueos": "BlueOS no detectado",
-    "noBlueosHint": "BlueOS no se está ejecutando en la computadora de a bordo.",
+    "noBlueosHint": "BlueOS no se está ejecutando en el ordenador de a bordo.",
     "none": "No hay extensiones instaladas",
     "onlyBlueos": "Las extensiones solo están disponibles con BlueOS.",
     "removing": "Quitando...",
     "unavailable": "Extensiones no disponibles",
-    "unavailableHint": "Conéctate al agente de la computadora de a bordo para gestionar las extensiones de BlueOS."
+    "unavailableHint": "Conéctate al agente de el ordenador de a bordo para gestionar las extensiones de BlueOS."
   },
   "files": {
     "empty": "Directorio vacío",
     "listFailed": "No se pudo listar el directorio",
     "unavailable": "Explorador de archivos no disponible",
-    "unavailableHint": "Conéctate al agente de la computadora de a bordo para explorar archivos."
+    "unavailableHint": "Conéctate al agente de el ordenador de a bordo para explorar archivos."
   },
   "logs": "Registros",
   "logsPanel": {
@@ -200,7 +200,7 @@
     "none": "No se encontraron servicios",
     "title": "Servicios de Systemd",
     "unavailable": "Servicios no disponibles",
-    "unavailableHint": "Conéctate al agente de la computadora de a bordo para gestionar servicios."
+    "unavailableHint": "Conéctate al agente de el ordenador de a bordo para gestionar servicios."
   },
   "status": {
     "agentVersion": "Versión del agente",
@@ -208,12 +208,12 @@
     "available": "Disponible",
     "detected": "Detectado",
     "hostname": "Nombre de host",
-    "installAgent": "Instala el ArduDeck Agent en la computadora de a bordo para una monitorización completa.",
+    "installAgent": "Instala el ArduDeck Agent en el ordenador de a bordo para una monitorización completa.",
     "justNow": "ahora mismo",
     "lastSeen": "Visto por última vez",
     "mavlinkHeartbeat": "Heartbeat MAVLink",
     "mavlinkOnly": "Solo MAVLink",
-    "none": "No se detectó computadora de a bordo",
+    "none": "No se detectó ordenador de a bordo",
     "offline": "Sin conexión",
     "reconnecting": "Reconectando ({{attempt}})",
     "secondsAgo": "hace {{n}} s",
@@ -238,7 +238,7 @@
     "dlgImageStep1": "1. Descarga la imagen de la tarjeta SD",
     "dlgImageStep2": "2. Flashea la MicroSD con Raspberry Pi Imager o Balena Etcher",
     "dlgImageStep3": "3. Inserta la tarjeta SD y enciende la placa",
-    "dlgImageStep4": "4. Conéctate al WiFi de la placa y abre la vista de computadora de a bordo de ArduDeck",
+    "dlgImageStep4": "4. Conéctate al WiFi de la placa y abre la vista de ordenador de a bordo de ArduDeck",
     "downloadImage": "Descargar imagen",
     "dronebridgeNext": "Conéctate a la red WiFi de DroneBridge y revisa la pestaña DroneBridge.",
     "esptoolInstall": "Instálalo con: <cmd>pip install esptool</cmd>",
@@ -255,8 +255,8 @@
     "imageStep1": "Descarga la imagen de la tarjeta SD desde el enlace de arriba",
     "imageStep2": "Flashea la MicroSD con <imager>Raspberry Pi Imager</imager> o <etcher>Balena Etcher</etcher>",
     "imageStep3": "Inserta la tarjeta SD, enciende y conéctate al WiFi de la placa",
-    "imageStep4": "Abre la pestaña Panel para monitorizar tu computadora de a bordo",
-    "poweredBy": "Basado en",
+    "imageStep4": "Abre la pestaña Panel para monitorizar tu ordenador de a bordo",
+    "poweredBy": "Con tecnología de",
     "refreshPorts": "Actualizar lista de puertos",
     "releasingPort": "Liberando el puerto serie...",
     "requirements": "Requisitos",
@@ -264,11 +264,11 @@
     "scriptStep2": "2. Ejecuta el comando de instalación de abajo",
     "scriptStep3": "3. Sigue las indicaciones en pantalla",
     "selectBoard": "Selecciona tu placa para ver plantillas de firmware y software preconfiguradas.",
-    "selectBoardDialog": "Selecciona tu placa de computadora de a bordo para ver las plantillas de firmware y software disponibles.",
+    "selectBoardDialog": "Selecciona tu placa de ordenador de a bordo para ver las plantillas de firmware y software disponibles.",
     "selectPort": "Selecciona un puerto...",
     "serialPort": "Puerto serie",
     "setup": "Configuración",
-    "subtitle": "Firmware y software preconfigurados para placas de computadora de a bordo",
+    "subtitle": "Firmware y software preconfigurados para placas de ordenador de a bordo",
     "supportedBoards": "Placas compatibles",
     "templateCount_one": "{{count}} plantilla",
     "templateCount_other": "{{count}} plantillas",
@@ -434,7 +434,7 @@
       "requirement5": "BEC de 5 V 3 A"
     },
     "rpanionServer": {
-      "description": "Computadora de a bordo completa con interfaz web. Enrutamiento de telemetría, transmisión de vídeo, NTRIP y gestión de red.",
+      "description": "Ordenador de a bordo completo con interfaz web. Enrutamiento de telemetría, transmisión de vídeo, NTRIP y gestión de red.",
       "feature1": "Interfaz de configuración web",
       "feature2": "Enrutamiento MAVLink",
       "feature3": "Transmisión de vídeo",
@@ -449,13 +449,13 @@
     }
   },
   "terminal": {
-    "bannerConnected": "Conectado al PTY remoto en la computadora de a bordo",
+    "bannerConnected": "Conectado al PTY remoto en el ordenador de a bordo",
     "bannerTitle": "Terminal companion de ArduDeck",
     "ctrlC": "Ctrl+C: Copiar/Interrumpir",
     "ctrlV": "Ctrl+V: Pegar",
     "ptyConnected": "PTY conectado",
     "unavailable": "Terminal no disponible",
-    "unavailableHint": "Conéctate al agente de la computadora de a bordo para abrir una sesión de terminal."
+    "unavailableHint": "Conéctate al agente de el ordenador de a bordo para abrir una sesión de terminal."
   },
   "waitingAgent": "Esperando la conexión del agente..."
 }

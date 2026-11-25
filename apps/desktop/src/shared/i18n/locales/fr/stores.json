@@ -17,7 +17,7 @@
       "quadPlus": "Quad Plus (+)",
       "rover": "Rover (par défaut)",
       "sailboat": "Voilier",
-      "single": "Coptère monorotor",
+      "single": "Coptère à rotor unique",
       "skid": "Direction différentielle",
       "spoilers": "Avion avec spoilers",
       "vectored": "Vectoriel (par défaut)",
@@ -98,7 +98,7 @@
     "savingEeprom": "Enregistrement dans l'EEPROM...",
     "setPlatformFailed": "Échec du réglage du type de plateforme sur avion",
     "startingFlash": "Démarrage du flash...",
-    "vehicleTypeMismatch": "Type de véhicule incompatible : vous avez sélectionné {{selected}} mais la version choisie est {{version}}. Resélectionnez le véhicule et la version, puis réessayez.",
+    "vehicleTypeMismatch": "Type de véhicule incompatible : vous avez sélectionné {{selected}} mais la version choisie est {{version}}. Sélectionnez à nouveau le véhicule et la version, puis réessayez.",
     "waitingReboot": "En attente du redémarrage de la carte (6 s)..."
   },
   "fleetRepoStore": {
@@ -116,7 +116,7 @@
     "noChanges": "Aucun changement depuis le dernier instantané",
     "noMission": "Aucune mission chargée à capturer.",
     "noParams": "Aucun paramètre chargé à capturer.",
-    "noSurveyPolygon": "Aucun polygone de relevé sur la carte à capturer.",
+    "noSurveyPolygon": "Aucun polygone de survey sur la carte à capturer.",
     "readSnapshotFailed": "Impossible de lire l'instantané depuis le coffre.",
     "renameFailed": "Échec du renommage",
     "restoredPartial": "{{applied}} restauré(s), {{failed}} en échec",
@@ -340,12 +340,12 @@
   },
   "surveyStore": {
     "emptyFile": "Fichier vide",
-    "generateFailed": "Impossible de générer un relevé à partir des zones importées",
+    "generateFailed": "Impossible de générer un survey à partir des zones importées",
     "generating": "Génération des waypoints...",
     "generatorFailed": "Échec du générateur : {{message}}",
     "importUnavailable": "Importation indisponible",
-    "importing": "Importation du relevé - génération des waypoints...",
-    "loading": "Chargement du relevé...",
+    "importing": "Importation du survey - génération des waypoints...",
+    "loading": "Chargement du survey...",
     "noShapes": "Aucune limite polygonale ni ligne trouvée dans le fichier",
     "recomputing": "Recalcul de {{count}} waypoints...",
     "reloadingArea": "Rechargement de la zone enregistrée..."

@@ -13,7 +13,7 @@
     "frameHeli": {
       "name": "Helicóptero",
       "title": "Tu helicóptero",
-      "why": "El firmware de heli ya sabe que es un helicóptero. Esto configura lo que comparten todos los vehículos; el rotor se configura en Heli setup."
+      "why": "El firmware de heli ya sabe que es un helicóptero. Esto configura lo que comparten todos los vehículos; el rotor se configura en Configuración de heli."
     },
     "orient": {
       "name": "Orientación de la placa",
@@ -140,7 +140,7 @@
     },
     "motordrv": {
       "name": "Driver del motor",
-      "title": "¿Qué maneja el motor?",
+      "title": "¿Qué acciona el motor?",
       "why": "ESC, o un driver de motor con escobillas. Decide el tipo de salida y la zona muerta."
     },
     "windvane": {
@@ -690,7 +690,7 @@
       },
       "heliSetup": {
         "title": "Configuración del rotor",
-        "text": "Plato oscilante, colectivo, velocidad del rotor (RSC) y tipo de cola se quedan en Heli setup."
+        "text": "Plato oscilante, colectivo, velocidad del rotor (RSC) y tipo de cola se quedan en Configuración de heli."
       },
       "interlock": {
         "title": "Interlock de motor",

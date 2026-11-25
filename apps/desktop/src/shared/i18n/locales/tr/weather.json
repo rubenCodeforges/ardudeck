@@ -6,7 +6,7 @@
     "flightConditions": "Uçuş koşulları",
     "forecastValid": "Tahmin geçerliliği {{clock}} (sahada yerel saat) · Open-Meteo",
     "launchGates": "Kalkış eşikleri",
-    "limits": "Sınırlar: hamle {{gustC}} / {{gustN}} m/s, rüzgar {{windC}} / {{windN}} m/s, yağış ihtimali {{probC}} / {{probN}}%, yağış {{mmC}} / {{mmN}} mm, görüş mesafesi {{visC}} / {{visN}} km altı.",
+    "limits": "Sınırlar: rüzgar hamlesi {{gustC}} / {{gustN}} m/s, rüzgar {{windC}} / {{windN}} m/s, yağış ihtimali {{probC}} / {{probN}}%, yağış {{mmC}} / {{mmN}} mm, görüş mesafesi {{visC}} / {{visN}} km altı.",
     "locationAt": "{{location}} · yerel saat {{clock}}",
     "noPosition": "Brifing için konum yok",
     "noPositionHint": "Brifingin hava durumunu nereden sorgulayacağını bilmesi için bir araç bağla, home konumu belirle veya görev haritasını aç.",
@@ -72,8 +72,8 @@
     "planned": "Planlanan"
   },
   "reason": {
-    "gustsCaution": "{{value}} hızındaki hamleler sınıra ({{limit}}) yaklaşıyor. Yakından izle.",
-    "gustsNogo": "{{value}} hızındaki hamleler güvenli sınırı ({{limit}}) aşıyor. Kontrol kaybı riski.",
+    "gustsCaution": "{{value}} hızındaki rüzgar hamleleri sınıra ({{limit}}) yaklaşıyor. Yakından izle.",
+    "gustsNogo": "{{value}} hızındaki rüzgar hamleleri güvenli sınırı ({{limit}}) aşıyor. Kontrol kaybı riski.",
     "precipCaution": "{{value}} mm hafif yağış algılandı. Hava aracını koru.",
     "precipNogo": "{{value}} mm yağış. Elektronik risk altında, kalkış yapma.",
     "precipProbCaution": "Yağış ihtimali artıyor (%{{value}}). Gökyüzünü izle.",

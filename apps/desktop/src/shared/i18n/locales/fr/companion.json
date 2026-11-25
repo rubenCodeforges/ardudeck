@@ -44,7 +44,7 @@
     "connectAgent": "Se connecter à l'agent",
     "connectHint": "Connectez-vous au réseau WiFi DroneBridge, ou lisez les réglages directement par USB.",
     "deviceFound": "Appareil trouvé (USB)",
-    "goLive": "Je suis sur le WiFi : se connecter",
+    "goLive": "Je suis sur le WiFi : connexion",
     "goLiveHint": "Pour gérer les réglages en direct, connectez votre ordinateur au réseau WiFi <ssid> {{ssid}} </ssid>, puis cliquez ci-dessous.",
     "layout": "Disposition :",
     "modeAp": "Point d'accès",
@@ -394,7 +394,7 @@
       "requirement4": "BEC 5V 3A"
     },
     "piStr2strBase": {
-      "description": "Côté base : lit le RTCM3 du récepteur et l'envoie à un caster NTRIP. Sans interface, se reconnecte seul, aucune interface graphique.",
+      "description": "Côté base : lit le RTCM3 du récepteur et l'envoie à un caster NTRIP. Mode headless, se reconnecte seul, aucune interface graphique.",
       "feature1": "str2str du port série vers un serveur NTRIP",
       "feature2": "Alimente rtk2go ou un caster privé",
       "feature3": "Enregistre le RTCM brut sur disque",

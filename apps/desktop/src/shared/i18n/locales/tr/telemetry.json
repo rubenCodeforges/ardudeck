@@ -18,7 +18,7 @@
     "importNoPanels": "Bu dosyadaki düzende panel yerleşimi yok.",
     "importNotLayout": "Bu dosya bir ArduDeck çalışma alanı düzeni değil.",
     "importedName": "İçe aktarılan düzen",
-    "missionDescription": "Harita, bekleme noktaları, irtifa profili.",
+    "missionDescription": "Harita, waypoint'ler, irtifa profili.",
     "missionLabel": "Görev",
     "pilotDescription": "Sentetik görüş bölmeli harita.",
     "pilotLabel": "Pilot"
@@ -51,7 +51,7 @@
     "shareTip": "Paylaş"
   },
   "sensorHealth": {
-    "unhealthyTitle": "Sağlıksız: {{sensors}} - ayrıntılar için Mesajlar paneline bakın"
+    "unhealthyTitle": "Sağlıksız: {{sensors}} - ayrıntılar için Mesajlar paneline bak"
   },
   "share": {
     "copied": "Kopyalandı",
@@ -62,7 +62,7 @@
     "eco": "Eko",
     "ecoTip": "Yavaş güncellemeler: zayıf veya uzun menzilli telemetri bağlantılarında hafiftir",
     "fc": "FC",
-    "fcTip": "Karışma yok: ArduDeck farklı veri hızları istemez. Araç, uçuş kontrolcüsünde kayıtlı hızlarla veri göndermeye devam eder. Bu hızları kendiniz ayarladıysanız bunu seçin.",
+    "fcTip": "Karışma yok: ArduDeck farklı veri hızları istemez. Araç, uçuş kontrolcüsünde kayıtlı hızlarla veri göndermeye devam eder. Bu hızları kendin ayarladıysan bunu seç.",
     "max": "Maks",
     "maxTip": "En hızlı güncellemeler, USB veya WiFi gibi hızlı bağlantılar için",
     "normal": "Normal",
@@ -78,11 +78,11 @@
     "clipboardReadFailed": "Pano okunamadı.",
     "fromFile": "Dosyadan…",
     "import": "İçe aktar",
-    "importTip": "Başkasının paylaştığı bir düzeni içe aktarın",
+    "importTip": "Başkasının paylaştığı bir düzeni içe aktar",
     "map2d": "2D harita",
     "map3d": "3D arazi",
     "mapView": "Harita görünümü",
-    "offlineHint": "Bağlantısız uçuş için karolarını önbelleğe almak üzere haritada bir kutu çizin.",
+    "offlineHint": "Bağlantısız uçuş için karolarını önbelleğe almak üzere haritada bir kutu çiz.",
     "offlineMaps": "Çevrimdışı haritalar",
     "panelLayout": "Panel düzeni",
     "pasteFromClipboard": "Panodan yapıştır",
@@ -90,7 +90,7 @@
     "saveCurrentAs": "Geçerliyi şu adla kaydet…",
     "saveOfflineArea": "Çevrimdışı kullanım için bir alan kaydet",
     "saved": "Kaydedilenler",
-    "selectingArea": "Seçiliyor… haritada bir kutu çizin",
+    "selectingArea": "Seçiliyor… haritada bir kutu çiz",
     "telemetryRate": "Telemetri hızı",
     "telemetryRateHint": "Aracın telemetriyi ne sıklıkla yayınladığı. FC, uçuş kontrolcüsünün kendi hızlarına dokunmaz.",
     "cargoPanelMissing": "Bu panel şu anda yüklü olmayan bir Cargo'dan geliyor."
@@ -106,11 +106,11 @@
     "speed": "{{speed}}x",
     "stop": "Tekrarı durdur",
     "chooseTitle": "Bir uçuşu tekrar oynat",
-    "chooseIntro": "Hangi kaydı oynatmak istiyorsunuz?",
-    "chooseBusy": "Önce aracın bağlantısını kesin.",
+    "chooseIntro": "Hangi kaydı oynatmak istiyorsun?",
+    "chooseBusy": "Önce aracın bağlantısını kes.",
     "chooseTlog": "Telemetri günlüğü (.tlog)",
     "chooseTlogDesc": "ArduDeck'in telsiz bağlantısı üzerinden aldıkları. Otomatik kaydedilir; telemetri hızı kadar akıcıdır.",
     "chooseBin": "Araç içi günlük (.bin)",
-    "chooseBinDesc": "Uçuş kontrolcüsünün SD kartındaki kendi kaydı. Genellikle çok daha akıcıdır; önce araçtan indirin."
+    "chooseBinDesc": "Uçuş kontrolcüsünün SD kartındaki kendi kaydı. Genellikle çok daha akıcıdır; önce araçtan indir."
   }
 }

@@ -99,7 +99,7 @@
       "description": "Mantener altitud"
     },
     "navCourseHold": {
-      "beginner": "Mantiene el rumbo actual y permite controlar la altitud. Bueno para volar en línea recta.",
+      "beginner": "Mantiene el rumbo actual y permite controlar la altitud. Ideal para volar en línea recta.",
       "description": "Mantener rumbo de navegación"
     },
     "navCruise": {

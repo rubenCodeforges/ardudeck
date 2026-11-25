@@ -37,7 +37,7 @@
     "waitingAuth": "Yetkilendirme bekleniyor..."
   },
   "timeAgo": {
-    "days": "{{count}} g önce",
+    "days": "{{count}} gün önce",
     "hours": "{{count}} sa önce",
     "justNow": "az önce",
     "minutes": "{{count}} dk önce"

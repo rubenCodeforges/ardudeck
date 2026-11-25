@@ -492,8 +492,8 @@
     "midMissionReturn_one": "{{count}} survey vuelve a home antes de que termine la misión. Conéctalos para volar seguido.",
     "midMissionReturn_other": "{{count}} surveys vuelven a home antes de que termine la misión. Conéctalos para volar seguido.",
     "noTakeoff": "No hay comando de despegue: el vehículo volará al primer waypoint desde su estado actual.",
-    "hazard": "El tramo {{from}} a {{to}} cruza el peligro \"{{zone}}\"",
-    "hazardFromHome": "El tramo de home a {{to}} cruza el peligro \"{{zone}}\""
+    "hazard": "El tramo {{from}} a {{to}} cruza la zona de peligro \"{{zone}}\"",
+    "hazardFromHome": "El tramo de home a {{to}} cruza la zona de peligro \"{{zone}}\""
   },
   "parameterGroups": {
     "all": {
@@ -733,7 +733,7 @@
   },
   "vehicleProfile": {
     "frame": {
-      "antennaTracker": "Antenna tracker",
+      "antennaTracker": "Rastreador de antena",
       "fixedWing": "Ala fija",
       "helicopter": "Helicóptero",
       "multirotor": "Multirrotor",

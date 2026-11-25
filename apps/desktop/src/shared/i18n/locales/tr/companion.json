@@ -33,7 +33,7 @@
     "none": "Konteyner bulunamadı",
     "title": "Docker Konteynerleri",
     "unavailable": "Konteynerler kullanılamıyor",
-    "unavailableHint": "Docker konteynerlerini yönetmek için yardımcı bilgisayar ajanına bağlan."
+    "unavailableHint": "Docker konteynerlerini yönetmek için yardımcı bilgisayar agent'ına bağlan."
   },
   "dashboard": {
     "addPanel": "Panel Ekle",
@@ -132,7 +132,7 @@
     "available": "Mevcut",
     "availableHint": "BlueOS marketinden uzantılara göz at ve kur.",
     "availableTitle": "Mevcut uzantılar",
-    "comingSoon": "Gelecek bir güncellemede gelecek.",
+    "comingSoon": "Gelecek bir güncellemede eklenecek.",
     "installed": "Kurulu ({{count}})",
     "noBlueos": "BlueOS algılanmadı",
     "noBlueosHint": "BlueOS yardımcı bilgisayarda çalışmıyor.",
@@ -140,13 +140,13 @@
     "onlyBlueos": "Uzantılar yalnızca BlueOS ile kullanılabilir.",
     "removing": "Kaldırılıyor...",
     "unavailable": "Uzantılar kullanılamıyor",
-    "unavailableHint": "BlueOS uzantılarını yönetmek için yardımcı bilgisayar ajanına bağlan."
+    "unavailableHint": "BlueOS uzantılarını yönetmek için yardımcı bilgisayar agent'ına bağlan."
   },
   "files": {
     "empty": "Boş dizin",
     "listFailed": "Dizin listelenemedi",
     "unavailable": "Dosya tarayıcısı kullanılamıyor",
-    "unavailableHint": "Dosyalara göz atmak için yardımcı bilgisayar ajanına bağlan."
+    "unavailableHint": "Dosyalara göz atmak için yardımcı bilgisayar agent'ına bağlan."
   },
   "logs": "Loglar",
   "logsPanel": {
@@ -200,7 +200,7 @@
     "none": "Servis bulunamadı",
     "title": "Systemd Servisleri",
     "unavailable": "Servisler kullanılamıyor",
-    "unavailableHint": "Servisleri yönetmek için yardımcı bilgisayar ajanına bağlan."
+    "unavailableHint": "Servisleri yönetmek için yardımcı bilgisayar agent'ına bağlan."
   },
   "status": {
     "agentVersion": "Agent Sürümü",
@@ -451,11 +451,11 @@
   "terminal": {
     "bannerConnected": "Yardımcı bilgisayardaki uzak PTY'ye bağlanıldı",
     "bannerTitle": "ArduDeck Yardımcı Bilgisayar Terminali",
-    "ctrlC": "Ctrl+C: Kopyala/Kes",
+    "ctrlC": "Ctrl+C: Kopyala/Durdur",
     "ctrlV": "Ctrl+V: Yapıştır",
     "ptyConnected": "PTY Bağlı",
     "unavailable": "Terminal kullanılamıyor",
-    "unavailableHint": "Terminal oturumu açmak için yardımcı bilgisayar ajanına bağlan."
+    "unavailableHint": "Terminal oturumu açmak için yardımcı bilgisayar agent'ına bağlan."
   },
   "waitingAgent": "Agent bağlantısı bekleniyor..."
 }

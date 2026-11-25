@@ -53,7 +53,7 @@
     "runSwarmDesc": "Lancer une flotte de véhicules",
     "runningHint": "<b>Le SITL est en cours d'exécution !</b> Connectez-vous via TCP - <code>127.0.0.1:5760</code>",
     "setSpawnPoint": "Définir le point d'apparition",
-    "simSpeedTip": "Vitesse d'exécution de la simulation par rapport au temps réel. 1x = temps réel. Plus élevé, les vols se terminent plus vite mais le CPU est plus sollicité : laissez 1x en cas de doute.",
+    "simSpeedTip": "Vitesse d'exécution de la simulation par rapport au temps réel. 1x = temps réel. Une valeur plus élevée termine les vols plus vite mais sollicite davantage le CPU : laissez 1x en cas de doute.",
     "simWorldDesc": "Une vue 3D du véhicule connecté : pilotez, exécutez des missions, placez des obstacles (comme geofences d'exclusion) et injectez du vent ou des pannes en direct. Fonctionne avec le SITL standard et montre une dynamique plus riche lorsque le moteur physique ArduDeck est activé ci-dessus.",
     "spacing": "Espacement (m)",
     "spawnPickerSubtitle": "Cliquez à l'endroit où le véhicule simulé doit apparaître. L'élévation du sol est recherchée automatiquement.",
@@ -183,7 +183,7 @@
     "simJmavsimDesc": "Par défaut, léger (nécessite Java)",
     "simNone": "Aucun (liaison seule)",
     "simNoneDesc": "Pile de vol seule, sans backend physique",
-    "simSpeedTip": "Vitesse d'exécution de la simulation par rapport au temps réel. 1x = temps réel. Plus élevé, les vols se terminent plus vite mais le CPU est plus sollicité.",
+    "simSpeedTip": "Vitesse d'exécution de la simulation par rapport au temps réel. 1x = temps réel. Une valeur plus élevée termine les vols plus vite mais sollicite davantage le CPU.",
     "simulatorBackend": "Backend du simulateur",
     "start": "Démarrer PX4 SITL",
     "wipeParams": "Effacer les paramètres"

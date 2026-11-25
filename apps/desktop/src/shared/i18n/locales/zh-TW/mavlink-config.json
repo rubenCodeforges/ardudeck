@@ -2629,7 +2629,11 @@
       "criticalHint": "低於此轉速將無法飛行。設定時讓估算值在約 3 s 內降到其以下:加速 10 s 時為 70%。",
       "idleHint": "電動直升機為零。引擎則為離合器分離的地面怠速。",
       "curveX": "總距 %",
-      "curveY": "油門 %"
+      "curveY": "油門 %",
+      "headSpeed": "主旋翼轉速",
+      "rpm2": "轉速感測器 2",
+      "govTarget": "定速器目標",
+      "rpmValue": "{{rpm}} RPM"
     },
     "interlock": {
       "title": "馬達連鎖開關",

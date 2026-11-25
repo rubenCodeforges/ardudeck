@@ -6,13 +6,13 @@
     "applyVehicleSub": "Profil parametrelerini bağlı FC'ye yaz (gerçek donanım)",
     "busy": "Meşgul",
     "busySub": "Başka bir profil uygulaması sürüyor",
-    "connectFirst": "Önce bağlanın",
-    "connectFirstSub": "Bu profili uygulamak için bir araca bağlanın",
+    "connectFirst": "Önce bağlan",
+    "connectFirstSub": "Bu profili uygulamak için bir araca bağlan",
     "directLink": "Uygulamak için doğrudan bağlantı",
-    "directLinkSub": "Araç profilleri parametreleri doğrudan bağlantı üzerinden yazar. Bu profili uygulamak için bir araca doğrudan bağlanın (filo bağlantısı üzerinden değil).",
-    "disarmFirst": "Önce disarm edin",
+    "directLinkSub": "Araç profilleri parametreleri doğrudan bağlantı üzerinden yazar. Bu profili uygulamak için bir araca doğrudan bağlan (filo bağlantısı üzerinden değil).",
+    "disarmFirst": "Önce disarm et",
     "disarmFirstSub": "Arm durumundayken parametreler değiştirilemez",
-    "inProgress": "Uygulama sürüyor, Parametreler sekmesini inceleyin",
+    "inProgress": "Uygulama sürüyor, Parametreler sekmesini incele",
     "loadingParams": "Parametreler yükleniyor…",
     "loadingParamsSub": "Araçtan parametre listesi bekleniyor",
     "reviewing": "İnceleniyor…",
@@ -48,7 +48,7 @@
       "y6Hint": "3 kol, her birinde 2 eş eksenli motor"
     },
     "motorArrangement": "Motor Düzeni",
-    "select": "- seçin -",
+    "select": "- seç -",
     "vtol": {
       "quadplane": "Quadplane",
       "quadplaneHint": "Uçak + ayrı dikey kaldırma motorları",
@@ -78,14 +78,14 @@
   },
   "driftBadge": {
     "drifted": "Sapmış · {{count}}",
-    "hint": "Bu değerleri geri yüklemek için profili kartından yeniden uygulayın.",
+    "hint": "Bu değerleri geri yüklemek için profili kartından yeniden uygula.",
     "title": "Uygulanan profilden sapma"
   },
   "groupShapeCard": {
-    "subtitle": "Yaslanmış bir grubun arka planının yuvarlak göstergelere nasıl davrandığı",
+    "subtitle": "Birleştirilmiş bir grubun arka planının yuvarlak göstergelere nasıl davrandığı",
     "title": "Gruplanmış gösterge şekli"
   },
-  "languageHint": "Yazılım parametreleri, uçuş modu adları ve araçtan gelen mesajlar İngilizce kalır.",
+  "languageHint": "Firmware parametreleri, uçuş modu adları ve araçtan gelen mesajlar İngilizce kalır.",
   "languageSystem": "Sistem ({{language}})",
   "languageTitle": "Dil",
   "paramsPreview": {
@@ -105,11 +105,11 @@
     "hoursAgo": "{{n}} sa önce",
     "justNow": "az önce",
     "lastApplied": "son uygulama {{when}}",
-    "lastAppliedReconnect": "{{target}} hedefine {{when}} son kez uygulandı · canlı durumu doğrulamak için yeniden bağlanın",
+    "lastAppliedReconnect": "{{target}} hedefine {{when}} son kez uygulandı · canlı durumu doğrulamak için yeniden bağlan",
     "liveMatches": " (canlı değer eşleşiyor)",
     "minutesAgo": "{{n}} dk önce",
     "neverApplied": "Hiç uygulanmadı",
-    "neverAppliedConnect": "Hiç uygulanmadı · canlı durumu kontrol etmek için araca bağlanın",
+    "neverAppliedConnect": "Hiç uygulanmadı · canlı durumu kontrol etmek için araca bağlan",
     "notAppliedYet": "henüz uygulanmadı",
     "targetVehicle": "araç"
   },
@@ -135,9 +135,9 @@
   "px4AirframePicker": {
     "applied": "Gövde ayarlandı (SYS_AUTOSTART = {{id}}). Uygulamak için yeniden başlatma gerekir.",
     "appliedHint": "Yeni gövde yalnızca uçuş kontrolcüsü yeniden başladıktan sonra etkili olur.",
-    "connect": "Bir gövde seçmek için bir PX4 aracına bağlanın ve parametreleri yükleyin.",
+    "connect": "Bir gövde seçmek için bir PX4 aracına bağlan ve parametreleri yükle.",
     "notFound": "Bu araçta SYS_AUTOSTART bulunamadı, bu yüzden gövde buradan ayarlanamıyor.",
-    "writeFailed": "SYS_AUTOSTART ({{id}}) yazılamadı. Bağlantıyı kontrol edip tekrar deneyin."
+    "writeFailed": "SYS_AUTOSTART ({{id}}) yazılamadı. Bağlantıyı kontrol edip tekrar dene."
   },
   "px4Airframes": {
     "description": {
@@ -158,21 +158,21 @@
     "vtol": "VTOL"
   },
   "realFcApplyConfirm": {
-    "backupFirst": "Önce tam bir parametre yedeği kaydedin",
-    "backupHint": "Mevcut tüm parametreleri, sonradan geri yükleyebileceğiniz zaman damgalı bir .parm dosyasına aktarır.",
-    "body": "<b>sysid {{sysid}}</b> ({{label}}) cihazını değiştirmek üzeresiniz. Bu bir simülatör DEĞİLDİR.",
+    "backupFirst": "Önce tam bir parametre yedeği kaydet",
+    "backupHint": "Mevcut tüm parametreleri, sonradan geri yükleyebileceğin zaman damgalı bir .parm dosyasına aktarır.",
+    "body": "<b>sysid {{sysid}}</b> ({{label}}) aracını değiştirmek üzeresin. Bu bir simülatör DEĞİLDİR.",
     "confirmIn": "Onay {{seconds}} sn sonra kullanılabilir",
     "continue": "Anlıyorum, devam et",
     "ready": "Hazır",
     "title": "Gerçek donanıma uygula",
     "topology": "Topolojiyi değiştiren parametreler",
-    "topologyHint": "Bunlar yazılımın motor/servo çıkışlarını nasıl yorumladığını değiştirir. Yeniden başlatma gerekir. Hatalı yapılandırma uçuşu engelleyebilir.",
+    "topologyHint": "Bunlar firmware'in motor/servo çıkışlarını nasıl yorumladığını değiştirir. Yeniden başlatma gerekir. Hatalı yapılandırma uçuşu engelleyebilir.",
     "totalParams": "Yazılacak toplam parametre"
   },
   "secureLinkCompliance": {
     "attests": "Yalnızca MAVLink bağlantısını ve yer istasyonunu doğrular, hava aracını değil. İmzalama kimlik doğrulamadır, şifreleme değildir ve USB bağlantısı bunu atlar.",
     "chainBroken": "{{seq}}. kayıtta hash zinciri bozuk - günlük üzerinde oynanmış olabilir",
-    "chainFailed": "Denetim günlüğü hash zinciri doğrulamasında başarısız oldu. Bir kayıt uygulama dışında düzenlendi, eklendi veya silindi. Günlüğü ele geçirilmiş sayın ve incelemek için dışa aktarın.",
+    "chainFailed": "Denetim günlüğü hash zinciri doğrulamasında başarısız oldu. Bir kayıt uygulama dışında düzenlendi, eklendi veya silindi. Günlüğü ele geçirilmiş say ve incelemek için dışa aktar.",
     "chainVerified_one": "{{count}} imzalama olayı günlüğe kaydedildi, hash zinciri doğrulandı",
     "chainVerified_other": "{{count}} imzalama olayı günlüğe kaydedildi, hash zinciri doğrulandı",
     "event": {
@@ -187,7 +187,7 @@
     },
     "exportEvidence": "Kanıtı dışa aktar",
     "exportFailed": "Dışa aktarma başarısız: {{error}}",
-    "exportTitle": "Tedarik incelemesi için bir güvenli bağlantı kanıt paketi (JSON) + duruş raporu (Markdown) dışa aktarın",
+    "exportTitle": "Tedarik incelemesi için bir güvenli bağlantı kanıt paketi (JSON) + duruş raporu (Markdown) dışa aktar",
     "exported": "Kanıt paketi + duruş raporu dışa aktarıldı",
     "exporting": "Dışa aktarılıyor...",
     "hideLog": "Denetim günlüğünü gizle ({{count}})",
@@ -223,27 +223,27 @@
         "wiki": "Wiki"
       },
       "title": "Hakkında",
-      "upToDate": "Güncelsiniz",
+      "upToDate": "Güncelsin",
       "viewOnGithub": "GitHub'da görüntüle",
       "viewRelease": "v{{version}} sürümünü görüntüle"
     },
     "addVehicle": "Araç Ekle",
     "ai": {
       "apiKey": "API Anahtarı",
-      "enterKey": "{{name}} API anahtarını girin...",
+      "enterKey": "{{name}} API anahtarını gir...",
       "experimental": "Deneysel özellik.",
-      "hint": "Uçuş günlüklerinizin yapay zeka destekli analizini etkinleştirin. API anahtarınız şifrelenir ve yerel olarak saklanır.",
+      "hint": "Uçuş günlüklerinin yapay zeka destekli analizini etkinleştir. API anahtarın şifrelenir ve yerel olarak saklanır.",
       "keyConfigured": "Anahtar yapılandırıldı ve şifrelendi",
-      "notSubstitute": "Yapay zeka önerileri kendi muhakemenizin yerini tutmaz.",
+      "notSubstitute": "Yapay zeka önerileri kendi muhakemenin yerini tutmaz.",
       "provider": "Sağlayıcı",
       "title": "Yapay Zeka Uçuş Analizi",
-      "verify": "Değişiklikleri uygulamadan önce önerileri her zaman ArduPilot belgelerine ve aracınızın özel yapılandırmasına göre doğrulayın. Yanlış parametreler kontrol kaybına yol açabilir."
+      "verify": "Değişiklikleri uygulamadan önce önerileri her zaman ArduPilot belgelerine ve aracının özel yapılandırmasına göre doğrula. Yanlış parametreler kontrol kaybına yol açabilir."
     },
     "boardStats": "Kart İstatistikleri",
     "boots": "Açılışlar",
     "card": {
       "boardUid": "Kart UID: {{uid}}",
-      "clickAgain": "Silmek için tekrar tıklayın",
+      "clickAgain": "Silmek için tekrar tıkla",
       "delete": "Sil",
       "deleteConfirm": "Silinsin mi?",
       "drive": {
@@ -273,30 +273,30 @@
       "vehicle": "Araç"
     },
     "compat": {
-      "body": "Geçerli profiliniz <type>{{type}}</type> için yapılandırılmış, ancak bir <fw>{{firmware}}</fw> kartına{{board}} bağlısınız.",
+      "body": "Geçerli profilin <type>{{type}}</type> için yapılandırılmış, ancak bir <fw>{{firmware}}</fw> kartına{{board}} bağlısın.",
       "create": "{{type}} Profili Oluştur",
-      "message": "{{type}} profiliniz {{firmware}} ile uyumlu değil",
+      "message": "{{type}} profilin {{firmware}} ile uyumlu değil",
       "supports": "{{firmware}} yalnızca şunları destekler: {{types}}.",
       "title": "Profil Uyumluluk Sorunu"
     },
     "telemetryLog": {
       "title": "Telemetri günlüğü",
       "record": "Telemetriyi bir .tlog dosyasına kaydet",
-      "recordHint": "Her bağlantı, uygulama veri klasörüne bir MAVLink .tlog olarak kaydedilir. Herhangi bir tlog görüntüleyicide açın. En yeni 50 dosya, en fazla 2 GB, saklanır.",
+      "recordHint": "Her bağlantı, uygulama veri klasörüne bir MAVLink .tlog olarak kaydedilir. Herhangi bir tlog görüntüleyicide aç. En yeni 50 dosya, en fazla 2 GB, saklanır.",
       "openFolder": "Günlük klasörünü aç",
       "replay": "Bir uçuşu tekrar oynat",
-      "replayTip": "Kaydedilmiş bir .tlog veya araç içi .bin dosyasını kokpit üzerinden oynatın: harita, enstrümanlar, HUD ve Görüş.",
-      "replayBusy": "Önce aracın bağlantısını kesin"
+      "replayTip": "Kaydedilmiş bir .tlog veya araç içi .bin dosyasını kokpit üzerinden oynat: harita, enstrümanlar, HUD ve Görüş.",
+      "replayBusy": "Önce aracın bağlantısını kes"
     },
     "terrainUplink": {
       "title": "Arazi yukarı bağlantısı",
       "serve": "Araçlara arazi verisi sun",
-      "serveHint": "Otopilotun arazi isteklerini, bir Cargo'nun sağladığı tarama yüzeyi dahil, haritanın yükseklik verisinden yanıtlayın",
+      "serveHint": "Otopilotun arazi isteklerini, bir Cargo'nun sağladığı tarama yüzeyi dahil, haritanın yükseklik verisinden yanıtla",
       "counts": "Sunulan blok: {{served}}, eksik veri: {{missing}}",
       "unavailable": "{{count}} blok eksik: yükseklik karoları kullanılamıyor (çevrimdışı veya engelli mi?).",
-      "unavailableHint": "İnternet bağlantısını kontrol edin ve karo önbelleğini temizleyin. Arazi verisi olmadan araç araziye göre irtifayı kullanamaz ve eve dönebilir.",
+      "unavailableHint": "İnternet bağlantısını kontrol et ve karo önbelleğini temizle. Arazi verisi olmadan araç araziye göre irtifayı kullanamaz ve eve dönebilir.",
       "gaps": "{{count}} bloğun yükseklik verisinin bir kısmı eksik (harita verisinin kenarı); araç istemeye devam eder.",
-      "errors": "{{count}} blok hatayla başarısız oldu; konsol günlüğüne bakın."
+      "errors": "{{count}} blok hatayla başarısız oldu; konsol günlüğüne bak."
     },
     "console": {
       "title": "Konsol",
@@ -312,12 +312,12 @@
       "advancedOptional": "Gelişmiş (isteğe bağlı)",
       "airframe": "Gövde",
       "allUpWeight": "Toplam Kalkış Ağırlığı",
-      "autoApplyHint": "SITL'i başlattığınızda bu profilin parametreleri otomatik olarak yeniden uygulanır.",
+      "autoApplyHint": "SITL'i başlattığında bu profilin parametreleri otomatik olarak yeniden uygulanır.",
       "autoApplyToSitlOnStart": "Başlangıçta SITL'e otomatik uygula",
-      "battery": "Pil",
-      "batteryCRating": "Pil C Değeri",
+      "battery": "Batarya",
+      "batteryCRating": "Batarya C Değeri",
       "bicopter2": "Bicopter (2)",
-      "buoyancy": "Yüzme kuvveti",
+      "buoyancy": "Yüzdürme kuvveti",
       "capacity": "Kapasite",
       "catamaran": "Katamaran",
       "cellCount": "Hücre Sayısı",
@@ -332,10 +332,10 @@
       "frameSize": "Frame Boyutu",
       "hexacopter6": "Hexacopter (6)",
       "hexaplane6": "Hexaplane (6)",
-      "hull": "Gövde",
-      "hullLength": "Gövde Uzunluğu",
-      "hullThrusters": "Gövde ve İticiler",
-      "hullType": "Gövde Tipi",
+      "hull": "Tekne Gövdesi",
+      "hullLength": "Tekne Boyu",
+      "hullThrusters": "Tekne Gövdesi ve İticiler",
+      "hullType": "Tekne Tipi",
       "liIon36v": "Li-Ion (3.6V)",
       "lifepo433v": "LiFePO4 (3.3V)",
       "lihv38v": "LiHV (3.8V)",
@@ -351,7 +351,7 @@
       "notesPlaceholder": "Bu araç hakkında ek notlar...",
       "octocopter8": "Octocopter (8)",
       "paddleWheel": "Kürek Çarkı",
-      "planing": "Planya",
+      "planing": "Kayıcı",
       "pontoon": "Duba",
       "positiveFloats": "Pozitif (yüzer)",
       "propeller": "Pervane",
@@ -383,10 +383,10 @@
     "experimental": {
       "advancedCommands": "Gelişmiş harita komutları",
       "advancedCommandsHint": "Harita komut penceresinde <b>Orbit</b> ve <b>Noktaya iniş</b> seçeneklerinin kilidini açar (pencere varsayılan olarak yalnızca <b>Taşı</b> gösterir). Ayrıca yerel CIRCLE modu olmayan uçuş kontrolcüleri için isteğe bağlı <b>Lua betik yükleyiciyi</b> etkinleştirir - ArduDeck, açık onay ve kaynak kod önizlemesinden sonra FC'nin SD kartına küçük bir betik yazabilir.",
-      "advancedCommandsWarning": "Uçuş modu değişikliklerini tetikler ve parametreleri değiştirebilir. Her komutu uçuştan önce tezgahta test edin.",
-      "altFrameHint": "Harita komut penceresinde girdiğiniz irtifanın neye göre ölçüldüğü. Arazi için araçta arazi verisi veya mesafe ölçer gerekir.",
+      "advancedCommandsWarning": "Uçuş modu değişikliklerini tetikler ve parametreleri değiştirebilir. Her komutu uçuştan önce tezgahta test et.",
+      "altFrameHint": "Harita komut penceresinde girdiğin irtifanın neye göre ölçüldüğü. Arazi için araçta arazi verisi veya mesafe ölçer gerekir.",
       "companion": "Yardımcı Bilgisayar",
-      "companionHint": "Yardımcı kartları (Raspberry Pi, ESP32, Jetson) uzak terminal, metrikler ve servis kontrolüyle izleyin ve yönetin",
+      "companionHint": "Yardımcı kartları (Raspberry Pi, ESP32, Jetson) uzak terminal, metrikler ve servis kontrolüyle izle ve yönet",
       "heading": "Deneysel Özellikler",
       "hint": "Bu özellikler aktif geliştirme aşamasındadır ve pürüzleri olabilir. Yalnızca ArduPilot/MAVLink.",
       "risky": "RİSKLİ",
@@ -406,7 +406,7 @@
       "hardware": "Donanım hızlandırmalı",
       "offTip": "Her şeyi CPU üzerinde çiz. Yalnızca çöken bir sürücü için.",
       "reduced": "Azaltılmış",
-      "restart": "Bunun etkili olması için ArduDeck'i yeniden başlatın.",
+      "restart": "Bunun etkili olması için ArduDeck'i yeniden başlat.",
       "restartHint": "Chromium bunu ilk pencere açılmadan önce okur, bu yüzden değişiklik için yeniden başlatma gerekir. Bir açılış çizimi hiç bitirmezse ArduDeck kendiliğinden Varsayılan'a döner.",
       "slowFrames": "%{{pct}} yavaş kare",
       "software": "Yazılım işleme",
@@ -416,15 +416,15 @@
       "windowSystem": "pencere sistemi"
     },
     "header": {
-      "subtitle": "Görev varsayılanlarını ve araç profillerini yapılandırın",
+      "subtitle": "Görev varsayılanlarını ve araç profillerini yapılandır",
       "title": "Ayarlar"
     },
     "mapOverlays": "Harita Bindirmeleri",
     "mapOverlaysHint": "Hava sahası ve havalimanı verileri için API anahtarları",
     "mavlink": {
       "sysid": "GCS Sistem ID'si",
-      "sysidHint": "Bu istasyonun ilettiği MAVLink sistem kimliği (1 ile 255 arası, varsayılan 255). Ortak bir bağlantıdaki her istasyona kendi kimliğini verin, aksi halde parametre ve görev aktarımları istasyonlar arasında birbirine karışır.",
-      "sysidWarning": "Araç, joystick / RC override komutlarını yalnızca SYSID_MYGCS'teki kimlikten (ArduPilot 4.6+ sürümünde MAV_GCS_SYSID) kabul eder ve GCS failsafe'ini de bu kimliğe göre çalıştırır. Aracı uçuran istasyonu bu parametreyle eşleşir tutun."
+      "sysidHint": "Bu istasyonun ilettiği MAVLink sistem kimliği (1 ile 255 arası, varsayılan 255). Ortak bir bağlantıdaki her istasyona kendi kimliğini ver, aksi halde parametre ve görev aktarımları istasyonlar arasında birbirine karışır.",
+      "sysidWarning": "Araç, joystick / RC override komutlarını yalnızca SYSID_MYGCS'teki kimlikten (ArduPilot 4.6+ sürümünde MAV_GCS_SYSID) kabul eder ve GCS failsafe'ini de bu kimliğe göre çalıştırır. Aracı uçuran istasyonu bu parametreyle eşleşir halde tut."
     },
     "mission": {
       "altRef": "İrtifa Referansı",
@@ -437,8 +437,8 @@
       "takeoffAltHint": "Kalkıştan sonraki irtifa",
       "terrain": "Arazi Üzerinden (AGL)",
       "title": "Görev Planlama Varsayılanları",
-      "waypointAlt": "Bekleme Noktası İrtifası",
-      "waypointAltHint": "Yeni bekleme noktaları için varsayılan"
+      "waypointAlt": "Waypoint İrtifası",
+      "waypointAltHint": "Yeni waypoint'ler için varsayılan"
     },
     "noVehicle": "Araç yok",
     "note": {
@@ -451,17 +451,17 @@
       "configured": "Anahtar yapılandırıldı",
       "freeAt": "- ücretsiz:",
       "label": "OpenAIP API Anahtarı",
-      "placeholder": "API anahtarınızı yapıştırın"
+      "placeholder": "API anahtarını yapıştır"
     },
     "perf": {
       "hint": "Büyük içe aktarılmış sınırlar ve büyük görevlerle haritayı tepkili tutan sınırlayıcılar. Her yerde geçerlidir.",
-      "maxInteractive": "Maks. etkileşimli bekleme noktası",
-      "maxInteractiveHint": "Sürüklenebilir işaretler, görünümde bu kadar az bekleme noktası olduğunda görünür",
+      "maxInteractive": "Maks. etkileşimli waypoint",
+      "maxInteractiveHint": "Sürüklenebilir işaretler, görünümde bu kadar az waypoint olduğunda görünür",
       "maxPhotos": "Maks. fotoğraf işareti",
       "maxPhotosHint": "Bunun üzerinde kamera tetikleme noktaları eşit şekilde seyreltilir",
       "maxVertices": "Maks. düzenlenebilir köşe",
       "maxVerticesHint": "Bunun üzerinde sürükleme tutamaçları gizlenir",
-      "maxWaypoints": "Maks. bekleme noktası işareti",
+      "maxWaypoints": "Maks. waypoint işareti",
       "maxWaypointsHint": "Bunun üzerinde işaretler seyreltilir (yol yine çizilir)",
       "title": "Tarama ve Harita Performansı"
     },
@@ -473,7 +473,7 @@
     "roughEstimates": "Kabaca tahminler. Daha iyi profil = daha iyi tahmin.",
     "runTime": "Çalışma Süresi",
     "scripts": {
-      "hint": "Bağlı araçta ArduDeck tarafından yüklenen betikleri yönetin ve inceleyin",
+      "hint": "Bağlı araçta ArduDeck tarafından yüklenen betikleri yönet ve incele",
       "open": "Yükleyiciyi aç…"
     },
     "stats": {
@@ -482,15 +482,15 @@
       "flightTime": "Toplam Uçuş Süresi",
       "hoursMinutes": "{{h}} sa {{m}} dk",
       "minutes": "{{m}} dk",
-      "poweredTime": "Toplam Güçlü Süre",
+      "poweredTime": "Toplam Güç Açık Süresi",
       "title": "Uçuş İstatistikleri (FC'den)"
     },
     "tips": {
-      "allGood": "Ayarlarınız iyi görünüyor! Uçuş planlamaya hazır.",
+      "allGood": "Ayarların iyi görünüyor! Uçuş planlamaya hazır.",
       "highCruise": "Yüksek seyir hızı multirotor'larda verimliliği düşürür",
-      "highPower": "Yüksek güç çekimi - daha uzun uçuşlar için daha büyük pil düşünün",
-      "lowBuffer": "Düşük güvenli irtifa tamponu - dağlık arazide artırın",
-      "smallBattery": "Araç ağırlığı için pil küçük - uçuş süresi sınırlı olabilir"
+      "highPower": "Yüksek güç çekimi - daha uzun uçuşlar için daha büyük batarya düşün",
+      "lowBuffer": "Düşük güvenli irtifa tamponu - dağlık arazide artır",
+      "smallBattery": "Araç ağırlığı için batarya küçük - uçuş süresi sınırlı olabilir"
     },
     "tipsTitle": "İpuçları ve Öneriler",
     "ui": {
@@ -550,8 +550,8 @@
       "gettingLocation": "Konum alınıyor...",
       "good": "İyi",
       "loading": "Hava durumu yükleniyor...",
-      "noGo": "Uçulmaz",
-      "noLocation": "Aracı bağlayın veya konum erişimine izin verin",
+      "noGo": "Uçuş Yok",
+      "noLocation": "Aracı bağla veya konum erişimine izin ver",
       "openBriefing": "Tam uçuş öncesi hava durumu brifingini aç",
       "swell": "Dalga {{dir}}",
       "title": "Hava Durumu",
@@ -559,12 +559,12 @@
       "viewDetail": "Ayrıntılı gör",
       "visibility": "Görüş",
       "warn": {
-        "approaching": "Rüzgar sınırlara yaklaşıyor. Koşulları yakından izleyin.",
+        "approaching": "Rüzgar sınırlara yaklaşıyor. Koşulları yakından izle.",
         "fog": "Sis algılandı. Görüş azalmış olabilir.",
         "gusts": "{{gusts}} km/sa rüzgar hamleleri güvenli sınırı ({{limit}} km/sa) aşıyor. Kontrol kaybı riski.",
         "rain": "Yağmur algılandı. Elektronik risk altında.",
-        "thunderstorm": "Gök gürültülü fırtına etkinliği algılandı. Uçmayın.",
-        "visibility": "Düşük görüş ({{visibility}} km). Görerek uçuş hattını koruyun.",
+        "thunderstorm": "Gök gürültülü fırtına etkinliği algılandı. Uçma.",
+        "visibility": "Düşük görüş ({{visibility}} km). Görüş hattını koru.",
         "wind": "{{wind}} km/sa sürekli rüzgar güvenli sınırı ({{limit}} km/sa) aşıyor."
       },
       "waveHeight": "Dalga Yüksekliği",
@@ -573,13 +573,13 @@
     "weight": "Ağırlık",
     "carto": {
       "label": "CARTO API anahtarı (Koyu harita stili)",
-      "freeAt": "- anahtar yoksa Koyu stil Esri kullanır. Anahtarı şuradan alın:",
-      "placeholder": "CARTO API anahtarınızı yapıştırın",
+      "freeAt": "- anahtar yoksa Koyu stil Esri kullanır. Anahtarı şuradan al:",
+      "placeholder": "CARTO API anahtarını yapıştır",
       "configured": "Anahtar yapılandırıldı: Koyu stil CARTO kullanıyor"
     },
     "voiceVolume": {
       "title": "Ses seviyesi",
-      "hint": "Tezgah ve uçuş için ayrı ses seviyesi: kurulum sırasında sesi kısın veya kapatın, bir araç arm olduğu anda arm seviyesine geri döner. Üst çubuktaki sessiz düğmesi yine her şeyi susturur.",
+      "hint": "Tezgah ve uçuş için ayrı ses seviyesi: kurulum sırasında sesi kıs veya kapat, bir araç arm olduğu anda arm seviyesine geri döner. Üst çubuktaki sessiz düğmesi yine her şeyi susturur.",
       "disarmed": "Disarm",
       "armed": "Arm",
       "silent": "Sessiz"
@@ -588,34 +588,34 @@
       "title": "Trainer",
       "offer": "Çalışan bir Trainer'a bağlanmayı öner",
       "offerHint": "Trainer bu bilgisayarda açıkken bağlantı ekranı, simüle edilen drone'una tek tıkla bağlanmak için bir kart gösterir.",
-      "offerNot": "Trainer'ı başlatmaz, tıklamanız olmadan bağlanmaz ve Trainer'da hiçbir şeyi değiştirmez. Yalnızca Trainer'ın bu bilgisayara yazdığı küçük bir durum dosyasını okur. Ağ üzerinden hiçbir şey gitmez."
+      "offerNot": "Trainer'ı başlatmaz, tıklaman olmadan bağlanmaz ve Trainer'da hiçbir şeyi değiştirmez. Yalnızca Trainer'ın bu bilgisayara yazdığı küçük bir durum dosyasını okur. Ağ üzerinden hiçbir şey gitmez."
     }
   },
   "signingSection": {
     "active": "etkin",
-    "addAnother": "Başka bir parola, base64 veya hex anahtarı ekleyin.",
+    "addAnother": "Başka bir parola, base64 veya hex anahtarı ekle.",
     "addKey": "Anahtar Ekle",
     "allSigned": "Giden tüm paketler SHA-256 ile imzalanır",
     "badgePaused": "Duraklatıldı",
     "confirmDisable": "Devre Dışı Bırakmayı Onayla",
     "copyKey": "Anahtarı kopyala (Base64 - Mission Planner ile aynı biçim)",
     "disableAndRemove": "İmzalamayı devre dışı bırak ve anahtarı kaldır",
-    "disableWarning": "Bu, uçuş kontrolcüsünde imzalamayı devre dışı bırakır ve yerel anahtarınızı kaldırır. Herhangi bir GCS anahtarsız bağlanabilir.",
+    "disableWarning": "Bu, uçuş kontrolcüsünde imzalamayı devre dışı bırakır ve yerel anahtarını kaldırır. Herhangi bir GCS anahtarsız bağlanabilir.",
     "disabledRemoved": "FC'de imzalama devre dışı bırakıldı ve anahtar kaldırıldı",
-    "enterOrPaste": "Bir parola girin veya başka bir GCS'den base64/hex anahtarı yapıştırın.",
-    "enterPassphrase": "Bir parola girin",
+    "enterOrPaste": "Bir parola gir veya başka bir GCS'den base64/hex anahtarı yapıştır.",
+    "enterPassphrase": "Bir parola gir",
     "keyLabel": "Anahtar:",
     "keySaved": "İmzalama anahtarı kaydedildi",
     "keySent": "Anahtar FC'ye gönderildi ve imzalama etkinleştirildi",
     "keySet": "Anahtar Ayarlı",
-    "mismatchBody": "İmzalama anahtarınız araç/proxy anahtarıyla eşleşmiyor. Aracın kurulduğu base64 anahtarını yapıştırın veya proxy'de kullanılan aynı parolayı girin.",
+    "mismatchBody": "İmzalama anahtarın araç/proxy anahtarıyla eşleşmiyor. Aracın kurulduğu base64 anahtarını yapıştır veya proxy'de kullanılan aynı parolayı gir.",
     "mismatchTitle": "İmzalama anahtarı uyuşmazlığı",
-    "networkInfo": "{{transport}} üzerinden bağlı. Bir proxy (UDPProxy/mavproxy) kullanıyorsanız aynı parolayı girin veya base64 anahtarını yapıştırın. Kayıtlı tüm anahtarlar bağlanırken otomatik denenir.",
+    "networkInfo": "{{transport}} üzerinden bağlı. Bir proxy (UDPProxy/mavproxy) kullanıyorsan aynı parolayı gir veya base64 anahtarını yapıştır. Kayıtlı tüm anahtarlar bağlanırken otomatik denenir.",
     "notConfigured": "Yapılandırılmadı",
     "packetSigning": "Paket imzalama",
     "paused": "İmzalama duraklatıldı",
     "placeholder": "Parola, base64 veya hex anahtar...",
-    "proxyHint": "Anahtarınızı FC'ye/proxy'ye gönderir. Proxy reddederse bunun yerine proxy'nin anahtarını yapıştırın.",
+    "proxyHint": "Anahtarını FC'ye/proxy'ye gönderir. Proxy reddederse bunun yerine proxy'nin anahtarını yapıştır.",
     "resend": "Yeniden gönder",
     "resumed": "İmzalama sürdürüldü",
     "savedKeys": "{{count}} kayıtlı anahtar (bağlanırken otomatik denenir)",
@@ -623,9 +623,9 @@
     "sendsKey": "Anahtarı FC'ye gönderir ve imzalamayı etkinleştirir. Her iki taraf da aynı anahtarı paylaşmalıdır.",
     "setKey": "Anahtarı Ayarla",
     "sharedActive": "GCS ve uçuş kontrolcüsü imzalama anahtarını paylaşıyor. İmzalama etkin.",
-    "step1": "İmzalama parolasını ayarlayın",
-    "step2": "Uçuş kontrolcüsünde etkinleştirin",
-    "subtitle": "Aracınıza yetkisiz erişimi önleyin",
+    "step1": "İmzalama parolasını ayarla",
+    "step2": "Uçuş kontrolcüsünde etkinleştir",
+    "subtitle": "Aracına yetkisiz erişimi önle",
     "sysid": "sysid {{ids}}",
     "title": "MAVLink İmzalama",
     "unavailable": "Kullanılamıyor",
@@ -638,10 +638,10 @@
     "count_one": "{{count}} anlık görüntü",
     "count_other": "{{count}} anlık görüntü",
     "delete": "Anlık görüntüyü sil",
-    "empty": "Henüz anlık görüntü yok. Bir tane oluşturmak için bu profili uygulayın.",
+    "empty": "Henüz anlık görüntü yok. Bir tane oluşturmak için bu profili uygula.",
     "heading": "Uygulama geçmişi",
     "params": "{{date}} · {{count}} parametre",
-    "subtitle": "Bu profili her uyguladığınızda geri alabilmeniz için bir anlık görüntü kaydedilir.",
+    "subtitle": "Bu profili her uyguladığında geri alabilmen için bir anlık görüntü kaydedilir.",
     "title": "Uygulama geçmişini / anlık görüntüleri göster"
   },
   "stallSpeedCalcButton": {
@@ -653,7 +653,7 @@
     "missingArea": "kanat alanı",
     "missingJoin": "{{a}} ve {{b}}",
     "missingWeight": "toplam kalkış ağırlığı",
-    "setToEstimate": "Stall hızını tahmin etmek için {{missing}} ayarlayın.",
+    "setToEstimate": "Stall hızını tahmin etmek için {{missing}} ayarla.",
     "theoretical": "Kuramsal temiz stall: gerçek stall flap'lerle daha düşük, dönüşlerde veya ağır yüklemede daha yüksek olabilir.",
     "wing": {
       "biplane": "çift kanat",
@@ -705,7 +705,7 @@
     "addZone": "Buraya bölge ekle",
     "aircraftJsonUrl": "aircraft.json URL'si (dump1090 / readsb / tar1090)",
     "altitudeFilter": "İrtifa filtresi",
-    "altitudeHint": "Çalışma bandınız (MSL), haritada varsayılan olarak kullanılır. Tabanın altı gizlenir; tavanın üstü soluklaşır (veya aşağıdaki seçenekle gizlenir). Bunlar varsayılanlardır. Canlı görünümü haritadaki kontrol yönetir.",
+    "altitudeHint": "Çalışma bandın (MSL), haritada varsayılan olarak kullanılır. Tabanın altı gizlenir; tavanın üstü soluklaşır (veya aşağıdaki seçenekle gizlenir). Bunlar varsayılanlardır. Canlı görünümü haritadaki kontrol yönetir.",
     "apiKeyOptional": "API anahtarı (isteğe bağlı)",
     "aprsHost": "APRS-IS sunucusu (genel veya yerel alıcı)",
     "ceiling": "Tavan (m)",
@@ -723,11 +723,11 @@
     "maxAlt": "Maks. irtifa (m, isteğe bağlı)",
     "minAlt": "Min. irtifa (m, isteğe bağlı)",
     "noKey": "Anahtar gerekmez.",
-    "noZones": "Bölge yok. Haritayı bir alana kaydırın ve \"Buraya bölge ekle\"ye tıklayın.",
+    "noZones": "Bölge yok. Haritayı bir alana kaydır ve \"Buraya bölge ekle\"ye tıkla.",
     "normalised": "Normalleştirilmiş (ArduDeck)",
     "openDroneId": "OpenDroneID alıcısı",
-    "pasteKey": "Anahtarı yapıştırın",
-    "pasteRapidApiKey": "RapidAPI anahtarını yapıştırın",
+    "pasteKey": "Anahtarı yapıştır",
+    "pasteRapidApiKey": "RapidAPI anahtarını yapıştır",
     "pollMs": "Sorgu (ms)",
     "provider": "Sağlayıcı",
     "proximity": "Yakınlık uyarısı",
@@ -736,9 +736,9 @@
     "rapidApiKey": "RapidAPI anahtarı",
     "receiverUrl": "Alıcı JSON URL'si",
     "remoteId": "Remote ID alıcısı",
-    "remoteIdHint": "Yayınlanan drone Remote ID'yi (FAA RID / ASTM F3411 / AB Doğrudan Remote ID) yerel bir alıcıdan veya çözülmüş mesajları HTTP üzerinden JSON olarak sunan bir ağ geçidinden alın.",
+    "remoteIdHint": "Yayınlanan drone Remote ID'yi (FAA RID / ASTM F3411 / AB Doğrudan Remote ID) yerel bir alıcıdan veya çözülmüş mesajları HTTP üzerinden JSON olarak sunan bir ağ geçidinden al.",
     "saveSettings": "Trafik ayarlarını kaydet",
-    "subtitle": "ADS-B ve OGN kaynakları: canlıya geçmek için haritada bir katmanı açın",
+    "subtitle": "ADS-B ve OGN kaynakları: canlıya geçmek için haritada bir katmanı aç",
     "title": "Trafik ve Planörler",
     "useAccount": "Hesap kullan (daha yüksek istek sınırı)",
     "verticalSeparation": "Dikey ayrım (m)",
@@ -766,20 +766,20 @@
     "targetVehicle": "araç"
   },
   "vehicleTemplatePicker": {
-    "choosePx4": "Bir PX4 gövdesi seçin",
-    "chooseTemplate": "Bir araç şablonu seçin",
+    "choosePx4": "Bir PX4 gövdesi seç",
+    "chooseTemplate": "Bir araç şablonu seç",
     "count_one": "{{count}} şablon",
     "count_other": "{{count}} şablon",
     "escCancel": "Esc iptal",
     "import": "Bağlı araçtan içe aktar",
-    "importHint": "Şu anda bağlı araçtan parametreleri okuyun ve eşleşen şablonu çıkarın.",
+    "importHint": "Şu anda bağlı araçtan parametreleri oku ve eşleşen şablonu çıkar.",
     "keys": "↑↓←→ gezin · Enter seç · Esc iptal",
     "noMatch": "Hiçbir şablon geçerli filtreyle eşleşmiyor.",
     "params": "{{count}} parametre",
-    "px4Footer": "SYS_AUTOSTART ile PX4 gövdesi · uygulamak için yeniden başlatın",
-    "px4Hint": "Hava aracınıza uyan gövdeyi seçin. Bu SYS_AUTOSTART yazar ve yeniden başlatma gerektirir.",
+    "px4Footer": "SYS_AUTOSTART ile PX4 gövdesi · uygulamak için yeniden başlat",
+    "px4Hint": "Hava aracına uyan gövdeyi seç. Bu SYS_AUTOSTART yazar ve yeniden başlatma gerektirir.",
     "search": "Şablon ara…",
-    "templateHint": "Hava aracınıza uyan yapılandırmayı seçin, alanları sonradan ayarlayabilirsiniz.",
+    "templateHint": "Hava aracına uyan yapılandırmayı seç, alanları sonradan ayarlayabilirsin.",
     "vtol": "VTOL"
   },
   "coordinateFormat": {

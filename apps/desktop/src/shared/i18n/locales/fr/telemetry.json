@@ -62,7 +62,7 @@
     "eco": "Éco",
     "ecoTip": "Mises à jour lentes : ménage les liaisons de télémétrie faibles ou longue portée",
     "fc": "FC",
-    "fcTip": "Hors jeu : ArduDeck ne demande jamais d'autres débits. Le véhicule continue d'émettre aux débits enregistrés sur le contrôleur de vol. À choisir si vous avez réglé ces débits vous-même.",
+    "fcTip": "Sans intervention : ArduDeck ne demande jamais d'autres débits. Le véhicule continue d'émettre aux débits enregistrés sur le contrôleur de vol. À choisir si vous avez réglé ces débits vous-même.",
     "max": "Max",
     "maxTip": "Mises à jour les plus rapides, pour les liaisons rapides comme USB ou WiFi",
     "normal": "Normal",

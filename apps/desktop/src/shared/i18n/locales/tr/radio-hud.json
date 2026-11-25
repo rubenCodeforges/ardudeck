@@ -51,7 +51,7 @@
   },
   "radioHudView": {
     "addPageTip": "Bir düzen sayfası ekle (geçmek için radyoda sola/sağa kaydır)",
-    "addTile": "Döşeme ekle:",
+    "addTile": "Kutucuk ekle:",
     "appliedAll": "Bu radyodaki her modele uygulandı. Çıkarmadan önce eject et.",
     "appliedBw": "Uygulandı. Telemetri ekranı {{count}} modelde ayarlandı - eject et, USB'yi çek, radyoda PAGE'e bas.",
     "appliedModel": "Yalnızca \"{{model}}\" modeline uygulandı. Radyoyu çıkarmadan önce eject et.",
@@ -77,7 +77,7 @@
     "detectedSwitch": "{{radio}} algılandı · geç",
     "detectedSwitchTip": "Takılı radyo kendini RADIO/radio.yml içinde tanıtır - yanlış ekran sınıfına uygularsan radyonun kullanamayacağı dosyalar yüklenir",
     "doneEditing": "Düzenlemeyi bitir",
-    "dragHint": "Taşımak için sürükle, yeniden boyutlandırmak için köşe tutamacını kullan (8 px yakalama). Üst çubuk ve mesaj şeridi sabittir.",
+    "dragHint": "Taşımak için sürükle, yeniden boyutlandırmak için köşe tutamacını kullan (8 px hizalama). Üst çubuk ve mesaj şeridi sabittir.",
     "duplicatePage": "Mevcut sayfayı çoğalt",
     "editLayout": "Düzeni düzenle",
     "editSlots": "Yuvaları düzenle",
@@ -92,7 +92,7 @@
     "everyModelOnRadio": "Bu radyodaki her model",
     "everyModelUses": " - kendi düzeni olmayan her model bunu kullanır",
     "fieldMaps": "Saha haritaları",
-    "fieldMapsTip": "Map döşemesi için çevrimdışı uydu görüntüleri. Sahana tıkla; halkalar her yakınlaştırma düzeyinin kapsamını gösterir",
+    "fieldMapsTip": "Map kutucuğu için çevrimdışı uydu görüntüleri. Sahana tıkla; halkalar her yakınlaştırma düzeyinin kapsamını gösterir",
     "fieldMapsWriteFailed": "Saha haritaları yazılamadı",
     "generate": "Oluştur",
     "guide": "Rehber",
@@ -107,12 +107,12 @@
     "layoutNamePlaceholder": "Düzen adı",
     "layoutOption": "{{name}} ({{count}} sayfa)",
     "layoutPlaceholder": "Düzen",
-    "layoutsTip": "Düzenler ArduDeck içinde yaşar ve sen düzenledikçe kaydedilir. Radyo yalnızca uyguladığını alır.",
+    "layoutsTip": "Düzenler ArduDeck içinde tutulur ve sen düzenledikçe kaydedilir. Radyo yalnızca uyguladığını alır.",
     "light": "Açık",
     "liveVehicle": "Canlı araç",
     "liveVehicleConnectFirst": "Canlı araç (önce bağlan)",
     "loadFromRadio": "Radyodan yükle",
-    "loadFromRadioTip": "SD kartta şu an bulunan yapılandırmayı ve döşeme düzenini düzenleyiciye oku",
+    "loadFromRadioTip": "SD kartta şu an bulunan yapılandırmayı ve kutucuk düzenini düzenleyiciye oku",
     "loadFromVehicle": "Araçtan yükle",
     "loadFromVehicleTip": "Alanları bağlı aracın parametrelerinden doldur",
     "loadedFromCache": "Önbellekteki parametrelerden yüklendi (araç şu an bağlı değil)",
@@ -125,7 +125,7 @@
     "lowCellHint": "değer sarıya döner",
     "mapsNeedCenter": "Önce bir saha merkezi ayarla (aracı bağla veya koordinat yaz)",
     "mapsReady": "Hazır: {{zooms}} yakınlaştırma düzeyi, sonraki Apply ile gönderilir",
-    "mapsReadyMissing": "Hazır ({{zooms}} yakınlaştırma), {{missing}} döşeme eksik - önbelleğe almak için bu alana uygulama haritasında bir kez göz at, sonra yeniden oluştur",
+    "mapsReadyMissing": "Hazır ({{zooms}} yakınlaştırma), {{missing}} kutucuk eksik - önbelleğe almak için bu alana uygulama haritasında bir kez göz at, sonra yeniden oluştur",
     "mapsStitching": "Uydu görüntüleri birleştiriliyor…",
     "mapsStitchingProgress": "Uydu görüntüleri birleştiriliyor… {{done}}/{{total}}",
     "myLayoutName": "Düzenim",
@@ -201,11 +201,11 @@
       "guide": "Rehber"
     },
     "screens": "Ekranlar",
-    "screensHint": "Radyonun gösterdikleri. Değiştirmek için bir döşemeye tıkla.",
+    "screensHint": "Radyonun gösterdikleri. Değiştirmek için bir kutucuğa tıkla.",
     "bwScreen": "Radyo ekranı",
     "bwScreenHint": "Sabit düzen; her yuvanın neyi göstereceğini seç.",
     "templates": "Şablonlar",
-    "templatesHint": "Şablon, eksiksiz bir ekran takımıdır. Birini seç, sonra istediğin döşemeyi değiştir.",
+    "templatesHint": "Şablon, eksiksiz bir ekran takımıdır. Birini seç, sonra istediğin kutucuğu değiştir.",
     "vehicle": "Araç",
     "kind": {
       "copter": "Copter",
@@ -217,8 +217,8 @@
     "connectedSuffix": "(bağlı)",
     "fromVehicleChip": "araçtan",
     "screenN": "Ekran {{n}}",
-    "screenTiles_one": "{{count}} döşeme",
-    "screenTiles_other": "{{count}} döşeme",
+    "screenTiles_one": "{{count}} kutucuk",
+    "screenTiles_other": "{{count}} kutucuk",
     "removeScreen": "{{n}}. ekranı kaldır",
     "addScreen": "Ekran ekle",
     "addFromTemplate": "Şablondan",
@@ -289,7 +289,7 @@
       },
       "thermal": {
         "name": "Termal",
-        "desc": "Havada asılı süzülme için haritanın yanında tırmanma hızıyla yükseklik ve rüzgar. Sonra sistemler."
+        "desc": "Süzülme uçuşu için haritanın yanında tırmanma hızıyla yükseklik ve rüzgar. Sonra sistemler."
       },
       "missionDrive": {
         "name": "Görev sürüşü",
@@ -317,8 +317,8 @@
       "bars": "Sayılar"
     },
     "dragHint": "Taşımak için ekranda sürükle, yeniden boyutlandırmak için köşeyi sürükle.",
-    "pickATile": "Değiştirmek veya kaldırmak için ekrandaki bir döşemeye tıkla.",
-    "addTile": "Döşeme ekle",
+    "pickATile": "Değiştirmek veya kaldırmak için ekrandaki bir kutucuğa tıkla.",
+    "addTile": "Kutucuk ekle",
     "moreTiles": "Daha fazla",
     "tileHelp": {
       "batt": "Kalan şarj, hücre başına voltaj ve akım. Çubuk sağdaki hücreleri ve kapasiteyi kullanır.",
@@ -371,7 +371,7 @@
     "autoCellsIdle": "Otomatik: batarya voltajından",
     "autoCapacity": "Otomatik: araçtan",
     "advanced": "Gelişmiş",
-    "fieldMapsHint": "Map döşemesi için uydu görüntüleri. Merkezi ayarlamak için haritaya tıkla; halkalar yakınlaştırma düzeyleridir.",
+    "fieldMapsHint": "Map kutucuğu için uydu görüntüleri. Merkezi ayarlamak için haritaya tıkla; halkalar yakınlaştırma düzeyleridir.",
     "generateMaps": "Haritaları oluştur",
     "readyToPut": "Bu ekranları radyoya koymaya hazır.",
     "connectToPut": "Bu ekranları koymak için bir radyo bağla. O zamana kadar saklanırlar.",
@@ -421,8 +421,8 @@
       "nmeaTitle": "NMEA derinlik ölçer",
       "nmeaBody": "NMEA ölçer yalnızca derinliği gönderir, bu yüzden radyo derinliği ve dip profilini gösterebilir ama ekogram gösteremez. Ekogram için bir Blue Robotics Ping gerekir."
     },
-    "snap": "Yakala",
-    "snapTip": "Sürüklerken döşemeleri 8 px ızgaraya ve komşularına yakala."
+    "snap": "Hizala",
+    "snapTip": "Sürüklerken kutucukları 8 px ızgaraya ve komşularına hizala."
   },
   "guide": {
     "installTitle": "Radyoya koy",

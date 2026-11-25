@@ -201,7 +201,7 @@
     "minimum": "Mínimo",
     "noConfigs": "No se encontraron configuraciones de servo.",
     "noConfigsHint": "Ejecuta el comando dump para cargar la configuración.",
-    "resetDefault": "Restablecer valores por defecto",
+    "resetDefault": "Restablecer",
     "safeRange": "Rango seguro",
     "title": "Configuración de extremos de servo",
     "travel": "Recorrido: {{range}}μs"

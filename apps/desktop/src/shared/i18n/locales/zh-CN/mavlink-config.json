@@ -2629,7 +2629,11 @@
       "criticalHint": "低于此转速将无法飞行。设置时让估算值在约 3 s 内降到其以下:加速 10 s 时为 70%。",
       "idleHint": "电动直升机为零。发动机则为离合器分离的地面怠速。",
       "curveX": "总距 %",
-      "curveY": "油门 %"
+      "curveY": "油门 %",
+      "headSpeed": "主旋翼转速",
+      "rpm2": "转速传感器 2",
+      "govTarget": "定速器目标",
+      "rpmValue": "{{rpm}} RPM"
     },
     "interlock": {
       "title": "电机联锁开关",

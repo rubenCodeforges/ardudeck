@@ -2,7 +2,7 @@
   "legacyConfigView": {
     "badge": "Legacy CLI",
     "configError": "Yapılandırma Hatası",
-    "howItWorks": "<b>Nasıl çalışır:</b> Değişiklikler CLI komutları olarak anında gönderilir. Gönderilen komutları görmek için CLI terminaline bak. İşin bitince değişiklikleri kalıcı yapmak için \"Save to EEPROM\" düğmesine tıkla (kart yeniden başlar).",
+    "howItWorks": "<b>Nasıl çalışır:</b> Değişiklikler CLI komutları olarak anında gönderilir. Gönderilen komutları görmek için CLI terminaline bak. İşin bitince değişiklikleri kalıcı yapmak için \"EEPROM'a Kaydet\" düğmesine tıkla (kart yeniden başlar).",
     "loading": "Yapılandırma CLI'dan yükleniyor...",
     "notConnected": "Yapılandırmak için bir legacy karta bağlan",
     "reboot": {
@@ -16,7 +16,7 @@
     "saveAndReboot": "Kaydet ve Yeniden Başlat",
     "saveConfirmBody": "Bu, tüm değişiklikleri uçuş kontrolcüsüne kaydeder ve <b>kartı yeniden başlatır</b>. Yeniden başlatma bittikten sonra tekrar bağlanman gerekir.",
     "saveConfirmTitle": "EEPROM'a kaydedilsin mi?",
-    "saveToEeprom": "Save to EEPROM",
+    "saveToEeprom": "EEPROM'a Kaydet",
     "subtitle": "CLI komutlarıyla yapılandırma (F3 kart)",
     "tabs": {
       "mixer": "Mixer",
@@ -122,8 +122,8 @@
     "ffLabel": "FF - Feed Forward",
     "iHint": "Zamanla oluşan sapmayı düzeltir",
     "iLabel": "I - İntegral",
-    "infoFixedWing": "<b>Legacy CLI Modu (Sabit Kanat):</b> Değişiklikler CLI komutlarıyla anında gönderilir. İşin bitince değişiklikleri kalıcı yapmak için \"Save to EEPROM\" düğmesine tıkla.",
-    "infoMultirotor": "<b>Legacy CLI Modu (Multirotor):</b> Değişiklikler CLI komutlarıyla anında gönderilir. İşin bitince değişiklikleri kalıcı yapmak için \"Save to EEPROM\" düğmesine tıkla.",
+    "infoFixedWing": "<b>Legacy CLI Modu (Sabit Kanat):</b> Değişiklikler CLI komutlarıyla anında gönderilir. İşin bitince değişiklikleri kalıcı yapmak için \"EEPROM'a Kaydet\" düğmesine tıkla.",
+    "infoMultirotor": "<b>Legacy CLI Modu (Multirotor):</b> Değişiklikler CLI komutlarıyla anında gönderilir. İşin bitince değişiklikleri kalıcı yapmak için \"EEPROM'a Kaydet\" düğmesine tıkla.",
     "levelDHint": "Salınımı azaltır",
     "levelDLabel": "D - Sönümleme",
     "levelIHint": "Zamanla düz konumu tutar",
@@ -160,7 +160,7 @@
   "legacyRatesTab": {
     "expoHint": "Orta çubuk hassasiyeti",
     "globalSettings": "Genel Ayarlar",
-    "info": "<b>Legacy CLI Modu:</b> Değişiklikler CLI komutlarıyla anında gönderilir. İşin bitince değişiklikleri kalıcı yapmak için \"Save to EEPROM\" düğmesine tıkla.",
+    "info": "<b>Legacy CLI Modu:</b> Değişiklikler CLI komutlarıyla anında gönderilir. İşin bitince değişiklikleri kalıcı yapmak için \"EEPROM'a Kaydet\" düğmesine tıkla.",
     "maxRate": "Maks: <v>{{rate}}°/s</v>",
     "noData": "Rate verisi yüklenmedi. Önce dump komutunu çalıştır.",
     "presets": {
@@ -177,7 +177,7 @@
         "description": "Hız için hızlı ve duyarlı"
       }
     },
-    "rateHint": "Maksimum dönüş hızı",
+    "rateHint": "Maksimum dönüş açısal hızı (rate)",
     "rcRate": "RC Rate",
     "rcRateHint": "Genel çubuk hassasiyet çarpanı",
     "responseCurve": "Tepki Eğrisi",
@@ -192,7 +192,7 @@
     "tpaDescription": "Hızlı uçuşta salınımları önlemek için yüksek throttle'da PID şiddetini azaltır.",
     "tpaRate": "TPA Rate",
     "tpaRateHint": "Tam throttle'da PID'lerin ne kadar azaltılacağı",
-    "tpaTitle": "Throttle PID Attenuation"
+    "tpaTitle": "Throttle PID Zayıflatma"
   },
   "legacyServoTab": {
     "description": "Her servo için min/maks/orta konumları ve rate'i yapılandır. Aralık: legacy F3 kartlar için 750-2250μs. Değişiklikler anında gönderilir.",

@@ -9,7 +9,7 @@
   },
   "legacyStream": {
     "allow": "Akışları iste ve bu araca kaydet",
-    "body": "{{label}}, modern mesaj bazlı isteğe hiçbir şey yanıtlamadı. Eski istek genellikle çalışır, ancak bu uçakta ArduPilot<b> bu hızları SR*_ parametrelerine kaydeder</b>; bu hızlar bu uçuştan sonra da, diğer tüm yer istasyonlarında da kalır.",
+    "body": "{{label}}, modern mesaj bazlı isteğe hiçbir şey yanıtlamadı. Eski istek genellikle çalışır, ancak bu hava aracında ArduPilot<b> bu hızları SR*_ parametrelerine kaydeder</b>; bu hızlar bu uçuştan sonra da, diğer tüm yer kontrol istasyonlarında da kalır.",
     "conservative": "İzin verirsen istenen hızlar seçtiğin telemetri hızı değil, ihtiyatlı olanlardır (attitude 10 Hz); böylece yavaş bir telsiz bağlantısı kullanılabilir kalır.",
     "decline": "Aracıma dokunma",
     "declineHint": "Reddedersen araç mevcut hızlarını korur. SR*_ parametrelerini Parametreler bölümünden kendin yükseltebilirsin.",
@@ -36,7 +36,7 @@
     "monitorMapping": " - eşleme \"{{mode}}\"",
     "monitorRawHid": " - ham HID",
     "moveIt": "hareket ettir",
-    "overrideTip": "Bağlı araca RC_CHANNELS_OVERRIDE gönderir. Joystick uçağı KOMUT EDER.",
+    "overrideTip": "Bağlı araca RC_CHANNELS_OVERRIDE gönderir. Joystick hava aracına KOMUT VERİR.",
     "reversedRestore": "Kanal ters çevrilmiş - eski haline getirmek için tıkla",
     "source": {
       "axis": "eksen {{index}}",
@@ -48,7 +48,7 @@
     "title": "USB vericiyle uç",
     "trainerActive": "Trainer oturumu etkin - çubukların sahibi Trainer",
     "unavailable": "Kullanılamıyor",
-    "vehicleOff": "Kapalı - uçağa hiçbir şey göndermez"
+    "vehicleOff": "Kapalı - hava aracına hiçbir şey göndermez"
   },
   "sidebar": {
     "collapse": "Kenar çubuğunu daralt",
@@ -71,7 +71,7 @@
     "flightReplayDesc": "Kaydedilmiş bir uçuşu oynat (.tlog veya .bin)",
     "intro": "Soldaki panelden uçuş kontrolcüne bağlan ya da aşağıdaki araçlardan birine doğrudan geç.",
     "missionLibraryDesc": "Kayıtlı planlara göz at ve yönet",
-    "radioHudDesc": "EdgeTX telsizinde ArduDeck telemetri ekranı",
+    "radioHudDesc": "EdgeTX vericinde ArduDeck telemetri ekranı",
     "simWorldDesc": "SITL'i kalıcı bir 3B dünyada uçur",
     "sitlDesc": "Firmware'i donanım olmadan test et",
     "title": "ArduDeck'e Hoş Geldin",

@@ -91,7 +91,7 @@
     "fault": "Défaut",
     "faults": {
       "asymDrag": "Traînée asym.",
-      "bearingDrag": "Frottement roulement",
+      "bearingDrag": "Frottement des roulements",
       "brownout": "Chute tension ESC",
       "motorOut": "Moteur HS",
       "thrustLoss": "Perte de poussée",
@@ -131,7 +131,7 @@
     "severityTip": "Gravité de la prochaine panne injectée (0-100 %)",
     "tension": "Tension {{n}} N",
     "thrust": "Poussée {{pct}} %",
-    "thrustTip": "Poussée restante sur les moteurs en panne (SIM_ENGINE_MUL) : 0 % = mort, sinon perte partielle",
+    "thrustTip": "Poussée restante sur les moteurs en panne (SIM_ENGINE_MUL) : 0 % = nulle, sinon perte partielle",
     "title": "Conditions de test",
     "toggleMotorTip": "Basculer la panne du moteur {{n}} (SIM_ENGINE_FAIL bit {{bit}})",
     "updateLoad": "Mettre à jour la charge",
@@ -204,12 +204,12 @@
       "batt": "BATT",
       "battTip": "Tension de la batterie en charge",
       "drag": "TRAÎNÉE",
-      "dragTip": "Traînée parasite de la cellule + traînée de quantité de mouvement des rotors (flèche orange)",
+      "dragTip": "Traînée parasite du châssis + traînée de quantité de mouvement des rotors (flèche orange)",
       "load": "CHARGE",
       "loadReleased": "Charge larguée",
-      "loadTip": "Facteur de charge de la cellule (force spécifique / g). 1,0 en vol stationnaire à plat ; plus élevé en ressource / virages serrés",
+      "loadTip": "Facteur de charge du châssis (force spécifique / g). 1,0 en vol stationnaire à plat ; plus élevé en ressource / virages serrés",
       "net": "RÉSULT.",
-      "netTip": "Force résultante nette accélérant la cellule (flèche blanche) ; proche de zéro en stationnaire stable",
+      "netTip": "Force résultante nette accélérant le châssis (flèche blanche) ; proche de zéro en stationnaire stable",
       "pitch": "TANGAGE",
       "pitchTip": "Assiette en tangage",
       "released": "LÂCHÉ",
@@ -229,6 +229,6 @@
     "waitingForSitl": "En attente du SITL",
     "waypointsTip": "Marqueurs de waypoints 3D conformes : réticules de cible flottant à la position et l'altitude réelles de chaque waypoint, avec numéro et distance oblique en direct",
     "xray": "Rayons X",
-    "xrayTip": "Rayons X physique : bilan des forces au centre de gravité (poussée, poids, traînée, résultante), flèches par moteur, repères du CG et charge en g (moteur de simulation ArduDeck uniquement)"
+    "xrayTip": "Radiographie physique : bilan des forces au centre de gravité (poussée, poids, traînée, résultante), flèches par moteur, repères du CG et charge en g (moteur de simulation ArduDeck uniquement)"
   }
 }

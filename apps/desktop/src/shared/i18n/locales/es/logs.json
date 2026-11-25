@@ -495,7 +495,7 @@
     "lowRange": "{{type}} se registra a {{rate}} Hz, por lo que este espectro llega solo hasta {{nyquist}} Hz.",
     "notEnough": "No hay suficientes muestras en esta ventana: aleja el zoom o elige un mensaje de mayor frecuencia (IMU, ACC, GYR en ArduPilot; sensor_combined o sensor_gyro_fifo en PX4)",
     "openVibrationCard": "Abrir la tarjeta del filtro de vibración",
-    "stats": "Frecuencia de muestreo {{rate}} Hz · Δf {{df}} Hz · {{seg}} seg"
+    "stats": "Frecuencia de muestreo {{rate}} Hz · Δf {{df}} Hz · {{seg}} segmentos"
   },
   "view": {
     "openLogFirst": "Abre primero un registro",

@@ -2,14 +2,14 @@
   "luaCodePreview": {
     "closeEsc": "Fermer (Échap)",
     "copySha": "Cliquez pour copier le SHA256 complet\n{{sha256}}",
-    "footer": "Examen en lecture seule. Déplacez et zoomez dans la vue graphe. Changez d'onglet pour inspecter le source ligne par ligne.",
+    "footer": "Examen en lecture seule. Déplacez et zoomez dans la vue graphe. Changez d'onglet pour inspecter le code source ligne par ligne.",
     "graph": "Graphe",
     "graphReview": "EXAMEN DU GRAPHE",
     "openLarger": "Ouvrir dans un visualiseur plus grand",
     "reviewFullscreen": "Examiner en plein écran →",
     "shaLabel": "sha256 : {{sha}}…",
     "source": "Source",
-    "sourceReview": "EXAMEN DU SOURCE"
+    "sourceReview": "EXAMEN DU CODE SOURCE"
   },
   "preflightChecksList": {
     "disarmVehicle": "Désarmer le véhicule",
@@ -65,7 +65,7 @@
     "rebooting": "Redémarrage du contrôleur de vol… {{waited}} s / ~{{total}} s",
     "resolveBlocking": "Résolvez d'abord les contrôles bloquants",
     "retryAutomatic": "Réessayer l'installation automatique",
-    "reviewBody": "Vérifiez que le source correspond au SHA256 affiché ci-dessous. Résolvez tout problème bloquant avant de continuer.",
+    "reviewBody": "Vérifiez que le code source correspond au SHA256 affiché ci-dessous. Résolvez tout problème bloquant avant de continuer.",
     "reviewTitle": "Vérifier et installer",
     "reviewedInstall": "J'ai vérifié, installer",
     "safeRemovable": "Retirable à tout moment depuis les réglages",

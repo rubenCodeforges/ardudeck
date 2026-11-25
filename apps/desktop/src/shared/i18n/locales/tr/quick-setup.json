@@ -2,34 +2,34 @@
   "apply": {
     "applied": "Yapılandırma Uygulandı!",
     "applying": "Yapılandırma Uygulanıyor...",
-    "applyingDesc": "{{name}} ön ayarı uçuş kontrolcünüze uygulanıyor...",
-    "errorDesc": "Yapılandırma uygulanırken bir hata oluştu. Tekrar deneyebilir veya geri dönebilirsiniz.",
+    "applyingDesc": "{{name}} ön ayarı uçuş kontrolcüne uygulanıyor...",
+    "errorDesc": "Yapılandırma uygulanırken bir hata oluştu. Tekrar deneyebilir veya geri dönebilirsin.",
     "failed": "Yapılandırma Başarısız",
     "noPreset": "Ön ayar seçilmedi.",
     "platformMismatch": "Platform Uyuşmazlığı",
-    "platformMismatchDesc": "Seçilen ön ayar \"{{required}}\" platformunu gerektiriyor, ancak kartınız şu anda \"{{current}}\" olarak ayarlı.",
-    "savedHint": "Yapılandırmanız EEPROM'a kaydedildi. Ayrı sekmelerde tek tek ayarlara ince ayar yapabilir veya kurulumunuzu şimdi test edebilirsiniz.",
+    "platformMismatchDesc": "Seçilen ön ayar \"{{required}}\" platformunu gerektiriyor, ancak kartın şu anda \"{{current}}\" olarak ayarlı.",
+    "savedHint": "Yapılandırman EEPROM'a kaydedildi. Ayrı sekmelerde tek tek ayarlara ince ayar yapabilir veya kurulumunu şimdi test edebilirsin.",
     "starting": "Başlatılıyor...",
-    "stepReconnect": "Yeniden bağlanıp ön ayarınızı uygulamaya devam edeceğiz",
-    "successDesc": "{{name}} ön ayarınız uçuş kontrolcünüze başarıyla uygulandı.",
+    "stepReconnect": "Yeniden bağlanıp ön ayarını uygulamaya devam edeceğiz",
+    "successDesc": "{{name}} ön ayarın uçuş kontrolcüne başarıyla uygulandı.",
     "tasks": "Yapılandırma Görevleri",
-    "verifyDirections": "Servo yönlerini test edin - çubukları hareket ettirdiğinizde kontrol yüzeyleri doğru hareket etmelidir",
-    "verifyMotor": "Motor çıkışının bağlı olduğunu ve doğru yönde döndüğünü doğrulayın",
-    "verifySafe": "Uçmadan önce her zaman güvenli bir ortamda test edin",
-    "verifyServoMixer": "<b>Servo Mixer</b> sekmesine bakın ve servoların doğru FC çıkışlarına bağlı olduğunu doğrulayın",
-    "verifyServos": "Servo Kurulumunuzu Doğrulayın"
+    "verifyDirections": "Servo yönlerini test et - çubukları hareket ettirdiğinde kontrol yüzeyleri doğru hareket etmeli",
+    "verifyMotor": "Motor çıkışının bağlı olduğunu ve doğru yönde döndüğünü doğrula",
+    "verifySafe": "Uçmadan önce her zaman güvenli bir ortamda test et",
+    "verifyServoMixer": "<b>Servo Mixer</b> sekmesine bak ve servoların doğru FC çıkışlarına bağlı olduğunu doğrula",
+    "verifyServos": "Servo Kurulumunu Doğrula"
   },
   "configReview": {
     "applyConfiguration": "Yapılandırmayı Uygula",
     "delaySeconds": "Gecikme: {{value}} saniye",
-    "intro": "Aşağıdaki yapılandırma uçuş kontrolcünüze uygulanacak. Devam etmeden önce ayarları gözden geçirin.",
+    "intro": "Aşağıdaki yapılandırma uçuş kontrolcüne uygulanacak. Devam etmeden önce ayarları gözden geçir.",
     "landingTimeout": "İniş zaman aşımı: {{value}} saniye",
     "modeItem": "{{channel}} üzerinde {{mode}} ({{start}}-{{end}})",
     "motorMixerMotors": "Motor mixer: {{n}} motor",
     "motorMixerQuadX": "Motor mixer: Quad X ({{n}} motor)",
-    "noPreset": "Ön ayar seçilmedi. Lütfen geri dönüp bir ön ayar seçin.",
-    "overwriteHint": "Mevcut ayarlarınızı korumak istiyorsanız yapılandırmanızı yedeklediğinizden emin olun. Değişiklikler hemen EEPROM'a kaydedilir.",
-    "overwriteWarning": "Bu işlem mevcut ayarlarınızın üzerine yazacak",
+    "noPreset": "Ön ayar seçilmedi. Lütfen geri dönüp bir ön ayar seç.",
+    "overwriteHint": "Mevcut ayarlarını korumak istiyorsan yapılandırmanı yedeklediğinden emin ol. Değişiklikler hemen EEPROM'a kaydedilir.",
+    "overwriteWarning": "Bu işlem mevcut ayarlarının üzerine yazacak",
     "pitchPid": "Pitch: P={{p}} I={{i}} D={{d}}",
     "platformAirplane": "Platform: Uçak",
     "platformMultirotor": "Platform: Multirotor",
@@ -48,7 +48,7 @@
     "changingTitle": "Platform Değiştiriliyor...",
     "errorGeneric": "Platform değiştirilirken bir hata oluştu.",
     "failed": "Platform Değişikliği Başarısız",
-    "pleaseWaitChanging": "Platform türü değiştirilirken lütfen bekleyin...",
+    "pleaseWaitChanging": "Platform türü değiştirilirken lütfen bekle...",
     "rebootingTitle": "Uçuş Kontrolcüsü Yeniden Başlatılıyor...",
     "reconnecting": "Yeniden bağlanılıyor...",
     "required": "Gerekli",
@@ -57,38 +57,38 @@
     "settingType": "Platform türü ayarlanıyor...",
     "stepReboot": "Kart otomatik olarak yeniden başlayacak",
     "stepSaved": "Yapılandırma EEPROM'a kaydedilecek",
-    "stepTypeChanged": "Platform türü uçuş kontrolcünüzde değiştirilecek",
+    "stepTypeChanged": "Platform türü uçuş kontrolcünde değiştirilecek",
     "waitingReboot": "Uçuş kontrolcüsünün yeniden başlaması bekleniyor...",
     "waitingReconnection": "Yeniden bağlantı bekleniyor...",
-    "whatHappens": "Platformu değiştirdiğinizde ne olur?"
+    "whatHappens": "Platformu değiştirdiğinde ne olur?"
   },
-  "pleaseWait": "Lütfen bekleyin...",
+  "pleaseWait": "Lütfen bekle...",
   "presetSelection": {
     "bfFixedWingExperimental": "Betaflight'ın sabit kanat desteği deneyseldir ve navigasyon özelliklerinden yoksundur.",
-    "bfGpsRescueHint": "Betaflight, iNav'ın navigasyon modları yerine <b>GPS Rescue</b> kullanır. Bir ön ayar uyguladıktan sonra acil eve dönüş işlevi için <b>GPS Rescue sekmesinde</b> GPS Rescue'yu yapılandırın.",
-    "bfNavNote": "<b>Not:</b> Navigasyon ön ayarları (GPS konum tutma, rota noktaları, RTH) yalnızca iNav için kullanılabilir. GPS Rescue'yu GPS Rescue sekmesinde ayrıca yapılandırın.",
+    "bfGpsRescueHint": "Betaflight, iNav'ın navigasyon modları yerine <b>GPS Rescue</b> kullanır. Bir ön ayar uyguladıktan sonra acil eve dönüş işlevi için <b>GPS Rescue sekmesinde</b> GPS Rescue'yu yapılandır.",
+    "bfNavNote": "<b>Not:</b> Navigasyon ön ayarları (GPS konum tutma, rota noktaları, RTH) yalnızca iNav için kullanılabilir. GPS Rescue'yu GPS Rescue sekmesinde ayrıca yapılandır.",
     "changeVehicleType": "Araç türünü değiştir",
     "chooseDifferent": "Farklı Bir Ön Ayar Seç",
     "cliConfig": "CLI Yapılandırması (Eski)",
     "currentPlatform": "Mevcut: {{name}}",
     "fixedWingDesc": "Uçaklar, uçan kanatlar, planörler ve diğer sabit kanatlı hava araçları",
-    "flashInav": "iNav Yazılımını Yükle",
+    "flashInav": "iNav Firmware'ini Yükle",
     "gpsReturnHome": "GPS ile Eve Dönüş",
-    "inavRecommendation": "Uçaklar, uçan kanatlar ve planörler için tam navigasyon, otomatik fırlatma, rota noktaları ve eve dönüş sunan <b>iNav yazılımını</b> öneriyoruz.",
+    "inavRecommendation": "Uçaklar, uçan kanatlar ve planörler için tam navigasyon, otomatik fırlatma, rota noktaları ve eve dönüş sunan <b>iNav firmware'ini</b> öneriyoruz.",
     "inavRecommended": "iNav Önerilir",
     "modesCount": "{{n}} Mod",
     "mspConfig": "MSP Yapılandırması",
     "multirotorDesc": "Quadcopter'lar, hexacopter'lar ve diğer çok motorlu hava araçları",
     "oneClick": "Tek Tıkla Yapılandırma",
-    "oneClickPresetHint": "Bu ön ayarlar eksiksiz, test edilmiş bir yapılandırma uygular. İnce ayarları daha sonra ayrı sekmelerde her zaman yapabilirsiniz.",
-    "oneClickVehicleHint": "Her ön ayar PID'ler, rate'ler, uçuş modları ve failsafe ayarlarını içeren eksiksiz, test edilmiş bir yapılandırma uygular. İnce ayarı daha sonra her zaman yapabilirsiniz.",
+    "oneClickPresetHint": "Bu ön ayarlar eksiksiz, test edilmiş bir yapılandırma uygular. İnce ayarları daha sonra ayrı sekmelerde her zaman yapabilirsin.",
+    "oneClickVehicleHint": "Her ön ayar PID'ler, rate'ler, uçuş modları ve failsafe ayarlarını içeren eksiksiz, test edilmiş bir yapılandırma uygular. İnce ayarı daha sonra her zaman yapabilirsin.",
     "pids": "PID'ler",
     "platformChangeBadge": "Platform değişikliği",
-    "platformChangeDesc": "\"{{name}}\" için {{required}} platformu gerekiyor, ancak kartınız {{current}} olarak ayarlı.",
+    "platformChangeDesc": "\"{{name}}\" için {{required}} platformu gerekiyor, ancak kartın {{current}} olarak ayarlı.",
     "platformChangeRequired": "Platform Değişikliği Gerekli",
     "presetsAvailable": "{{n}} ön ayar mevcut",
-    "selectPresetHint": "<b>Her şeyi tek seferde</b> yapılandırmak için bir ön ayar seçin: PID'ler, rate'ler, uçuş modları ve failsafe ayarları.",
-    "selectVehicle": "Kullanılabilir ön ayarları görmek için araç türünüzü seçin",
+    "selectPresetHint": "<b>Her şeyi tek seferde</b> yapılandırmak için bir ön ayar seç: PID'ler, rate'ler, uçuş modları ve failsafe ayarları.",
+    "selectVehicle": "Kullanılabilir ön ayarları görmek için araç türünü seç",
     "stepReconnect": "Yeniden bağlanıp kurulum sihirbazına devam edeceğiz",
     "title": "Hızlı Kurulum",
     "vehiclePresets": "{{vehicle}} Ön Ayarları"
@@ -97,7 +97,7 @@
     "beginner": {
       "description": "Öğrenmek için güvenli ve kararlı",
       "name": "Başlangıç",
-      "tip": "Otomatik dengeleme kontrolü sizde tutar. Yavaş rate'ler aşırı düzeltmeyi önler. İlk uçuşlarınız için ideal!"
+      "tip": "Otomatik dengeleme kontrolü sende tutar. Yavaş rate'ler aşırı düzeltmeyi önler. İlk uçuşlarınız için ideal!"
     },
     "cinematic": {
       "description": "Çekim için ultra akıcı",
@@ -127,7 +127,7 @@
     "fwSport": {
       "description": "Deneyimli pilotlar için çevik geleneksel uçak",
       "name": "Sport Uçak",
-      "tip": "Akrobasi için yüksek rate'ler. Kanatçık/irtifa dümeni/yön dümeni kurulumu. Stabilize ve acro modları arasında geçiş yapın."
+      "tip": "Akrobasi için yüksek rate'ler. Kanatçık/irtifa dümeni/yön dümeni kurulumu. Stabilize ve acro modları arasında geçiş yap."
     },
     "fwTrainer": {
       "description": "Yeni başlayanlar için geleneksel uçak",
@@ -137,12 +137,12 @@
     "longRange": {
       "description": "GPS güvenliğiyle uzatılmış menzil",
       "name": "Uzun Menzil",
-      "tip": "Verimlilik için muhafazakar PID'ler. Güvenlik için GPS cruise ve RTH. Kolay toparlama için ANGLE modu."
+      "tip": "Verimlilik için temkinli PID'ler. Güvenlik için GPS cruise ve RTH. Kolay toparlama için ANGLE modu."
     },
     "racing": {
       "description": "Hız için hızlı ve tepkisel",
       "name": "Yarış",
-      "tip": "Maksimum kontrol için saf ACRO. Hızlı düzeltmeler için yüksek rate'ler. Beeper, düşen aracı bulmanıza yardım eder!"
+      "tip": "Maksimum kontrol için saf ACRO. Hızlı düzeltmeler için yüksek rate'ler. Beeper, düşen aracı bulmana yardım eder!"
     }
   },
   "summary": {
@@ -176,28 +176,28 @@
     "fixReceiver": "Alıcı Yapılandırmasını Düzelt",
     "loadingConfig": "FC'den yapılandırma yükleniyor...",
     "noSignal": "RC sinyali algılanmadı",
-    "noSignalHint": "Alıcınız doğru yapılandırılmamış olabilir. Alıcının güç aldığını, vericinize bind edildiğini ve doğru protokolün ayarlandığını kontrol edin.",
+    "noSignalHint": "Alıcın doğru yapılandırılmamış olabilir. Alıcının güç aldığını, vericine bind edildiğini ve doğru protokolün ayarlandığını kontrol et.",
     "noneSelected": "Seçilmedi",
     "notLoaded": "Yüklenmedi",
     "receiverConfiguration": "Alıcı Yapılandırması",
     "receiverType": "Alıcı Türü",
     "saveFailed": "Alıcı yapılandırması kaydedilemedi",
-    "selectUartHint": "Alıcınızın bağlı olduğu UART'ı seçin. Yalnızca bir port Serial RX olabilir.",
+    "selectUartHint": "Alıcının bağlı olduğu UART'ı seç. Yalnızca bir port Serial RX olabilir.",
     "serialRxPort": "Serial RX Portu",
     "serialRxProtocol": "Serial RX Protokolü",
     "skip": "Verici kontrolünü atla (önerilmez)",
-    "turnOnHint": "Vericinizi açın ve alındıklarını doğrulamak için tüm çubukları hareket ettirin.",
-    "wiggleEach": "Kalan kanalları algılamak için her çubuğu oynatın",
-    "wiggleSticks": "Çubukları Oynatın",
-    "workingHint": "Vericiniz çalışıyor. Yapılandırmanızı gözden geçirmeye geçebilirsiniz."
+    "turnOnHint": "Vericini aç ve alındıklarını doğrulamak için tüm çubukları hareket ettir.",
+    "wiggleEach": "Kalan kanalları algılamak için her çubuğu oynat",
+    "wiggleSticks": "Çubukları Oynat",
+    "workingHint": "Vericin çalışıyor. Yapılandırmanı gözden geçirmeye geçebilirsin."
   },
   "wizard": {
-    "pressAgainToDiscard": "Kurulumu iptal etmek için tekrar basın",
+    "pressAgainToDiscard": "Kurulumu iptal etmek için tekrar bas",
     "stepApply": "Uygula",
     "stepCheck": "Kontrol",
     "stepReview": "İnceleme",
     "stepSelect": "Seç",
-    "subtitle": "Her şeyi tek seferde yapılandırın",
+    "subtitle": "Her şeyi tek seferde yapılandır",
     "title": "Hızlı Kurulum Sihirbazı"
   }
 }

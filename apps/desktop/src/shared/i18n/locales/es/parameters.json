@@ -573,7 +573,7 @@
     "rthCurrentDesc": "Se mantiene a la altura actual, ¡podría chocar con obstáculos!",
     "rthDesc": "Qué pasa cuando se activa el RTH",
     "rthExtra": "Extra",
-    "rthExtraDesc": "Sube más, la altitud de RTH, antes de volver",
+    "rthExtraDesc": "Sube además la altitud de RTH antes de volver",
     "rthFixed": "Fijo",
     "rthFixedDesc": "Siempre vuelve exactamente a la altitud de RTH",
     "rthMaximum": "Máximo",

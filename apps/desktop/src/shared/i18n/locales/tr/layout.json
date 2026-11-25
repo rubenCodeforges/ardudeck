@@ -1,22 +1,22 @@
 {
   "appShell": {
     "about": "ArduDeck Hakkında",
-    "clickToDisconnect": "Bağlantıyı kesmek için tıklayın",
+    "clickToDisconnect": "Bağlantıyı kesmek için tıkla",
     "disconnected": "Bağlantı kesildi",
     "fleetCount": "Filo ({{count}})",
-    "fleetTitle": "Çoklu araç bağlantılarıyla bağlı filo. Telemetriyi açmak için tıklayın.",
+    "fleetTitle": "Çoklu araç bağlantılarıyla bağlı filo. Telemetriyi açmak için tıkla.",
     "noneSelected": " · seçili yok",
-    "staleDisconnect": "{{seconds}} sn veri yok. Bağlantıyı kesmek için tıklayın",
+    "staleDisconnect": "{{seconds}} sn veri yok. Bağlantıyı kesmek için tıkla",
     "staleShort": "{{seconds}} sn veri yok",
-    "voiceMuted": "Sesli uyarılar kapalı. Açmak için tıklayın",
-    "voiceOn": "Sesli uyarılar açık. Kapatmak için tıklayın",
+    "voiceMuted": "Sesli uyarılar kapalı. Açmak için tıkla",
+    "voiceOn": "Sesli uyarılar açık. Kapatmak için tıkla",
     "waiting": "Bekleniyor...",
     "osBadge": "OS",
     "osBadgeTitle": "{{osName}} üzerinde çalışıyor. Araç bağlantısı ve parametre önbelleği sistem tarafından sağlanır."
   },
   "armDisarm": {
     "arm": "ARM",
-    "armNotConfigured": "FC üzerinde ARM modu yapılandırılmamış. Modlar sekmesinde ARM için bir AUX kanalı ayarlayın.",
+    "armNotConfigured": "FC üzerinde ARM modu yapılandırılmamış. Modlar sekmesinde ARM için bir AUX kanalı ayarla.",
     "armTitle": "Arm",
     "armingBlocked": "Arm engellendi",
     "disarm": "DISARM",
@@ -27,17 +27,17 @@
     "forceArmTitle": "Zorla arm (kontrolleri atlar)",
     "mspUnknown": "Bilinmiyor",
     "preArmFailed": "Arm öncesi kontroller başarısız",
-    "title": "{{action}} - Seçenekler için sağ tıklayın"
+    "title": "{{action}} - Seçenekler için sağ tıkla"
   },
   "quickLaunch": {
-    "areaEditorDesc": "Görev alanları çizin: çoklu alan, delikler, KML",
+    "areaEditorDesc": "Görev alanları çiz: çoklu alan, delikler, KML",
     "button": "Hızlı Başlat",
-    "buttonTitle": "Hızlı Başlat: araçları kendi pencerelerinde açın",
-    "inspectorDesc": "Canlı mesajları ve grafikleri izleyin",
-    "simWorldDesc": "SITL'i kalıcı bir 3D dünyada uçurun: engeller, çitler, görevler",
+    "buttonTitle": "Hızlı Başlat: araçları kendi pencerelerinde aç",
+    "inspectorDesc": "Canlı mesajları ve grafikleri izle",
+    "simWorldDesc": "SITL'i kalıcı bir 3D dünyada uçur: engeller, çitler, görevler",
     "telemetryDashboard": "Telemetri Panosu",
     "telemetryDashboardDesc": "Canlı telemetri kendi ekranında",
-    "locusDesc": "ArduDeck Locus'u açın: PPK, fotogrametri ve LiDAR"
+    "locusDesc": "ArduDeck Locus'u aç: PPK, fotogrametri ve LiDAR"
   },
   "updateBanner": {
     "available": "<b>ArduDeck {{version}}</b> kullanılabilir{{name}}",
@@ -54,7 +54,7 @@
   "voiceLevel": {
     "title": "Sesli bildirimler",
     "all": "Tümü",
-    "allDesc": "Tüm bildirimler: modlar, bekleme noktaları, kalkış ve iniş, uyarılar",
+    "allDesc": "Tüm bildirimler: modlar, yol noktaları, kalkış ve iniş, uyarılar",
     "allTip": "Ses: tüm bildirimler",
     "important": "Yalnızca önemliler",
     "importantDesc": "Uyarılar, failsafe'ler, alarmlar ve arm / disarm",

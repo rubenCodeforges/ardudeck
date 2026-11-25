@@ -9,7 +9,7 @@
     "none": "(vide)",
     "pct": "Batterie %",
     "sat": "Sats / fix",
-    "vspd": "Taux de montée"
+    "vspd": "Vitesse de montée"
   },
   "bwGuide": {
     "changeBody": "Appuyez sur <b>Modifier les emplacements</b>, cliquez sur un emplacement dans l'aperçu et choisissez un champ. Mettez un emplacement sur <b>(vide)</b> et son voisin s'étend dans la ligne libre : une disposition allégée obtient ainsi des chiffres plus grands plutôt que des trous. Appliquer l'écrit sur la carte.",
@@ -22,7 +22,7 @@
     "openTitle": "L'ouvrir",
     "pressPageHint": "appuyez sur PAGE depuis la vue principale",
     "radioFrontAria": "Face avant de l'émetteur",
-    "readBody": "Bandeau du haut : mode de vol, minuterie d'armement, qualité de la liaison. Bandeau du bas : les messages du véhicule lui-même. Entre les deux, tout est un emplacement : le grand affichage, une colonne de gauche, l'horizon (ou deux colonnes de données de plus) et une colonne de droite. Un <b>S</b> devant la valeur du signal signifie que les valeurs viennent des capteurs propres d'EdgeTX plutôt que de la passthrough.",
+    "readBody": "Bandeau du haut : mode de vol, minuterie d'armement, qualité de la liaison. Bandeau du bas : les messages du véhicule lui-même. Entre les deux, tout est un emplacement : le grand affichage, une colonne de gauche, l'horizon (ou deux colonnes de données de plus) et une colonne de droite. Un <b>S</b> devant la valeur du signal signifie que les valeurs viennent des capteurs propres d'EdgeTX plutôt que du passthrough.",
     "readTitle": "Le lire",
     "screenLayoutAria": "Disposition de l'écran",
     "title": "Le HUD sur un émetteur monochrome"
@@ -280,7 +280,7 @@
         "desc": "Carte avec le prochain waypoint, batterie et temps, pour les vols de cartographie. Puis les systèmes."
       },
       "cinematic": {
-        "name": "Cinématique",
+        "name": "Cinéma",
         "desc": "Une ligne d'horizon calme avec home et batterie, pour filmer."
       },
       "cruise": {
@@ -289,7 +289,7 @@
       },
       "thermal": {
         "name": "Thermique",
-        "desc": "Hauteur avec taux de montée et le vent à côté de la carte, pour le vol à voile. Puis les systèmes."
+        "desc": "Hauteur avec vitesse de montée et le vent à côté de la carte, pour le vol à voile. Puis les systèmes."
       },
       "missionDrive": {
         "name": "Mission au sol",
@@ -323,7 +323,7 @@
     "tileHelp": {
       "batt": "Charge restante, tension par cellule et courant. La barre utilise les cellules et la capacité à droite.",
       "home": "Distance et relèvement du home, avec une flèche qui le désigne.",
-      "alt": "Hauteur au-dessus du home et taux de montée. Un rover ou un bateau affiche à la place la distance parcourue, un sous-marin sa profondeur.",
+      "alt": "Hauteur au-dessus du home et vitesse de montée. Un rover ou un bateau affiche à la place la distance parcourue, un sous-marin sa profondeur.",
       "gps": "Satellites, type de fix et HDOP.",
       "att": "Roulis et tangage, en horizon ou en chiffres.",
       "compass": "Cap.",

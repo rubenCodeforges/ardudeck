@@ -288,8 +288,8 @@
     "waitingParams": "Esperando a que terminen de cargarse los parámetros."
   },
   "rcSourceArbiter": {
-    "joystickOwns": "El control por joystick es dueño del enlace RC",
-    "slidersOwn": "Los deslizadores RC virtuales son dueños del enlace RC",
+    "joystickOwns": "El joystick controla el enlace RC",
+    "slidersOwn": "Los deslizadores RC virtuales controlan el enlace RC",
     "trainerOwnsSticks": "Sesión de Trainer activa: el Trainer controla los sticks"
   },
   "receiverConstants": {

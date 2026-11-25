@@ -2632,7 +2632,11 @@
       "criticalHint": "Rotor speed below which flight is no longer possible. Set it so the estimate drops below it in about 3 s: 70% for a 10 s runup.",
       "idleHint": "Zero for electric helis. For an engine, ground idle with the clutch disengaged.",
       "curveX": "Collective %",
-      "curveY": "Throttle %"
+      "curveY": "Throttle %",
+      "headSpeed": "Head speed",
+      "rpm2": "RPM sensor 2",
+      "govTarget": "Governor target",
+      "rpmValue": "{{rpm}} RPM"
     },
     "interlock": {
       "title": "Motor interlock switch",

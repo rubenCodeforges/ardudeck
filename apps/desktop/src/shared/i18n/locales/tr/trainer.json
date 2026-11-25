@@ -55,7 +55,7 @@
     "tip": "Bu aracı Trainer'da, durduğu yerden uçur"
   },
   "trainerRegionStep": {
-    "asking": "Trainer'a neyi olduğu soruluyor…",
+    "asking": "Trainer'dan mevcut olanlar isteniyor…",
     "available": " · {{count}} mevcut",
     "bakedHere": "Bu bilgisayarda oluşturuldu",
     "couldNotDelete": "Bu bölge silinemedi.",

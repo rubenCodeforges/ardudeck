@@ -226,7 +226,7 @@
     "toggleMission": "Mostrar/ocultar capas de misión",
     "toggleMissionFull": "Mostrar/ocultar capas de misión (waypoints, geofence, rally)",
     "toggleTerrain": "Mostrar/ocultar elevación del terreno",
-    "fillWith": "Llenar con {{panel}}",
+    "fillWith": "Rellenar con {{panel}}",
     "shareWithMap": "Compartir con el mapa"
   },
   "messagesPanel": {

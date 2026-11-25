@@ -117,11 +117,11 @@
       "yaw": "lacet"
     },
     "dHint": "Amortit les dépassements",
-    "dLabel": "D - Dérivé",
+    "dLabel": "D - Dérivée",
     "ffHint": "Anticipe le mouvement du manche",
     "ffLabel": "FF - Feed Forward",
     "iHint": "Corrige la dérive dans le temps",
-    "iLabel": "I - Intégral",
+    "iLabel": "I - Intégrale",
     "infoFixedWing": "<b>Mode CLI hérité (voilure fixe) :</b> les modifications sont envoyées immédiatement par commandes CLI. Cliquez sur « Enregistrer dans l'EEPROM » une fois terminé pour les conserver.",
     "infoMultirotor": "<b>Mode CLI hérité (multirotor) :</b> les modifications sont envoyées immédiatement par commandes CLI. Cliquez sur « Enregistrer dans l'EEPROM » une fois terminé pour les conserver.",
     "levelDHint": "Réduit les oscillations",

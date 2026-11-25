@@ -392,19 +392,19 @@
     "otherMachine": "Sur l'autre machine, exécutez :",
     "plugDongle": "Branchez la clé WiFi du kit caméra à cet ordinateur",
     "portBusy": "Le port {{port}} est occupé - si le flux tourne déjà, c'est le flux lui-même.",
-    "ready": "Prêt - appuyez sur Add, sélectionnez le flux et alimentez la caméra.",
+    "ready": "Prêt - appuyez sur Ajouter, sélectionnez le flux et alimentez la caméra.",
     "receiverInstalled": "Composant récepteur installé",
     "receiverMissing": "Composant récepteur manquant",
     "receiving": "Réception...",
     "receivingStats": "Réception - {{wifi}} trames radio, {{rtp}} paquets vidéo",
     "recheck": "Revérifier",
-    "recheckTip": "Revérifier la clé, le récepteur et la clé d'appairage",
+    "recheckTip": "Revérifier la clé WiFi, le récepteur et la clé d'appairage",
     "separateGs": "Vous utilisez plutôt une station au sol séparée ?",
     "separateGsHint": "Si cet ordinateur ne peut pas alimenter la clé (LED éteinte / erreurs USB), exécutez le récepteur sur une autre machine qui le peut - un PC, ou un boîtier Linux / Radxa / Raspberry Pi - et faites-lui transmettre la vidéo ici via votre réseau. Les deux machines doivent être sur le même réseau. Réglez ensuite ce flux en mode <b>Réseau</b>.",
     "testPort": "La vidéo arrive-t-elle ? Tester le port {{port}}",
     "testTip": "Écoute quelques secondes et indique ce qui arrive",
-    "videoDetected": "Vidéo détectée - appuyez sur Add et sélectionnez le flux.",
-    "videoDetectedFrom": "Vidéo détectée depuis {{sender}} - appuyez sur Add et sélectionnez le flux."
+    "videoDetected": "Vidéo détectée - appuyez sur Ajouter et sélectionnez le flux.",
+    "videoDetectedFrom": "Vidéo détectée depuis {{sender}} - appuyez sur Ajouter et sélectionnez le flux."
   },
   "gallery": {
     "openTip": "Enregistrements et captures",

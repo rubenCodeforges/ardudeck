@@ -631,7 +631,7 @@
       "description": "Başka bir script veya GCS tarafından yayınlanan bir NAMED_VALUE_FLOAT oku",
       "label": "Named Float Oku",
       "outputs": {
-        "fresh": "Taze",
+        "fresh": "Güncel",
         "value": "Değer"
       },
       "props": {
@@ -786,7 +786,7 @@
       "inputs": {
         "trigger": "Tetikleyici"
       },
-      "label": "Her Şu Kadarda Çalıştır",
+      "label": "Aralıkla Çalıştır",
       "outputs": {
         "flow": "Akış"
       },
@@ -876,8 +876,8 @@
       "name": "ArduDeck Heartbeat Beacon"
     },
     "aerial-survey": {
-      "description": "Tüm survey koşulları sağlandığında (arm edilmiş, AUTO modda, hareket halinde ve doğru irtifada) kamerayı zamanlı aralıklarla otomatik tetikle. Her fotoğraf için GPS koordinatlarını kaydeder.",
-      "name": "Havadan Survey Otomasyonu"
+      "description": "Tüm haritalama koşulları sağlandığında (arm edilmiş, AUTO modda, hareket halinde ve doğru irtifada) kamerayı zamanlı aralıklarla otomatik tetikle. Her fotoğraf için GPS koordinatlarını kaydeder.",
+      "name": "Havadan Haritalama Otomasyonu"
     },
     "attitude-led-display": {
       "description": "NeoPixel LED renklerini aracın duruşuna göre sür: roll kırmızıyı, pitch yeşili, yaw maviyi kontrol eder. Aux anahtarıyla etkinleşir, yalnızca arm edilmişken.",
@@ -888,7 +888,7 @@
       "name": "Düşük Bataryada Otomatik RTL"
     },
     "camera-on-arm": {
-      "description": "Araç arm veya disarm olduğunda bildir. Kamera kaydını otomatik başlatmak için röle/servo ile genişlet. ArduPilot runcam_on_arm.lua temellidir.",
+      "description": "Araç arm veya disarm olduğunda bildir. Kamera kaydını otomatik başlatmak için röle/servo ile genişlet. ArduPilot runcam_on_arm.lua tabanlıdır.",
       "name": "Arm/Disarm'da Kamera"
     },
     "camera-trigger": {
@@ -940,7 +940,7 @@
       "name": "İniş Takımı"
     },
     "led-brightness-switch": {
-      "description": "LED parlaklığını 3 konumlu bir aux anahtarıyla kontrol et (Kapalı / Loş / Parlak). ArduPilot leds_on_a_switch.lua temellidir.",
+      "description": "LED parlaklığını 3 konumlu bir aux anahtarıyla kontrol et (Kapalı / Loş / Parlak). ArduPilot leds_on_a_switch.lua tabanlıdır.",
       "name": "LED Parlaklık Anahtarı"
     },
     "low-battery-warning": {
@@ -952,12 +952,12 @@
       "name": "Mod Duyurusu"
     },
     "multi-timer-scheduler": {
-      "description": "Farklı hızlarda çalışan üç bağımsız zamanlayıcı: 2 sn'de bir GPS kaydı, 10 sn'de bir koşullu batarya uyarısı ve 30 sn'de bir GPS kalite kontrolü. Hepsi arm durumuna bağlıdır.",
+      "description": "Farklı aralıklarla çalışan üç bağımsız zamanlayıcı: 2 sn'de bir GPS kaydı, 10 sn'de bir koşullu batarya uyarısı ve 30 sn'de bir GPS kalite kontrolü. Hepsi arm durumuna bağlıdır.",
       "name": "Çok Zamanlayıcılı Görev Planlayıcı"
     },
     "patrol-two-anchors": {
-      "description": "GUIDED hedefini her 30 saniyede bir home'dan iki sabit ofset arasında değiştir. Görev gerektirmeyen basit, anlık devriye.",
-      "name": "İki Çapa Arasında Devriye"
+      "description": "GUIDED hedefini her 30 saniyede bir home'dan iki sabit ofset arasında değiştir. Görev gerektirmeyen basit, geçici devriye.",
+      "name": "İki Sabit Nokta Arasında Devriye"
     },
     "payload-drop": {
       "description": "Bir RC aux anahtarı HIGH konumuna çevrildiğinde servo ile çalışan yükü bırak.",
@@ -980,7 +980,7 @@
       "name": "Arazi Takibi"
     },
     "wind-speed-failsafe": {
-      "description": "Rüzgar bir eşiği aştığında uyar, kritik olursa RTL'ye zorla. ArduPilot plane-wind-failsafe.lua temellidir.",
+      "description": "Rüzgar bir eşiği aştığında uyar, kritik olursa RTL'ye zorla. ArduPilot plane-wind-failsafe.lua tabanlıdır.",
       "name": "Rüzgar Hızı Failsafe"
     }
   }

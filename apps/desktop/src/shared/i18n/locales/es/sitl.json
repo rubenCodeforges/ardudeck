@@ -87,7 +87,7 @@
     "topSpeedHint": "Establece AIRSPEED_MAX en {{max}} m/s y AIRSPEED_CRUISE en {{cruise}} m/s. Surte efecto en el próximo inicio; si cambiaste esos parámetros antes en este simulador, marca Borrar EEPROM para que se apliquen los nuevos límites.",
     "topSpeedValue": "{{speed}} km/h",
     "gliderRelease": "Suelta del globo",
-    "gliderReleaseDesc": "El modelo de planeador de ArduPilot sube bajo un globo (Lift en el instrumento Sticks o en el panel Joystick) y se suelta a esta altura.",
+    "gliderReleaseDesc": "El modelo de planeador de ArduPilot sube bajo un globo (Ascenso en el instrumento Sticks o en el panel Joystick) y se suelta a esta altura.",
     "gliderReleaseLabel": "Altura de suelta sobre home",
     "gliderReleaseValue": "{{m}} m",
     "gliderReleaseHint": "Arma en FBWA o AUTO antes de que se suelte. La altitud de home de arriba es la elevación del terreno, no una altura de partida."

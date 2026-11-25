@@ -1,6 +1,6 @@
 {
   "detachable": {
-    "dockBackHere": "Buraya geri yasla",
+    "dockBackHere": "Buraya geri sabitle",
     "openInNewWindow": "{{title}} panelini yeni pencerede aç",
     "openInSeparateWindow": "Ayrı pencerede aç"
   },
@@ -9,17 +9,17 @@
     "somethingWentWrong": "Bir şeyler ters gitti"
   },
   "experienceLevelDialog": {
-    "advancedDescription": "El tutma olmadan sade arayüz. Eğitici kartları ve satır içi ipuçlarını gizler.",
-    "beginnerDescription": "Öğrenmenize yardımcı olmak için arayüz boyunca ipuçları, açıklamalar ve kılavuzlar gösterir.",
-    "changeAnytime": "Bunu istediğiniz zaman Ayarlar'dan değiştirebilirsiniz",
-    "subtitle": "Arayüzü size göre ayarlamak için deneyim seviyenizi seçin",
-    "title": "ArduDeck'e hoş geldiniz"
+    "advancedDescription": "Yönlendirme olmadan sade arayüz. Eğitici kartları ve satır içi ipuçlarını gizler.",
+    "beginnerDescription": "Öğrenmene yardımcı olmak için arayüz boyunca ipuçları, açıklamalar ve kılavuzlar gösterir.",
+    "changeAnytime": "Bunu istediğin zaman Ayarlar'dan değiştirebilirsin",
+    "subtitle": "Arayüzü sana göre ayarlamak için deneyim seviyeni seç",
+    "title": "ArduDeck'e hoş geldin"
   },
   "infoCard": {
     "tip": "İpucu:"
   },
   "presetSelector": {
-    "hint": "Bir ayar tarzını uygulamak için tıklayın"
+    "hint": "Bir ayar tarzını uygulamak için tıkla"
   },
   "profileManager": {
     "namePlaceholder": "Ad...",

@@ -91,7 +91,7 @@
       },
       "heading": {
         "title": "Cap par waypoint",
-        "body": "Définissez un <b>Heading</b> sur un waypoint : le véhicule le prend en route vers ce waypoint et sur celui-ci (0 est le nord). Laissez vide pour le cap normal."
+        "body": "Définissez un <b>Heading</b> sur un waypoint : le véhicule s'oriente ainsi en allant vers ce waypoint et sur celui-ci (0 est le nord). Laissez vide pour le cap normal."
       }
     },
     "multiVehicle": {
@@ -226,7 +226,7 @@
       "blurb": "Les QuadPlanes ont deux jeux de contrôleurs. L'onglet PID vous permet désormais de choisir lequel vous réglez.",
       "title": "Réglez séparément le VTOL et la voilure fixe",
       "toggle": {
-        "body": "Un QuadPlane utilise des contrôleurs distincts pour le vol stationnaire et le vol vers l'avant. Cet interrupteur bascule l'onglet PID entre le contrôleur de taux <b>VTOL</b> (<code>Q_A_RAT_</code>) et le contrôleur <b>voilure fixe</b> (<code>RLL_RATE_</code> / <code>RLL2SRV_</code>).",
+        "body": "Un QuadPlane utilise des contrôleurs distincts pour le vol stationnaire et le vol vers l'avant. Cet interrupteur bascule l'onglet PID entre le contrôleur de vitesse angulaire <b>VTOL</b> (<code>Q_A_RAT_</code>) et le contrôleur <b>voilure fixe</b> (<code>RLL_RATE_</code> / <code>RLL2SRV_</code>).",
         "body2": "Les curseurs, préréglages et profils suivent tous votre choix, vous pouvez donc régler chaque jeu sans quitter la page.",
         "title": "Deux contrôleurs, un seul autopilote"
       }

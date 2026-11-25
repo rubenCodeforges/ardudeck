@@ -2632,7 +2632,11 @@
       "criticalHint": "Rotordrehzahl, unter der kein Flug mehr möglich ist. So einstellen, dass die Schätzung in etwa 3 s darunter fällt: 70% bei 10 s Hochlauf.",
       "idleHint": "Null bei Elektro-Helis. Bei einem Verbrenner Bodenleerlauf mit ausgekuppelter Kupplung.",
       "curveX": "Kollektiv %",
-      "curveY": "Gas %"
+      "curveY": "Gas %",
+      "headSpeed": "Rotordrehzahl",
+      "rpm2": "Drehzahlsensor 2",
+      "govTarget": "Governor-Sollwert",
+      "rpmValue": "{{rpm}} U/min"
     },
     "interlock": {
       "title": "Motor-Interlock-Schalter",

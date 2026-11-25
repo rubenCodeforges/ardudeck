@@ -60,7 +60,7 @@
     },
     "blackbox": {
       "beginner": "ENREGISTREMENT : enregistre les données de vol sur la carte SD pour analyse. Utile pour régler les PID et analyser les crashs.",
-      "description": "Journal de vol"
+      "description": "Logs de vol"
     },
     "failsafe": {
       "beginner": "URGENCE : déclenche le comportement failsafe (généralement atterrissage ou désarmement). Normalement activé automatiquement en cas de perte de signal.",
@@ -95,7 +95,7 @@
       "description": "Contrôle direct"
     },
     "navAlthold": {
-      "beginner": "Maintient l'altitude actuelle avec le baromètre/GPS. Les gaz contrôlent le taux de montée/descente.",
+      "beginner": "Maintient l'altitude actuelle avec le baromètre/GPS. Les gaz contrôlent la vitesse de montée/descente.",
       "description": "Maintien d'altitude"
     },
     "navCourseHold": {

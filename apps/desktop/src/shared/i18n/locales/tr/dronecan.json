@@ -32,7 +32,7 @@
     "subtitle": "Uçuş kontrolcüsünün gördüğü haliyle CAN{{port}}, her 5 sn'de bir ölçülür",
     "timeouts": "Onaylanmadı",
     "title": "Veriyolu sağlığı",
-    "unavailable": "Bu yazılım CAN istatistiklerini bildirmiyor (MAVLink FTP ve @SYS/can0_stats.txt gerekir)."
+    "unavailable": "Bu firmware CAN istatistiklerini bildirmiyor (MAVLink FTP ve @SYS/can0_stats.txt gerekir)."
   },
   "col": {
     "default": "Varsayılan",
@@ -50,7 +50,7 @@
     "noResponse": "Uçuş kontrolcüsünden yanıt yok. Portun sürücüsünün etkin olduğunu ve CAN ayarları değiştirildikten sonra FC'nin yeniden başlatıldığını kontrol et.",
     "request": "İstek başarısız: {{error}}",
     "start": "CAN yönlendirmesi başlatılamadı: {{error}}",
-    "unsupported": "Bu yazılım sürümünde MAVLink üzerinden CAN yönlendirmesi yok, bu yüzden ArduDeck DroneCAN veriyolunu göremiyor."
+    "unsupported": "Bu firmware sürümünde MAVLink üzerinden CAN yönlendirmesi yok, bu yüzden ArduDeck DroneCAN veriyolunu göremiyor."
   },
   "fcHint": "Bu, uçuş kontrolcüsünün kendisi. Ayarları normal parametre tablosunda.",
   "filterPlaceholder": "Parametreleri filtrele",
@@ -70,7 +70,7 @@
     "maintenance": "Bakım",
     "offline": "Çevrimdışı",
     "operational": "Çalışıyor",
-    "softwareUpdate": "Yazılım güncelleniyor"
+    "softwareUpdate": "Firmware güncelleniyor"
   },
   "noBitsSet": "Hiçbir şey seçilmedi",
   "noBus": {

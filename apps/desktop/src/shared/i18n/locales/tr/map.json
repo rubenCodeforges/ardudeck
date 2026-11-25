@@ -132,7 +132,7 @@
     "mission": "Görev",
     "msl": "MSL",
     "mslValue": "MSL {{alt}}",
-    "noActiveLeg": "Etkin bacak yok",
+    "noActiveLeg": "Etkin etap yok",
     "noAtt": "ATT YOK",
     "noFix": "FIX YOK",
     "noMission": "Görev yok",
@@ -208,7 +208,7 @@
     "sticks": "Çubuklar (joystick)",
     "tilt": "Eğim",
     "vsi": "VSI",
-    "wind": "Rüzgar",
+    "wind": "Rüzgâr",
     "xtrack": "Cross-track"
   },
   "instrumentsCatalog": {
@@ -318,7 +318,7 @@
     "clearRoi": "Mevcut ROI'yi temizle",
     "climb": "Tırman",
     "climbRtlGo": "Tırman ve dön",
-    "climbRtlHint": "Olduğun yerde güvenli irtifaya tırman, sonra eve dön.",
+    "climbRtlHint": "Olduğun yerde güvenli irtifaya tırman, sonra home'a dön.",
     "climbRtlLabel": "Tırman + RTL",
     "climbTo": "Tırman:",
     "cw": "CW",
@@ -370,7 +370,7 @@
     "strafeHint": "Kamera kilitliyken hedefin yanından dikey ofsetle geç.",
     "strafeLabel": "Strafe",
     "targetTip": "Bu komutun gönderileceği araç",
-    "terrainOnBoard": "Araç, araç üstü arazi verisi bildiriyor.",
+    "terrainOnBoard": "Araç, yerleşik arazi verisi bildiriyor.",
     "thisVehicle": "Bu araç",
     "toAlt": "İrtifa:",
     "toMode": "{{mode}} moduna",
@@ -384,8 +384,8 @@
     "watchHint": "Bu noktada hover et ve panoramik görüş için yavaşça dön.",
     "watchLabel": "Watch",
     "wingmanWarning": "{{label}} bir wingman. Formasyon döngüsü onu her tikte yeniden hedefler, bu yüzden komut kabul edilir ve hemen ezilir. Lideri komuta et veya önce filodan çıkar.",
-    "wingmanWarningOf": "{{label}}, SYS {{leader}} aracının wingman'i. Formasyon döngüsü onu her tikte yeniden hedefler, bu yüzden komut kabul edilir ve hemen ezilir. Lideri komuta et veya önce filodan çıkar.",
-    "yawRate": "Yaw hızı",
+    "wingmanWarningOf": "{{label}}, SYS {{leader}} aracının wingman'ı. Formasyon döngüsü onu her tikte yeniden hedefler, bu yüzden komut kabul edilir ve hemen ezilir. Lideri komuta et veya önce filodan çıkar.",
+    "yawRate": "Yaw açısal hızı",
     "yawRateUnit": "°/s, devir başına {{sec}} sn"
   },
   "mapLayers": {
@@ -461,7 +461,7 @@
     "traffic": "Trafik",
     "waypointdots": "Waypoint'ler",
     "proximity": "Yakınlık halkası",
-    "wind": "Rüzgar"
+    "wind": "Rüzgâr"
   },
   "proximityDiscovery": {
     "add": "Göstergeyi ekle",
@@ -547,13 +547,13 @@
     "unknown": "Bilinmeyen tür"
   },
   "windControls": {
-    "altTip": "{{alt}} AGL'de rüzgar",
+    "altTip": "{{alt}} AGL'de rüzgâr",
     "cycleUnits": "Birimleri değiştir (m/s · kt · mph · km/h)",
     "forecastHour": "Tahmin saati",
     "legendTip": "Bölgesel akış (~25 km model). Vadi/sırt ayrıntısı değil; arazi yakınında araç üstü sensörlere güven.",
     "loading": "Yükleniyor…",
     "play": "Tahmini oynat",
-    "unavailable": "Rüzgar verisi kullanılamıyor"
+    "unavailable": "Rüzgâr verisi kullanılamıyor"
   },
   "zoneAlert": {
     "active_one": "{{count}} etkin çevre ihlali",
@@ -584,7 +584,7 @@
     "hint": "KONTROL'ü aç, sonra çubukları sürükle. Joystick gerekmez."
   },
   "sensorInstruments": {
-    "wind": "RÜZGAR",
+    "wind": "RÜZGÂR",
     "calm": "SAKİN",
     "from": "{{deg}}° yönünden",
     "head": "KARŞI",

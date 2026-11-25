@@ -106,10 +106,10 @@
       "throttle": "Acelerador",
       "throttleFrontLeft": "Acelerador delantero izquierdo",
       "throttleFrontRight": "Acelerador delantero derecho",
-      "throttleL": "Acelerador I",
+      "throttleL": "Acelerador izq.",
       "throttleLeft": "Acelerador izquierdo",
       "throttleLeftHull": "Acelerador casco izquierdo",
-      "throttleRTwinMotor": "Acelerador D (motor doble)",
+      "throttleRTwinMotor": "Acelerador der. (motor doble)",
       "throttleRearLeft": "Acelerador trasero izquierdo",
       "throttleRearRight": "Acelerador trasero derecho",
       "throttleRight": "Acelerador derecho",
@@ -195,7 +195,7 @@
       },
       "plane-twin-boom": {
         "description": "Dos botalones de cola, ideal para pushers y cámaras",
-        "name": "Avión bipluma"
+        "name": "Avión de doble botalón"
       },
       "plane-v-tail": {
         "description": "Dos superficies combinadas de cabeceo/guiñada, perfil de resistencia más limpio",

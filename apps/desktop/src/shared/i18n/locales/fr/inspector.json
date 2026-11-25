@@ -12,12 +12,12 @@
     "timeAxis": "Temps (s)"
   },
   "inspectorGraphsView": {
-    "clearTitle": "Effacer les statistiques de l'inspecteur : les graphiques réinitialisent leurs tampons à la prochaine trame",
+    "clearTitle": "Effacer les statistiques de l'inspecteur : les graphiques réinitialisent leurs tampons au prochain paquet",
     "live": "En direct · flux du contrôleur de vol connecté",
     "noGraphs": "Aucun graphique",
     "noGraphsHint": "Tous les onglets de cette fenêtre ont été fermés. Utilisez Réintégrer pour revenir à l'inspecteur.",
     "notConnected": "Non connecté",
-    "pauseTitle": "Mettre en pause l'échantillonnage : les graphiques se figent, les trames continuent d'arriver",
+    "pauseTitle": "Mettre en pause l'échantillonnage : les graphiques se figent, les paquets continuent d'arriver",
     "paused": "En pause",
     "resumeTitle": "Reprendre l'échantillonnage des graphiques"
   },

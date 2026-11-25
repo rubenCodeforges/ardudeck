@@ -762,6 +762,6 @@
   },
   "vtolTransition": {
     "toHover": "VERS STATIONNAIRE",
-    "toWing": "VERS AILE"
+    "toWing": "VERS AILE FIXE"
   }
 }

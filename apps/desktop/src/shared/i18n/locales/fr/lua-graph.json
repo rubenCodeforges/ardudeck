@@ -876,8 +876,8 @@
       "name": "Balise heartbeat ArduDeck"
     },
     "aerial-survey": {
-      "description": "Déclenche automatiquement la caméra à intervalles réguliers quand toutes les conditions de relevé sont réunies : armé, en mode AUTO, en mouvement et à la bonne altitude. Journalise les coordonnées GPS de chaque photo.",
-      "name": "Automatisation de relevé aérien"
+      "description": "Déclenche automatiquement la caméra à intervalles réguliers quand toutes les conditions du survey sont réunies : armé, en mode AUTO, en mouvement et à la bonne altitude. Journalise les coordonnées GPS de chaque photo.",
+      "name": "Automatisation de survey aérien"
     },
     "attitude-led-display": {
       "description": "Pilote les couleurs des LED NeoPixel selon l'attitude du véhicule : le roulis commande le rouge, le tangage le vert, le lacet le bleu. Activé par un interrupteur aux, uniquement quand armé.",

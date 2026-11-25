@@ -288,9 +288,9 @@
     "waitingParams": "En attente de la fin du chargement des paramètres."
   },
   "rcSourceArbiter": {
-    "joystickOwns": "Le contrôle par joystick détient la liaison RC",
-    "slidersOwn": "Les curseurs RC virtuels détiennent la liaison RC",
-    "trainerOwnsSticks": "Session Trainer active : le Trainer détient les manches"
+    "joystickOwns": "Le contrôle par joystick a la main sur la liaison RC",
+    "slidersOwn": "Les curseurs RC virtuels ont la main sur la liaison RC",
+    "trainerOwnsSticks": "Session Trainer active : le Trainer a la main sur les manches"
   },
   "receiverConstants": {
     "hint": {

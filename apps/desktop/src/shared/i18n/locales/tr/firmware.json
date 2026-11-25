@@ -44,7 +44,7 @@
     "stepFlash": "<b>{{firmware}}</b> yükleniyor",
     "stepReconnect": "Bootloader modunda yeniden bağlanılıyor",
     "stepShort": "Boot pad'leri kısa devre ediliyor",
-    "successDesc": "Kartın şimdi yeni firmware ile yeniden başlamalı. Yeniden bağlanıp yapılandırabilirsin.",
+    "successDesc": "Kartın şimdi yeni firmware ile yeniden başlayacak. Yeniden bağlanıp yapılandırabilirsin.",
     "successFlashed": "<b>{{firmware}}</b> başarıyla yüklendi",
     "title": "Boot Pad Yükleme Sihirbazı",
     "tryAgain": "Tekrar Dene",

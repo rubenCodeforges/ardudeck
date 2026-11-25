@@ -74,7 +74,7 @@
   "reason": {
     "gustsCaution": "Des rafales de {{value}} approchent de la limite ({{limit}}). Surveillez de près.",
     "gustsNogo": "Des rafales de {{value}} dépassent la limite de sécurité ({{limit}}). Risque de perte de contrôle.",
-    "precipCaution": "Faibles précipitations de {{value}} mm détectées. Protégez la cellule.",
+    "precipCaution": "Faibles précipitations de {{value}} mm détectées. Protégez l'appareil.",
     "precipNogo": "Précipitations de {{value}} mm. Électronique en danger, ne décollez pas.",
     "precipProbCaution": "Probabilité de précipitations en hausse ({{value}} %). Surveillez le ciel.",
     "precipProbNogo": "Forte probabilité de précipitations ({{value}} %). Attendez-vous à de la pluie dans l'heure.",

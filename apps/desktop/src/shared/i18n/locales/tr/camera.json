@@ -49,7 +49,7 @@
     "vario": "Dikey hız",
     "voltage": "Batarya voltajı",
     "vtolState": "Hover, kanatla uçuş veya geçiş",
-    "windSpeed": "Rüzgar hızı",
+    "windSpeed": "Rüzgâr hızı",
     "wpDist": "Aktif waypoint'e mesafe",
     "xtrack": "Crosstrack hatası"
   },
@@ -236,7 +236,7 @@
     "neutral": "Nötr",
     "neutralTip": "Parlaklık, kontrast, doygunluk ve ton 50'ye döner",
     "noAddress": "Kablolu adaptör ({{adapters}}) bağlı ama adresi yok. Kamera doğrudan bu bilgisayara takılınca böyle olur: adres dağıtan bir router yok.",
-    "noneAnswered": "Bu bilgisayarın ağlarında hiçbir WiFiLink yanıt vermedi. Kameranın güçlendirildiğini ve Ethernet kablosunun iki ucunun da oturduğunu kontrol et, sonra tekrar dene.",
+    "noneAnswered": "Bu bilgisayarın ağlarında hiçbir WiFiLink yanıt vermedi. Kameraya güç geldiğini ve Ethernet kablosunun iki ucunun da oturduğunu kontrol et, sonra tekrar dene.",
     "notConnected": "Bağlı değil",
     "notTaken": "Kamera değişiklikleri kabul etmedi.",
     "oldFirmware": "Bu firmware, ArduDeck'in güvenle yazabileceğinden daha eski. Değerler kameranın bildirdiği gibi gösteriliyor; burada değiştirmek için kamerayı V3.1 veya daha yeni bir sürüme güncelle.",

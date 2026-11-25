@@ -15,7 +15,7 @@
     "selectTip": "Afficher cette batterie partout"
   },
   "flightControl": {
-    "abort": "Annuler",
+    "abort": "Interrompre",
     "abortTitle": "Interrompre la mission (passer en {{mode}})",
     "alreadyArmed": "Déjà armé : cliquez d'abord sur désarmer",
     "arm": "Armer",
@@ -51,7 +51,7 @@
     "go": "Go",
     "holdingHover": "Maintien en vol stationnaire (RC virtuelle)",
     "idle": "inactif",
-    "jumpFailed": "Saut échoué",
+    "jumpFailed": "Échec du saut",
     "loadingConfig": "Chargement de la configuration...",
     "missionNotOnVehicle": "Mission absente du véhicule",
     "missionNotOnVehicleBody": "La mission planifiée ({{count}} waypoints) n'a pas été envoyée au contrôleur de vol : démarrer AUTO maintenant ne la ferait pas voler.",
@@ -267,7 +267,7 @@
     "groundHere": "Sol ici"
   },
   "ntripPanel": {
-    "baseHint": "Le récepteur doit être configuré comme base (position étalonnée par survey-in ou fixe) et émettre du RTCM3 sur ce port.",
+    "baseHint": "Le récepteur doit être configuré comme base (position déterminée par survey-in ou fixe) et émettre du RTCM3 sur ce port.",
     "basePosition": "Position de la base",
     "baseStation": "Station de base",
     "caster": "Caster",

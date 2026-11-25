@@ -36,9 +36,9 @@
     "assignmentSummaryTime": "{{waypoints}} wp · {{hectares}} ha · {{altitude}} m · {{minutes}} min",
     "assignments": "Asignaciones",
     "drawFirst": "Dibuja primero un polígono de survey y luego repártelo entre vehículos.",
-    "footnote": "Las bandas no se solapan; las misiones se suben de forma secuencial a cada vehículo por cualquier enlace conectado. La deconfliction de tiempos queda fuera de alcance aquí.",
-    "footnoteCells": "El plan se cortó siguiendo las celdas del motor, equilibrado por longitud de trayectoria; las misiones se suben de forma secuencial a cada vehículo. La deconfliction de tiempos queda fuera de alcance aquí.",
-    "footnoteEngine": "El motor de cobertura planificó una misión por vehículo a partir de su posición actual y la autonomía restante; las misiones se suben de forma secuencial a cada vehículo. La deconfliction de tiempos queda fuera de alcance aquí.",
+    "footnote": "Las bandas no se solapan; las misiones se suben de forma secuencial a cada vehículo por cualquier enlace conectado. La resolución de conflictos de tiempos queda fuera de alcance aquí.",
+    "footnoteCells": "El plan se cortó siguiendo las celdas del motor, equilibrada por longitud de trayectoria; las misiones se suben de forma secuencial a cada vehículo. La resolución de conflictos de tiempos queda fuera de alcance aquí.",
+    "footnoteEngine": "El motor de cobertura planificó una misión por vehículo a partir de su posición actual y la autonomía restante; las misiones se suben de forma secuencial a cada vehículo. La resolución de conflictos de tiempos queda fuera de alcance aquí.",
     "generateSplit": "Generar reparto ({{count}} vehículos)",
     "generating": "Generando…",
     "noVehicles": "No hay vehículos conectados.",
@@ -381,7 +381,7 @@
       "vtol": "VTOL"
     },
     "finish": {
-      "land": "Land",
+      "land": "Aterrizar",
       "landDesc": "Aterriza donde termina el survey",
       "none": "Ninguno",
       "noneDesc": "Se detiene en la última línea, para que pueda seguir otro survey o waypoint",

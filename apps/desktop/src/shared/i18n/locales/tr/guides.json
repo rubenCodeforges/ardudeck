@@ -30,7 +30,7 @@
     },
     "sitl": {
       "title": "Uçmadan önce simüle et",
-      "blurb": "Kenar çubuğundan SITL'i aç, bir araç seç ve tek bir simülatör başlat; ya da bir filo başlatmak için Swarm'a geç. ArduDeck yazılımı ilk seferde indirir ve kendiliğinden bağlanır."
+      "blurb": "Kenar çubuğundan SITL'i aç, bir araç seç ve tek bir simülatör başlat; ya da bir filo başlatmak için Swarm'a geç. ArduDeck firmware'i ilk seferde indirir ve kendiliğinden bağlanır."
     },
     "crsf": {
       "title": "ExpressLRS backpack üzerinden telemetri",

@@ -107,7 +107,7 @@
     "cannotIdentify": "Araç tanımlanamadı. Kasadaki \"Working on\" altından birini seç.",
     "deleteFailed": "Araç silinemedi",
     "deleted": "Araç silindi. Anlık görüntüleri geçmişte kalır.",
-    "firmwareMismatch": "O anlık görüntü {{snapshotFirmware}} üzerinden alınmış ama bu araç {{liveFirmware}} çalıştırıyor. Parametre adları uçuş yazılımları arasında geçerli değildir.",
+    "firmwareMismatch": "O anlık görüntü {{snapshotFirmware}} üzerinden alınmış ama bu araç {{liveFirmware}} çalıştırıyor. Parametre adları firmware'ler arasında geçerli değildir.",
     "linkFailed": "Bağlama başarısız",
     "linked": "Araç bağlandı; anlık görüntüler o birimde devam eder",
     "missionSaved": "Görev {{site}} konumuna kaydedildi",
@@ -127,7 +127,7 @@
     "syncFailed": "Eşitleme başarısız",
     "synced": "GitHub ile eşitlendi",
     "vaultUnavailable": "Kasa kullanılamıyor",
-    "wrongOwner": "O anlık görüntü bağlı araca değil, {{owner}} aracına ait. Bu aracın geçmişinden bir anlık görüntü aç ya da bu uçak oysa \"Working on\" değerini {{owner}} yap."
+    "wrongOwner": "O anlık görüntü bağlı araca değil, {{owner}} aracına ait. Bu aracın geçmişinden bir anlık görüntü aç ya da bu hava aracıysa \"Working on\" değerini {{owner}} yap."
   },
   "flightControlStore": {
     "trainerActive": "Trainer oturumu etkin - çubukların sahibi Trainer"

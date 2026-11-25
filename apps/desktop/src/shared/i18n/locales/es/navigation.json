@@ -2,7 +2,7 @@
   "navigationRail": {
     "cargo": "Cargo",
     "cliTerminal": "Terminal CLI",
-    "companionComputer": "Ordenador de a bordo",
+    "companionComputer": "Ordenador companion",
     "fleetVault": "Fleet Vault",
     "luaGraphEditor": "Lua Graph Editor",
     "osdTool": "Herramienta OSD",

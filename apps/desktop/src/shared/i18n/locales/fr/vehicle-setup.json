@@ -42,7 +42,7 @@
     },
     "battery": {
       "name": "Batterie et failsafes",
-      "title": "Batterie et que se passe-t-il quand ça tourne mal",
+      "title": "La batterie, et ce qui se passe en cas de problème",
       "why": "Des alertes à la bonne tension, et un plan pour la batterie faible et la perte de signal."
     },
     "ready": {
@@ -73,10 +73,10 @@
     "soar": {
       "name": "Vol à voile",
       "title": "Doit-il utiliser les thermiques ?",
-      "why": "ArduPilot peut spiraler dans l'air ascendant pour rester en l'air plus longtemps."
+      "why": "ArduPilot peut tourner en spirale dans les ascendances pour rester en l'air plus longtemps."
     },
     "airframe": {
-      "name": "Cellule",
+      "name": "Type d'avion",
       "title": "Quel type d'avion est-ce ?",
       "why": "Détermine quelle sortie commande quelle surface."
     },
@@ -92,7 +92,7 @@
     "outputs": {
       "name": "Sorties",
       "title": "Qu'est-ce qui est branché sur chaque sortie ?",
-      "why": "Servos et ESC sur les sorties qu'ArduPilot attend pour cette cellule."
+      "why": "Servos et ESC sur les sorties qu'ArduPilot attend pour ce type d'avion."
     },
     "surfaces": {
       "name": "Gouvernes",
@@ -175,7 +175,7 @@
     }
   },
   "reason": {
-    "acroYaw": "Vitesse de lacet en Acro, d'après la limite d'accélération de lacet pour des hélices de {{prop}} po",
+    "acroYaw": "Vitesse angulaire de lacet en Acro, d'après la limite d'accélération de lacet pour des hélices de {{prop}} po",
     "accel": "Limite d'accélération de roulis et de tangage pour des hélices de {{prop}} po",
     "accelYaw": "Limite d'accélération de lacet pour des hélices de {{prop}} po",
     "rateFilter": "Filtre du contrôleur de vitesse angulaire, moitié du filtre gyro ({{hz}} Hz)",
@@ -324,7 +324,7 @@
         "hint": "une sortie d'aérofrein"
       },
       "spoiler": {
-        "label": "Spoilers / crocodile",
+        "label": "Spoilers / papillon",
         "hint": "spoilers séparés façon planeur"
       },
       "steer": {
@@ -470,7 +470,7 @@
       },
       "none": {
         "label": "Pas encore de girouette",
-        "hint": "ne peut pas naviguer seul sans"
+        "hint": "sans girouette, ne peut pas naviguer seul"
       }
     },
     "subframe": {
@@ -714,12 +714,12 @@
     "frameClass": {
       "quad": "Quad",
       "hexa": "Hexa",
-      "octa": "Octo",
+      "octa": "Octa",
       "x8": "X8 (quad coaxial)",
       "y6": "Y6 (tri coaxial)",
       "dodeca": "Hexa coaxial",
       "tri": "Tri",
-      "deca": "Déca",
+      "deca": "Deca",
       "single": "Copter simple",
       "coax": "Copter coaxial",
       "bi": "Bicopter"
@@ -777,7 +777,7 @@
       },
       "start": {
         "title": "Démarrage",
-        "text": "Le démarreur tourne, puis le moteur ralentit au ralenti"
+        "text": "Le démarreur tourne, puis le moteur tourne au ralenti"
       },
       "spin": {
         "title": "Rotation",

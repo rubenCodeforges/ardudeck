@@ -42,8 +42,8 @@
     "alt": "İrtifa (m)",
     "altMode": "İrtifa modu",
     "altModes": {
-      "amsl": "Deniz seviyesinden yüksek",
-      "agl": "Zeminden yüksek",
+      "amsl": "Deniz seviyesi üstü",
+      "agl": "Zemin üstü",
       "clamp": "Zeminde"
     },
     "yaw": "Yaw (derece)",

@@ -65,8 +65,8 @@
   "welcome": {
     "drawMissionAreas": "Dessinez des zones de mission sur une carte en direct",
     "firmwareFlashDesc": "Flasher un firmware via USB ou DFU",
-    "flightLogAnalysis": "Analyse des journaux de vol",
-    "flightLogAnalysisDesc": "Revue de journaux de vol par IA",
+    "flightLogAnalysis": "Analyse des logs de vol",
+    "flightLogAnalysisDesc": "Revue de logs de vol par IA",
     "flightReplay": "Relecture de vol",
     "flightReplayDesc": "Rejouer un vol enregistré (.tlog ou .bin)",
     "intro": "Connectez-vous à votre contrôleur de vol avec le panneau de gauche, ou accédez directement à l'un des outils ci-dessous.",
@@ -75,6 +75,6 @@
     "simWorldDesc": "Piloter SITL dans un monde 3D persistant",
     "sitlDesc": "Tester un firmware sans matériel",
     "title": "Bienvenue dans ArduDeck",
-    "waypointsSurveysGeofences": "Waypoints, relevés et géofences"
+    "waypointsSurveysGeofences": "Waypoints, surveys et géofences"
   }
 }

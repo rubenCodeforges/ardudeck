@@ -59,13 +59,13 @@
     "feedbackEnabled": "● Realimentación de servos en vivo activada",
     "livePosition": "Posición en vivo",
     "quickTips": "Consejos rápidos:",
-    "rate": "Rate:",
+    "rate": "Tasa:",
     "rateHint": "Reduce el recorrido. 100% = recorrido completo, 50% = medio recorrido.",
     "subtitle": "Define hasta dónde puede moverse cada servo. Si tu servo hace un ruido de roce con el stick a tope, reduce aquí los límites.",
     "testingPosition": "Probando la posición del servo...",
     "tipGrinding": "<b>¿Ruido de roce?</b> Reduce el valor Mín o Máx",
     "tipNotLevel": "<b>¿No está nivelado con el stick centrado?</b> Ajusta el valor Centro",
-    "tipSensitive": "<b>¿Demasiado sensible?</b> Baja el porcentaje de Rate",
+    "tipSensitive": "<b>¿Demasiado sensible?</b> Baja el porcentaje de tasa",
     "title": "Ajuste fino del recorrido de los servos"
   },
   "servoPresets": {

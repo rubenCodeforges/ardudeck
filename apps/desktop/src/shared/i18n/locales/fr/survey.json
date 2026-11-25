@@ -268,7 +268,7 @@
     "splitByLines": "Diviser par lignes (essaim)",
     "splitByLinesTitle": "Essaim : chaque vol prend une partie des lignes parallèles sur toute la route, de sorte que plusieurs aéronefs travaillent côte à côte",
     "splitIntoFlights": "Diviser en {{count}} vols",
-    "splitIntoFlightsTitle": "Diviser en un groupe de vols à la taille d'une batterie par sortie ; envoyez chacun depuis le tableau",
+    "splitIntoFlightsTitle": "Diviser en un groupe de vols par sortie, chacun adapté à une batterie ; envoyez chacun depuis le tableau",
     "standoff": "Distance",
     "standoffHint": "Distance entre le sujet et la trajectoire de vol. Avec l'altitude, elle fixe la portée de la caméra, donc la taille du cadre et l'espacement des photos.",
     "startCornerHint": "Déplace le coin de départ. Avec l'angle de la grille, ces deux réglages atteignent les quatre coins, de sorte que la première ligne est la plus proche de votre point de lancement.",
@@ -369,7 +369,7 @@
       "copter": "Multirotor",
       "copterDesc": "Tourne sur place : pas de dépassement",
       "plane": "Aile fixe",
-      "planeDesc": "A besoin d'espace pour tourner : dépassement et hippodromes",
+      "planeDesc": "Nécessite de l'espace pour tourner : dépassement et hippodromes",
       "vtol": "VTOL",
       "vtolDesc": "Survey en aile fixe ; moteurs de sustentation pour le décollage et l'atterrissage"
     },
@@ -396,7 +396,7 @@
       "vertical": "Vertical",
       "verticalDesc": "Décollage VTOL, atterrissage VTOL au home"
     },
-    "noVehicleNote": "Aucun véhicule connecté : choisissez une cellule pour laquelle planifier",
+    "noVehicleNote": "Aucun véhicule connecté : choisissez le type de cadre à planifier",
     "planningNote": "{{vehicle}} : {{turns}} · {{start}}",
     "start": {
       "none": "Aucun",

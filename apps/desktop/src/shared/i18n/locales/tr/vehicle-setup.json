@@ -13,7 +13,7 @@
     "frameHeli": {
       "name": "Helikopter",
       "title": "Helikopterin",
-      "why": "Heli yazılımı helikopter olduğunu zaten bilir. Bu adım her araçta ortak olanı kurar; rotor kurulumu Heli setup içindedir."
+      "why": "Heli firmware'i helikopter olduğunu zaten bilir. Bu adım her araçta ortak olanı kurar; rotor kurulumu Heli setup içindedir."
     },
     "orient": {
       "name": "Kart yönelimi",
@@ -28,7 +28,7 @@
     "compass": {
       "name": "Pusula",
       "title": "Hangi pusula kullanılsın?",
-      "why": "GPS direğindeki olan motor akımlarından uzaktır ve genellikle daha iyisidir."
+      "why": "GPS direğindeki pusula motor akımlarından uzaktır ve genellikle daha iyisidir."
     },
     "modes": {
       "name": "Uçuş modları",
@@ -48,7 +48,7 @@
     "ready": {
       "name": "Arm'a hazır",
       "title": "Arm'a hazır mı?",
-      "why": "Uçuş kontrolcüsünün kendisinin hâlâ engel olduğunu söylediği şeyler."
+      "why": "Uçuş kontrolcüsünün hâlâ engel olarak gördüğü şeyler."
     },
     "psize": {
       "name": "Uçağın",
@@ -97,7 +97,7 @@
     "surfaces": {
       "name": "Kontrol yüzeyleri",
       "title": "Yüzeyler doğru yönde hareket ediyor mu?",
-      "why": "Kartın stabilize ettiği FBWA'da kontrol edilir. Yanlış yöne savaşan bir yüzey kalkışta düşürür."
+      "why": "Kartın stabilize ettiği FBWA'da kontrol edilir. Yanlış yöne çalışan bir yüzey uçağı kalkışta düşürür."
     },
     "thrcheck": {
       "name": "Motor",
@@ -112,7 +112,7 @@
     "vtype": {
       "name": "VTOL tipi",
       "title": "Nasıl hover yapıyor?",
-      "why": "Yazılım uçak diyor; bu, kaldırma motorlarının nasıl çalıştığını söyler."
+      "why": "Firmware uçak diyor; bu, kaldırma motorlarının nasıl çalıştığını söyler."
     },
     "vframe": {
       "name": "Kaldırma motoru düzeni",
@@ -175,10 +175,10 @@
     }
   },
   "reason": {
-    "acroYaw": "Acro'da yaw hızı, {{prop}} inç pervaneler için yaw ivme sınırından",
+    "acroYaw": "Acro'da yaw açısal hızı (rate), {{prop}} inç pervaneler için yaw ivme sınırından",
     "accel": "{{prop}} inç pervaneler için roll ve pitch ivme sınırı",
     "accelYaw": "{{prop}} inç pervaneler için yaw ivme sınırı",
-    "rateFilter": "Hız denetleyici filtresi, jiroskop filtresinin yarısı ({{hz}} Hz)",
+    "rateFilter": "Açısal hız (rate) denetleyici filtresi, jiroskop filtresinin yarısı ({{hz}} Hz)",
     "rateFilterOff": "Filtre kapalı, Mission Planner'ın ayarladığı gibi",
     "yawErrorFilter": "Yaw hata filtresi 2 Hz",
     "thrMixMan": "Manuel modlarda gaz karışımı",
@@ -616,7 +616,7 @@
       "4": "Bir ekseni eksik olan gövdeler, o eksende dengede kalmak için ağırlığa ve kaldırma kuvvetine güvenir.",
       "5": "Bir ekseni eksik olan gövdeler, o eksende dengede kalmak için ağırlığa ve kaldırma kuvvetine güvenir.",
       "6": "Bir ekseni eksik olan gövdeler, o eksende dengede kalmak için ağırlığa ve kaldırma kuvvetine güvenir.",
-      "7Warn": "Özel düzen, düzenini bilen bir yazılım gerektirir: thruster karışımı parametrelerle ayarlanmaz, derlemeye gömülüdür. Böyle bir derleme yüklendikten sonra thruster kontrolünden devam et."
+      "7Warn": "Özel düzen, düzenini bilen bir firmware gerektirir: thruster karışımı parametrelerle ayarlanmaz, derlemeye gömülüdür. Böyle bir derleme yüklendikten sonra thruster kontrolünden devam et."
     },
     "leak": {
       "nav": "Probu ıslak bir parmakla dokun: sızıntı alarmı çalmalı.",
@@ -656,7 +656,7 @@
     "later": "Sonra",
     "restartFailed": "Uçuş kontrolcüsü yeniden başlatmayı kabul etmedi.",
     "notBack": "Uçuş kontrolcüsü yeniden başlatmadan sonra geri gelmedi.",
-    "stillMissing": "Yeniden başlatmadan sonra hâlâ eksik: {{params}}. Bu yazılımda bunlar olmayabilir.",
+    "stillMissing": "Yeniden başlatmadan sonra hâlâ eksik: {{params}}. Bu firmware'de bunlar olmayabilir.",
     "noVehicle": "Başlamak için bir ArduPilot aracı bağla ve parametrelerini yükle.",
     "blocker": "Uçuş kontrolcüsü bildiriyor: {{text}}",
     "state": {
@@ -681,8 +681,8 @@
     },
     "heli": {
       "firmware": {
-        "title": "Heli yazılımı",
-        "text": "Helikopterler ayrı heli yazılımını çalıştırır; FRAME_CLASS hazır gelir."
+        "title": "Heli firmware'i",
+        "text": "Helikopterler ayrı heli firmware'ini çalıştırır; FRAME_CLASS hazır gelir."
       },
       "wizard": {
         "title": "Bu sihirbaz",
@@ -850,10 +850,10 @@
       "useEstimate": "Tahmini kullan",
       "knowIt": "Uçuştan biliyor musun?",
       "fills": "Bu senin için doldurulur",
-      "note": "Plane 4.5 bunları yeniden adlandırdı: eski yazılımlar bunun yerine ARSPD_FBW_MIN, TRIM_ARSPD_CM ve ARSPD_FBW_MAX alır. ArduDeck, kartta hangi adlar varsa onları yazar."
+      "note": "Plane 4.5 bunları yeniden adlandırdı: eski firmware'ler bunun yerine ARSPD_FBW_MIN, TRIM_ARSPD_CM ve ARSPD_FBW_MAX alır. ArduDeck, kartta hangi adlar varsa onları yazar."
     },
     "battery": {
-      "chemistry": "Kimya",
+      "chemistry": "Hücre kimyası",
       "chem": {
         "lipo": "LiPo",
         "lipohv": "LiPo HV",

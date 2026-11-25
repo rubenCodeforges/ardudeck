@@ -111,7 +111,7 @@
     "sendToMission": "Envoyer à la mission",
     "sent": "Envoyé",
     "shrink": "Réduire",
-    "splineHint": "Cliquez des points le long de la ligne à capturer · double-clic pour terminer la courbe lisse",
+    "splineHint": "Cliquez pour placer des points le long de la ligne · double-clic pour terminer la courbe lisse",
     "splitHint": "Tracez une ligne à travers une zone pour la découper (deux clics)",
     "theme": {
       "dark": "Thème : sombre (cliquer pour clair)",
@@ -123,13 +123,13 @@
       "circle": "Cercle : glissez depuis le centre",
       "corridor": "Tracer un corridor : une ligne centrale pour un relevé linéaire",
       "edit": "Modifier les points de l'objet sélectionné",
-      "hole": "Percer un trou : sélectionnez une zone, puis cliquez un anneau intérieur (double-clic pour terminer)",
+      "hole": "Percer un trou : sélectionnez une zone, puis cliquez sur un anneau intérieur (double-clic pour terminer)",
       "measure": "Mesurer distance et surface",
       "merge": "Fusionner : cliquez sur un polygone pour le combiner avec tout ce qu'il chevauche",
-      "polygon": "Tracer une zone : cliquez des points, double-clic pour terminer",
+      "polygon": "Tracer une zone : cliquez pour placer des points, double-clic pour terminer",
       "rectangle": "Rectangle : glissez sur la carte",
       "select": "Sélectionner et transformer : déplacer, pivoter, redimensionner",
-      "spline": "Corridor spline : cliquez des points le long d'un rivage ou d'une route pour obtenir une courbe lisse (double-clic pour terminer)",
+      "spline": "Corridor spline : cliquez pour placer des points le long d'un rivage ou d'une route pour obtenir une courbe lisse (double-clic pour terminer)",
       "split": "Découper : sélectionnez une zone, puis tracez une ligne à travers (deux clics)"
     },
     "undoTip": "Annuler (Ctrl+Z)"

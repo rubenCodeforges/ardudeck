@@ -85,7 +85,7 @@
     "echelonLeft": "Échelon gauche",
     "echelonRight": "Échelon droit",
     "line": "Ligne de front (mur)",
-    "survey": "Balayage de relevé (large)",
+    "survey": "Balayage survey (large)",
     "vee": "Vé (delta)"
   },
   "heartbeatDot": {

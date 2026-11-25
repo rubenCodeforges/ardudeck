@@ -664,8 +664,8 @@
     },
     "px4GcsLossDisabled": {
       "consequence": "Hava aracı RC menzili dışındayken telemetri koparsa, ona ulaşmanın bir yolu olmadan yoluna devam eder.",
-      "recommend": "Link kaybında eve dön",
-      "title": "Yer istasyonu linkini kaybetmek hiçbir şey yapmaz"
+      "recommend": "Bağlantı kaybında eve dön",
+      "title": "Yer kontrol istasyonu bağlantısını kaybetmek hiçbir şey yapmaz"
     },
     "px4MagCheckDisabled": {
       "consequence": "Çeliğin yanında veya manyetometre saçma okurken arm etmeni hiçbir şey engellemez.",

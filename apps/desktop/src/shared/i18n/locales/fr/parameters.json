@@ -120,8 +120,8 @@
     "counterClockwise": "Sens antihoraire",
     "customConfig": "Configuration personnalisée",
     "discardChanges": "Annuler les modifications",
-    "emptyMulti": "Aucun frame sélectionné",
-    "emptyMultiHint": "Choisissez un type de frame ci-dessus pour commencer. La plupart des drones utilisent « Quad X », la disposition standard avec 4 moteurs en X.",
+    "emptyMulti": "Aucun cadre sélectionné",
+    "emptyMultiHint": "Choisissez un type de cadre ci-dessus pour commencer. La plupart des drones utilisent « Quad X », la disposition standard avec 4 moteurs en X.",
     "emptyPlane": "Aucune configuration moteur",
     "emptyPlaneHint": "Choisissez une configuration moteur ci-dessus. La plupart des avions ont un seul moteur, les gouvernes assurent la direction.",
     "errorPrefix": "Erreur :",
@@ -144,7 +144,7 @@
       "quadPlaneVTOLBeginner": "Appareil VTOL : 4 moteurs de sustentation (comme un quad) plus 1 moteur propulsif pour le vol en avant. La configuration VTOL la plus répandue.",
       "quadPlaneVTOLDesc": "4 moteurs quad + 1 propulsif",
       "quadPlaneVTOLName": "QuadPlane VTOL",
-      "quadPlusBeginner": "Les moteurs sont disposés en forme de +. Un moteur pointe vers l'avant. Moins courant, mais fonctionne bien sur certains frames.",
+      "quadPlusBeginner": "Les moteurs sont disposés en forme de +. Un moteur pointe vers l'avant. Moins courant, mais fonctionne bien sur certains cadres.",
       "quadPlusDesc": "Disposition en forme de +",
       "quadPlusName": "Quad +",
       "quadXBeginner": "C'est ce qu'utilisent la plupart des drones de course et de freestyle. La forme en X offre un contrôle équilibré dans toutes les directions.",
@@ -163,7 +163,7 @@
       "twinMotorRudderDesc": "Lacet par servo de gouverne de direction",
       "twinMotorRudderName": "Bimoteur (gouverne de direction)"
     },
-    "questionMulti": "Quel type de frame avez-vous ?",
+    "questionMulti": "Quel type de cadre avez-vous ?",
     "questionPlane": "Combien de moteurs a votre avion ?",
     "rotationInfo": "<b>Le sens de rotation</b> est déduit des valeurs de mixage : les moteurs à mixage de roulis positif tournent en sens horaire (orange), ceux à mixage négatif en sens antihoraire (bleu). Pour les avions, c'est le mixage de lacet qui est utilisé.",
     "selected": "Sélectionné",
@@ -174,7 +174,7 @@
     "useQuadX": "Utiliser Quad X (recommandé)",
     "useSingleMotor": "Utiliser moteur unique (recommandé)",
     "whatIs": "Qu'est-ce que le mixeur moteur ?",
-    "whatIsMulti": "Le mixeur moteur indique à votre contrôleur de vol comment chaque moteur doit réagir quand vous bougez les manches. Choisissez un préréglage correspondant à la forme de votre frame.",
+    "whatIsMulti": "Le mixeur moteur indique à votre contrôleur de vol comment chaque moteur doit réagir quand vous bougez les manches. Choisissez un préréglage correspondant à la forme de votre cadre.",
     "whatIsPlane": "Le mixeur moteur contrôle la réaction de votre ou vos moteurs aux gaz. La plupart des avions ont un seul moteur, les gouvernes assurent la direction."
   },
   "mspConfigView": {
@@ -213,7 +213,7 @@
         "description": "Auto-stabilisation"
       },
       "m10": {
-        "beginner": "Retour au point de départ : l'appareil montera à une altitude sûre et reviendra à son point de décollage. Fonction de sécurité essentielle !",
+        "beginner": "Retour au home : l'appareil montera à une altitude sûre et reviendra à son point de décollage. Fonction de sécurité essentielle !",
         "description": "Retour au home"
       },
       "m11": {
@@ -254,7 +254,7 @@
       },
       "m26": {
         "beginner": "Enregistre les données de vol pour l'analyse de tuning",
-        "description": "Journalisation de vol"
+        "description": "Enregistrement des logs de vol"
       },
       "m27": {
         "beginner": "MODE D'URGENCE : déclenche le comportement failsafe. Normalement activé automatiquement en cas de perte de signal.",
@@ -780,9 +780,9 @@
   },
   "receiverTab": {
     "altHoldDeadband": "Zone morte du maintien d'altitude",
-    "boardMapping": "Mappage de la carte :",
+    "boardMapping": "Affectation de la carte :",
     "changeToPreset": "Passer au préréglage",
-    "channelMapping": "Mappage des canaux",
+    "channelMapping": "Affectation des canaux",
     "channelMappingHint": "Définit quel axe de manche correspond à quel canal. Si bouger votre manche des gaz fait réagir la mauvaise barre dans RC en direct ci-dessus, choisissez un autre préréglage ici. La plupart des récepteurs utilisent AETR. Les radios JR/Spektrum utilisent TAER.",
     "checkPowered": "Le récepteur est alimenté et appairé à l'émetteur",
     "checkProtocol": "Le protocole du récepteur correspond à votre matériel",
@@ -795,12 +795,12 @@
     "defaultNotLoaded": "Défaut (non chargé) :",
     "howThisWorks": "Comment ça marche :",
     "liveRcChannels": "Canaux RC en direct",
-    "loadingMapping": "Chargement du mappage depuis le FC...",
+    "loadingMapping": "Chargement de l'affectation depuis le FC...",
     "noRcSignal": "Aucun signal RC détecté",
     "noSerialRxBody": "INAV désactive le récepteur au prochain démarrage si aucun port ne porte Serial RX, et le type de récepteur repasse sur Aucun. Activez RX sur l'UART où votre récepteur est câblé.",
     "noSerialRxTitle": "Aucun UART n'a Serial RX activé",
     "noSignal": "Pas de signal",
-    "openPorts": "Ouvrir Ports",
+    "openPorts": "Ouvrir les ports",
     "openPortsConfig": "Ouvrir la configuration des ports",
     "pendingLabel": "Protocole du récepteur",
     "presetAetrDefault": "AETR (défaut)",
@@ -855,7 +855,7 @@
     "armWithoutFix": "Armer sans fix GPS",
     "armingSafety": "Sécurité d'armement",
     "ascendRate": "Taux de montée",
-    "bypassWarning": "<b>Mode contournement :</b> les commandes de manches peuvent outrepasser les contrôles de sécurité. À n'utiliser que pour des tests SITL ou des vols en intérieur sans GPS.",
+    "bypassWarning": "<b>Mode de contournement :</b> les commandes de manches peuvent outrepasser les contrôles de sécurité. À n'utiliser que pour des tests SITL ou des vols en intérieur sans GPS.",
     "descendRate": "Taux de descente",
     "descentDistance": "Distance de descente",
     "enabled": "Activé",

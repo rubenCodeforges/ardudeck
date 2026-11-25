@@ -3,7 +3,7 @@
     "altitudePlanning": {
       "blurb": "Profil artık göreli, arazi ve ASL waypoint'leri gerçek araziye göre doğru çiziyor: AGL etiketleri, güvenebileceğin çarpışma uyarıları ve yakınlaştırma ile.",
       "panel": {
-        "body": "Waypoint'ler araziye karşı kendi irtifa referansında çizilir; bu yüzden dağlık bir sahada 80 m göreli bir tarama yanlış çarpışma yerine <b>80m (80m AGL)</b> olarak okunur. Eksen ASL ile birlikte <b>home üzerindeki yüksekliği</b> gösterir, araziyi takip eden bölümler zemine yapışır ve kesikli çizgi güvenlik açıklığındır. <b>Yakınlaştırmak için kaydır, kaydırmak için sürükle</b>, irtifasını değiştirmek için waypoint noktasını sürükle ve gerçek arazi çakışmalarını <b>Auto Adjust</b> ile düzelt.",
+        "body": "Waypoint'ler araziye karşı kendi irtifa referansında çizilir; bu yüzden dağlık bir sahada 80 m göreli bir tarama yanlış çarpışma yerine <b>80m (80m AGL)</b> olarak okunur. Eksen ASL ile birlikte <b>home üzerindeki yüksekliği</b> gösterir, araziyi takip eden bölümler zemine yapışır ve kesikli çizgi güvenlik açıklığındır. <b>Yakınlaştırmak için tekerleği çevir, kaydırmak için sürükle</b>, irtifasını değiştirmek için waypoint noktasını sürükle ve gerçek arazi çakışmalarını <b>Auto Adjust</b> ile düzelt.",
         "title": "İrtifa, planladığın referansta"
       },
       "title": "Referansları anlayan irtifa profili"
@@ -17,7 +17,7 @@
       }
     },
     "flightInfo": {
-      "blurb": "Her görev veya tarama için canlı bir uçuş öncesi brifing: dayanıklılık ve bataryalar, mesafe ve irtifa, saha rüzgarı ve hava durumu, gün ışığı penceren.",
+      "blurb": "Her görev veya tarama için canlı bir uçuş öncesi brifing: uçuş süresi ve bataryalar, mesafe ve irtifa, saha rüzgarı ve hava durumu, gün ışığı penceren.",
       "panel": {
         "body": "Yeni <b>Flight Info</b> sekmesi görevini pilotun karar verdiği sayılara çevirir: <b>uçuş süresi</b> ve gereken <b>batarya</b> sayısı, toplam <b>mesafe</b> ve tavana karşı <b>irtifa</b> ve canlı <b>saha hava durumu</b>.",
         "body2": "Rüzgar bir <b>pusula</b> olarak görünür, <b>gün ışığı</b> çubuğu ise uçuşun gün batımına göre ne zaman biteceğini işaretler; böylece karanlıktan önce inip inmediğini tek bakışta görürsün.",
@@ -60,7 +60,7 @@
     },
     "missionPlanning": {
       "areaSurvey": {
-        "body": "İrtifayı tahmin etmek yerine <b>GSD</b> (cm/px) ile planla, canlı <b>batarya ve veri</b> tahminlerini gör ve büyük bir işi tek tıkla <b>batarya boyutunda sortilere</b> böl. Crosshatch daha iyi 3D için iki geçişini <b>iki farklı yükseklikte</b> bile uçabilir.",
+        "body": "İrtifayı tahmin etmek yerine <b>GSD</b> (cm/px) ile planla, canlı <b>batarya ve veri</b> tahminlerini gör ve büyük bir işi tek tıkla <b>tek bataryalık uçuşlara</b> böl. Crosshatch daha iyi 3D için iki geçişini <b>iki farklı yükseklikte</b> bile uçabilir.",
         "title": "Daha akıllı alan taramaları"
       },
       "blurb": "Gruplanmış görevler, koridor ve alan taramaları, uyan dönüşler, GIS içe aktarma, projeler, waypoint yönleri ve tam geri alma.",
@@ -77,7 +77,7 @@
         "title": "GIS'ten alan içe aktar"
       },
       "groups": {
-        "body": "Her waypoint artık adlandırılmış, renkli bir <b>grupta</b> yaşar. Rengi değiştirmek için renk kutusuna, haritada göstermek/gizlemek için onay kutusuna, yalnızca o grubu yüklemek veya kaydetmek için grup düğmesine tıkla. Her başlık grubun <b>mesafesini, uçuş süresini ve GSD'sini</b> bir bakışta gösterir.",
+        "body": "Her waypoint artık adlandırılmış, renkli bir <b>grupta</b> yer alır. Rengi değiştirmek için renk kutusuna, haritada göstermek/gizlemek için onay kutusuna, yalnızca o grubu yüklemek veya kaydetmek için grup düğmesine tıkla. Her başlık grubun <b>mesafesini, uçuş süresini ve GSD'sini</b> bir bakışta gösterir.",
         "title": "Görevler gruplar halinde düzenlenir"
       },
       "history": {
@@ -95,9 +95,9 @@
       }
     },
     "multiVehicle": {
-      "blurb": "Çoklu araç geldi: tek bir anahtar motoru başlatır, araçlar çevrimiçi oldukça görünür ve ArduDeck onları tek tek veya birlikte yönetir.",
+      "blurb": "Çoklu araç geldi: tek bir anahtar altyapıyı başlatır, araçlar çevrimiçi oldukça görünür ve ArduDeck onları tek tek veya birlikte yönetir.",
       "tab": {
-        "body": "Bağlantı kenar çubuğunu <b>Multi-vehicle</b> yap ve aç: ArduDeck motorunu arka planda başlatır ve araçlar heartbeat'leri geldikçe görünür; port yok, URL yok. <b>Add a vehicle</b> telsiz, internet, hücresel ve ikinci yer istasyonu bağlantılarını kapsar. Filo listesinde bir araca tıkla; telemetri, harita ve komutlar ona geçer.",
+        "body": "Bağlantı kenar çubuğunu <b>Multi-vehicle</b> yap ve aç: ArduDeck altyapısını arka planda başlatır ve araçlar heartbeat'leri geldikçe görünür; port yok, URL yok. <b>Add a vehicle</b> telsiz, internet, hücresel ve ikinci yer istasyonu bağlantılarını kapsar. Filo listesinde bir araca tıkla; telemetri, harita ve komutlar ona geçer.",
         "title": "Çoklu araç modu"
       },
       "title": "Yeni: tüm bir filoyu uçur"
@@ -108,7 +108,7 @@
         "body": "Bu çubuk gerçeğin kendisidir: <b>özel HUD</b> ArduDeck tarafından ekranın ve video akışının üzerine çizilir ve uçuş kontrolcüsüne <b>asla yüklenmez</b>; <b>Text OSD</b> editörü FC'nin gerçek OSDn_* layout'unu okur ve yazar; <b>RubyFPV</b> tasarımcısı RubyFPV yer istasyonları için bir layout dışa aktarır. Üçü de canlı video akışının üzerinde önizlenir.",
         "title": "Üç OSD, üç hedef"
       },
-      "title": "OSD Aracı: kaplamanın nerede yaşadığını bil"
+      "title": "OSD Aracı: kaplamanın nereye gittiğini bil"
     },
     "quickLaunch": {
       "areaEditor": {
@@ -128,27 +128,27 @@
     },
     "radioHud": {
       "apply": {
-        "body": "Telsizi USB ile tak (ekranında <b>USB Storage</b> seç) ve <b>Apply</b>'a bas; widget, yapılandırma, ses paketi ve haritalar birlikte SD karta iner. Sonra telsizde: App layout, tam ekran widget, ArduDeck.",
-        "title": "Telsize tek tık"
+        "body": "Vericiyi USB ile tak (ekranında <b>USB Storage</b> seç) ve <b>Apply</b>'a bas; widget, yapılandırma, ses paketi ve haritalar birlikte SD karta iner. Sonra vericide: App layout, tam ekran widget, ArduDeck.",
+        "title": "Vericiye tek tık"
       },
-      "blurb": "EdgeTX telsizin için bir ArduDeck telemetri ekranı tasarla (canlı önizleme, sürükle-bırak layout, çevrimdışı saha haritaları, sesli uyarılar) ve tek tıkla SD karta gönder.",
+      "blurb": "EdgeTX vericin için bir ArduDeck telemetri ekranı tasarla (canlı önizleme, sürükle-bırak layout, çevrimdışı saha haritaları, sesli uyarılar) ve tek tıkla SD karta gönder.",
       "config": {
         "body": "Buradaki her şey bir <b>geçersiz kılmadır</b>. Otomatikte bırakılırsa widget kendini aracın kendi telemetrisinden ELRS üzerinden yapılandırır: hücre sayısı, kapasite, batarya %; sahada ArduDeck bağlantısı gerekmez.",
         "title": "Varsayılan olarak sıfır yapılandırma"
       },
       "edit": {
-        "body": "Renkli telsizlerde: <b>17 enstrüman karosunu</b> en fazla 8 kaydırılabilir sayfada sürükle, yeniden boyutlandır ve değiştir (veya bir ön ayarla başla). Monokromda: her veri yuvası, büyük gösterge ve orta panel (ufuk veya veri duvarı) yerinde atanabilir.",
+        "body": "Renkli vericilerde: <b>17 enstrüman karosunu</b> en fazla 8 kaydırılabilir sayfada sürükle, yeniden boyutlandır ve değiştir (veya bir ön ayarla başla). Monokromda: her veri yuvası, büyük gösterge ve orta panel (ufuk veya veri duvarı) yerinde atanabilir.",
         "title": "Ekranı kendine göre yap"
       },
       "maps": {
-        "body": "Uçuş sahana tıkla, ArduDeck Map karosu için <b>üç yakınlaştırma seviyesinde uydu görüntüleri</b> birleştirir; araç, home, iz ve planlı görevin üzerine çizilir, tamamen çevrimdışı. Yakınlaştırmayı değiştirmek için telsizde karoya dokun.",
-        "title": "Telsizde çevrimdışı haritalar"
+        "body": "Uçuş sahana tıkla, ArduDeck Map karosu için <b>üç yakınlaştırma seviyesinde uydu görüntüleri</b> birleştirir; araç, home, iz ve planlı görevin üzerine çizilir, tamamen çevrimdışı. Yakınlaştırmayı değiştirmek için vericide karoya dokun.",
+        "title": "Vericide çevrimdışı haritalar"
       },
       "model": {
-        "body": "Renkli telsizler (TX15, TX16S, NV14...) tam widget'ı alır; önizleme o ekranın sadık bir yansımasıdır. Monokrom telsizler (Boxer, Zorro, TX12, X9D) aynı sesli uyarılarla yoğun bir 1 bit telemetri betiği alır. Geçiş yaptığında layout'lar yeniden ölçeklenir.",
-        "title": "Telsizini seç"
+        "body": "Renkli vericiler (TX15, TX16S, NV14...) tam widget'ı alır; önizleme o ekranın sadık bir yansımasıdır. Monokrom vericiler (Boxer, Zorro, TX12, X9D) aynı sesli uyarılarla yoğun bir 1 bit telemetri betiği alır. Geçiş yaptığında layout'lar yeniden ölçeklenir.",
+        "title": "Vericini seç"
       },
-      "title": "Telsizin mini bir GCS'ye dönüşür"
+      "title": "Vericin mini bir yer kontrol istasyonuna dönüşür"
     },
     "rtkNtrip": {
       "blurb": "Herhangi bir NTRIP caster'dan santimetre sınıfı RTK düzeltmelerini doğrudan aracına akıt ve fix'i haritada izle.",
@@ -163,7 +163,7 @@
       "title": "NTRIP üzerinden RTK düzeltmeleri",
       "workspace": {
         "body": "<b>Workspace</b> düğmesi layout'ları ve ekleyebileceğin her paneli tutar. RTK paneli bunlardan biridir.",
-        "title": "Paneller Workspace'te yaşar"
+        "title": "Paneller Workspace'te bulunur"
       }
     },
     "unitPreferences": {
@@ -197,7 +197,7 @@
         "title": "Tuning"
       },
       "safety": {
-        "body": "<b>Arming</b> pre-arm kontrollerini ve şu an neyin başarısız olduğunu listeler. <b>Failsafes & fence</b> bağlantı kaybında, düşük bataryada ve çit ihlalinde ne olacağını ayarlar. Pre-arm hızlı düzeltmeleri bu sayfaları açar.",
+        "body": "<b>Arming</b> pre-arm kontrollerini ve şu an neyin başarısız olduğunu listeler. <b>Failsafes & fence</b> bağlantı kaybında, düşük bataryada ve geofence ihlalinde ne olacağını ayarlar. Pre-arm hızlı düzeltmeleri bu sayfaları açar.",
         "title": "Güvenlik"
       },
       "sensors": {
