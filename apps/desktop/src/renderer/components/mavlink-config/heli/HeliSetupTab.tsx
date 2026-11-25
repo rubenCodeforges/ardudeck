@@ -31,6 +31,9 @@ function Card({ icon, tint, title, subtitle, children }: {
   );
 }
 
+/** RPM messages arrive at 2 Hz; older than this and the sensor or link is gone. */
+const RPM_STALE_MS = 3000;
+
 function StatusTile({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string; tone: 'ok' | 'warn' | 'bad' | 'idle' }) {
   const tones = {
     ok: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
@@ -67,6 +70,8 @@ export default function HeliSetupTab(): JSX.Element {
   const servoOutput = useTelemetryStore((s) => s.servoOutput);
   const rcChannels = useTelemetryStore((s) => s.rcChannels);
   const armed = useTelemetryStore((s) => s.flight.armed);
+  const rpm = useTelemetryStore((s) => s.rpm);
+  const rpmFresh = rpm && Date.now() - rpm.timestamp < RPM_STALE_MS ? rpm : null;
   const [showEndpoints, setShowEndpoints] = useState(false);
   const writeLive = useLiveParamWriter();
 
@@ -335,6 +340,28 @@ export default function HeliSetupTab(): JSX.Element {
         <Card icon={<Fan className="h-5 w-5 text-orange-400" />} tint="bg-orange-500/20" title={t(`${K}.rsc.title`)} subtitle={t(`${K}.rsc.subtitle`)}>
           {select('H_RSC_MODE', t(`${K}.rsc.mode`))}
           {rscChannels.length === 0 && <Warn>{t(`${K}.rsc.noOutput`)}</Warn>}
+          {rpmFresh && (rpmFresh.rpm1 !== null || rpmFresh.rpm2 !== null) && (
+            <div className="flex items-center gap-6 rounded-lg bg-surface-raised px-4 py-3">
+              {rpmFresh.rpm1 !== null && (
+                <div>
+                  <div className="text-[11px] text-content-tertiary">{t(`${K}.rsc.headSpeed`)}</div>
+                  <div className="text-xl font-semibold tabular-nums text-content">{t(`${K}.rsc.rpmValue`, { rpm: Math.round(rpmFresh.rpm1) })}</div>
+                </div>
+              )}
+              {rpmFresh.rpm2 !== null && (
+                <div>
+                  <div className="text-[11px] text-content-tertiary">{t(`${K}.rsc.rpm2`)}</div>
+                  <div className="text-xl font-semibold tabular-nums text-content">{t(`${K}.rsc.rpmValue`, { rpm: Math.round(rpmFresh.rpm2) })}</div>
+                </div>
+              )}
+              {rscMode === 4 && has('H_RSC_GOV_SETPNT') && (
+                <div className="ml-auto text-right">
+                  <div className="text-[11px] text-content-tertiary">{t(`${K}.rsc.govTarget`)}</div>
+                  <div className="text-sm tabular-nums text-content-secondary">{t(`${K}.rsc.rpmValue`, { rpm: Math.round(num('H_RSC_GOV_SETPNT', 0)) })}</div>
+                </div>
+              )}
+            </div>
+          )}
           {rscMode === 2 && slider('H_RSC_SETPOINT', t(`${K}.rsc.setpoint`), { min: 0, max: 100 }, '#F97316')}
           {(rscMode === 3 || rscMode === 4) && (
             <div className="rounded-lg bg-surface-raised p-3">

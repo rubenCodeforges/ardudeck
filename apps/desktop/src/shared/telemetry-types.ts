@@ -6,6 +6,13 @@ import type { VibrationData, EscTelemetryData, ServoOutputData } from './motor-t
 import { t } from './i18n/index.js';
 export type { VibrationData, EscTelemetryData, EscMotorTelemetry, ServoOutputData } from './motor-test-types';
 
+/** RPM (226): the flight controller's RPM sensors, e.g. a heli's main rotor head speed. null = no reading. */
+export interface RpmData {
+  rpm1: number | null;
+  rpm2: number | null;
+  timestamp: number;
+}
+
 export interface AttitudeData {
   roll: number;      // degrees
   pitch: number;     // degrees
@@ -207,6 +214,7 @@ export interface TelemetryState {
   rcChannels: RcChannelsData;
   radioStatus: RadioStatusData | null;
   vibration: VibrationData | null;
+  rpm: RpmData | null;
   escTelemetry: EscTelemetryData | null;
   servoOutput: ServoOutputData | null;
   sensorHealth: SensorHealth | null;

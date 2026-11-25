@@ -42,7 +42,7 @@ describe('resolveLanguage', () => {
   });
 
   it('falls back to English for anything unshipped', () => {
-    expect(resolveLanguage('system', 'fr-FR')).toBe('en');
+    expect(resolveLanguage('system', 'it-IT')).toBe('en');
     expect(resolveLanguage('system', 'ja')).toBe('en');
   });
 });

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ORIENTATION_DOWN, type DistanceSensorData, type EkfStatusData, type TelemetryState, type AttitudeData, type PositionData, type GpsData, type BatteryData, type BatteryInstanceData, type VfrHudData, type WindData, type FlightState, type RcChannelsData, type RadioStatusData, type SensorHealth, type NavControllerData, type GuidedTargetData } from '../../shared/telemetry-types';
+import { ORIENTATION_DOWN, type DistanceSensorData, type EkfStatusData, type TelemetryState, type AttitudeData, type PositionData, type GpsData, type BatteryData, type BatteryInstanceData, type VfrHudData, type WindData, type FlightState, type RcChannelsData, type RadioStatusData, type SensorHealth, type NavControllerData, type GuidedTargetData, type RpmData } from '../../shared/telemetry-types';
 import type { VibrationData, EscTelemetryData, ServoOutputData } from '../../shared/motor-test-types';
 
 /** Batch telemetry update - all fields optional */
@@ -17,6 +17,7 @@ export interface TelemetryBatch {
   rcChannels?: RcChannelsData;
   radioStatus?: RadioStatusData;
   vibration?: VibrationData;
+  rpm?: RpmData;
   escTelemetry?: EscTelemetryData;
   servoOutput?: ServoOutputData;
   sensorHealth?: SensorHealth;
@@ -88,6 +89,7 @@ const initialState: TelemetryState = {
   rcChannels: { channels: [], chancount: 0, rssi: 0 },
   radioStatus: null,
   vibration: null,
+  rpm: null,
   escTelemetry: null,
   servoOutput: null,
   sensorHealth: null,
@@ -195,6 +197,7 @@ export const useTelemetryStore = create<TelemetryStore>((set, get) => ({
     if (batch.radioStatus) {
       updates.radioStatus = batch.radioStatus;
     }
+    if (batch.rpm) updates.rpm = batch.rpm;
     if (batch.vibration) {
       updates.vibration = batch.vibration;
       updates.lastVibration = now;

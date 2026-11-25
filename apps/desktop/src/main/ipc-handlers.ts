@@ -1026,6 +1026,7 @@ const TELEM_STREAM_MESSAGES: { msgId: number; cat: 'attitude' | 'position' | 'ot
   { msgId: 193, cat: 'other', hz: 2 },   // EKF_STATUS_REPORT (EKF health instrument)
   { msgId: 231, cat: 'other', hz: 1 },   // WIND_COV (PX4's wind message; AP uses 168)
   { msgId: 241, cat: 'other' },          // VIBRATION (for motor test view)
+  { msgId: 226, cat: 'other', hz: 2 },   // RPM (RPM1/RPM2 sensors, heli head speed)
   { msgId: 147, cat: 'other' },          // BATTERY_STATUS (per-monitor batteries, #126)
   { msgId: 87,  cat: 'other', hz: 2 },   // POSITION_TARGET_GLOBAL_INT (fly-here target/line; AP pushes it unrequested, PX4 only on request)
   { msgId: 11030, cat: 'other' },        // ESC_TELEMETRY_1_TO_4
@@ -2952,6 +2953,7 @@ const MSG_AUTOPILOT_VERSION = 148;
 
 // Vibration and ESC telemetry (for motor test view)
 const MSG_VIBRATION = 241;
+const MSG_RPM = 226;
 const MSG_SERVO_OUTPUT_RAW = 36;
 const MSG_ESC_TELEMETRY_1_TO_4 = 11030;
 const MSG_ESC_TELEMETRY_5_TO_8 = 11031;
@@ -3679,6 +3681,17 @@ function parseTelemetry(mainWindow: BrowserWindow, packet: MAVLinkPacket): void 
         receivedAt: Date.now(),
       };
       queueMavlinkTelemetry(mainWindow, { guidedTarget });
+      break;
+    }
+
+    case MSG_RPM: {
+      // RPM (226): rpm1(4), rpm2(4) floats; ArduPilot sends -1 for a sensor without a reading.
+      // MAVLink v2 truncates trailing zeros (a stopped rotor); missing bytes read back as 0.
+      const r1 = readFloat(payload, 0);
+      const r2 = readFloat(payload, 4);
+      queueMavlinkTelemetry(mainWindow, {
+        rpm: { rpm1: r1 >= 0 ? r1 : null, rpm2: r2 >= 0 ? r2 : null, timestamp: Date.now() },
+      });
       break;
     }
 
