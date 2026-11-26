@@ -75,7 +75,7 @@ const QUICK_PRESETS: ChartPreset[] = [
   { id: 'battery', labelKey: 'logs:explorer.preset.battery', descKey: 'logs:explorer.preset.batteryDesc', types: ['BAT'], fields: { BAT: ['Volt', 'Curr'] } },
   { id: 'altitude', labelKey: 'logs:explorer.preset.altitude', descKey: 'logs:explorer.preset.altitudeDesc', types: ['CTUN'], fields: { CTUN: ['DAlt', 'Alt', 'BAlt'] } },
   { id: 'compass', labelKey: 'logs:explorer.preset.compass', descKey: 'logs:explorer.preset.compassDesc', types: ['MAG'], fields: { MAG: ['MagX', 'MagY', 'MagZ'] } },
-  { id: 'ekf', labelKey: 'logs:explorer.preset.ekf', descKey: 'logs:explorer.preset.ekfDesc', types: ['NKF4'], fields: { NKF4: ['SV', 'SP', 'SH'] } },
+  { id: 'ekf', labelKey: 'logs:explorer.preset.ekf', descKey: 'logs:explorer.preset.ekfDesc', types: ['XKF4', 'NKF4'], fields: { XKF4: ['SV', 'SP', 'SH'], NKF4: ['SV', 'SP', 'SH'] } },
   { id: 'power', labelKey: 'logs:explorer.preset.power', descKey: 'logs:explorer.preset.powerDesc', types: ['POWR'], fields: { POWR: ['Vcc'] } },
   { id: 'motorOutputs', labelKey: 'logs:explorer.preset.motorOutputs', descKey: 'logs:explorer.preset.motorOutputsDesc', types: ['RCOU'], fields: { RCOU: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8'] } },
   { id: 'escRpm', labelKey: 'logs:explorer.preset.escRpm', descKey: 'logs:explorer.preset.escRpmDesc', types: ['ESC'], fields: { ESC: ['RPM'] } },

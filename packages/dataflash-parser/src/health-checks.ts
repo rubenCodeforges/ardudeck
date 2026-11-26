@@ -135,7 +135,7 @@ function checkGps(log: DataFlashLog): HealthCheckResult {
   }
 
   const recommendation = status !== 'pass'
-    ? 'Improve GPS antenna placement — move away from electronics. Check for RF interference. Wait for more satellites before arming.'
+    ? 'Improve GPS antenna placement and move it away from electronics. Check for RF interference. Wait for more satellites before arming.'
     : undefined;
 
   return {
@@ -333,20 +333,32 @@ function checkFlightModes(log: DataFlashLog): HealthCheckResult {
   };
 }
 
+// EKF3 logs XKF4 (one row per core), EKF2 logs NKF4, the oldest logs EKF4. SV, SP and SH are
+// velocity, position and compass variance ratios; ArduPilot's EKF failsafe fires above FS_EKF_THRESH (0.8 default).
+const EKF_TYPES = ['XKF4', 'NKF4', 'EKF4'] as const;
+const EKF_FAILSAFE_THRESH = 0.8;
+
 function checkEkf(log: DataFlashLog): HealthCheckResult {
-  const nkf = log.messages.get('NKF4') ?? log.messages.get('EKF4');
-  if (!nkf || nkf.length === 0) {
-    return { id: 'ekf', name: 'EKF Health', status: 'skip', summary: 'No EKF data', details: 'NKF4/EKF4 messages not found in log' };
+  const ekfType = EKF_TYPES.find((t) => (log.messages.get(t)?.length ?? 0) > 0);
+  if (!ekfType) {
+    return { id: 'ekf', name: 'EKF Health', status: 'skip', summary: 'No EKF data', details: 'XKF4/NKF4/EKF4 messages not found in log' };
   }
+  const all = log.messages.get(ekfType)!;
+  // XKF4 has one row per EKF core; judge the primary core only. PI names it (it can change after a lane switch).
+  const primary = ekfType === 'XKF4' && all.some((m) => num(m, 'C') !== undefined)
+    ? all.filter((m) => (num(m, 'C') ?? 0) === (num(m, 'PI') ?? 0))
+    : all;
+  const rows = primary.length > 0 ? primary : all;
 
   let maxSV = 0, badCount = 0;
-  for (const msg of nkf) {
+  for (const msg of rows) {
     const sv = num(msg, 'SV') ?? 0;
+    const worst = Math.max(sv, num(msg, 'SP') ?? 0, num(msg, 'SH') ?? 0);
     if (sv > maxSV) maxSV = sv;
-    if (sv !== 0) badCount++;
+    if (worst > EKF_FAILSAFE_THRESH) badCount++;
   }
 
-  const badPct = (badCount / nkf.length) * 100;
+  const badPct = (badCount / rows.length) * 100;
   let status: CheckStatus = 'pass';
   let summary = 'EKF healthy';
 
@@ -361,20 +373,19 @@ function checkEkf(log: DataFlashLog): HealthCheckResult {
   const recommendation = status !== 'pass'
     ? 'EKF variance indicates position/velocity estimation problems. Check GPS quality, compass calibration, and vibration levels.'
     : undefined;
-  const nkfType = log.messages.has('NKF4') ? 'NKF4' : 'EKF4';
 
   return {
     id: 'ekf', name: 'EKF Health', status, summary,
-    details: `Innovation flags non-zero in ${badCount}/${nkf.length} samples (${badPct.toFixed(1)}%).`,
+    details: `Velocity, position or compass variance above ${EKF_FAILSAFE_THRESH} in ${badCount}/${rows.length} samples (${badPct.toFixed(1)}%).`,
     recommendation,
-    explorerPreset: { types: [nkfType], fields: { [nkfType]: ['SV', 'SP', 'SH'] } },
+    explorerPreset: { types: [ekfType], fields: { [ekfType]: ['SV', 'SP', 'SH'] } },
     values: { maxSV, badPct },
   };
 }
 
 /** Run all health checks against a parsed log */
 /** Message types the health checks read as rows; a columnar parse must keep these. */
-export const HEALTH_CHECK_TYPES: ReadonlySet<string> = new Set(['VIBE', 'GPS', 'BAT', 'MAG', 'EV', 'POWR', 'MODE', 'NKF4', 'EKF4']);
+export const HEALTH_CHECK_TYPES: ReadonlySet<string> = new Set(['VIBE', 'GPS', 'BAT', 'MAG', 'EV', 'POWR', 'MODE', 'XKF4', 'NKF4', 'EKF4']);
 
 export function runHealthChecks(log: DataFlashLog): HealthCheckResult[] {
   return [

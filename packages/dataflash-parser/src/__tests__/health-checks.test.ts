@@ -124,4 +124,25 @@ describe('runHealthChecks', () => {
     expect(modes).toBeDefined();
     expect(modes!.status).toBe('info');
   });
+
+  it('reads EKF3 XKF4 rows, judging the primary core by the 0.8 variance threshold', () => {
+    const rows = [];
+    for (let i = 0; i < 10; i++) {
+      rows.push(makeMsg('XKF4', i * 1e6, { C: 0, SV: 0.05, SP: 0.04, SH: 0.1 }));
+      rows.push(makeMsg('XKF4', i * 1e6, { C: 1, SV: 5, SP: 5, SH: 5 }));
+    }
+    const ekf = runHealthChecks(makeLog({ XKF4: rows })).find((r) => r.id === 'ekf');
+    expect(ekf!.status).toBe('pass');
+    expect(ekf!.explorerPreset?.types).toEqual(['XKF4']);
+  });
+
+  it('does not fail an EKF2 log only because the variances are non-zero', () => {
+    const rows = Array.from({ length: 20 }, (_, i) => makeMsg('NKF4', i * 1e6, { SV: 0.1, SP: 0.2, SH: 0.1 }));
+    expect(runHealthChecks(makeLog({ NKF4: rows })).find((r) => r.id === 'ekf')!.status).toBe('pass');
+  });
+
+  it('fails when variance stays above the EKF failsafe threshold', () => {
+    const rows = Array.from({ length: 20 }, (_, i) => makeMsg('XKF4', i * 1e6, { C: 0, SV: 1.4, SP: 0.2, SH: 0.1 }));
+    expect(runHealthChecks(makeLog({ XKF4: rows })).find((r) => r.id === 'ekf')!.status).toBe('fail');
+  });
 });

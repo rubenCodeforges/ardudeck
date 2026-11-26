@@ -553,6 +553,15 @@ local function pollSensors()
       V.tSensorPct = now()
     end
   end
+  -- EdgeTX decodes the CRSF temperature frame (0x0D) itself into the "Temp" sensor, so the frame
+  -- never reaches crossfireTelemetryPop; read the sensor instead
+  if getFieldInfo and getFieldInfo('Temp') then
+    local tc = getValue('Temp')
+    if type(tc) == 'number' and tc ~= 0 then
+      V.crsfTemp = tc
+      V.tCrsfTemp = now()
+    end
+  end
 end
 
 local SEV_LABEL = { [0]='EMRG', 'ALRT', 'CRIT', 'ERR', 'WARN', 'NOTC', 'INFO', '' }
@@ -1755,7 +1764,8 @@ TILE.imu = function (x, y, w, h)
   tileFrame(x, y, w, h, useBaro and 'BARO TEMP' or 'IMU TEMP')
   local c = temp >= 70 and T.DANGER or (temp >= 60 and T.WARN_STRONG or T.SUCCESS)
   local vy, vf, sy, sf = stack(y, h, false)
-  valueText(x + 8, vy, w - 16 - 20, string.format('%dC', temp), vf, staleColor(tStamp, c))
+  local none = not useBaro and V.tImuTemp == 0
+  valueText(x + 8, vy, w - 16 - 20, none and '--' or string.format('%dC', temp), vf, none and T.TEXT_3 or staleColor(tStamp, c))
   -- thermometer strip: 20..80C
   local bx, bh2 = x + w - 16, h - 30
   local by = y + 18

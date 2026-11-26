@@ -423,6 +423,11 @@ local function pollSensors()
       V.tSensorPct = now()
     end
   end
+  -- EdgeTX decodes the CRSF temperature frame itself into the "Temp" sensor; the frame never reaches the script
+  if getFieldInfo and getFieldInfo('Temp') then
+    local tc = getValue('Temp')
+    if type(tc) == 'number' and tc ~= 0 then V.crsfTemp = tc end
+  end
 
   -- passthrough carries more (statustext, EKF, fence, waypoints): when it
   -- is flowing it owns every field and the sensors stay out of the way
@@ -653,6 +658,7 @@ local FIELDS = {
       local c = math.floor(V.crsfTemp + 0.5)
       return string.format('b%dC', c), c > 60
     end
+    if V.tImuTemp == 0 then return 'i--' end
     return string.format('i%dC', V.imuTemp), V.imuTemp > 60
   end,
   wp = function ()
