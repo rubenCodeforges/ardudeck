@@ -122,6 +122,10 @@ import {
   serializeHeartbeat,
   HEARTBEAT_ID,
   HEARTBEAT_CRC_EXTRA,
+  serializeTimesync,
+  deserializeTimesync,
+  TIMESYNC_ID,
+  TIMESYNC_CRC_EXTRA,
   serializeRcChannelsOverride,
   RC_CHANNELS_OVERRIDE_ID,
   RC_CHANNELS_OVERRIDE_CRC_EXTRA,
@@ -5945,6 +5949,21 @@ export function setupIpcHandlers(mainWindow: BrowserWindow): void {
             // Parse telemetry data from known message types
             parseTelemetry(mainWindow, packet);
             if (packet.msgid === MSG_TERRAIN_REQUEST && currentTransport) void terrainUplink?.handleRequest(packet, currentTransport).catch((err) => console.warn('[terrain] uplink request failed:', err));
+            // Answer TIMESYNC requests (tc1 == 0) with our clock in ns, ts1 echoed. A non-zero
+            // tc1 is itself a reply, and our own packets are skipped, so two stations cannot loop.
+            if (packet.msgid === TIMESYNC_ID && packet.payload.length >= 16 && currentTransport?.isOpen
+              && !(packet.sysid === gcsSysid && packet.compid === 190)) {
+              const { tc1, ts1 } = deserializeTimesync(packet.payload);
+              // Bytes 16/17 are the target_system/target_component extension: 0 or us only
+              const targetSys = packet.payload[16] ?? 0;
+              const targetComp = packet.payload[17] ?? 0;
+              if (tc1 === 0n && (targetSys === 0 || targetSys === gcsSysid) && (targetComp === 0 || targetComp === 190)) {
+                const tsPayload = serializeTimesync({ tc1: BigInt(Date.now()) * 1000000n, ts1 });
+                sendMavlinkPacket(TIMESYNC_ID, tsPayload, TIMESYNC_CRC_EXTRA)
+                  .then(pkt => currentTransport?.write(pkt))
+                  .catch(() => {});
+              }
+            }
             vehicleControl.notePacket(packet);
 
             // Broadcast raw frame to the renderer windows holding a live
