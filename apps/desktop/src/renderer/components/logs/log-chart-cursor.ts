@@ -41,10 +41,21 @@ export function placeReadout(
   return { left, top };
 }
 
-/** One row per series, plus the time the cursor is sitting on. */
-export function readoutText(timeS: number, rows: CursorRow[]): { time: string; rows: { label: string; color: string; value: string }[] } {
+/** HH:MM:SS.mmm elapsed time, e.g. 00:05:20.412. */
+export function fmtElapsedMs(elapsedS: number): string {
+  const total = Math.max(0, Math.round(elapsedS * 1000));
+  const p = (n: number, w = 2) => String(n).padStart(w, '0');
+  const ms = total % 1000, sec = Math.floor(total / 1000);
+  return `${p(Math.floor(sec / 3600))}:${p(Math.floor((sec % 3600) / 60))}:${p(sec % 60)}.${p(ms, 3)}`;
+}
+
+/**
+ * One row per series, plus the time the cursor is sitting on. With `originS` (the log's start, in seconds) the
+ * time is elapsed since the log started as HH:MM:SS.mmm, matching the Events list; without it, raw seconds.
+ */
+export function readoutText(timeS: number, rows: CursorRow[], originS?: number): { time: string; rows: { label: string; color: string; value: string }[] } {
   return {
-    time: `${timeS.toFixed(3)} s`,
+    time: originS === undefined ? `${timeS.toFixed(3)} s` : fmtElapsedMs(timeS - originS),
     rows: rows.map((r) => ({
       label: r.label,
       color: r.color,
@@ -60,7 +71,7 @@ export interface ChartCursorReadout {
 }
 
 /** Attaches a floating readout to a uPlot `over` element. */
-export function createCursorReadout(parent: HTMLElement): ChartCursorReadout {
+export function createCursorReadout(parent: HTMLElement, originS?: number): ChartCursorReadout {
   const el = document.createElement('div');
   el.className = 'log-chart-readout';
   el.style.cssText = [
@@ -108,7 +119,7 @@ export function createCursorReadout(parent: HTMLElement): ChartCursorReadout {
       el.style.display = 'none';
       return;
     }
-    const text = readoutText(timeS, rows);
+    const text = readoutText(timeS, rows, originS);
     timeEl.textContent = text.time;
     ensureRows(text.rows.length);
 

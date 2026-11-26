@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLogStore } from '../../stores/log-store';
-import { extractLogEvents, fmtEventTime, type LogEventKind, type LogEventSeverity } from './log-events';
+import { extractLogEvents, fmtEventTime, fmtWallClock, logWallClockOffsetMs, type LogEventKind, type LogEventSeverity } from './log-events';
 import { publishTimeJump, publishHoverTime } from './log-hover-bus';
 import { useTranslation } from 'react-i18next';
 
@@ -40,6 +40,9 @@ export function EventsPanel() {
   const [errorsOnly, setErrorsOnly] = useState(false);
 
   const events = useMemo(() => (currentLog ? extractLogEvents(currentLog) : []), [currentLog]);
+
+  const startS = currentLog ? currentLog.timeRange.startUs / 1_000_000 : 0;
+  const wallOffsetMs = useMemo(() => (currentLog ? logWallClockOffsetMs(currentLog) : null), [currentLog]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
@@ -129,8 +132,9 @@ export function EventsPanel() {
             data-tip={t('logs:events.jumpTip')}
           >
             <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${SEVERITY_DOT[e.severity]}`} />
-            <span className="text-[10px] tabular-nums text-content-tertiary mt-0.5 shrink-0 w-12 group-hover:text-blue-400">
-              {fmtEventTime(e.timeS)}
+            <span className="text-[10px] tabular-nums text-content-tertiary mt-0.5 shrink-0 group-hover:text-blue-400" style={{ width: wallOffsetMs === null ? '3.6rem' : '7.4rem' }}>
+              {fmtEventTime(e.timeS - startS)}
+              {wallOffsetMs !== null && <span className="ml-1.5 opacity-70">{fmtWallClock(wallOffsetMs + e.timeS * 1000)}</span>}
             </span>
             <span className={`text-[9px] px-1 py-px rounded mt-0.5 shrink-0 font-medium ${KIND_BADGE[e.kind]}`}>
               {e.kind}

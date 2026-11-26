@@ -62,15 +62,42 @@ describe('extractLogEvents', () => {
     expect(events[4]!.severity).toBe('error');
   });
 
+  it('collapses the mission dump written at log start and keeps the items that were actually flown', () => {
+    const dump = Array.from({ length: 18 }, (_, i) => msg('CMD', 320_800_000 + i * 1000, { CNum: i, CId: 16 }));
+    const flown = [msg('CMD', 349_300_000, { CNum: 1, CId: 16 }), msg('CMD', 424_200_000, { CNum: 2, CId: 16 })];
+    const events = extractLogEvents({
+      messages: {
+        MSG: columnsFromRows([msg('MSG', 320_800_000, { Message: 'ArduPlane V4.6.3' })]),
+        CMD: columnsFromRows([...dump, ...flown]),
+      },
+    });
+    const cmd = events.filter((e) => e.kind === 'CMD');
+    expect(cmd).toHaveLength(3);
+    expect(cmd[0]!.label).toContain('18');
+    expect(cmd[1]!.timeS).toBeCloseTo(349.3, 1);
+    expect(cmd[2]!.timeS).toBeCloseTo(424.2, 1);
+  });
+
+  it('keeps a short list of mission commands that were really started one after another', () => {
+    const events = extractLogEvents({
+      messages: {
+        MSG: columnsFromRows([msg('MSG', 1_000_000, { Message: 'boot' })]),
+        CMD: columnsFromRows([msg('CMD', 100_000_000, { CNum: 1, CId: 16 }), msg('CMD', 200_000_000, { CNum: 2, CId: 16 })]),
+      },
+    });
+    expect(events.filter((e) => e.kind === 'CMD')).toHaveLength(2);
+  });
+
   it('handles logs with none of the event types', () => {
     expect(extractLogEvents({ messages: {} })).toEqual([]);
   });
 });
 
 describe('helpers', () => {
-  it('formats event times as m:ss.s', () => {
-    expect(fmtEventTime(65.25)).toBe('1:05.3');
-    expect(fmtEventTime(5)).toBe('0:05.0');
+  it('formats event times as zero padded HH:MM:SS', () => {
+    expect(fmtEventTime(65.25)).toBe('00:01:05');
+    expect(fmtEventTime(5)).toBe('00:00:05');
+    expect(fmtEventTime(3144)).toBe('00:52:24');
   });
 
   it('maps mode numbers', () => {

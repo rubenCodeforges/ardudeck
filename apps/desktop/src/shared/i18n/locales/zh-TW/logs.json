@@ -189,7 +189,7 @@
     "synced": "已同步",
     "takeoff": "起飛",
     "target": "目標:",
-    "timeAxis": "時間 (s)",
+    "timeAxis": "時間 (hh:mm:ss)",
     "unsynced": "未同步",
     "yAxis": "Y 軸",
     "yMax": "Y 軸最大值",
@@ -436,7 +436,8 @@
       }
     },
     "subsystemN": "子系統 {{n}}",
-    "wpLabel": "航點 {{num}}:{{name}}"
+    "wpLabel": "航點 {{num}}:{{name}}",
+    "plannedMission": "已載入規劃任務:{{count}} 項"
   },
   "noLogLoaded": "尚未載入記錄",
   "params": {

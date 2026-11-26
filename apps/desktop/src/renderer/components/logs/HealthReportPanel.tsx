@@ -42,7 +42,21 @@ function computeFlightStats(log: ParsedLog | null) {
     const latCol = rows.num[src.lat];
     const lngCol = rows.num[src.lon];
     if (!latCol || !lngCol) continue;
+    // Dual GPS logs interleave both receivers in one GPS message (field I): mixing their slightly different
+    // positions inflates the distance. Follow the primary instance, and only rows with a 3D fix.
+    const instCol = src.msg === 'GPS' ? rows.num['I'] : undefined;
+    const fixCol = src.msg === 'GPS' ? rows.num['Status'] : undefined;
+    let primaryInst: number | undefined;
+    if (instCol) {
+      for (let i = 0; i < rows.count; i++) {
+        const v = instCol[i];
+        if (typeof v === 'number' && (primaryInst === undefined || v < primaryInst)) primaryInst = v;
+      }
+    }
     for (let i = 0; i < rows.count; i++) {
+      if (instCol && primaryInst !== undefined && instCol[i] !== primaryInst) continue;
+      const fix = fixCol?.[i];
+      if (typeof fix === 'number' && fix < 3) continue;
       const alt = altCol?.[i];
       const spd = spdCol?.[i];
       const rawLat = latCol[i];
@@ -53,7 +67,9 @@ function computeFlightStats(log: ParsedLog | null) {
       const lat = rawLat / src.coordScale;
       const lng = rawLng / src.coordScale;
       if (lat === 0 && lng === 0) continue;
-      if (hasLastPos) {
+      // Below 0.5 m/s the aircraft is standing still and the GPS only jitters: that is not distance flown.
+      const moving = typeof spd !== 'number' || spd >= 0.5;
+      if (hasLastPos && moving) {
         // Haversine approximation for short distances
         const dLat = (lat - lastLat) * Math.PI / 180;
         const dLng = (lng - lastLng) * Math.PI / 180;

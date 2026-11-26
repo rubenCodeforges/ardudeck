@@ -1,3 +1,4 @@
+import { formatElapsed, formatWallClock, wallClockOffsetMs } from './time-format.js';
 import type { DataFlashLog, DataFlashMessage } from './types.js';
 
 export type CheckStatus = 'pass' | 'warn' | 'fail' | 'skip' | 'info';
@@ -51,15 +52,49 @@ export function getModeName(modeNum: number, vehicleType: string): string {
   return map[modeNum] ?? `MODE_${modeNum}`;
 }
 
-const FAILSAFE_EVENT_IDS = new Set([
-  9, 10, 11, 17, 28, 33, 43, 56,
-]);
+// Failsafes and crash checks are logged as ERR records (Subsys, ECode), not as EV events. Subsystem and code
+// numbers follow ArduPilot's LogErrorSubsystem and LogErrorCode (AP_Logger.h, 4.5 to 4.7).
+const FAILSAFE_SUBSYSTEMS: Record<number, string> = {
+  5: 'Radio failsafe', 6: 'Battery failsafe', 8: 'GCS failsafe', 9: 'Fence breach', 17: 'EKF/inertial nav failsafe',
+  20: 'ADS-B failsafe', 23: 'Terrain failsafe', 26: 'Sensor failsafe', 27: 'Leak failsafe', 29: 'Vibration failsafe',
+  31: 'Dead reckoning failsafe',
+};
+// "Battery 1 is low 14.10V used 2100 mAh" is how AP_BattMonitor announces a low or critical battery (4.6.3).
+const FAILSAFE_TEXT_ON = /failsafe|^battery \d+ is (low|critical)/i;
+const FAILSAFE_TEXT_NOT = /cleared|\boff\b|restored|prearm|pre-arm|disabled|enabled|check/i;
+const CRASH_SUBSYSTEM = 12; // ECode 1 = crash detected, 2 = loss of control
+const EKFCHECK_SUBSYSTEM = 16; // ECode 2 = bad variance, 0 = cleared
 
-const CRASH_EVENT_IDS = new Set([15, 16]);
 
 function num(msg: DataFlashMessage, field: string): number | undefined {
   const val = msg.fields[field];
   return typeof val === 'number' ? val : undefined;
+}
+
+function percentile(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))] ?? 0;
+}
+
+/** Elapsed time since the log started, HH:MM:SS, plus the local wall clock when the log carries GPS time. */
+function fmtLogTime(log: DataFlashLog, timeUs: number): string {
+  const elapsed = formatElapsed((timeUs - log.timeRange.startUs) / 1_000_000);
+  const offset = logWallClockOffset(log);
+  return offset === null ? elapsed : `${elapsed} (${formatWallClock(offset + timeUs / 1000)})`;
+}
+
+const wallOffsetCache = new WeakMap<DataFlashLog, number | null>();
+function logWallClockOffset(log: DataFlashLog): number | null {
+  if (wallOffsetCache.has(log)) return wallOffsetCache.get(log)!;
+  let result: number | null = null;
+  for (const g of log.messages.get('GPS') ?? []) {
+    const fix = num(g, 'Status');
+    if (fix !== undefined && fix < 3) continue;
+    const off = wallClockOffsetMs(g.timeUs, num(g, 'GWk') ?? 0, num(g, 'GMS') ?? -1);
+    if (off !== null) { result = off; break; }
+  }
+  wallOffsetCache.set(log, result);
+  return result;
 }
 
 function checkVibration(log: DataFlashLog): HealthCheckResult {
@@ -68,41 +103,76 @@ function checkVibration(log: DataFlashLog): HealthCheckResult {
     return { id: 'vibration', name: 'Vibration', status: 'skip', summary: 'No vibration data', details: 'VIBE messages not found in log' };
   }
 
-  let maxX = 0, maxY = 0, maxZ = 0, totalClips = 0;
-  for (const msg of vibes) {
+  // Launch and touchdown shake the airframe far more than flight does and would skew the verdict, so only the
+  // airborne part is judged. After every arming event (EV 10) the next 15 s are left out, and the last 20 s before
+  // every disarm or land-complete event (EV 11, 18). A log too short to leave 30 s keeps everything. The verdict
+  // also uses the 95th percentile per axis, so one stray spike cannot condemn the flight. The absolute peak and
+  // when it happened are still reported. A plane that sits armed for minutes before launch is not covered: its
+  // launch cannot be told from the VIBE data alone.
+  const ARM_SKIP_US = 15_000_000, TOUCHDOWN_SKIP_US = 20_000_000, MIN_WINDOW_US = 30_000_000;
+  const skip: Array<[number, number]> = [];
+  for (const ev of log.messages.get('EV') ?? []) {
+    const id = num(ev, 'Id') ?? 0;
+    if (id === 10) skip.push([ev.timeUs, ev.timeUs + ARM_SKIP_US]);
+    else if (id === 11 || id === 18) skip.push([ev.timeUs - TOUCHDOWN_SKIP_US, ev.timeUs]);
+  }
+  const inSkip = (t: number) => skip.some(([lo, hi]) => t >= lo && t <= hi);
+  const airborne = skip.length > 0 ? vibes.filter((m) => !inSkip(m.timeUs)) : vibes;
+  const spanUs = airborne.length > 1 ? airborne[airborne.length - 1]!.timeUs - airborne[0]!.timeUs : 0;
+  const useWindow = skip.length > 0 && spanUs >= MIN_WINDOW_US;
+  const judged = useWindow ? airborne : vibes;
+
+  const xs: number[] = [], ys: number[] = [], zs: number[] = [];
+  let peak = 0, peakAtUs = 0, over = 0;
+  for (const msg of judged) {
     const x = Math.abs(num(msg, 'VibeX') ?? 0);
     const y = Math.abs(num(msg, 'VibeY') ?? 0);
     const z = Math.abs(num(msg, 'VibeZ') ?? 0);
-    if (x > maxX) maxX = x;
-    if (y > maxY) maxY = y;
-    if (z > maxZ) maxZ = z;
-    totalClips += (num(msg, 'Clip0') ?? 0) + (num(msg, 'Clip1') ?? 0) + (num(msg, 'Clip2') ?? 0);
+    xs.push(x); ys.push(y); zs.push(z);
+    const worst = Math.max(x, y, z);
+    if (worst > peak) { peak = worst; peakAtUs = msg.timeUs; }
+    if (worst > 30) over++;
   }
+  // Clip0..2 are running counters since boot: count only what accumulated within the judged rows
+  // (last value minus first value), so clips from launch or touchdown do not fail the flight.
+  const clipIn = (field: string) => {
+    const first = num(judged[0]!, field) ?? 0;
+    const last = num(judged[judged.length - 1]!, field) ?? 0;
+    return Math.max(0, last - first);
+  };
+  const clip0 = clipIn('Clip0'), clip1 = clipIn('Clip1'), clip2 = clipIn('Clip2');
+  const totalClips = clip0 + clip1 + clip2;
+  xs.sort((p, q) => p - q); ys.sort((p, q) => p - q); zs.sort((p, q) => p - q);
+  const p95X = percentile(xs, 0.95), p95Y = percentile(ys, 0.95), p95Z = percentile(zs, 0.95);
+  const level = Math.max(p95X, p95Y, p95Z);
+  const overPct = (over / Math.max(1, judged.length)) * 100;
 
-  const maxVibe = Math.max(maxX, maxY, maxZ);
   let status: CheckStatus = 'pass';
-  let summary = `Peak: ${maxVibe.toFixed(1)} m/s\u00B2`;
+  let summary = `Typical: ${level.toFixed(1)} m/s\u00B2`;
 
-  if (maxVibe > 60 || totalClips > 0) {
+  if (level > 60 || totalClips > 0) {
     status = 'fail';
-    summary = `Excessive vibration: ${maxVibe.toFixed(1)} m/s\u00B2` + (totalClips > 0 ? `, ${totalClips} clipping events` : '');
-  } else if (maxVibe > 30) {
+    summary = `Excessive vibration: ${level.toFixed(1)} m/s\u00B2` + (totalClips > 0 ? `, ${totalClips} clipping events` : '');
+  } else if (level > 30) {
     status = 'warn';
-    summary = `Elevated vibration: ${maxVibe.toFixed(1)} m/s\u00B2`;
+    summary = `Elevated vibration: ${level.toFixed(1)} m/s\u00B2`;
   }
 
   const recommendation = status === 'fail'
     ? 'Check propeller balance, motor bearings, and flight controller mounting. Consider adding vibration dampening.'
     : status === 'warn'
-    ? 'Vibration is above ideal levels. Check propeller balance and motor mounts.'
+    ? 'Vibration is above ideal levels for most of the flight. Check propeller balance and motor mounts.'
     : undefined;
+
+  const windowNote = useWindow ? ' The 15 s after arming and the last 20 s before touchdown are not counted.' : '';
+  const peakNote = ` Peak in flight ${peak.toFixed(1)} m/s\u00B2 at ${fmtLogTime(log, peakAtUs)}` + (overPct > 0 ? ` (${overPct.toFixed(1)}% of samples above 30).` : '.');
 
   return {
     id: 'vibration', name: 'Vibration', status, summary,
-    details: `X: ${maxX.toFixed(1)}, Y: ${maxY.toFixed(1)}, Z: ${maxZ.toFixed(1)} m/s\u00B2 peak. ${totalClips} clipping events.`,
+    details: `95th percentile X: ${p95X.toFixed(1)}, Y: ${p95Y.toFixed(1)}, Z: ${p95Z.toFixed(1)} m/s\u00B2. ${totalClips} clipping events.${peakNote}${windowNote}`,
     recommendation,
     explorerPreset: { types: ['VIBE'], fields: { VIBE: ['VibeX', 'VibeY', 'VibeZ'] } },
-    values: { maxX, maxY, maxZ, totalClips },
+    values: { maxX: xs[xs.length - 1] ?? 0, maxY: ys[ys.length - 1] ?? 0, maxZ: zs[zs.length - 1] ?? 0, totalClips, p95: level, peak },
   };
 }
 
@@ -231,24 +301,39 @@ function checkCompass(log: DataFlashLog): HealthCheckResult {
 }
 
 function checkFailsafe(log: DataFlashLog): HealthCheckResult {
-  const events = log.messages.get('EV');
-  if (!events || events.length === 0) {
-    return { id: 'failsafe', name: 'Failsafe Events', status: 'skip', summary: 'No event data', details: 'EV messages not found in log' };
+  const errs = log.messages.get('ERR') ?? [];
+  const failsafes: { label: string; timeUs: number }[] = [];
+  const crashes: { label: string; timeUs: number }[] = [];
+  for (const msg of errs) {
+    const sub = num(msg, 'Subsys') ?? -1;
+    const code = num(msg, 'ECode') ?? -1;
+    // Fence breach: ECode is the bitmask of breached fences (1 altitude, 2 circle, 4 polygon), 0 means resolved.
+    if (sub === 9 && code > 0) failsafes.push({ label: FAILSAFE_SUBSYSTEMS[9]!, timeUs: msg.timeUs });
+    else if (sub !== 9 && FAILSAFE_SUBSYSTEMS[sub] !== undefined && code === 1) failsafes.push({ label: FAILSAFE_SUBSYSTEMS[sub]!, timeUs: msg.timeUs });
+    else if (sub === EKFCHECK_SUBSYSTEM && code === 2) failsafes.push({ label: 'EKF bad variance', timeUs: msg.timeUs });
+    else if (sub === CRASH_SUBSYSTEM && (code === 1 || code === 2)) crashes.push({ label: code === 1 ? 'Crash detected' : 'Loss of control', timeUs: msg.timeUs });
   }
+  // ArduPlane writes ERR only for fence and EKF/inertial-nav failsafes. Its radio, GCS and similar failsafes show
+  // up only as text ("RC Long Failsafe On: RTL", "GCS Failsafe On: ..."), so those are read from MSG too.
+  const errFailsafeTimes = failsafes.map((f) => f.timeUs);
+  for (const msg of log.messages.get('MSG') ?? []) {
+    const text = typeof msg.fields['Message'] === 'string' ? msg.fields['Message'] : '';
+    if (!FAILSAFE_TEXT_ON.test(text) || FAILSAFE_TEXT_NOT.test(text)) continue;
+    if (errFailsafeTimes.some((t) => Math.abs(t - msg.timeUs) < 3_000_000)) continue;
+    failsafes.push({ label: text.trim(), timeUs: msg.timeUs });
+  }
+  failsafes.sort((p, q) => p.timeUs - q.timeUs);
 
-  const failsafes: DataFlashMessage[] = [];
-  const crashes: DataFlashMessage[] = [];
-  for (const msg of events) {
-    const id = num(msg, 'Id') ?? 0;
-    if (FAILSAFE_EVENT_IDS.has(id)) failsafes.push(msg);
-    if (CRASH_EVENT_IDS.has(id)) crashes.push(msg);
-  }
+  const when = (list: { label: string; timeUs: number }[]) => {
+    const shown = list.slice(0, 6).map((e) => `${e.label} at ${fmtLogTime(log, e.timeUs)}`).join('; ');
+    return list.length > 6 ? `${shown}; and ${list.length - 6} more` : shown;
+  };
 
   if (crashes.length > 0) {
     return {
       id: 'failsafe', name: 'Failsafe Events', status: 'fail',
       summary: `${crashes.length} crash event(s), ${failsafes.length} failsafe event(s)`,
-      details: `Detected ${crashes.length} crash and ${failsafes.length} failsafe events in flight log.`,
+      details: `${when(crashes)}${failsafes.length > 0 ? `. Failsafes: ${when(failsafes)}` : ''}. Times are elapsed since the log started (HH:MM:SS), with the local clock in brackets when the log has GPS time.`,
       recommendation: 'Review ATT (Attitude) data around the crash event. Compare DesRoll vs Roll to identify mechanical failure or loss of control.',
       explorerPreset: { types: ['ATT'], fields: { ATT: ['DesRoll', 'Roll', 'DesPitch', 'Pitch'] } },
       values: { failsafeCount: failsafes.length, crashCount: crashes.length },
@@ -259,14 +344,14 @@ function checkFailsafe(log: DataFlashLog): HealthCheckResult {
     return {
       id: 'failsafe', name: 'Failsafe Events', status: 'fail',
       summary: `${failsafes.length} failsafe event(s) detected`,
-      details: `Detected ${failsafes.length} failsafe events in flight log.`,
+      details: `${when(failsafes)}. Times are elapsed since the log started (HH:MM:SS), with the local clock in brackets when the log has GPS time.`,
       recommendation: 'Check failsafe configuration. Review battery voltage, RC signal, and GPS quality around the event time.',
       explorerPreset: { types: ['BAT', 'GPS'], fields: { BAT: ['Volt', 'Curr'], GPS: ['NSats', 'HDop'] } },
       values: { failsafeCount: failsafes.length, crashCount: 0 },
     };
   }
 
-  return { id: 'failsafe', name: 'Failsafe Events', status: 'pass', summary: 'No failsafe events', details: 'No failsafe or crash events detected.' };
+  return { id: 'failsafe', name: 'Failsafe Events', status: 'pass', summary: 'No failsafe events', details: 'No failsafe or crash errors were logged.' };
 }
 
 function checkPower(log: DataFlashLog): HealthCheckResult {
@@ -327,8 +412,8 @@ function checkFlightModes(log: DataFlashLog): HealthCheckResult {
     id: 'flight-modes', name: 'Flight Modes', status: 'info',
     summary: `${modes.length} mode change(s): ${[...new Set(modeNames)].join(', ')}`,
     details: modeNames.map((n, i) => {
-      const timeS = ((modes[i]?.timeUs ?? 0) / 1_000_000).toFixed(1);
-      return `${timeS}s: ${n}`;
+      const timeS = formatElapsed(((modes[i]?.timeUs ?? 0) - log.timeRange.startUs) / 1_000_000);
+      return `${timeS} ${n}`;
     }).join(' \u2192 '),
   };
 }
@@ -385,7 +470,7 @@ function checkEkf(log: DataFlashLog): HealthCheckResult {
 
 /** Run all health checks against a parsed log */
 /** Message types the health checks read as rows; a columnar parse must keep these. */
-export const HEALTH_CHECK_TYPES: ReadonlySet<string> = new Set(['VIBE', 'GPS', 'BAT', 'MAG', 'EV', 'POWR', 'MODE', 'XKF4', 'NKF4', 'EKF4']);
+export const HEALTH_CHECK_TYPES: ReadonlySet<string> = new Set(['VIBE', 'GPS', 'BAT', 'MAG', 'EV', 'POWR', 'MODE', 'ERR', 'MSG', 'XKF4', 'NKF4', 'EKF4']);
 
 export function runHealthChecks(log: DataFlashLog): HealthCheckResult[] {
   return [

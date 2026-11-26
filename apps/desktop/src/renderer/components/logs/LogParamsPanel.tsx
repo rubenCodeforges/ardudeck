@@ -129,7 +129,7 @@ export function LogParamsPanel() {
                       className="flex items-center gap-2 text-[10px] font-mono text-content-secondary hover:text-blue-400 transition-colors"
                       data-tip={t('logs:params.jumpTip')}
                     >
-                      <span className="tabular-nums text-content-tertiary">{fmtEventTime(c.timeS)}</span>
+                      <span className="tabular-nums text-content-tertiary">{fmtEventTime(c.timeS - (currentLog ? currentLog.timeRange.startUs / 1_000_000 : 0))}</span>
                       <span>-&gt; {fmtParamValue(c.value)}</span>
                     </button>
                   ))}

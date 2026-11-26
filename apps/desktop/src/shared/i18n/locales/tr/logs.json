@@ -189,7 +189,7 @@
     "synced": "Eşitlendi",
     "takeoff": "Kalkış",
     "target": "hedef:",
-    "timeAxis": "Zaman (sn)",
+    "timeAxis": "Zaman (hh:mm:ss)",
     "unsynced": "Eşitlenmedi",
     "yAxis": "y ekseni",
     "yMax": "Y ekseni maksimumu",
@@ -436,7 +436,8 @@
       }
     },
     "subsystemN": "Alt sistem {{n}}",
-    "wpLabel": "WP {{num}}: {{name}}"
+    "wpLabel": "WP {{num}}: {{name}}",
+    "plannedMission": "Planlanan görev yüklendi: {{count}} öğe"
   },
   "noLogLoaded": "Günlük yüklenmedi",
   "params": {

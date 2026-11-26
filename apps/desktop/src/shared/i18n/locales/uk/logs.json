@@ -191,7 +191,7 @@
     "synced": "Синхронізовано",
     "takeoff": "Зліт",
     "target": "ціль:",
-    "timeAxis": "Час (с)",
+    "timeAxis": "Час (hh:mm:ss)",
     "unsynced": "Не синхронізовано",
     "yAxis": "вісь Y",
     "yMax": "Максимум осі Y",
@@ -440,7 +440,8 @@
       }
     },
     "subsystemN": "Підсистема {{n}}",
-    "wpLabel": "WP {{num}}: {{name}}"
+    "wpLabel": "WP {{num}}: {{name}}",
+    "plannedMission": "Завантажено заплановану місію: {{count}} елементів"
   },
   "noLogLoaded": "Журнал не завантажено",
   "params": {

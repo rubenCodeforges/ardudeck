@@ -8,6 +8,7 @@ export type {
   MessageColumns,
 } from './types.js';
 export { decodeField, fieldSize } from './field-types.js';
+export { formatElapsed, formatWallClock, wallClockOffsetMs } from './time-format.js';
 export { createDataFlashParser, parseDataFlashLog, getFieldUnit } from './parser.js';
 export {
   runHealthChecks,

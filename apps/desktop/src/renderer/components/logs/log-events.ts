@@ -190,7 +190,23 @@ export function extractLogEvents(log: { messages: LogMessages; metadata?: { vehi
     });
   }
 
-  for (const m of logRows(log, 'CMD')) {
+  // ArduPilot writes the whole planned mission into the log when logging starts (AP_Logger Write_EntireMission),
+  // so every item carries the log-start time, not the time it was flown. Those rows are collapsed into one
+  // "planned mission" entry; CMD rows later in the log are the items actually started, each with its own time.
+  const cmds = logRows(log, 'CMD').slice().sort((p, q) => p.timeUs - q.timeUs);
+  const firstEventS = out.length > 0 ? Math.min(...out.map((e) => e.timeS)) : Infinity;
+  let dump = 0;
+  while (dump < cmds.length && (dump === 0 || cmds[dump]!.timeUs - cmds[dump - 1]!.timeUs < 500_000)) dump++;
+  const isDump = dump >= 3 && cmds[0]!.timeUs / 1_000_000 - firstEventS < 5;
+  if (isDump) {
+    out.push({
+      timeS: cmds[0]!.timeUs / 1_000_000,
+      kind: 'CMD',
+      severity: 'info',
+      label: t('logs:logEvents.plannedMission', { count: dump }),
+    });
+  }
+  for (const m of cmds.slice(isDump ? dump : 0)) {
     const num = m.fields['CNum'];
     const name = typeof m.fields['CName'] === 'string' ? m.fields['CName'] : `cmd ${m.fields['CId'] ?? '?'}`;
     out.push({
@@ -205,9 +221,41 @@ export function extractLogEvents(log: { messages: LogMessages; metadata?: { vehi
   return out;
 }
 
-/** mm:ss.s for event timestamps (logs run minutes to hours). */
-export function fmtEventTime(timeS: number): string {
-  const mm = Math.floor(timeS / 60);
-  const ss = timeS - mm * 60;
-  return `${mm}:${ss < 10 ? '0' : ''}${ss.toFixed(1)}`;
+// The same helpers live in packages/dataflash-parser/src/time-format.ts, which is the source of truth. They are
+// repeated here only because importing them needs a rebuild of the package's dist; switch to the import then.
+/** Elapsed time as HH:MM:SS, zero padded: 00:05:20. `elapsedS` is seconds since the log started. */
+export function fmtEventTime(elapsedS: number): string {
+  const total = Math.max(0, Math.round(elapsedS));
+  const p = (n: number) => (n < 10 ? '0' : '') + n;
+  return `${p(Math.floor(total / 3600))}:${p(Math.floor((total % 3600) / 60))}:${p(total % 60)}`;
+}
+
+const GPS_EPOCH_MS = Date.UTC(1980, 0, 6);
+const GPS_WEEK_MS = 7 * 24 * 3600 * 1000;
+const GPS_UTC_LEAP_MS = 18_000;
+
+/**
+ * Milliseconds to add to (timeS * 1000) to get the UTC wall clock, from the first GPS record with a 3D fix and a
+ * GPS week. Null when the log has no GPS time (so no wall clock is shown, never a made up one).
+ */
+export function logWallClockOffsetMs(log: { messages: LogMessages }): number | null {
+  const gps = log.messages['GPS'];
+  if (!gps || gps.count === 0) return null;
+  const week = gps.num['GWk'], ms = gps.num['GMS'], fix = gps.num['Status'];
+  if (!week || !ms) return null;
+  for (let i = 0; i < gps.count; i++) {
+    const f = fix?.[i];
+    if (typeof f === 'number' && f < 3) continue;
+    const wk = week[i], tow = ms[i];
+    if (typeof wk !== 'number' || typeof tow !== 'number' || !(wk > 1000) || !(tow >= 0)) continue;
+    return GPS_EPOCH_MS + wk * GPS_WEEK_MS + tow - GPS_UTC_LEAP_MS - (gps.timeUs[i] ?? 0) / 1000;
+  }
+  return null;
+}
+
+/** 24 hour HH:MM:SS wall clock in the viewer's own time zone. */
+export function fmtWallClock(utcMs: number): string {
+  const d = new Date(utcMs);
+  const p = (n: number) => (n < 10 ? '0' : '') + n;
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 }

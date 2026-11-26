@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { placeReadout, readoutText } from './log-chart-cursor';
+import { fmtElapsedMs, placeReadout, readoutText } from './log-chart-cursor';
 
 const PLOT = { width: 800, height: 400 };
 const BOX = { width: 140, height: 60 };
@@ -36,6 +36,11 @@ describe('cursor readout content', () => {
     expect(text.time).toBe('107.500 s');
     expect(text.rows.map((r) => r.value)).toEqual(['-8.73', '0.500']);
     expect(text.rows[0]!.color).toBe('#ef4444');
+  });
+
+  it('shows elapsed HH:MM:SS.mmm since the log start when an origin is given', () => {
+    expect(readoutText(412.4, [], 320)?.time).toBe('00:01:32.400');
+    expect(fmtElapsedMs(3144.5)).toBe('00:52:24.500');
   });
 
   it('shows a dash where a series has no sample at the cursor', () => {

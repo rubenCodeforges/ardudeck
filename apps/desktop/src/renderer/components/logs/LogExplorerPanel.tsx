@@ -26,7 +26,7 @@ import { meshesFor, useSceneMeshStore } from '../../stores/scene-mesh-store';
 import { buildFlightTrack, frameBounds, groundAmsl, trackAltitudeRange, trackIndexNearTime, trackSpeeds } from './flight-track';
 import { useLogStore } from '../../stores/log-store';
 import { lowerBoundIdx, upperBoundIdx, columnStats, fmtStat, padRange, parseAxisRange, chartCsv, SERIES_COLORS, type FieldStats } from './log-chart-stats';
-import { getModeName, MODE_COLORS } from './log-events';
+import { fmtEventTime, getModeName, MODE_COLORS } from './log-events';
 import { publishHoverTime, subscribeHoverTime, subscribeTimeJump } from './log-hover-bus';
 import { createCursorReadout, type ChartCursorReadout, type CursorRow } from './log-chart-cursor';
 import { groupSeriesByScale, scaleKeyFor, unitOfLabel, Y_MODE_LABEL_KEY, Y_MODE_ORDER, Y_MODE_TIP_KEY, type YMode } from './log-y-scales';
@@ -556,7 +556,13 @@ function ChartPanel({ chartId }: { chartId: string }) {
       ticks: { stroke: isLight ? '#d1d5db' : '#374151', width: 1 },
       font: '11px system-ui',
     };
-    const xAxis: uPlot.Axis = { label: t('logs:explorer.timeAxis'), ...axisTheme };
+    // Ticks read as elapsed HH:MM:SS from the log start, the same clock as the Events list.
+    const xAxis: uPlot.Axis = {
+      label: t('logs:explorer.timeAxis'),
+      values: (_u, splits) => splits.map((v) => fmtEventTime(v - startTimeS)),
+      size: 54,
+      ...axisTheme,
+    };
 
     // One drawn axis per scale, alternating left/right the way Mission Planner
     // stacks its YAxisList / Y2AxisList. Every scale gets a gutter: an axis a
@@ -830,7 +836,7 @@ function ChartPanel({ chartId }: { chartId: string }) {
         });
       });
     }
-    readout = createCursorReadout(plot.over);
+    readout = createCursorReadout(plot.over, startTimeS);
 
     // A rebuild (Y-mode switch, theme change, new fields) resets the plot to
     // the full time range. Re-apply the active zoom window so the user's view

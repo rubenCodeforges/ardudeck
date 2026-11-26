@@ -189,7 +189,7 @@
     "synced": "Synchron",
     "takeoff": "Start",
     "target": "Ziel:",
-    "timeAxis": "Zeit (s)",
+    "timeAxis": "Zeit (hh:mm:ss)",
     "unsynced": "Nicht synchron",
     "yAxis": "Y-Achse",
     "yMax": "Y-Achse Maximum",
@@ -436,7 +436,8 @@
       }
     },
     "subsystemN": "Subsystem {{n}}",
-    "wpLabel": "WP {{num}}: {{name}}"
+    "wpLabel": "WP {{num}}: {{name}}",
+    "plannedMission": "Geplante Mission geladen: {{count}} Punkte"
   },
   "noLogLoaded": "Kein Log geladen",
   "params": {

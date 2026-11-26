@@ -92,17 +92,119 @@ describe('runHealthChecks', () => {
     expect(batt!.status).toBe('warn');
   });
 
-  it('detects failsafe events from EV messages', () => {
+  it('reports real failsafes from ERR records with their time, and ignores normal EV events', () => {
     const log = makeLog({
       EV: [
-        makeMsg('EV', 1000000, { TimeUS: 1000000, Id: 9 }),
-        makeMsg('EV', 2000000, { TimeUS: 2000000, Id: 10 }),
+        makeMsg('EV', 1000000, { TimeUS: 1000000, Id: 10 }), // armed
+        makeMsg('EV', 9000000, { TimeUS: 9000000, Id: 11 }), // disarmed
+        makeMsg('EV', 8000000, { TimeUS: 8000000, Id: 17 }), // land complete (maybe)
+      ],
+      ERR: [
+        makeMsg('ERR', 3281600000, { TimeUS: 3281600000, Subsys: 5, ECode: 1 }), // radio failsafe occurred
+        makeMsg('ERR', 3290000000, { TimeUS: 3290000000, Subsys: 5, ECode: 0 }), // resolved
       ],
     });
-    const results = runHealthChecks(log);
-    const fs = results.find((r) => r.id === 'failsafe');
+    const fs = runHealthChecks(log).find((r) => r.id === 'failsafe');
     expect(fs!.status).toBe('fail');
-    expect(fs!.details).toContain('2 failsafe');
+    expect(fs!.summary).toContain('1 failsafe');
+    expect(fs!.details).toContain('Radio failsafe at 00:54:42');
+  });
+
+  it('counts any fence breach bitmask, not only the altitude bit', () => {
+    const log = makeLog({ ERR: [
+      makeMsg('ERR', 5e6, { TimeUS: 5e6, Subsys: 9, ECode: 4 }), // polygon
+      makeMsg('ERR', 9e6, { TimeUS: 9e6, Subsys: 9, ECode: 0 }), // resolved
+    ] });
+    const fs = runHealthChecks(log).find((r) => r.id === 'failsafe')!;
+    expect(fs.status).toBe('fail');
+    expect(fs.details).toContain('Fence breach');
+  });
+
+  it('finds ArduPlane radio and GCS failsafes from their text messages, which have no ERR record', () => {
+    const log = makeLog({ MSG: [
+      makeMsg('MSG', 2666e6, { TimeUS: 2666e6, Message: 'RC Long Failsafe On: RTL' }),
+      makeMsg('MSG', 2700e6, { TimeUS: 2700e6, Message: 'RC Long Failsafe Cleared' }),
+      makeMsg('MSG', 10e6, { TimeUS: 10e6, Message: 'PreArm: Throttle below failsafe' }),
+    ] });
+    const fs = runHealthChecks(log).find((r) => r.id === 'failsafe')!;
+    expect(fs.status).toBe('fail');
+    expect(fs.summary).toContain('1 failsafe');
+    expect(fs.details).toContain('RC Long Failsafe On: RTL at 00:44:26');
+  });
+
+  it('finds a low battery announcement on ArduPlane, which has no ERR record for it', () => {
+    const log = makeLog({ MSG: [makeMsg('MSG', 1800e6, { TimeUS: 1800e6, Message: 'Battery 1 is low 14.10V used 2100 mAh' })] });
+    const fs = runHealthChecks(log).find((r) => r.id === 'failsafe')!;
+    expect(fs.status).toBe('fail');
+    expect(fs.details).toContain('Battery 1 is low 14.10V used 2100 mAh at 00:30:00');
+  });
+
+  it('does not count a Copter ERR failsafe twice when its text message follows', () => {
+    const log = makeLog({
+      ERR: [makeMsg('ERR', 100e6, { TimeUS: 100e6, Subsys: 5, ECode: 1 })],
+      MSG: [makeMsg('MSG', 100.2e6, { TimeUS: 100.2e6, Message: 'Radio Failsafe' })],
+    });
+    expect(runHealthChecks(log).find((r) => r.id === 'failsafe')!.summary).toContain('1 failsafe');
+  });
+
+  it('does not call a normal flight a failsafe or a crash', () => {
+    const log = makeLog({
+      EV: [10, 15, 16, 17, 18, 28, 11].map((id, i) => makeMsg('EV', (i + 1) * 1e6, { TimeUS: (i + 1) * 1e6, Id: id })),
+    });
+    expect(runHealthChecks(log).find((r) => r.id === 'failsafe')!.status).toBe('pass');
+  });
+
+  it('counts a crash check ERR as a crash', () => {
+    const log = makeLog({ ERR: [makeMsg('ERR', 5e6, { TimeUS: 5e6, Subsys: 12, ECode: 1 })] });
+    const fs = runHealthChecks(log).find((r) => r.id === 'failsafe');
+    expect(fs!.status).toBe('fail');
+    expect(fs!.summary).toContain('1 crash');
+  });
+
+  it('ignores shaking in the 15 s after arming and the last 20 s before disarm, and clips from those phases', () => {
+    const rows = [];
+    for (let t = 0; t <= 300; t++) {
+      const launch = t < 15, landing = t > 280;
+      rows.push(makeMsg('VIBE', t * 1e6, { TimeUS: t * 1e6, VibeX: launch || landing ? 45 : 6, VibeY: launch || landing ? 40 : 5, VibeZ: launch || landing ? 62 : 8, Clip0: landing ? 9 : launch ? 2 : 2, Clip1: 0, Clip2: 0 }));
+    }
+    const log = makeLog({ VIBE: rows, EV: [makeMsg('EV', 0, { TimeUS: 0, Id: 10 }), makeMsg('EV', 300e6, { TimeUS: 300e6, Id: 11 })] });
+    const vibe = runHealthChecks(log).find((r) => r.id === 'vibration')!;
+    expect(vibe.status).toBe('pass');
+    expect(vibe.details).toContain('not counted');
+    expect(vibe.details).toContain('0 clipping');
+  });
+
+  it('starts the window after the arming event, not at the start of the log', () => {
+    // powered and idle for 100 s, armed at 100 s, shaking on launch until 112 s
+    const rows = [];
+    for (let t = 0; t <= 400; t++) {
+      rows.push(makeMsg('VIBE', t * 1e6, { TimeUS: t * 1e6, VibeX: t >= 100 && t < 112 ? 50 : 6, VibeY: 5, VibeZ: 8, Clip0: 0, Clip1: 0, Clip2: 0 }));
+    }
+    const log = makeLog({ VIBE: rows, EV: [makeMsg('EV', 100e6, { TimeUS: 100e6, Id: 10 }), makeMsg('EV', 400e6, { TimeUS: 400e6, Id: 11 })] });
+    const vibe = runHealthChecks(log).find((r) => r.id === 'vibration')!;
+    expect(vibe.status).toBe('pass');
+    expect(vibe.details).toContain('Peak in flight 8.0');
+  });
+
+  it('still reports a single landing spike in a short log without failing it', () => {
+    const rows = Array.from({ length: 200 }, (_, i) => makeMsg('VIBE', i * 1e6, { TimeUS: i * 1e6, VibeX: 6, VibeY: 5, VibeZ: 8, Clip0: 0, Clip1: 0, Clip2: 0 }));
+    rows.push(makeMsg('VIBE', 201e6, { TimeUS: 201e6, VibeX: 21, VibeY: 16, VibeZ: 38.7, Clip0: 0, Clip1: 0, Clip2: 0 }));
+    const vibe = runHealthChecks(makeLog({ VIBE: rows })).find((r) => r.id === 'vibration')!;
+    expect(vibe.status).toBe('pass');
+  });
+
+  it('warns when vibration is high for most of the flight', () => {
+    const rows = Array.from({ length: 100 }, (_, i) => makeMsg('VIBE', i * 1e6, { TimeUS: i * 1e6, VibeX: 20, VibeY: 20, VibeZ: 35, Clip0: 0, Clip1: 0, Clip2: 0 }));
+    expect(runHealthChecks(makeLog({ VIBE: rows })).find((r) => r.id === 'vibration')!.status).toBe('warn');
+  });
+
+  it('treats clip counters as running totals, not per-row increments', () => {
+    const rows = Array.from({ length: 50 }, (_, i) => makeMsg('VIBE', i * 1e6, { TimeUS: i * 1e6, VibeX: 5, VibeY: 5, VibeZ: 5, Clip0: 0, Clip1: 0, Clip2: 0 }));
+    expect(runHealthChecks(makeLog({ VIBE: rows })).find((r) => r.id === 'vibration')!.status).toBe('pass');
+    const clipped = rows.map((r, i) => (i >= 40 ? makeMsg('VIBE', r.timeUs, { ...r.fields, Clip0: 3 }) : r));
+    const v = runHealthChecks(makeLog({ VIBE: clipped })).find((r) => r.id === 'vibration')!;
+    expect(v.status).toBe('fail');
+    expect(v.summary).toContain('3 clipping');
   });
 
   it('returns skip for missing data', () => {
@@ -144,5 +246,30 @@ describe('runHealthChecks', () => {
   it('fails when variance stays above the EKF failsafe threshold', () => {
     const rows = Array.from({ length: 20 }, (_, i) => makeMsg('XKF4', i * 1e6, { C: 0, SV: 1.4, SP: 0.2, SH: 0.1 }));
     expect(runHealthChecks(makeLog({ XKF4: rows })).find((r) => r.id === 'ekf')!.status).toBe('fail');
+  });
+});
+
+describe('time format', () => {
+  it('formats elapsed time as zero padded HH:MM:SS', async () => {
+    const { formatElapsed } = await import('../time-format.js');
+    expect(formatElapsed(320.8)).toBe('00:05:21');
+    expect(formatElapsed(3144)).toBe('00:52:24');
+    expect(formatElapsed(3 * 3600 + 5)).toBe('03:00:05');
+  });
+
+  it('turns GPS week and time of week into a wall clock offset', async () => {
+    const { wallClockOffsetMs } = await import('../time-format.js');
+    // GPS week 2395 (about Nov 2025), 12 h into the week, seen at log time 100 s
+    const off = wallClockOffsetMs(100e6, 2395, 12 * 3600 * 1000)!;
+    const utc = new Date(off + 100e3);
+    expect(utc.getUTCFullYear()).toBe(2025);
+    expect(wallClockOffsetMs(0, 0, 0)).toBeNull();
+  });
+
+  it('shows the wall clock next to elapsed time when the log has GPS time', () => {
+    const gps = [makeMsg('GPS', 10e6, { TimeUS: 10e6, Status: 3, GWk: 2395, GMS: 43_200_000 })];
+    const log = makeLog({ GPS: gps, ERR: [makeMsg('ERR', 70e6, { TimeUS: 70e6, Subsys: 5, ECode: 1 })] });
+    const fs = runHealthChecks(log).find((r) => r.id === 'failsafe')!;
+    expect(fs.details).toMatch(/Radio failsafe at 00:01:10 \(\d\d:\d\d:\d\d\)/);
   });
 });
